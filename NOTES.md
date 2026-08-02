@@ -68,7 +68,32 @@ items.
 
 ---
 
-## What is built — v1, release 0.1.0 (CAPABILITY)
+## SHIPPED TO PRODUCTION — 0.2.0, 2026-08-02
+
+Noah promoted `staging` to `main` on 2026-08-02. This is the first release to
+reach production; `fauxplane.pages.dev` served nothing before it.
+
+**Promoted WITHOUT an on-device pass.** Recorded plainly because the staging
+gate exists to require one and a later session must not read this as the gate
+having been satisfied. Noah made the call knowingly.
+
+**The one live risk that carries into production.** The METAR field names in
+`functions/api/metar.js` were written from memory and have NEVER been checked
+against a real response — `aviationweather.gov` is blocked from the build
+sandbox. The tell is the Kollsman window on the ATIS page: about `29.9x` means
+the mapping is right; about `1013`, or a station line saying none was found,
+means a field name or a unit is wrong. Worst case the page shows FAIL with its
+reason, which is the app behaving correctly.
+
+**Version note.** The on-screen stamp went 0.1.0 -> 0.2.0 at the promotion. The
+tree carried two capabilities — the panel itself, then MSL altitude and magnetic
+declination — and 0.1.0 had already been stamped before the second landed, so it
+no longer identified this build. Bumping also renames the service-worker cache,
+which forces a clean shell at the cutover.
+
+---
+
+## What is built — v1, release 0.2.0 (CAPABILITY)
 
 The whole v1 scope: **PFD, ATIS/Kollsman, BITE.** Nothing outside it.
 
