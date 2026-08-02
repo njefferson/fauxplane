@@ -68,7 +68,7 @@ validated in the Function before anything is sent and the edge cache carries the
 panel's refresh rate.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 136 unit tests over the pure logic, including the magnetic model
+- `npm test` — 144 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
   palettes x 5 pages, including the acceptance criteria.
@@ -106,6 +106,17 @@ every push to `staging` and `main`, and creates the Pages project on first run.
 It needs two repo secrets — `CLOUDFLARE_API_TOKEN` (Pages:Edit) and
 `CLOUDFLARE_ACCOUNT_ID` — and skips the deploy without failing if they are
 absent. `staging` lands at `staging.fauxplane.pages.dev`.
+
+**`public/boot.js` is why a released build can be replaced at all, and it must
+stay first in `index.html`.** The worker takes its version from its registration
+URL, so `sw.js` is byte-identical between releases — and a browser replaces a
+worker only when those bytes change. Nothing would ever have registered the new
+one, because the old worker serves the old `app.js` that re-registers it. A
+navigation is the one request `sw.js` handles network-first, so `boot.js` rides
+in on `index.html`, asks the network which release is current, and drops a worker
+belonging to any other one. Do not inline it (the CSP forbids that), do not move
+it below `app.js`, and do not "simplify" its empty cases — each one exists to
+stop it forcing a reload it should not.
 
 The workflow runs `npm test`. It does NOT run the accessibility gate, which
 needs a browser the runner would have to download; that gate is run locally

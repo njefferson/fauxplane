@@ -26,6 +26,14 @@
       strict Content-Security-Policy in public/_headers possible rather than
       decorative (Doctrine §16.6 — a CSP is a refactor, not a header).
     -->
+    <!--
+      boot.js FIRST, and it must stay first. It is the only thing that can
+      rescue a device whose service worker has stopped updating, and it works
+      only because a navigation is network-first: this file is fetched fresh
+      even when every module below it is being served from a stale cache.
+      See the header of boot.js for the loop it breaks.
+    -->
+    <script type="module" src="/boot.js"></script>
     <script type="module" src="/src/app.js"></script>
   </head>
   <body>

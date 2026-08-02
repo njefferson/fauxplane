@@ -68,6 +68,106 @@ items.
 
 ---
 
+## 0.4.4 — the iPad was stuck on 0.4.1, and it was never going to unstick itself
+
+Noah's iPad reported `v0.4.1` and `service worker controlled (fauxplane-0.4.1)`
+after two green deploys of 0.4.2 and 0.4.3. Both deploy runs succeeded, and the
+"Deploy to Cloudflare Pages" step ran in each — this was not a deploy that
+failed, it was a device that could not be reached.
+
+### The loop, which was permanent and not a delay
+
+`sw.js` reads its own version out of its registration URL (`/sw.js?v=0.4.3`) so
+the version is typed in exactly one place, per Doctrine §7b. The cost of that,
+invisible until now, is that **`public/sw.js` is byte-identical from one release
+to the next** — confirmed: the file had not changed since 0.4.1.
+
+A browser decides whether to replace a service worker by re-fetching the
+registered script and **comparing bytes**. Identical bytes mean no update. Ever.
+
+So the only thing that could ever register the new URL was `app.js` — and
+`app.js` is served by the running worker, cache-first, out of its own release's
+cache. The old worker served the old `app.js`, which asked for the old worker,
+which served the old `app.js`.
+
+Worth being precise about what this was NOT: not a propagation delay, not a CDN
+cache, not iOS being slow to update a PWA. Waiting would never have fixed it.
+
+**The 0.3.0 fix is what closed the loop.** Serving from `caches.match()` used to
+search every cache on the origin, so a new `index.html` would arrive with old
+modules mixed in — the bug where the page ran old code and showed the old stamp.
+Scoping the lookup to the running worker's own cache fixed the mixing and, in
+doing so, sealed the only crack new code had been getting through. A correct fix
+to a real bug is what made this one total.
+
+### One request escapes a cache-first worker
+
+Navigations. `sw.js` has always handled `request.mode === 'navigate'`
+network-first, so `index.html` reaches a stuck device on every load. That is the
+entire repair channel, and anything that unsticks a device has to be reachable
+from it.
+
+Hence `public/boot.js`, loaded from `index.html` ahead of the app. It is a new
+path, so no previous release's cache can hold a copy of it. It asks the network
+what the current version is — on `/src/core/version.js?boot=<n>`, a URL no
+cache can match, so the request goes through the very worker that is refusing to
+let anything new through — and if the caches on the device belong to some other
+release, it unregisters the worker, deletes those caches and reloads once. The
+reloaded page is uncontrolled, so `app.js` comes from the network and registers
+the new worker itself.
+
+The CSP made this cleaner rather than harder: `script-src 'self'` forbids inline
+script, so the escape hatch had to be its own file, which is exactly what makes
+it invisible to old caches.
+
+### The dangerous direction is the false positive
+
+This code can force a reload, so a version of it that fires when it should not
+is a **reload loop** — worse than the stale panel it fixes. The decision is a
+pure function with the empty cases tested harder than the acting one: a first
+visit does nothing, the current release does nothing, a worker part-way through
+installing does nothing (both caches exist between install and activate, and
+tearing down there would interrupt the fix in progress), another app's caches on
+the same origin are never touched, and an unreadable version — the offline case
+— does nothing. A session-scoped guard keyed to the version means a reset that
+does not take leaves the reader on a working older panel instead of spinning.
+
+Two plants cover it, one per direction: loosening the condition so it fires when
+it should not, and gutting it so a genuinely stuck device is no longer detected.
+
+### The plant gate was running fewer tests than `npm test`
+
+`plant.mjs` held a hand-written list of five test-file names. Adding
+`boot.test.mjs` did not add it to that list, so the gate the plants are checked
+against would have silently skipped the tests covering the new work — a gate
+that runs a subset of the suite will bless a fault the suite would have caught.
+It now reads `scripts/` from disk and filters on the `.test.mjs` suffix. Filters,
+rather than being handed the directory, because `node --test scripts/` once swept
+in every non-test script in there and ran it as a test.
+
+That is the second hand-maintained list to go stale in this repo in one session,
+after the plant anchored to a line that got rewritten. Both had the same shape:
+a list that has to be updated by someone who remembers it exists.
+
+### Verified
+
+**144 unit tests, 19/19 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+### NOT verified
+
+- **The repair itself cannot be tested from here.** It needs a device holding a
+  real older worker against a real deploy — the sandbox has no persistent
+  service worker and the proxy blocks the deployed origin. The decision function
+  is unit-tested against the exact cache names Noah's iPad reported, and the
+  wiring is exercised by the accessibility gate, but the end-to-end unstick is
+  confirmed only when a stuck device loads it.
+- Android and desktop in landscape, still.
+- No live adsb.fi response body has ever been seen from this sandbox.
+
+---
+
 ## 0.4.2 / 0.4.3 — the iPad roll defect, FOUND, and it was two bugs
 
 Noah's iPad read roll about ninety degrees out **in both orientations**, which

@@ -43,6 +43,9 @@ const CACHE_NAME = `fauxplane-${SW_VERSION}`;
 const SHELL = [
   '/',
   '/index.html',
+  // The stale-worker escape hatch. Cached like everything else so the panel
+  // still boots with the radio off; its job only begins when there IS network.
+  '/boot.js',
   '/styles.css',
   '/manifest.webmanifest',
   '/icons/icon.svg',

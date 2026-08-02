@@ -215,6 +215,30 @@ const PLANTS = [
     expect: /quarter turn was applied backwards|held square is not banked/,
   },
   {
+    // The escape hatch that got Noah's iPad off 0.4.1. Its dangerous direction
+    // is the FALSE POSITIVE: it can force a reload, so a version of it that
+    // fires when it should not is a reload loop, which is worse than the stale
+    // panel. Planting the loosened condition proves the tests still object.
+    name: 'stale worker: the escape hatch starts reloading when it should not',
+    check: 'a first visit, the current release and a half-installed worker are all left alone',
+    gate: 'tests',
+    file: 'public/boot.js',
+    find: '  if (!mine.length) return [];\n  if (!liveVersion || mine.includes(PREFIX + liveVersion)) return [];',
+    replace: '  if (!liveVersion) return [];',
+    expect: /first visit|installing is left alone|current release/,
+  },
+  {
+    // The other direction: the hatch stops finding a genuinely stuck device and
+    // the loop that stranded the iPad for two releases comes straight back.
+    name: 'stale worker: the escape hatch stops detecting an old release',
+    check: 'a worker from an older release is detected',
+    gate: 'tests',
+    file: 'public/boot.js',
+    find: '  return mine;\n}',
+    replace: '  return [];\n}',
+    expect: /older release is detected/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',
@@ -283,7 +307,16 @@ for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
 // The unit entry names the test files EXPLICITLY, matching package.json's
 // `npm test`. Handing node --test the whole scripts/ directory sweeps in this
 // file, the gate and the build scripts and tries to run them as suites.
-const TEST_FILES = ['core', 'fusion', 'derive', 'wmm', 'build-navdata'].map((n) => path.join(HERE, `${n}.test.mjs`));
+// READ FROM DISK, never hand-listed. This was a hand-written array of five
+// names, and it silently stopped covering `boot.test.mjs` the moment that file
+// was added — a plant gate that quietly runs fewer tests than `npm test` will
+// bless a fault the suite would have caught. Filtered on the suffix rather than
+// handed the whole directory, because `node --test scripts/` once swept in
+// every non-test script in here and ran them as tests.
+const TEST_FILES = readdirSync(HERE)
+  .filter((n) => n.endsWith('.test.mjs'))
+  .sort()
+  .map((n) => path.join(HERE, n));
 const GATES = {
   a11y: [path.join(HERE, 'a11y-gate.mjs'), '--quick'],
   tests: ['--test', ...TEST_FILES],
