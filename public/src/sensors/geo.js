@@ -33,7 +33,18 @@ const POSITION_FIELDS = [
   'position.altitudeAccuracy',
 ];
 
-export function createGeoSensor({ state, vsi, onFix = () => {}, clock = () => Date.now() }) {
+/**
+ * `owns` is the ownership gate. It answers "are MY readings the ones the panel
+ * wants right now" — false while the panel is following another aircraft, whose
+ * broadcast fills these very same fields.
+ *
+ * Without it both sources write continuously and the panel shows whichever
+ * landed last: geolocation fires on its own schedule and the follow source
+ * writes at 25 Hz, so the position, groundspeed and altitude would alternate
+ * between a desk in Cameron Park and a 737 over the Sierra several times a
+ * second. Exactly one source owns a field at a time; that is the contract.
+ */
+export function createGeoSensor({ state, vsi, onFix = () => {}, owns = () => true, clock = () => Date.now() }) {
   let watchId = null;
   let sawFix = false;
   let lastError = null;
@@ -46,6 +57,15 @@ export function createGeoSensor({ state, vsi, onFix = () => {}, clock = () => Da
     const c = position.coords;
     sawFix = true;
 
+    // The fix is still USED even when it is not written: `onFix` is what wakes
+    // the weather feeds on the first fix, and the weather is about where the
+    // reader is standing whatever aircraft the panel happens to be following.
+    // Only the position FIELDS change hands.
+    if (!owns()) {
+      if (Number.isFinite(c.altitude)) vsi.updateAltitude(mToFt(c.altitude), at);
+      onFix({ lat: c.latitude, lon: c.longitude, at });
+      return;
+    }
     state.write('position.lat', c.latitude, { at });
     state.write('position.lon', c.longitude, { at });
     state.write('position.accuracy', c.accuracy, { at });
@@ -93,6 +113,20 @@ export function createGeoSensor({ state, vsi, onFix = () => {}, clock = () => Da
     },
     get lastError() {
       return lastError;
+    },
+
+    /**
+     * Hand this sensor a GeolocationPosition directly.
+     *
+     * The seam the tests drive, and it is the SAME entry point the browser
+     * calls — not a parallel path with its own copy of the logic, which would
+     * test something the device never runs. Node has no geolocation, so
+     * "a fix arrived while the panel was following an aircraft" is otherwise
+     * unreachable, and that is precisely the case where the wrong answer is a
+     * panel flickering between a desk and an aeroplane.
+     */
+    acceptFix(position) {
+      onPosition(position);
     },
 
     start() {

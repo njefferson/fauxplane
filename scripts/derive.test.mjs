@@ -17,7 +17,9 @@ import { selectStation } from '../public/src/data/metar.js';
 import { interpolateLevels } from '../public/src/data/windsaloft.js';
 import { decimalYear, magneticField, parseCof } from '../public/src/data/wmm.js';
 import { sampleGrid } from '../public/src/data/geoid.js';
-import { radarCentre, withRangeAndBearing } from '../public/src/data/traffic.js';
+import { createTrafficSource, radarCentre, withRangeAndBearing } from '../public/src/data/traffic.js';
+import { createStore } from '../public/src/core/state.js';
+import { createGeoSensor } from '../public/src/sensors/geo.js';
 import { brightnessFromLux, brightnessFromSolarElevation, DIM_FLOOR, solarElevationDeg } from '../public/src/sensors/ambient.js';
 
 const at = 1_000_000;
@@ -443,4 +445,178 @@ test('losing the track resets the rate rather than differencing across the hole'
   // The next good reading is a FIRST reading again, not a partner for the one
   // from before the outage.
   assert.match(turn.read(R(180, 'degT'), 5000).reason, /second track reading/);
+});
+
+/* ------------------------------------------------- FOLLOW writes into the store */
+
+const AIRCRAFT = (over = {}) => ({
+  hex: 'a1b2c3',
+  callsign: 'UAL328',
+  registration: 'N77261',
+  type: 'B739',
+  lat: 38.9,
+  lon: -121.15,
+  altBaroFt: 34000,
+  altGeomFt: 34350,
+  onGround: false,
+  groundspeedKt: 452,
+  trackDeg: 118,
+  headingDeg: null,
+  verticalRateFpm: -1216,
+  squawk: '2451',
+  seenPosS: 2,
+  seenS: 1,
+  ...over,
+});
+
+/** A store plus a traffic source whose fetch returns whatever is queued. */
+const followRig = (bodies) => {
+  const store = createStore({ clock: () => rigNow });
+  const queue = [...bodies];
+  const traffic = createTrafficSource({
+    state: store,
+    clock: () => rigNow,
+    fetchImpl: async () => ({
+      ok: true,
+      headers: { get: () => '0' },
+      json: async () => ({ ok: true, aircraft: queue.length > 1 ? [queue.shift()] : [queue[0]] }),
+    }),
+  });
+  return { store, traffic };
+};
+let rigNow = 1_000_000;
+
+test('FOLLOW writes the broadcast, stamped with when it was HEARD', async () => {
+  rigNow = 1_000_000;
+  const { store, traffic } = followRig([AIRCRAFT()]);
+  traffic.follow({ callsign: 'UAL328' });
+  await traffic.refreshFollowed();
+  traffic.apply();
+  const f = store.publishNow().fields;
+
+  assert.equal(f['position.groundspeed'].value, 452);
+  assert.equal(f['position.groundspeed'].provenance, 'LIVE');
+  assert.match(f['position.groundspeed'].reason, /adsb\.fi/);
+  assert.equal(f['position.altitudeGeometric'].value, 34350, 'geometric altitude, not barometric');
+  assert.equal(f['vsi.rate'].value, -1216);
+
+  // seen_pos was 2 seconds, so the reading is stamped two seconds ago — which
+  // is what lets the store age a receiver gap into STALE on its own.
+  assert.ok(f['position.groundspeed'].ageMs >= 2000, `ageMs ${f['position.groundspeed'].ageMs}`);
+});
+
+test('FOLLOW crosses out everything ADS-B cannot answer, each with its reason', async () => {
+  rigNow = 1_000_000;
+  const { store, traffic } = followRig([AIRCRAFT()]);
+  traffic.follow({ callsign: 'UAL328' });
+  await traffic.refreshFollowed();
+  traffic.apply();
+  const f = store.publishNow().fields;
+
+  // THE ONE THAT MATTERS MOST. Flight path angle is computable and is NOT
+  // pitch; writing it here would be the synthetic-data defect wearing a
+  // plausible label.
+  assert.equal(f['attitude.pitch'].provenance, 'FAIL');
+  assert.equal(f['attitude.pitch'].value, null);
+  assert.match(f['attitude.pitch'].reason, /no attitude/);
+
+  for (const path of ['motion.lateralG', 'speed.tas', 'speed.cas', 'altitude.indicated', 'aoa.angle']) {
+    assert.equal(f[path].provenance, 'FAIL', `${path} should be FAIL when following`);
+    assert.ok(f[path].reason, `${path} must say why`);
+  }
+
+  // No heading broadcast: FAIL, and the reason points at the track instead.
+  assert.equal(f['attitude.heading'].provenance, 'FAIL');
+  assert.match(f['attitude.heading'].reason, /TRACK/);
+  assert.equal(f['position.track'].value, 118, 'the track itself is real and stays');
+});
+
+test('FOLLOW derives bank only once a SECOND report gives it a rate of turn', async () => {
+  rigNow = 1_000_000;
+  const { store, traffic } = followRig([AIRCRAFT({ trackDeg: 118 }), AIRCRAFT({ trackDeg: 133, seenPosS: 0 })]);
+  traffic.follow({ callsign: 'UAL328' });
+
+  await traffic.refreshFollowed();
+  traffic.apply();
+  let f = store.publishNow().fields;
+  // One report is not a rate, and a bank of zero would read as wings level.
+  assert.equal(f['attitude.roll'].provenance, 'FAIL');
+  assert.equal(f['attitude.turnRate'].provenance, 'FAIL');
+
+  // Five seconds of wall clock later, and 15 degrees of track.
+  //
+  // The rate is 15/7, NOT 15/5 — and that is the point of the differing
+  // seen_pos values. The first report was heard two seconds BEFORE it was
+  // fetched and the second was heard as it arrived, so the two observations are
+  // seven seconds apart, not five. Dividing by the fetch interval instead would
+  // overstate every rate of turn by whatever the receiver lag happened to be,
+  // and the bank angle derived from it along with it.
+  rigNow += 5000;
+  await traffic.refreshFollowed();
+  traffic.apply();
+  f = store.publishNow().fields;
+
+  assert.equal(f['attitude.turnRate'].provenance, 'DERIVED', 'a rate worked out from two tracks is DERIVED, not LIVE');
+  assert.ok(Math.abs(f['attitude.turnRate'].value - 15 / 7) < 0.01, `rate ${f['attitude.turnRate'].value}`);
+  assert.equal(f['attitude.roll'].provenance, 'DERIVED');
+  assert.ok(f['attitude.roll'].value > 30 && f['attitude.roll'].value < 55, `bank ${f['attitude.roll'].value}`);
+  assert.match(f['attitude.roll'].reason, /coordinated/);
+  assert.ok(f['motion.gLoad'].value > 1.1, `load factor ${f['motion.gLoad'].value} in a 45 degree turn`);
+});
+
+test('UNFOLLOW hands the fields back rather than leaving the last aircraft on screen', async () => {
+  rigNow = 1_000_000;
+  const { store, traffic } = followRig([AIRCRAFT()]);
+  traffic.follow({ callsign: 'UAL328' });
+  await traffic.refreshFollowed();
+  traffic.apply();
+  assert.equal(store.publishNow().fields['position.groundspeed'].provenance, 'LIVE');
+
+  traffic.unfollow();
+  const f = store.publishNow().fields;
+  assert.equal(f['position.groundspeed'].provenance, 'FAIL', 'a followed value must not linger after unfollow');
+  assert.equal(f['position.groundspeed'].value, null);
+  assert.equal(traffic.isFollowing, false);
+});
+
+test('OWNERSHIP: the device stops writing the fields a followed aircraft fills', async () => {
+  // Both sources writing means the panel shows whichever landed last, and they
+  // arrive at different rates — geolocation on its own schedule, the follow
+  // source at 25 Hz. The groundspeed would alternate between a desk and a 737
+  // several times a second, and every value on screen would be untraceable.
+  rigNow = 1_000_000;
+  const { store, traffic } = followRig([AIRCRAFT()]);
+  const owns = () => !traffic.isFollowing;
+
+  const geo = createGeoSensor({
+    state: store,
+    vsi: { updateAltitude() {} },
+    owns,
+    clock: () => rigNow,
+  });
+
+  const deskFix = {
+    timestamp: rigNow,
+    coords: { latitude: 38.68, longitude: -121.0, accuracy: 12, speed: 0, heading: null, altitude: 140, altitudeAccuracy: 8 },
+  };
+
+  // Not following: the device owns its fields.
+  geo.acceptFix(deskFix);
+  assert.equal(store.publishNow().fields['position.lat'].value, 38.68);
+
+  // Following: the aircraft owns them, and a fix arriving mid-flight must not
+  // drag the panel back to the desk.
+  traffic.follow({ callsign: 'UAL328' });
+  await traffic.refreshFollowed();
+  traffic.apply();
+  geo.acceptFix(deskFix);
+  let f = store.publishNow().fields;
+  assert.equal(f['position.lat'].value, 38.9, 'a GPS fix overwrote the followed aircraft');
+  assert.equal(f['position.groundspeed'].value, 452, 'the desk overwrote the aircraft groundspeed');
+
+  // And handed back on unfollow.
+  traffic.unfollow();
+  geo.acceptFix(deskFix);
+  f = store.publishNow().fields;
+  assert.equal(f['position.lat'].value, 38.68, 'the device did not take its fields back');
 });

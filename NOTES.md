@@ -206,6 +206,31 @@ None of these were visible to any test; all four came from actually looking at
 4. **A second `publishNow()` destroyed the scene it was meant to redraw**,
    because every publish runs the app's own derived subscriber.
 
+### Two the new tests found immediately
+
+**Exactly one source must own a field, and two were writing.** The device's
+geolocation and motion sensors kept writing position, groundspeed, altitude,
+load factor and turn rate while FOLLOW was writing the same fields from the
+aircraft. Both would land, at different rates — geolocation on its own schedule,
+the follow source at 25 Hz — so the panel would have shown whichever was most
+recent, alternating between a desk in Cameron Park and a 737 over the Sierra
+several times a second. Every sensor now takes an `owns` predicate and stops
+WRITING (never stops running: the attitude filter and the VSI stay fed, so both
+are already settled when the reader stops following).
+
+
+
+**A derived value was claiming to be more certain than its own input.** The turn
+rate is a SENSOR field in the registry — on this device it comes from the gyro —
+so when FOLLOW filled it by differencing two broadcast ground tracks, the store
+labelled it LIVE. The bank angle *derived from it* was correctly labelled
+DERIVED. That inverts `worstOf`'s whole principle.
+
+`write()` gained a `derived` flag, sticky through ageing exactly like
+`forcedStale`. The registry's `kind` says what a field NORMALLY is; the flag says
+what THIS value actually is. It can only ever weaken a claim — there is no
+option that strengthens one, and there should never be.
+
 ### And one the harness itself had
 
 **Two `plant.mjs` runs overlapped.** The second read a file the first had already
@@ -222,7 +247,7 @@ plants now run against the unit suite instead.
 
 ### Verified
 
-**111 unit tests, 13/13 planted faults caught, the accessibility gate green
+**116 unit tests, 13/13 planted faults caught, the accessibility gate green
 across 3 viewports x 2 palettes x 4 pages, both palettes clearing every hard
 floor.** The radar page is in the gate against a response fixture, so the plan
 view is checked WITH aircraft on it rather than empty.

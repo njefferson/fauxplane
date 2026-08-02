@@ -68,7 +68,7 @@ validated in the Function before anything is sent and the edge cache carries the
 panel's refresh rate.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 111 unit tests over the pure logic, including the magnetic model
+- `npm test` — 116 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
   palettes x 4 pages, including the acceptance criteria.
@@ -80,7 +80,10 @@ Every gate, and each one exits non-zero:
   `tests`. Sensor-logic plants MUST use `tests` — a headless browser has no
   accelerometer, so the accessibility gate is structurally blind to them and
   would stay green. It takes a pid lock; never run two at once, because the
-  second restores the first's injected code into the tree.
+  second restores the first's injected code into the tree. **Do not edit or
+  commit while it runs either** — the lock cannot stop a session, and mid-run
+  the tree genuinely contains a planted fault. `git diff` during a run looks
+  alarming and is meant to; wait for it to finish.
 - `node scripts/preview.mjs` — renders the panel in live states a sandbox cannot
   reach. Not shipped, not imported by the app; it drives the store from outside
   through the same public write the sensors use.

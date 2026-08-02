@@ -69,12 +69,28 @@ async function boot() {
 
   // ---- sensors (constructed now, started only by PANEL POWER) --------------
   const orientation = createOrientationSensor({ state, fusion, clock: now });
-  const motion = createMotionSensor({ state, fusion, vsi, screenAngle: orientation.screenAngle, clock: now });
+  // FIELD OWNERSHIP. The device's own sensors stop WRITING while the panel is
+  // following an aircraft, because the broadcast fills those very same fields.
+  // Both sources writing means the panel shows whichever landed last, and they
+  // arrive at different rates — so the groundspeed would alternate between a
+  // desk in Cameron Park and a 737 over the Sierra several times a second.
+  // Declared here as a forward reference and read lazily; `traffic` is built a
+  // few lines down and the predicate is not called until a sensor fires.
+  const deviceOwnsFields = () => !traffic.isFollowing;
+  const motion = createMotionSensor({
+    state,
+    fusion,
+    vsi,
+    screenAngle: orientation.screenAngle,
+    owns: deviceOwnsFields,
+    clock: now,
+  });
   const ambient = createAmbientSensor({ state, clock: now });
   let sawFirstFix = false;
   const geo = createGeoSensor({
     state,
     vsi,
+    owns: deviceOwnsFields,
     clock: now,
     onFix: () => {
       if (!sawFirstFix) {

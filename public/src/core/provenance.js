@@ -51,7 +51,16 @@ export const MARK = {
  * or a value with no source timestamp, is the exact defect v1 forbids, and it
  * must fail loudly at the point it is written rather than render plausibly.
  */
-export function makeField({ value = null, unit = null, provenance, at = null, ageMs = null, reason = null, forcedStale = false }) {
+export function makeField({
+  value = null,
+  unit = null,
+  provenance,
+  at = null,
+  ageMs = null,
+  reason = null,
+  forcedStale = false,
+  forcedDerived = false,
+}) {
   if (!PROVENANCE.includes(provenance)) {
     throw new Error(`provenance must be one of ${PROVENANCE.join('/')}, got ${JSON.stringify(provenance)}`);
   }
@@ -67,7 +76,7 @@ export function makeField({ value = null, unit = null, provenance, at = null, ag
   if (provenance === FAIL && !reason) {
     throw new Error('a FAIL field must explain itself — BITE and the flags both print the reason');
   }
-  return Object.freeze({ value, unit, provenance, ageMs, reason, at, forcedStale });
+  return Object.freeze({ value, unit, provenance, ageMs, reason, at, forcedStale, forcedDerived });
 }
 
 /** A reading straight off a sensor or a feed. Ageing decides LIVE vs STALE. */
@@ -106,7 +115,14 @@ export function age(field, { now, freshMs, staleMs, kind }) {
   // window, and calls it LIVE again — so "mark the sensors stale the moment
   // we are backgrounded" would be undone by the very next publish, which is
   // exactly the case the flag exists for.
-  const fresh = kind === 'derived' ? DERIVED : LIVE;
+  // A field's KIND says what it normally is; `forcedDerived` says what THIS
+  // value actually is. They differ when a field a sensor normally fills gets
+  // computed instead — the turn rate is the gyro's on this device and is worked
+  // out from two broadcast ground tracks when following an aircraft. Without
+  // the flag that value published as LIVE while the bank angle DERIVED FROM IT
+  // published as DERIVED, which is a derived value claiming to be more certain
+  // than its own input.
+  const fresh = field.forcedDerived || kind === 'derived' ? DERIVED : LIVE;
   const stale = field.forcedStale || ageMs > freshMs;
   return makeField({
     value: field.value,
@@ -116,6 +132,7 @@ export function age(field, { now, freshMs, staleMs, kind }) {
     ageMs,
     reason: stale ? (field.reason ?? 'past its freshness window') : field.reason,
     forcedStale: field.forcedStale,
+    forcedDerived: field.forcedDerived,
   });
 }
 

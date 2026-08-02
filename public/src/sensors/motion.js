@@ -17,7 +17,11 @@ import { needsMotionPermission } from '../core/capability.js';
 import { screenToDevice, turnRateFromRates, upVectorScreenFrame } from '../core/fusion.js';
 import { G0 } from '../core/units.js';
 
-export function createMotionSensor({ state, fusion, vsi, screenAngle, clock = () => Date.now() }) {
+/** `owns` — see the note in sensors/geo.js. False while the panel is following
+ *  another aircraft, whose broadcast fills the load factor and the turn rate.
+ *  The FILTER is still fed either way: it costs nothing, and it means the
+ *  horizon is already aligned when the reader stops following. */
+export function createMotionSensor({ state, fusion, vsi, screenAngle, owns = () => true, clock = () => Date.now() }) {
   let listening = false;
   let sawEvent = false;
   let handler = null;
@@ -39,13 +43,14 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, clock = ()
       // Total load factor. The G-meter reads the MAGNITUDE of proper
       // acceleration, which is what a pilot and a g-meter both mean by "g".
       const magnitudeG = Math.hypot(a.x, a.y, a.z) / G0;
-      state.write('motion.gLoad', magnitudeG, { at });
+      const mine = owns();
+      if (mine) state.write('motion.gLoad', magnitudeG, { at });
 
       // Slip/skid: lateral acceleration in the aircraft frame, over g. The ball
       // sits where the resultant points, so this is signed and small.
       const t = (angle * Math.PI) / 180;
       const lateral = (a.x * Math.cos(t) + a.y * Math.sin(t)) / G0;
-      state.write('motion.lateralG', lateral, { at });
+      if (mine) state.write('motion.lateralG', lateral, { at });
 
       // The filter must see this sample BEFORE the vertical component is taken
       // out of it, because separating gravity needs an attitude and the filter
@@ -63,18 +68,20 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, clock = ()
       if (upScreen) {
         const up = screenToDevice(upScreen, angle);
         const alongUp = a.x * up.x + a.y * up.y + a.z * up.z;
-        state.write('motion.verticalAccel', alongUp - G0, { at });
+        if (mine) state.write('motion.verticalAccel', alongUp - G0, { at });
         vsi.updateAccel(alongUp - G0, at);
-      } else {
+      } else if (mine) {
         state.fail('motion.verticalAccel', `attitude not converged — no vertical reference (${att.reason ?? 'converging'})`);
       }
 
       if (r) {
         fusion.updateGyro(r, a, at, angle);
         const turn = turnRateFromRates(r, a);
-        if (turn !== null) state.write('attitude.turnRate', turn, { at });
+        if (!mine) {
+          /* the followed aircraft owns the turn needle */
+        } else if (turn !== null) state.write('attitude.turnRate', turn, { at });
         else state.fail('attitude.turnRate', 'rotationRate carried no usable axes');
-      } else {
+      } else if (mine) {
         state.fail('attitude.turnRate', 'this device reports no rotation rate (no gyroscope)');
       }
     }

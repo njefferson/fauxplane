@@ -122,7 +122,7 @@ class Store {
 
   /** Write a sensor/feed reading. `at` defaults to now; pass it when the
    *  source stamped its own time (a METAR observation is older than its fetch). */
-  write(path, value, { at = this.clock(), reason = null, stale = false } = {}) {
+  write(path, value, { at = this.clock(), reason = null, stale = false, derived = false } = {}) {
     const spec = this.spec(path);
     if (value === null || value === undefined || (typeof value === 'number' && !Number.isFinite(value))) {
       // A sensor that fired with nothing in it has not produced a reading.
@@ -137,11 +137,18 @@ class Store {
         unit: spec.unit,
         // `stale` lets a DERIVED value say "my inputs are stale" without
         // faking its own age. See the note on writeField in app.js.
-        provenance: stale ? 'STALE' : spec.kind === 'derived' ? 'DERIVED' : 'LIVE',
+        //
+        // `derived` is for a field the registry calls a SENSOR field that is,
+        // this time, computed — the turn rate is the gyro's on this device and
+        // is worked out from two broadcast ground tracks when following an
+        // aircraft. It can only ever WEAKEN a claim (LIVE -> DERIVED); there is
+        // no option here that strengthens one, which is deliberate.
+        provenance: stale ? 'STALE' : derived || spec.kind === 'derived' ? 'DERIVED' : 'LIVE',
         at,
         ageMs: 0,
         reason,
         forcedStale: stale,
+        forcedDerived: derived,
       }),
     );
   }

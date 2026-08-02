@@ -329,5 +329,8 @@ function writeDerived(state, path, field, at) {
     state.fail(path, field?.reason ?? 'not computable');
     return;
   }
-  state.write(path, field.value, { at, reason: field.reason, stale: field.provenance === 'STALE' });
+  // `derived: true` because these ARE computed, whatever the field registry
+  // calls the slot. Without it the turn rate published LIVE while the bank
+  // angle derived from it published DERIVED.
+  state.write(path, field.value, { at, reason: field.reason, stale: field.provenance === 'STALE', derived: true });
 }
