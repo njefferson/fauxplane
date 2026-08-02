@@ -22,6 +22,52 @@ derivations, and the feed contracts. v1 is built.
 
 ---
 
+## Who this is for (Noah, 2026-08-02) — read before any design decision
+
+**A friend of Noah's who is 3-D printing his own 747 cockpit at home, for
+simulation. He is NOT a pilot. He loves planes and jets.**
+
+**Design questions resolve toward giving him the most JOY.** That is the tie-
+breaker, and it outranks a session's instinct toward instrument realism,
+completeness, or engineering neatness. Where two options are both honest and
+both correct, pick the one that is more of a delight to sit in front of.
+
+What that changes in practice:
+- Language is for an enthusiast, not for a certificated pilot. BITE already
+  explains itself in sentences; keep it that way and do not let it drift toward
+  avionics shorthand.
+- The panel is CLAMPED AND STATIONARY, indoors, on a desk. That is a very
+  different device from one in a moving aircraft, and it is the case to design
+  against. See the note below on what is alive in that setup.
+- It is not safety equipment for him and never will be — but the honesty rule
+  stays, because a panel that invents numbers is a worse toy, not a better one.
+  A crossed-out instrument that explains itself is more interesting than a fake
+  needle, and it is the difference between a real instrument and a picture of one.
+
+### What is actually ALIVE on a stationary desk cockpit
+
+Measured against the v1 build, this is what his friend will see with the tablet
+clamped indoors and not moving. It matters because half the panel is the two
+big tapes either side of the horizon.
+
+Alive: the artificial horizon, the heading tape (real compass), the G-meter
+(reads 1.00 g, correctly), the slip/skid ball, the turn needle, and the WHOLE
+ATIS page — real weather from the nearest station that reports an altimeter
+setting, with its distance. Magnetic declination now works too.
+
+Crossed out, and correctly so: groundspeed and track (GPS reports no speed and
+no track at rest, by design), the altitude tape and MSL (a GPS fix indoors is
+poor or absent), vertical speed, TAS, CAS, and angle of attack (forced to FAIL
+below 20 kt, as specified).
+
+**So the centre of the panel and the whole ATIS page are alive, and the two
+flanking tapes plus the VSI are red.** That is honest and it is exactly what
+the spec asks for — and it is also the single biggest question for whether this
+is a joy to sit in front of. It needs Noah's call, not a session's; see the open
+items.
+
+---
+
 ## What is built — v1, release 0.1.0 (CAPABILITY)
 
 The whole v1 scope: **PFD, ATIS/Kollsman, BITE.** Nothing outside it.
@@ -256,13 +302,50 @@ working until he has looked.
 
 ## Open — needs Noah
 
-1. **Deploy it.** Nothing here has run on Cloudflare. Needed: a Pages project
-   with build output `public/`, and for `/api/traffic` only, a KV namespace
-   bound as `FAUXPLANE_KV` plus `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET`.
-   METAR and winds need no key and no KV. Per Doctrine §16.4 those two secrets
-   go on the step that needs them, never through `$GITHUB_OUTPUT`.
+1. **Two repo secrets, and then it deploys itself.**
+   `.github/workflows/deploy.yml` now builds and deploys on every push to
+   `staging` and `main`. It CREATES the Pages project on its first run, so there
+   is no dashboard step beforehand. All it needs is:
+   - `CLOUDFLARE_API_TOKEN` — scoped to Pages:Edit and nothing else.
+   - `CLOUDFLARE_ACCOUNT_ID`.
 
-2. **Navdata is the only bundle still absent, and it needs nothing from you
+   Set those two in Settings → Secrets and variables → Actions, and the next
+   push to `staging` lands at **https://staging.fauxplane.pages.dev**. Without
+   them the workflow skips the deploy and still runs the tests, rather than
+   failing red.
+
+   `/api/metar` and `/api/winds` need NO key and no KV — the weather works from
+   the first deploy. `/api/traffic` alone wants `OPENSKY_CLIENT_ID`,
+   `OPENSKY_CLIENT_SECRET` and a KV namespace bound as `FAUXPLANE_KV`, and it
+   reports itself unconfigured on the BITE page until it has them. No v1 panel
+   consumes traffic, so that can wait indefinitely.
+
+2. **THE JOY QUESTION, and it is the one that matters most now that the
+   audience is known.** On a stationary desk cockpit, the speed tape, altitude
+   tape and VSI are permanently crossed out (see the section above). Everything
+   about that is correct and specified. The question is whether it is what you
+   want your friend to look at.
+
+   Three ways forward, and this is Noah's call because it turns on what the
+   thing is FOR:
+
+   - **Ship it exactly as is.** The most honest panel, and the horizon, compass
+     and live weather are genuinely satisfying. Half the panel stays red.
+   - **A declared SIM MODE**, announced by a standing indicator with an obvious
+     exit (Doctrine §3), feeding invented values. This BREAKS the v1 rule that
+     there is no synthetic data path at all, so it is not a session's decision
+     to make — but it is the obvious lever and it should be named rather than
+     quietly avoided.
+   - **REAL SIM TELEMETRY, which is the recommendation.** He is building this
+     for simulation. X-Plane broadcasts state over UDP; MSFS bridges commonly
+     expose it over HTTP or a WebSocket on the local network. A panel driven by
+     that is NOT synthetic — it is a fetched feed from a real source, exactly
+     like METAR, and it would carry provenance LIVE with complete honesty. Every
+     instrument comes alive, in a real 747 cockpit, driven by the simulator he
+     is actually flying. It is the option that serves joy AND the rule at once.
+     It is outside v1 scope and has not been built.
+
+3. **Navdata is the only bundle still absent, and it needs nothing from you
    right now.** The geoid and the magnetic model are both bundled and verified
    (below). Navdata backs the HSI and nav pages, which are v2, so nothing on
    screen depends on it.

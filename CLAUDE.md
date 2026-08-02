@@ -64,6 +64,30 @@ Every gate, and each one exits non-zero:
   reach. Not shipped, not imported by the app; it drives the store from outside
   through the same public write the sensors use.
 
+## Who this is for
+A friend of Noah's who is 3-D printing his own **747 cockpit** at home, for
+simulation. **He is not a pilot.** He loves planes and jets.
+
+**Design questions resolve toward giving him the most JOY.** That is the
+tie-breaker, and it outranks a session's instinct toward instrument realism or
+completeness. The device is CLAMPED AND STATIONARY on a desk indoors, which is
+a very different thing from one in a moving aircraft — NOTES.md records exactly
+which instruments are alive in that setup and which are correctly crossed out.
+The honesty rule still stands: a panel that invents numbers is a worse toy, not
+a better one.
+
+## Deploying
+`.github/workflows/deploy.yml` deploys `public/` plus the Pages Functions on
+every push to `staging` and `main`, and creates the Pages project on first run.
+It needs two repo secrets — `CLOUDFLARE_API_TOKEN` (Pages:Edit) and
+`CLOUDFLARE_ACCOUNT_ID` — and skips the deploy without failing if they are
+absent. `staging` lands at `staging.fauxplane.pages.dev`.
+
+The workflow runs `npm test`. It does NOT run the accessibility gate, which
+needs a browser the runner would have to download; that gate is run locally
+before every push and its result is reported in the handoff. Do not describe CI
+as covering it.
+
 ## Branches
 `staging` and `main` only (Noah, 2026-08-02). Staging is a **hard release gate**
 (Doctrine §7): every product change lands on `staging`, waits for Noah's pass on

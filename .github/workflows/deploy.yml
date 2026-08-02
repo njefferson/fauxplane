@@ -1,0 +1,107 @@
+name: Deploy
+
+# staging -> a preview URL Noah can open on his device
+# main    -> production
+#
+# Cloudflare Pages, deploying public/ plus the Pages Functions in functions/.
+# Needs two repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+# The project is created on first run if it does not exist, so there is no
+# dashboard step before the first deploy.
+#
+# Actions are pinned BY SHA, not by tag (Doctrine §16.1) — a tag is a mutable
+# pointer someone else controls, and these steps execute while holding a live
+# Pages:Edit token.
+#
+# WHAT THIS GATE DOES AND DOES NOT RUN, stated plainly rather than implied:
+# it runs the unit tests. It does NOT run the accessibility gate, which needs a
+# Chromium the runner would have to download; that gate is run locally before
+# every push and its result is reported in the handoff. Claiming CI coverage it
+# does not have would be the exact false-confidence failure Doctrine §4 records.
+
+on:
+  push:
+    branches: [staging, main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      # npm ci, never npm install: the committed lockfile is what pins what
+      # executes on a runner (Doctrine §16.1).
+      - name: Install tooling
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Prepare Cloudflare credentials
+        id: cf
+        env:
+          RAW_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RAW_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # Strip any whitespace/newlines that sneak in when a secret is pasted.
+          # A trailing newline corrupts the Authorization header (Cloudflare 6111).
+          TOKEN=$(printf '%s' "$RAW_TOKEN" | tr -d '[:space:]')
+          ACCOUNT=$(printf '%s' "$RAW_ACCOUNT" | tr -d '[:space:]')
+          echo "::add-mask::$TOKEN"
+          echo "::add-mask::$ACCOUNT"
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Cloudflare secrets are not set yet — skipping the deploy, not failing the run."
+          fi
+          # Doctrine §16.4: the cleaned values go to the job ENVIRONMENT, never
+          # to step outputs. Outputs persist in the run's stored output and are
+          # readable through the API; env is scoped to this job's steps. Only the
+          # non-secret `ready` flag is an output.
+          echo "CF_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          echo "CF_ACCOUNT=$ACCOUNT" >> "$GITHUB_ENV"
+
+      - name: Ensure the Pages project exists
+        if: steps.cf.outputs.ready == 'true'
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ env.CF_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT }}
+          command: pages project create fauxplane --production-branch=main
+
+      # Run from the repo root so wrangler picks up functions/ alongside public/.
+      # The three API endpoints are Pages Functions and are part of this deploy;
+      # /api/metar and /api/winds need no credentials at all. /api/traffic needs
+      # OPENSKY_CLIENT_ID, OPENSKY_CLIENT_SECRET and a KV binding named
+      # FAUXPLANE_KV, and reports itself unconfigured on the BITE page until it
+      # has them — which is correct, because no v1 panel consumes traffic.
+      - name: Deploy to Cloudflare Pages
+        if: steps.cf.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ env.CF_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT }}
+          command: pages deploy public --project-name=fauxplane --branch=${{ github.ref_name }} --commit-dirty=true
+
+      - name: Where it landed
+        if: steps.cf.outputs.ready == 'true'
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "Production: https://fauxplane.pages.dev"
+          else
+            echo "Preview:    https://${{ github.ref_name }}.fauxplane.pages.dev"
+            echo "Staging is a hard gate — this does NOT go to production until Noah says promote."
+          fi
