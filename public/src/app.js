@@ -106,6 +106,9 @@ async function boot() {
         traffic,
         metar,
         bootAt: BOOT_AT,
+        // The filter is read at the moment the report is asked for, not at the
+        // last publish. See the note on `readAt` in buildReport.
+        now: now(),
         precisePosition,
         env: readEnvironment(),
         mount: fusion.mountOffset,

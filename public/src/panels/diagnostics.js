@@ -82,8 +82,16 @@ function formatValue(field) {
  * A pure function of the things handed to it, so it can be called from a test
  * without a browser — the same reason every derivation lives in derive.js.
  */
-export function buildReport({ snapshot, fusion, traffic, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {} }) {
-  const t = snapshot?.t ?? Date.now();
+export function buildReport({ snapshot, fusion, traffic, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
+  // FIELD AGES are measured against the snapshot, which is when those values
+  // were true. THE FILTER IS NOT A FIELD — it is live, and it keeps accepting
+  // samples after a snapshot is taken. Reading it at `snapshot.t` is what put
+  // `coasting -9ms`, `-21ms`, `-34ms` in every report Noah ever sent: the last
+  // publish was up to a frame old, the filter had moved on, and the subtraction
+  // ran backwards. It was never a clock mismatch, which is why making the app
+  // use one clock did not fix it.
+  const t = snapshot?.t ?? now ?? 0;
+  const readAt = now ?? t;
   const f = snapshot?.fields ?? {};
   const out = [];
   const line = (s = '') => out.push(s);
@@ -129,12 +137,20 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
   line();
 
   // ---- the attitude filter, because it is what goes wrong --------------------
-  const att = fusion?.read?.(t);
+  const att = fusion?.read?.(readAt);
   if (att) {
     line('ATTITUDE FILTER');
     line(`  quality ${att.quality ?? 'none'}   converged ${att.converged}   still ${att.still}   rejecting ${att.rejecting}`);
-    line(`  pitch ${att.pitch === null ? '—' : att.pitch.toFixed(2)}   roll ${att.roll === null ? '—' : att.roll.toFixed(2)}   heading ${att.heading === null ? '—' : att.heading.toFixed(1)}`);
-    line(`  residual ${att.residualDeg === null ? '—' : `${att.residualDeg.toFixed(2)}°`}   accepted ${att.acceptedSamples} samples   coasting ${att.coastingMs === null ? '—' : `${Math.round(att.coastingMs)}ms`}`);
+    // Number.isFinite, never `=== null`. A missing reading is `undefined` as
+    // often as it is null, and `undefined.toFixed()` throws — in a report whose
+    // entire job is to survive the broken states nothing else survives.
+    const num = (v, digits, suffix = '') => (Number.isFinite(v) ? `${v.toFixed(digits)}${suffix}` : '—');
+    line(`  pitch ${num(att.pitch, 2)}   roll ${num(att.roll, 2)}   heading ${num(att.heading, 1)}`);
+    line(
+      `  residual ${num(att.residualDeg, 2, '°')}   accepted ${att.acceptedSamples ?? '—'} samples   coasting ${
+        Number.isFinite(att.coastingMs) ? `${Math.round(att.coastingMs)}ms` : '—'
+      }`,
+    );
     if (att.reason) line(`  says: ${att.reason}`);
     const b = fusion.gyroBias;
     line(
@@ -219,7 +235,12 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
   for (const [p, spec] of Object.entries(FIELDS)) {
     const field = f[p];
     let value = formatValue(field);
-    if (!precisePosition && (p === 'position.lat' || p === 'position.lon') && field?.provenance !== 'FAIL') {
+    // `field &&` IS LOAD-BEARING. An unwritten field is `undefined`, and
+    // `undefined?.provenance !== 'FAIL'` is TRUE — so this rounded a value off
+    // a field that did not exist and threw, taking the ENTIRE report with it.
+    // A device that never got a position fix is precisely the device somebody
+    // presses the version stamp on, and it is the one that got nothing back.
+    if (!precisePosition && (p === 'position.lat' || p === 'position.lon') && field && field.provenance !== 'FAIL') {
       value = String(coarse(field.value));
     }
     line(

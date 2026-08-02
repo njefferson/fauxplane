@@ -68,6 +68,77 @@ items.
 
 ---
 
+## 0.4.5 — the diagnostics report crashed on exactly the device that needed it
+
+Found while writing the report's first test. It had none, which is how a tool
+used to diagnose everything else went eight releases without being diagnosed.
+
+**A device that never got a position fix got no report at all.** The rounding
+that keeps a pasted report from carrying a precise location was guarded like
+this:
+
+```js
+if (!precisePosition && (p === 'position.lat' || …) && field?.provenance !== 'FAIL') {
+  value = String(coarse(field.value));
+}
+```
+
+An unwritten field is `undefined`. `undefined?.provenance` is `undefined`, and
+`undefined !== 'FAIL'` is **true** — so it took the rounding path on a field that
+did not exist and threw on `field.value`, taking the whole report down. The
+optional chain reads as a guard and is the opposite of one: it converts "no
+field" into "a field that is not failing".
+
+The device with no position fix is precisely the device somebody presses the
+version stamp on. This is a candidate for "touching the version number does
+nothing", reported on the iPad at 0.4.1 and then attributed entirely to the
+stale worker.
+
+The same shape twice more in the attitude block: `att.pitch === null ? … :
+att.pitch.toFixed(2)` throws on `undefined`, which is what a half-dead filter
+returns. All of them now go through `Number.isFinite`.
+
+### The negative coasting was never a clock mismatch
+
+Every report Noah has sent showed `coasting -9ms`, `-21ms`, `-34ms`. 0.4.3
+attributed that to two clocks and made the app use one — a real fix for a real
+problem, and **it did not fix this**, which the next report proved by still
+saying `-11ms`.
+
+The actual cause: `buildReport` read the LIVE filter at `snapshot.t`, the
+timestamp of the last publish. The store publishes at 25 Hz, so that stamp is up
+to a frame old when somebody presses the stamp, and the filter has gone on
+accepting samples in the meantime. Then "now minus last accepted sample" ran
+backwards.
+
+Field ages are still measured against the snapshot, because that is when those
+values were true. The filter is not a field — it is live, and it is now read at
+the moment the report is asked for.
+
+**The lesson is about the diagnosis, not the bug.** "Both timestamps are epoch
+milliseconds and one is negative" had two candidate causes, and the first one
+checked was plausible, real, and wrong. It was closed on plausibility rather
+than on the number going away, and the number did not go away.
+
+### Verified
+
+**150 unit tests, 20/20 planted faults caught, both palettes clear.**
+
+### FLAKY, and it is recorded rather than left to be rediscovered
+
+The accessibility gate failed once, on `power-gate: PANEL POWER button measured
+3.52:1 against the real backdrop (floor 4.6)`, and passed on both re-runs and on
+a direct run. Nothing in this change touches that button. The check composites
+the control against what is actually painted behind it, so the likely cause is
+that it measures before the backdrop has finished painting.
+
+**A gate that fails at random is worse than one that is merely absent**, because
+a random red trains the reader to re-run until green — which is exactly how a
+real red gets waved through. Not fixed here, and not to be dismissed as noise
+next session.
+
+---
+
 ## 0.4.4 — the iPad was stuck on 0.4.1, and it was never going to unstick itself
 
 Noah's iPad reported `v0.4.1` and `service worker controlled (fauxplane-0.4.1)`

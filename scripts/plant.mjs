@@ -239,6 +239,19 @@ const PLANTS = [
     expect: /older release is detected/,
   },
   {
+    // The report is the tool for diagnosing a broken device, so the state it
+    // must survive is "nothing works". `undefined?.provenance !== 'FAIL'` is
+    // true, and that optional chain took the whole report down on any device
+    // that never got a position fix.
+    name: 'diagnostics: the report throws on a device with no position fix',
+    check: 'a device that never got a fix still gets a report',
+    gate: 'tests',
+    file: 'public/src/panels/diagnostics.js',
+    find: "&& field && field.provenance !== 'FAIL'",
+    replace: "&& field?.provenance !== 'FAIL'",
+    expect: /never got a position fix|Cannot read properties of undefined/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',
