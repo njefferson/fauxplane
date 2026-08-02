@@ -782,6 +782,32 @@ test('NOAH’S IPAD: an iPad held square in landscape reads roll near zero', () 
   assert.ok(fixed.pitch < -40 && fixed.pitch > -65, `pitch ${fixed.pitch}`);
 });
 
+test('NOAH’S DEVICES: all five measured reports read near level once fixed', () => {
+  // Five separate diagnostics reports, two devices, both orientations. The
+  // angle is what `window.orientation` said, which is the source the fix
+  // prefers. Kept as a table because the value of these numbers is that they
+  // came off real hardware — nothing here was constructed to pass.
+  const REPORTS = [
+    { name: 'iPad portrait', accel: { x: -0.786, y: -8.233, z: -3.353 }, angle: 0, wasReported: -90.8 },
+    { name: 'iPad landscape', accel: { x: -6.887, y: -0.351, z: -8.936 }, angle: 90, wasReported: -89.0 },
+    { name: 'iPad landscape (2)', accel: { x: -7.997, y: -0.429, z: -5.904 }, angle: 90, wasReported: -88.6 },
+    { name: 'iPhone portrait', accel: { x: 1.667, y: -9.833, z: -2.659 }, angle: 0, wasReported: -0.9 },
+    { name: 'iPhone landscape', accel: { x: -9.662, y: -0.353, z: -2.481 }, angle: 90, wasReported: -145.5 },
+  ];
+
+  for (const r of REPORTS) {
+    // iOS reports the negation; fusion.orient() undoes it before the filter
+    // ever sees it, so the tests work on the corrected vector.
+    const up = { x: -r.accel.x, y: -r.accel.y, z: -r.accel.z };
+    const solved = attitudeFromGravity(up, r.angle);
+    assert.ok(
+      Math.abs(solved.roll) < 10,
+      `${r.name}: roll ${solved.roll.toFixed(1)} — a hand-held device is not banked ninety degrees ` +
+        `(it reported ${r.wasReported} before the fix)`,
+    );
+  }
+});
+
 test('THE ROTATION SIGN: a quarter turn moves earth-up to the screen axis it should', () => {
   // Device +x is the short edge, to the right in portrait. Turn the device a
   // quarter turn so that edge points UP, and the screen's +y — the top of what

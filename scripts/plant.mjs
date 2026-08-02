@@ -152,7 +152,7 @@ const PLANTS = [
     check: 'an ordinary gyro offset does not hold the horizon crossed out',
     gate: 'tests',
     file: 'public/src/core/fusion.js',
-    find: '    const ki = cfg.biasKi * (gain / (1 - cfg.alpha));',
+    find: '    const ki = explainable ? cfg.biasKi * (gain / (1 - cfg.alpha)) : 0;',
     replace: '    const ki = 0;',
     expect: /never converged|zero-offset|horizon vanished|estimated at/,
   },
