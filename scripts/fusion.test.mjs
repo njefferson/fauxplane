@@ -8,6 +8,7 @@ import {
   createFusion,
   matrixFromEuler,
   screenToDevice,
+  detectAccelSign,
   turnRateFromRates,
   upVectorScreenFrame,
 } from '../public/src/core/fusion.js';
@@ -328,4 +329,75 @@ test('a device rotated in landscape still converges — the screen angle reaches
   const read = fusion.read(t);
   assert.equal(read.converged, true, `landscape mount never converged: ${read.reason}`);
   assert.ok(Math.abs(read.pitch - pitch) < 2, `pitched to ${pitch}, filter says ${read.pitch?.toFixed(1)}`);
+});
+
+/* ---------------------------------------------------------------------------
+ * THE UPSIDE-DOWN HORIZON.
+ *
+ * iOS Safari reports accelerationIncludingGravity NEGATED relative to the W3C
+ * convention that Chrome follows. Unhandled, the artificial horizon renders
+ * rotated 180 degrees — ground on top, sky underneath — which is exactly what
+ * Noah's iPhone showed. Every test above used the W3C convention, so not one of
+ * them could see it.
+ * ------------------------------------------------------------------------- */
+
+/** Fly the same attitude under a given platform convention. */
+function flyUnderConvention(sign, { pitch = 0, roll = 0, seconds = 3, hz = 50 } = {}) {
+  const fusion = createFusion();
+  const dt = 1 / hz;
+  let t = 0;
+  const up = upVectorScreenFrame(pitch, roll);
+  for (let i = 0; i < seconds * hz; i += 1) {
+    t += dt * 1000;
+    // The orientation event is platform-consistent, and reports the true tilt.
+    const betaGamma = tiltFromUp(up);
+    fusion.noteTilt(betaGamma.beta, betaGamma.gamma);
+    const accel = { x: up.x * G0 * sign, y: up.y * G0 * sign, z: up.z * G0 * sign };
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, accel, t, 0);
+    fusion.updateAccel(accel, 0, t);
+  }
+  return { read: fusion.read(t), sign: fusion.accelSign };
+}
+
+/** Inverse of upFromTilt, for building test fixtures. */
+function tiltFromUp(up) {
+  const beta = (Math.asin(Math.max(-1, Math.min(1, up.y))) * 180) / Math.PI;
+  const gamma = (Math.atan2(-up.x, up.z) * 180) / Math.PI;
+  return { beta, gamma };
+}
+
+test('THE W3C CONVENTION still reads the right way up', () => {
+  const { read, sign } = flyUnderConvention(+1, { pitch: 6, roll: 12 });
+  assert.equal(sign, 1, 'should have detected the W3C convention');
+  assert.equal(read.converged, true, `did not converge: ${read.reason}`);
+  assert.ok(Math.abs(read.pitch - 6) < 1.5, `pitch ${read.pitch}`);
+  assert.ok(Math.abs(read.roll - 12) < 1.5, `roll ${read.roll}`);
+});
+
+test('AN iOS DEVICE IS NOT UPSIDE DOWN — the negated accelerometer is detected', () => {
+  const { read, sign } = flyUnderConvention(-1, { pitch: 6, roll: 12 });
+  assert.equal(sign, -1, 'should have detected the negated (iOS) convention');
+  assert.equal(read.converged, true, `did not converge: ${read.reason}`);
+  // Without the detection these come out as pitch -6, roll -168: the horizon
+  // rotated 180 degrees, which is what shipped.
+  assert.ok(Math.abs(read.pitch - 6) < 1.5, `pitch ${read.pitch}, expected about 6 — horizon is inverted`);
+  assert.ok(Math.abs(read.roll - 12) < 1.5, `roll ${read.roll}, expected about 12 — horizon is inverted`);
+});
+
+test('an upright phone in portrait reads level under BOTH conventions', () => {
+  // The exact case in the screenshot: held upright, portrait, screen facing the
+  // user. Level, both ways.
+  for (const sign of [1, -1]) {
+    const { read } = flyUnderConvention(sign, { pitch: 0, roll: 0 });
+    assert.ok(Math.abs(read.roll) < 1.5, `sign ${sign} gave roll ${read.roll} — 180 means ground on top`);
+    assert.ok(Math.abs(read.pitch) < 1.5, `sign ${sign} gave pitch ${read.pitch}`);
+  }
+});
+
+test('the sign is not latched from an ambiguous sample', () => {
+  // Edge-on, where the accelerometer and the tilt vector are near perpendicular
+  // and the comparison is noise. Guessing there would latch a coin toss.
+  assert.equal(detectAccelSign({ x: G0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }), null);
+  assert.equal(detectAccelSign({ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }), null);
+  assert.equal(detectAccelSign({ x: 0, y: G0, z: 0 }, null), null);
 });

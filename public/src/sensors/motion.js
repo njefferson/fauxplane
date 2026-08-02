@@ -24,10 +24,15 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, clock = ()
 
   const onMotion = (event) => {
     const at = clock();
-    const a = event.accelerationIncludingGravity;
+    const raw = event.accelerationIncludingGravity;
     const r = event.rotationRate;
 
-    if (a && [a.x, a.y, a.z].every((v) => Number.isFinite(v))) {
+    if (raw && [raw.x, raw.y, raw.z].every((v) => Number.isFinite(v))) {
+      // ONE conversion, at the source. The slip ball, the vertical
+      // accelerometer and the turn needle all read the same vector as the
+      // horizon does, so a platform that negates it cannot flip one of them
+      // and not the others.
+      const a = fusion.orient(raw);
       sawEvent = true;
       const angle = screenAngle();
 
@@ -45,7 +50,7 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, clock = ()
       // The filter must see this sample BEFORE the vertical component is taken
       // out of it, because separating gravity needs an attitude and the filter
       // is what holds one.
-      fusion.updateAccel(a, angle, at);
+      fusion.updateAccel(raw, angle, at);
 
       // Vertical acceleration for the VSI: the component along earth-up, with
       // gravity removed. At rest this is zero, which is what the integrator

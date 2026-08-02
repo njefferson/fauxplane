@@ -254,9 +254,14 @@ body {
   padding-right: 0.25rem;
 }
 
-/* Narrow or short: stack rather than squeeze. Checked at the
-   small-phone-at-200%-text case, where the canvas would otherwise be a sliver. */
-@media (max-width: 46rem), (max-height: 26rem) {
+/* NARROW: stack rather than squeeze. Checked at the small-phone-at-200%-text
+   case, where the canvas would otherwise be a sliver.
+
+   Deliberately NOT triggered by a short viewport any more. A short, WIDE window
+   is a landscape tablet — the mounting this whole app is for — and stacking it
+   put the horizon in a letterbox with the readouts scrolled off below. Short and
+   wide keeps the row layout and compacts the chrome instead, below. */
+@media (max-width: 46rem) {
   .page-pfd {
     flex-direction: column;
     overflow-y: auto;
@@ -269,6 +274,37 @@ body {
   .readouts {
     flex: 0 0 auto;
     overflow: visible;
+  }
+}
+
+/* SHORT: give the instruments the height back.
+   Safari's tab and address bars can leave under 300px for the panel on a
+   landscape iPad, which is what turned the PFD into a strip. Targets stay at
+   the 44px floor — only padding, the second line of the brightness button, and
+   the least important footer item give way. Installing to the home screen
+   removes the browser chrome entirely and is the real answer; this is for
+   before someone does that. */
+@media (max-height: 34rem) {
+  .bar {
+    padding: 0.2rem 0.5rem;
+    gap: 0.5rem;
+  }
+  /* The brightness note is NOT hidden here. It sits inside a button already
+     pinned to the 44px target floor, so removing the second line saved no
+     height at all — it only removed information and dropped a registered
+     contrast pair out of the accessibility gate, which is how this was caught. */
+  .foot {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.6875rem;
+    gap: 0.75rem;
+  }
+  /* The home reference also appears on the ATIS page; the disclaimer and the
+     accessibility link do not go anywhere. */
+  .foot-item:first-child {
+    display: none;
+  }
+  .pfd-canvas {
+    min-height: 8rem;
   }
 }
 

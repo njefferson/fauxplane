@@ -148,6 +148,29 @@ async function boot() {
   extraBite.push({ id: 'magnetometer', label: 'Magnetometer', group: 'Sensors', status: mag.status, reason: mag.reason });
   bite.setHostEntries(extraBite);
 
+  // Which accelerometer convention this platform uses, once it is known. Worth
+  // a BITE row: it is invisible otherwise, and it is the difference between a
+  // horizon that works and one that is upside down.
+  let reportedAccelSign = null;
+  const reportAccelSign = () => {
+    if (fusion.accelSign === null || fusion.accelSign === reportedAccelSign) return;
+    reportedAccelSign = fusion.accelSign;
+    const i = extraBite.findIndex((e) => e.id === 'accel-convention');
+    const entry = {
+      id: 'accel-convention',
+      label: 'Accelerometer orientation',
+      group: 'Sensors',
+      status: PASS,
+      reason:
+        reportedAccelSign === 1
+          ? 'this browser reports acceleration pointing up (W3C convention) — detected, not assumed'
+          : 'this browser reports acceleration NEGATED (Safari/iOS convention) — detected and corrected',
+    };
+    if (i >= 0) extraBite[i] = entry;
+    else extraBite.push(entry);
+    bite.setHostEntries(extraBite);
+  };
+
   // ---- derived values ------------------------------------------------------
   // ONE subscriber computes every derived field from what is already in the
   // store. They land in the next publish, 40 ms later, which is invisible and
@@ -156,6 +179,8 @@ async function boot() {
   state.subscribe((snapshot) => {
     const f = snapshot.fields;
     const t = snapshot.t;
+
+    reportAccelSign();
 
     // Attitude, from the filter.
     const att = fusion.read(t);

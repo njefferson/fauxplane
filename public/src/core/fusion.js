@@ -210,6 +210,52 @@ export function turnRateFromRates(rotationRate, gravityDeviceFrame) {
   return omega[0] * upHat[0] + omega[1] * upHat[1] + omega[2] * upHat[2];
 }
 
+/**
+ * The earth-up unit vector in DEVICE coordinates, from the orientation event's
+ * beta and gamma alone.
+ *
+ * Independent of alpha, which matters: alpha is a compass heading on one
+ * platform and an arbitrary reference on another, but beta and gamma are
+ * gravity-referenced and consistent everywhere. That makes this an unambiguous
+ * second opinion about which way is down.
+ */
+export function upFromTilt(betaDeg, gammaDeg) {
+  if (!Number.isFinite(betaDeg) || !Number.isFinite(gammaDeg)) return null;
+  const b = degToRad(betaDeg);
+  const g = degToRad(gammaDeg);
+  return { x: -Math.cos(b) * Math.sin(g), y: Math.sin(b), z: Math.cos(b) * Math.cos(g) };
+}
+
+/**
+ * WHICH WAY DOES accelerationIncludingGravity POINT? THE PLATFORMS DISAGREE.
+ *
+ * The W3C convention (and Chrome) is PROPER acceleration: at rest the vector
+ * points UP, away from the ground, magnitude g. iOS Safari reports the
+ * NEGATION of that. It is a long-standing, well-known divergence and it is not
+ * detectable from a feature test.
+ *
+ * Unhandled, it rotates the artificial horizon by 180 degrees: ground on top,
+ * sky underneath, roll pointer at the bottom. That is precisely what Noah's
+ * iPhone showed — an upright phone in portrait reporting roll = -180.
+ *
+ * DETECTED FROM DATA, NOT FROM THE USER AGENT. The orientation event's beta and
+ * gamma give an independent, platform-consistent answer for which way is down;
+ * if the accelerometer disagrees with it by more than a right angle, the
+ * accelerometer is negated. Sniffing the user agent would be a guess that
+ * breaks on the next browser; this is a measurement, and it is reported on the
+ * BITE page so nobody has to wonder which one is in force.
+ */
+export function detectAccelSign(accel, tiltUp) {
+  if (!accel || !tiltUp) return null;
+  const m = Math.hypot(accel.x, accel.y, accel.z);
+  if (!Number.isFinite(m) || m < 1e-6) return null;
+  const dot = (accel.x * tiltUp.x + accel.y * tiltUp.y + accel.z * tiltUp.z) / m;
+  // Near a right angle the comparison is noise; wait for a clearer sample
+  // rather than latch a coin toss.
+  if (Math.abs(dot) < 0.35) return null;
+  return dot > 0 ? 1 : -1;
+}
+
 // --- the filter --------------------------------------------------------------
 
 export function createFusion(options = {}) {
@@ -224,6 +270,8 @@ export function createFusion(options = {}) {
   let lastAccepted = null;
   let lastGyroAt = null;
   let lastResidual = null;
+  let tiltUp = null;
+  let accelSign = null;
   let dPitchEma = null;
   let dRollEma = null;
   let rejecting = false;
@@ -300,8 +348,34 @@ export function createFusion(options = {}) {
     roll = wrap180(roll);
   };
 
+  /** The orientation event's tilt, kept as the second opinion that resolves the
+   *  accelerometer's sign convention. */
+  const noteTilt = (betaDeg, gammaDeg) => {
+    const up = upFromTilt(betaDeg, gammaDeg);
+    if (up) tiltUp = up;
+  };
+
   /** Correct toward gravity, unless the aircraft is manoeuvring. */
-  const updateAccel = (accel, screenAngleDeg, at) => {
+  const updateAccel = (rawAccel, screenAngleDeg, at) => {
+    if (accelSign === null && tiltUp) {
+      const detected = detectAccelSign(rawAccel, tiltUp);
+      if (detected !== null) {
+        accelSign = detected;
+        // Everything integrated before the sign was known was built on the
+        // wrong half of the sky. Start again rather than slew through it.
+        if (detected === -1) {
+          pitch = null;
+          roll = null;
+          converged = false;
+          settledSince = null;
+          dPitchEma = null;
+          dRollEma = null;
+          reason = 'accelerometer sign resolved — reconverging';
+        }
+      }
+    }
+    const sign = accelSign ?? 1;
+    const accel = sign === 1 ? rawAccel : { x: -rawAccel.x, y: -rawAccel.y, z: -rawAccel.z };
     const solved = attitudeFromGravity(accel, screenAngleDeg);
     if (!solved) {
       reason = 'accelerometer produced no usable vector';
@@ -397,9 +471,21 @@ export function createFusion(options = {}) {
   return {
     cfg,
     reset,
+    noteTilt,
     updateGyro,
     updateAccel,
     updateHeading,
+    /** +1 = W3C/Chrome (points up), -1 = iOS Safari (negated), null = not yet
+     *  determined. Reported on the BITE page. */
+    get accelSign() {
+      return accelSign;
+    },
+    /** Apply the detected convention to a raw vector, so the G-meter, the
+     *  slip ball and the vertical accelerometer all agree with the horizon. */
+    orient(a) {
+      const sign = accelSign ?? 1;
+      return sign === 1 ? a : { x: -a.x, y: -a.y, z: -a.z };
+    },
     /**
      * The filter's opinion, including whether it has one yet. `converged` false
      * means every consumer must render FAIL — not a plausible zero.

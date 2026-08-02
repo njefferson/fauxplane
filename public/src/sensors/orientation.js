@@ -39,6 +39,10 @@ export function createOrientationSensor({ state, fusion, clock = () => Date.now(
     if (Number.isFinite(beta)) state.write('orientation.beta', beta, { at });
     else state.fail('orientation.beta', 'orientation event carried no beta');
 
+    // The second opinion that resolves the accelerometer's sign convention.
+    // See detectAccelSign in core/fusion.js.
+    fusion.noteTilt(beta, gamma);
+
     if (Number.isFinite(gamma)) state.write('orientation.gamma', gamma, { at });
     else state.fail('orientation.gamma', 'orientation event carried no gamma');
 

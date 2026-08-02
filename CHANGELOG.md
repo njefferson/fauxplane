@@ -6,6 +6,23 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 0.2.2 — ITERATION — 2026-08-02
+
+**The artificial horizon was upside down on iPhone and iPad.** Ground on top,
+sky underneath. Safari reports the accelerometer with the opposite sign to every
+other browser — a long-standing difference, and one no feature test can ask
+about. The panel now works out which way round this device reports it, by
+comparing the accelerometer against the tilt sensor, and says which it found on
+the built-in test page. It is measured on the device, not guessed from the
+browser's name.
+
+**The panel was squashed into a strip on a landscape tablet in Safari.** A short,
+wide window is a landscape tablet — the way this is meant to be mounted — and it
+was being treated like a narrow phone and stacked into a letterbox. It now keeps
+the instrument layout and takes the height back from the surrounding chrome
+instead. Adding it to the home screen removes the browser's own bars entirely
+and is still the best way to run it.
+
 ## 0.2.1 — ITERATION — 2026-08-02
 
 Four fixes, all found by Noah opening 0.2.0 on his phone. Nothing here is new;
