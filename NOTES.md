@@ -101,8 +101,12 @@ attitude stability test.
 `staging` and `main` only. Staging is a hard release gate: product changes land
 on `staging`, wait for Noah's pass on his actual device, and reach `main` only
 on his explicit "promote". Docs-only changes may skip it. The harness-designated
-`claude/*` branch is ignored (Doctrine §11); the one created while this was
-still unruled has been deleted, with its commit preserved on both branches.
+`claude/*` branch is ignored (Doctrine §11).
+
+Both branches now exist and point at the foundation commit. The leftover
+`claude/jet-panel-pwa-amendments-f07ygu` could NOT be deleted from the session —
+see item 4 below. It was force-updated to match `main` so it carries no stale
+content while it waits to be removed.
 
 ---
 
@@ -159,7 +163,24 @@ See below.
    published policy is the authority and our inference is not, so this stays
    refused rather than assumed.
 
-4. **Repo metadata** (manual, GitHub UI — Doctrine §10). None of it is set.
+4. **The repo's default branch is still `claude/jet-panel-pwa-amendments-f07ygu`,
+   and that branch cannot be deleted from a session.** Two GitHub-UI steps, and
+   the first is the one that matters:
+   - Settings → General → Default branch → change to **`main`**.
+   - Then delete the `claude/jet-panel-pwa-amendments-f07ygu` branch.
+
+   What was actually tried, so a later session does not repeat it: `git push
+   origin --delete` returned HTTP 403 at the transport layer. That is not a
+   general write denial — a force-update to the very same ref succeeded
+   immediately afterwards. Two causes fit and this session could not separate
+   them: the proxy may deny ref deletion outright, or it may be GitHub refusing
+   to remove a repository's default branch. Changing the default to `main`
+   settles it either way, and a later session can retry the delete then. No
+   tool for editing repo settings exists in this session (there is
+   `create_repository` and `fork_repository`, nothing to update one), which is
+   the same manual-step class as Doctrine §10.
+
+5. **Repo metadata** (manual, GitHub UI — Doctrine §10). None of it is set.
    Proposed values, each needing a yes:
    - Description, written for what the app IS and naming no current feature:
      *"A glass-cockpit instrument panel for a phone or tablet, driven by the
@@ -186,4 +207,4 @@ Not done, and why:
 - Hub wiring (§13.6) — the hub links out to the app, the app links back, and
   its About links the shared accessibility statement. Waits on a deploy; there
   is nothing to link to yet.
-- Repo metadata — item 4 above.
+- Repo metadata — item 5 above.
