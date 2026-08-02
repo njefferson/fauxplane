@@ -336,14 +336,63 @@ working until he has looked.
      there is no synthetic data path at all, so it is not a session's decision
      to make — but it is the obvious lever and it should be named rather than
      quietly avoided.
-   - **REAL SIM TELEMETRY, which is the recommendation.** He is building this
-     for simulation. X-Plane broadcasts state over UDP; MSFS bridges commonly
-     expose it over HTTP or a WebSocket on the local network. A panel driven by
-     that is NOT synthetic — it is a fetched feed from a real source, exactly
-     like METAR, and it would carry provenance LIVE with complete honesty. Every
-     instrument comes alive, in a real 747 cockpit, driven by the simulator he
-     is actually flying. It is the option that serves joy AND the rule at once.
-     It is outside v1 scope and has not been built.
+   - **REAL SIM TELEMETRY, which is the recommendation.** A panel driven by the
+     simulator he is actually flying is NOT synthetic — it is a fetched feed
+     from a real source, exactly like METAR, and it carries provenance LIVE with
+     complete honesty. Every instrument comes alive. It serves joy AND the rule
+     at once. Outside v1 scope; not built.
+
+### Sim telemetry — what is actually known, 2026-08-02
+
+**He plays DCS World** (Noah). There is a second program driving the mock
+cockpit and Noah is getting its name; that name changes the design, so do not
+start building until it arrives. See the open question below.
+
+**VERIFIED this session by reading the source, not from memory:**
+
+- **DCS-BIOS** (github.com/DCS-Skunkworks/dcs-bios, MIT) is the standard data
+  exporter for DCS cockpit builders, and it is actively maintained. It is an
+  `Export.lua` script that runs inside the sim.
+- It uses LuaSocket and opens **both UDP and TCP servers**, configured in
+  `BIOSConfig.udp_config` and `BIOSConfig.tcp_config` — confirmed in
+  `Scripts/DCS-BIOS/BIOS.lua`, which requires `lib/io/TCPServer` and
+  `lib/io/UDPServer` and adds a connection per configured entry.
+- **A TCP stream is the important part.** UDP multicast is awkward to bridge;
+  a TCP stream is trivial.
+- Its README documents CHAINING: if a user already has an `Export.lua`, you add
+  a line to the end of theirs rather than replacing it. So adding an exporter
+  cannot break a working rig, which matters when the rig is someone's hobby.
+
+**The architecture that follows.** A browser cannot speak raw UDP or TCP, so a
+small local bridge is unavoidable on any route — it reads the sim's stream and
+serves a WebSocket the PWA connects to. That is one small process, and a
+cockpit builder is already running several.
+
+Two routes, and the second is probably better:
+- **A custom `Export.lua`** using DCS's own `LoGet*` flight-data API. Gives
+  exactly the PFD values and nothing else. Safe to add because of chaining.
+  NOTE: the specific `LoGet*` function names were NOT verified this session —
+  verify against current DCS docs before writing any of them down as fact.
+- **Consume DCS-BIOS's existing TCP stream.** If he already runs DCS-BIOS, this
+  needs **no change to his DCS installation at all**. Strongly preferred: never
+  ask someone to modify a working cockpit rig if you can read what it already
+  emits.
+
+**What the state store already gives us for free:** a sim source writes into the
+same store as every sensor, through the same public `write`. Provenance, ageing,
+STALE-then-FAIL when the sim pauses or the bridge dies, and the whole BITE page
+all work with no changes. The panel would show LIVE from the sim and correctly
+fall back to FAIL the moment it stops — which is the honest behaviour and is
+already implemented and tested.
+
+**THE OPEN QUESTION, and the reason not to start yet.** The second program's
+name decides the route. If it is a cockpit-builder suite of the ProSim /
+Sim Avionics / Project Magenta family, those are DESIGNED to drive networked
+glass-cockpit display clients over the LAN, and this panel would become exactly
+the kind of client they already expect — which is a far better fit than anything
+bolted onto DCS. If it is Helios, SimAppPro or Ikarus, they sit on the same
+`Export.lua` chain as DCS-BIOS and the conflict question matters. Wait for the
+name.
 
 3. **Navdata is the only bundle still absent, and it needs nothing from you
    right now.** The geoid and the magnetic model are both bundled and verified
