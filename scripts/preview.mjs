@@ -73,6 +73,25 @@ const SCENES = [
     ],
   },
   {
+    name: 'airliner-climb',
+    story: 'a real airliner initial climb — the case the old 2000 fpm VSI pegged on',
+    writes: [
+      ['attitude.pitch', 14],
+      ['attitude.roll', -3],
+      ['attitude.heading', 305],
+      ['attitude.turnRate', -0.4],
+      ['motion.gLoad', 1.08],
+      ['motion.lateralG', 0.01],
+      ['position.groundspeed', 287],
+      ['position.track', 303],
+      ['position.altitudeGeometric', 12400],
+      ['altitude.msl', 12290],
+      ['vsi.rate', 3800],
+      ['position.lat', 38.68],
+      ['position.lon', -121.0],
+    ],
+  },
+  {
     name: 'mixed-provenance',
     story: 'sensors live, feeds gone stale — the state a lost connection actually produces',
     writes: [

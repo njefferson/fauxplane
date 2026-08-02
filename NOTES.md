@@ -68,6 +68,41 @@ items.
 
 ---
 
+## THE USE CASE THAT CHANGES THE ANSWER — on an aircraft, 2026-08-02
+
+Noah asked whether this duplicates something that exists. For a SIMULATOR-driven
+panel the honest answer is yes: Air Manager and its peers serve home cockpit
+builders well, and a session should not pretend otherwise. **But that answer is
+wrong for the case he then raised, and it is worth writing down because it
+reframes what this app is FOR.**
+
+**Taken on a real flight as a passenger, with no wifi, the panel comes alive —
+and nothing simulator-driven can do that at all.** What works offline, from the
+device's own sensors:
+
+- Groundspeed, track and MSL altitude from GPS (the bundled geoid is what makes
+  MSL work with the radio off). GPS receivers are passive, so airplane mode is
+  fine as long as Location Services stays on.
+- Vertical speed, from GPS altitude against the vertical accelerometer.
+- Attitude. A phone wedged or clamped is rigidly coupled to the airframe. In a
+  coordinated turn the accelerometer reads "down" through the floor — which is
+  precisely why a passenger cannot feel the bank — and the manoeuvring gate
+  rejects exactly those samples and coasts on the gyro, so the horizon shows the
+  real roll-in. It will drift over a long turn; there is nothing to correct it.
+- G-meter, turn needle and slip ball, all real.
+
+What does not work, and says so: **magnetic heading**, because an aluminium tube
+full of wiring is a poor place for a magnetometer — the GPS track is the
+trustworthy direction. And METAR, winds aloft, TAS and CAS need a network, so
+they age to STALE with a visible age and then FAIL.
+
+**The reframe.** The no-synthetic-data rule is what makes the desk cockpit half
+red, and it is the same rule that makes a real flight read as an actual
+instrument rather than a picture of one. That is the distinctive thing here, it
+is not served by any simulator product, and it should shape what gets built next.
+
+---
+
 ## 0.2.1 — what Noah's device found, 2026-08-02
 
 He opened 0.2.0 on his phone and the screenshots found four real defects in

@@ -18,7 +18,22 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * root does that smoothly, and smoothly matters: any hard boundary in a spatial
  * mapping prints its own geometry onto the needle's travel.
  */
-export function drawVsi(ctx, { x, y, w, h, tokens, field, maxFpm = 2000 }) {
+/**
+ * Full scale, in feet per minute.
+ *
+ * SIX THOUSAND, which is what a transport-category EFIS shows, not the two
+ * thousand a light aircraft needs. An airliner's initial climb beats 2000 fpm
+ * and a descent can pass 3000, so the needle pegged for the most interesting
+ * part of the flight — the part where somebody is actually watching it. The
+ * square-root scale below keeps the light-aircraft range readable anyway: a
+ * 500 fpm climb still sits nearly a third of the way up.
+ */
+export const VSI_FULL_SCALE_FPM = 6000;
+
+/** The marks a pilot actually flies to, across both regimes. */
+const VSI_MARKS = [-6000, -4000, -2000, -1000, -500, 0, 500, 1000, 2000, 4000, 6000];
+
+export function drawVsi(ctx, { x, y, w, h, tokens, field, maxFpm = VSI_FULL_SCALE_FPM }) {
   ctx.save();
   ctx.fillStyle = tokens.surface;
   roundRect(ctx, x, y, w, h, 6);
@@ -40,11 +55,12 @@ export function drawVsi(ctx, { x, y, w, h, tokens, field, maxFpm = 2000 }) {
     return cy - Math.sign(t) * Math.sqrt(Math.abs(t)) * half;
   };
 
-  // Scale marks at the numbers a pilot actually flies to.
   ctx.strokeStyle = tokens['text-3'];
-  for (const fpm of [-2000, -1000, -500, 0, 500, 1000, 2000]) {
+  for (const fpm of VSI_MARKS) {
     const ty = scale(fpm);
-    const major = fpm % 1000 === 0;
+    // Labelled at the thousands. Compressed at the top of the scale, the
+    // intermediate marks would collide with each other.
+    const major = fpm % 2000 === 0 || Math.abs(fpm) === 1000;
     ctx.lineWidth = major ? 2 : 1;
     ctx.beginPath();
     ctx.moveTo(x + w * 0.5, ty);

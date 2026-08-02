@@ -6,6 +6,15 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 0.2.4 — ITERATION — 2026-08-02
+
+**The vertical speed indicator went to 2,000 feet per minute and an airliner
+beats that on the way up.** It pegged for the most interesting part of a real
+flight — the part somebody is actually watching. It now reads to 6,000 either
+way, which is what a transport-category display shows, and the scale is
+compressed towards the ends so a gentle 500 foot-per-minute climb still moves
+the needle nearly a third of the way.
+
 ## 0.2.3 — ITERATION — 2026-08-02
 
 **A new version would not appear until you reloaded twice.** The offline cache
