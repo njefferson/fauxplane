@@ -19,15 +19,27 @@
  * The second assertion is the one that matters. A check that goes red for the
  * wrong reason is still a check that has never been shown to work.
  *
- * FILES ARE BACKED UP IN MEMORY AND RESTORED IN A `finally`. Never reach for
- * `git checkout` to undo a plant — a sibling session did that on a file whose
- * real work was still uncommitted and destroyed it.
+ * FILES ARE BACKED UP TO DISK AND RESTORED IN A `finally`, ON A SIGNAL, AND ON
+ * THE NEXT RUN. An in-memory backup is not enough, and this script learned that
+ * the expensive way: a run was killed by an outer shell timeout partway through
+ * a plant, the `finally` never executed, and the working tree kept the injected
+ * fault. It surfaced twenty minutes later as a gate failure that looked like a
+ * real regression in code that had just been verified and pushed.
+ *
+ * So: the original content goes to .plant-backup/ BEFORE the file is touched,
+ * signal handlers restore synchronously, and startup restores any backup a
+ * previous run left behind. A fault-injection harness that is not crash-safe is
+ * a saboteur with good intentions.
+ *
+ * Never reach for `git checkout` to undo a plant — a sibling session did that
+ * on a file whose real work was still uncommitted and destroyed it.
  *
  *   node scripts/plant.mjs            # every plant
  *   node scripts/plant.mjs --only 3   # one, by index
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -128,6 +140,45 @@ const PLANTS = [
   },
 ];
 
+const BACKUP_DIR = path.join(REPO, '.plant-backup');
+const backupPath = (rel) => path.join(BACKUP_DIR, rel.replace(/[/\\]/g, '__'));
+
+/** Restore anything a previous run left behind. Runs before the baseline, so a
+ *  killed run is repaired rather than diagnosed. */
+function restoreLeftovers() {
+  if (!existsSync(BACKUP_DIR)) return [];
+  const restored = [];
+  for (const name of readdirSync(BACKUP_DIR)) {
+    const rel = name.replace(/__/g, '/');
+    const target = path.join(REPO, rel);
+    writeFileSync(target, readFileSync(path.join(BACKUP_DIR, name)));
+    restored.push(rel);
+  }
+  rmSync(BACKUP_DIR, { recursive: true, force: true });
+  return restored;
+}
+
+const saveBackup = (rel, content) => {
+  mkdirSync(BACKUP_DIR, { recursive: true });
+  writeFileSync(backupPath(rel), content);
+};
+const clearBackup = (rel) => {
+  rmSync(backupPath(rel), { force: true });
+  try {
+    rmSync(BACKUP_DIR, { recursive: false });
+  } catch {
+    /* still holds other backups, which is fine */
+  }
+};
+
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(sig, () => {
+    const restored = restoreLeftovers();
+    if (restored.length) process.stderr.write(`\nplant: interrupted — restored ${restored.join(', ')}\n`);
+    process.exit(130);
+  });
+}
+
 const runGate = () =>
   new Promise((resolve) => {
     const child = spawn(process.execPath, [path.join(HERE, 'a11y-gate.mjs'), '--quick'], { cwd: REPO });
@@ -145,6 +196,11 @@ const { values: argv } = parseArgs({ options: { only: { type: 'string' } } });
 
 const selected = argv.only ? [PLANTS[Number(argv.only)]] : PLANTS;
 const results = [];
+
+const leftovers = restoreLeftovers();
+if (leftovers.length) {
+  process.stdout.write(`restored from an interrupted earlier run: ${leftovers.join(', ')}\n`);
+}
 
 // Baseline first: if the tree is already red, every plant "passes" for the
 // wrong reason and this whole script proves nothing.
@@ -167,6 +223,7 @@ for (const plant of selected) {
   }
 
   try {
+    saveBackup(plant.file, original);
     await writeFile(target, original.replace(plant.find, plant.replace));
     const { code, out } = await runGate();
     const caught = plant.expect.test(out);
@@ -184,6 +241,7 @@ for (const plant of selected) {
     // Always, on every path. The copy taken before planting is the only thing
     // standing between a planted fault and a corrupted working tree.
     await writeFile(target, original);
+    clearBackup(plant.file);
   }
 }
 

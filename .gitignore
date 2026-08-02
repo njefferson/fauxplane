@@ -12,3 +12,7 @@ node_modules/
 
 # Local preview renders from scripts/preview.mjs — not deployed.
 .preview/
+
+# Crash-safety backups from scripts/plant.mjs. Present only mid-run; if one
+# survives, the next run restores from it.
+.plant-backup/
