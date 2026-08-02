@@ -68,6 +68,76 @@ items.
 
 ---
 
+## Flight tracking as a SOURCE — what was checked, 2026-08-02
+
+Noah asked whether a flight number could drive the panel, and whether
+FlightRadar24 or adsb.fi could feed it. **Framing first, because it decides
+whether the feature is allowed at all: this is not simulation.** A live flight's
+position, altitude, speed and vertical rate off ADS-B is a fetched feed from a
+real source — the same category as METAR. It extends the no-invented-values rule
+rather than bending it.
+
+### FlightRadar24 — NO, and the reason is their terms, not the technology
+
+FR24's terms prohibit scraping and automated access outside their own API. The
+widely-circulated trick of hitting their internal JSON endpoints is a terms
+violation, and Doctrine §15.1 makes the publisher's policy the authority — a
+session does not get to route around it because it is convenient. Their official
+API is a paid commercial product.
+
+Worth stating the real trade rather than pretending there is none: **FR24 has
+materially better coverage than community networks**, including satellite ADS-B
+over oceans. That is what the money buys. For a free, noncommercial hobby panel
+it is a poor trade against a community feed that costs nothing.
+
+### adsb.fi — YES, and it is better than OpenSky for this
+
+VERIFIED from `github.com/adsblol/api`, whose README states the API is **"a
+drop-in replacement" for the ADSBExchange RapidAPI**. adsb.fi, adsb.lol and
+airplanes.live all implement that same shape, which means:
+
+- **There is a lookup BY CALLSIGN** (`/v2/callsign/{cs}`). OpenSky has no such
+  endpoint — confirmed by reading its Python client, which exposes only
+  `get_states(icao24, bbox)`. That single missing endpoint was the awkward part
+  of the whole design, and this removes it.
+- **There is a lookup by position and radius** (`/v2/lat/{lat}/lon/{lon}/dist/{nm}`),
+  which is exactly the query a radar page wants.
+- **No OAuth, no credentials, no KV.** That removes the one thing currently
+  blocking the flight-number feature: `/api/traffic` needs OpenSky secrets that
+  are not set.
+
+**NOT verified, and it must be before anything points at them:** adsb.fi itself
+is blocked from this sandbox (`000` to CONNECT), so **its own terms have not been
+read**. Doctrine §15.1 — our inference from a sibling project's README is not the
+authority. adsb.lol's README also says an API key obtained by FEEDING the network
+is coming, which tells you the posture these projects expect: they are
+volunteer-funded, so poll lightly, identify the client, and cache hard.
+
+**Coverage honesty for any of them:** community ADS-B is receiver-based. Strong
+over Europe and North America, **gaps over oceans and remote terrain**. A
+transatlantic flight will drop out mid-ocean, which the store already handles
+correctly — STALE with a visible age, then FAIL.
+
+### What ADS-B cannot give, and what may honestly be derived from it
+
+No attitude is broadcast. Neither pitch nor roll.
+- **Bank IS derivable**: in a coordinated turn `tan(bank) = V·omega/g`, with V
+  from the velocity and omega from the rate of change of track. Airliners are
+  always coordinated. Two measured inputs, textbook physics — DERIVED, honest.
+- **Pitch is NOT.** Flight path angle is (`vertical rate` against groundspeed),
+  and a flight-path marker is a real EFIS element, so the ladder would honestly
+  read flight path rather than pitch.
+
+### The radar page is v2, and its gate is now actually runnable
+
+A plan-view traffic display is the v2 traffic page, gated behind the attitude
+stability test — "fusion holds attitude within 2 degrees over a 60 s static
+test". Until 0.2.2 that test could not even be attempted, because the filter
+never converged. It can now: clamp the device, leave it a minute, watch whether
+the horizon drifts.
+
+---
+
 ## THE USE CASE THAT CHANGES THE ANSWER — on an aircraft, 2026-08-02
 
 Noah asked whether this duplicates something that exists. For a SIMULATOR-driven
