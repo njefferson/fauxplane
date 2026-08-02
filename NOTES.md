@@ -317,10 +317,29 @@ on his explicit "promote". Docs-only changes may skip it. The
 harness-designated `claude/*` branch is ignored (Doctrine §11).
 
 **Branch note, 2026-08-02.** The previous session recorded that `staging` and
-`main` both existed. They did not: `git ls-remote` showed the remote carrying
-only `claude/jet-panel-pwa-amendments-f07ygu`, which was also the default
-branch. Both branches have now been created and pushed for real, and the
-`claude/*` branches removed — see the handoff for what needed Noah's hand.
+`main` both existed. **They did not.** `git ls-remote` showed the remote
+carrying exactly one ref, `claude/jet-panel-pwa-amendments-f07ygu`, which was
+also the default branch. Both are now created and pushed for real:
+
+- `staging` — v1, waiting on Noah's device pass.
+- `main` — deliberately still at the pre-UI foundation commit `7cb4e4f`, so
+  promoting is a clean fast-forward rather than a merge of divergent histories.
+  Nothing has ever been deployed, so that is also just true.
+
+**SETTLED: this session's git transport cannot delete ANY remote branch.** The
+previous session hit a 403 deleting the default branch and could not tell
+whether the proxy denies ref deletion outright or GitHub was refusing to remove
+a default branch. That is now separated by a control: a throwaway branch
+`zz-delete-probe` was **created successfully** and then **failed to delete with
+the same HTTP 403**, in both refspec syntaxes. Creation and force-update work;
+deletion does not, for any ref. It is the transport, not the default-branch rule.
+
+Consequences, and a session should not spend time re-deriving these:
+- Deleting a branch here is a GitHub-UI step for Noah, always.
+- There is no MCP tool for it either — the GitHub tools available cover files,
+  PRs and issues, not branch deletion or repo settings.
+- The probe branch is identical to `main`, so it is inert while it waits.
+- **Do not run the probe again.** This is the answer.
 
 ---
 
