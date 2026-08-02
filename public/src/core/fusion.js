@@ -224,6 +224,8 @@ export function createFusion(options = {}) {
   let lastAccepted = null;
   let lastGyroAt = null;
   let lastResidual = null;
+  let dPitchEma = null;
+  let dRollEma = null;
   let rejecting = false;
   let reason = 'filter has not started';
 
@@ -237,12 +239,37 @@ export function createFusion(options = {}) {
     lastAccepted = null;
     lastGyroAt = null;
     lastResidual = null;
+    dPitchEma = null;
+    dRollEma = null;
     rejecting = false;
     reason = why;
   };
 
-  /** Integrate the body rates forward. Short-term truth, drifts over minutes. */
-  const updateGyro = (rotationRate, gravity, at) => {
+  /**
+   * Integrate the body rates forward. Short-term truth, drifts over minutes.
+   *
+   * THE SIGNS, DERIVED RATHER THAN GUESSED, because guessing them is what put a
+   * persistent 3.9-degree residual on Noah's device and stopped the filter ever
+   * converging — the gyro was pushing one way while the accelerometer dragged
+   * it back, for ever.
+   *
+   * Device frame: +X right, +Y up the screen, +Z out of the screen toward the
+   * pilot. The aircraft's nose is -Z, its right wing +X.
+   *
+   * PITCH, about +X. The rotation Rx(+θ) maps -Z toward +Y, i.e. it swings the
+   * nose UP — and equivalently tips the top of the panel back toward the pilot,
+   * which is what a real panel does in a climb. So nose-up is POSITIVE beta and
+   * pitch ADDS. (This one was already right.)
+   *
+   * ROLL, about +Z. The rotation Rz(+θ) maps +X toward +Y, i.e. it lifts the
+   * RIGHT wing. Our convention is right-wing-DOWN positive, so roll SUBTRACTS.
+   * This was adding, and it is the bug.
+   *
+   * The rates are also rotated by the screen angle, exactly as the accelerometer
+   * vector is. Without that the two halves of the filter disagree by 90 degrees
+   * on any phone clamped in landscape — which is the mounting this app is for.
+   */
+  const updateGyro = (rotationRate, gravity, at, screenAngleDeg = 0) => {
     if (lastGyroAt === null) {
       lastGyroAt = at;
       return;
@@ -257,10 +284,15 @@ export function createFusion(options = {}) {
     const { alpha, beta, gamma } = rotationRate ?? {};
     if (![alpha, beta, gamma].every((v) => Number.isFinite(v))) return;
 
-    // Body rates about the panel-mounted aircraft axes: pitch rate is about the
-    // device x axis, roll rate about the device z axis (the screen normal).
-    pitch += beta * dt;
-    roll += alpha * dt;
+    // Into SCREEN coordinates first, matching attitudeFromGravity.
+    const t = degToRad(screenAngleDeg ?? 0);
+    const c = Math.cos(t);
+    const sn = Math.sin(t);
+    const pitchRate = beta * c + gamma * sn;
+    const rollRate = alpha; // about the screen normal; unaffected by screen angle
+
+    pitch += pitchRate * dt;
+    roll -= rollRate * dt;
     const yawRate = turnRateFromRates(rotationRate, gravity);
     if (heading !== null && yawRate !== null) heading = wrap360(heading + yawRate * dt);
 
@@ -303,10 +335,35 @@ export function createFusion(options = {}) {
 
     const dPitch = solved.pitch - pitch;
     const dRoll = wrap180(solved.roll - roll);
-    lastResidual = Math.max(Math.abs(dPitch), Math.abs(dRoll));
 
     pitch += (1 - cfg.alpha) * dPitch;
     roll = wrap180(roll + (1 - cfg.alpha) * dRoll);
+
+    // CONVERGENCE IS THE SMOOTHED *SIGNED* RESIDUAL — the filter's BIAS against
+    // gravity, not its noise and not its rate of turn.
+    //
+    // Two wrong versions came before this one, and both are worth keeping in
+    // view because each measured something adjacent to the claim:
+    //
+    //   1. The INSTANTANEOUS residual. Held in a hand, the accelerometer
+    //      solution jitters several degrees continuously, so this never fell
+    //      below the threshold and the horizon stayed crossed out for ever. It
+    //      was measuring hand-shake. Noah's device reported "converging
+    //      (residual 3.9 deg)" thirteen minutes after boot.
+    //   2. The filter against a SMOOTHED gravity reference. That fixed the
+    //      jitter and broke rotation: a smoothed reference lags a turning
+    //      device, so a filter tracking a steady roll perfectly was scored as
+    //      3.8 degrees out. It was measuring rate of turn.
+    //
+    // Smoothing the SIGNED difference separates the two. Jitter is zero-mean
+    // and cancels. A steady, correctly-tracked rotation leaves only the
+    // filter's small tracking lag. A systematic error — a mis-signed gyro axis,
+    // a drifting integration — is a persistent bias and does not cancel, which
+    // is exactly what should hold convergence off.
+    const k = 0.05;
+    dPitchEma = dPitchEma === null ? dPitch : dPitchEma + k * (dPitch - dPitchEma);
+    dRollEma = dRollEma === null ? dRoll : dRollEma + k * (dRoll - dRollEma);
+    lastResidual = Math.max(Math.abs(dPitchEma), Math.abs(dRollEma));
 
     lastAccepted = at;
     acceptedSamples += 1;

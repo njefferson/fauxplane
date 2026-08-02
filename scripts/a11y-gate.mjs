@@ -637,6 +637,19 @@ async function checkDeniedState(page) {
     })),
   );
   if (bite.length < 8) fail(where, `BITE listed only ${bite.length} entries — it must cover every sensor and feed`);
+
+  // ONE ROW PER CAPABILITY. The static probe and the async live probe both
+  // legitimately describe the same thing, and both were being rendered: Noah's
+  // page listed battery twice and network twice, with different reasons. A page
+  // whose whole job is to be an honest inventory must not list anything twice.
+  const seenIds = new Map();
+  const seenLabels = new Map();
+  for (const e of bite) {
+    seenIds.set(e.id, (seenIds.get(e.id) ?? 0) + 1);
+    seenLabels.set(e.label, (seenLabels.get(e.label) ?? 0) + 1);
+  }
+  for (const [id, n] of seenIds) if (n > 1) fail(where, `BITE lists the entry "${id}" ${n} times`);
+  for (const [label, n] of seenLabels) if (n > 1) fail(where, `BITE lists "${label}" ${n} times under different ids`);
   for (const e of bite) {
     if (!e.reason.trim()) fail(where, `BITE entry "${e.label}" has no reason`);
   }

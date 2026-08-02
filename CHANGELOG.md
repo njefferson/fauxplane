@@ -6,6 +6,37 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 0.2.1 — ITERATION — 2026-08-02
+
+Four fixes, all found by Noah opening 0.2.0 on his phone. Nothing here is new;
+it is things that were supposed to work.
+
+**The altimeter could never show a number.** Indicated and pressure altitude
+were being timed from the weather observation they came from — and a weather
+report is always several minutes old, while those readings expect to update
+every minute. So they expired the instant they were worked out, every time. The
+altitude readings now keep their own timing, and still go stale when the weather
+behind them does.
+
+**The horizon never came to life.** The check for whether the artificial horizon
+had settled was measuring the shake of a hand holding the phone, so it never
+settled. It now measures whether the horizon is actually pointing the wrong way,
+which is the thing that was meant.
+
+**And it was pointing the wrong way.** The roll axis of the motion sensor was
+being read backwards, so the two halves of the horizon pulled against each other
+continuously. Also fixed: on a device clamped sideways — which is how this is
+meant to be mounted — one half of the horizon was ignoring the rotation
+entirely.
+
+**Winds aloft gave up too early.** On the first GPS fix the panel asked for winds
+before it had finished writing the fix down, decided it had no position, and
+then waited a quarter of an hour before trying again.
+
+Smaller things: the built-in test page listed battery and network twice each; a
+calm wind now reads CALM rather than "000° / 0 kt"; and one explanation on that
+page was three times longer than it needed to be.
+
 ## 0.2.0 — CAPABILITY — 2026-08-02
 
 The first release to reach production. A phone or tablet clamped where an

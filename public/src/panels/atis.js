@@ -123,8 +123,13 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
     dewpoint: createReadout({ label: 'Dewpoint', unit: '°C', format: (v) => v.toFixed(0) }),
     wind: createReadout({
       label: 'Surface wind',
-      format: (v) =>
-        `${v.dirDeg === null ? 'VRB' : String(Math.round(v.dirDeg)).padStart(3, '0')}° / ${Math.round(v.speedKt)}${v.gustKt ? `G${Math.round(v.gustKt)}` : ''} kt`,
+      format: (v) => {
+        // The raw report says 00000KT and every pilot reads that as CALM.
+        // "000° / 0 kt" is the same fact spelled in a way nobody says out loud.
+        if (Math.round(v.speedKt) === 0) return 'CALM';
+        const dir = v.dirDeg === null ? 'VRB' : String(Math.round(v.dirDeg)).padStart(3, '0');
+        return `${dir}° / ${Math.round(v.speedKt)}${v.gustKt ? `G${Math.round(v.gustKt)}` : ''} kt`;
+      },
     }),
     oat: createReadout({ label: 'OAT at altitude', unit: '°C', format: (v) => v.toFixed(1) }),
     windsAloft: createReadout({

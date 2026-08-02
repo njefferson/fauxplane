@@ -68,6 +68,56 @@ items.
 
 ---
 
+## 0.2.1 — what Noah's device found, 2026-08-02
+
+He opened 0.2.0 on his phone and the screenshots found four real defects in
+about a minute. All four are fixed on `staging` and each is pinned by a test
+that fails without the fix. Recorded because of what they have in common:
+**every one of them was invisible to 84 passing unit tests, because each test
+used inputs that a real device never produces.**
+
+1. **Indicated and pressure altitude could NEVER be shown.** A derived value was
+   stamped with its OLDEST input's timestamp, then aged against its OWN, much
+   shorter window. A METAR is always minutes old; the altitude window is 60 s.
+   His screen read "no update for 806s (limit 60s)" — 806 s being exactly the
+   age of the observation. Every unit test passed because they all used
+   same-instant inputs. Fixed: derived values are stamped at COMPUTE time, and
+   input staleness rides an explicit flag, so it still cannot be laundered.
+2. **The attitude filter could never converge.** The convergence check compared
+   the filter against the INSTANTANEOUS accelerometer solution, which in a hand
+   jitters by several degrees continuously — it was measuring hand-shake. It now
+   uses the smoothed SIGNED residual, which is the filter's bias against gravity:
+   jitter cancels, a real misalignment does not. (An intermediate version
+   smoothed the reference instead, which then lagged a turning device and scored
+   a perfectly-tracking filter as 3.8 deg out. Both wrong versions measured
+   something adjacent to the claim.)
+3. **The gyro's roll axis was integrated with the wrong sign**, so the two halves
+   of the filter fought continuously — the cause of the residual above. Derived
+   from the rotation matrices rather than guessed, and written out in the code.
+   The gyro also ignored the screen angle entirely, which would have broken any
+   device clamped in landscape: the mounting this app is FOR.
+4. **Winds aloft gave up for 15 minutes on the first fix.** `onFix` runs inside
+   the geolocation callback, before the 25 Hz loop has published the fix, so the
+   winds fetch read a snapshot with no position, correctly refused to fetch for a
+   surrogate, and then waited out its interval. Fixed by publishing first.
+
+Also: BITE listed battery and network twice each (static probe and live probe
+both rendering); calm wind now reads CALM; one BITE explanation was three times
+too long.
+
+**The lesson, and it is now in the hub's LESSONS.md:** a test suite whose inputs
+all share a timestamp cannot find a bug about differing ages, and a filter test
+that never moves cannot find a bug about movement. Fifteen fusion tests passed
+while the gyro sign was inverted, because every one of them fed a zero rotation
+rate.
+
+**What worked.** The geoid, the magnetic model and GPS were all PASS on his
+device on the first try, and the METAR mapping — the part I could not verify
+from the sandbox and flagged as the likeliest thing to be wrong — was correct:
+`A2999` in the raw report, `29.99` on the dial.
+
+---
+
 ## SHIPPED TO PRODUCTION — 0.2.0, 2026-08-02
 
 Noah promoted `staging` to `main` on 2026-08-02. This is the first release to

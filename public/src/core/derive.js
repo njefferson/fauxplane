@@ -12,16 +12,42 @@
  * value the inputs did not contain.
  */
 
-import { derived, fail, isUsable, worstOf } from './provenance.js';
+import { derived, fail, isUsable, makeField, worstOf } from './provenance.js';
 import { degToRad, msToFpm, mToFt, pressureAltitudeOffsetFt, radToDeg, tasToCas, wrap360 } from './units.js';
 
 /** Below this groundspeed, angle of attack is not a meaningful quantity. */
 export const AOA_MIN_GROUNDSPEED_KT = 20;
 
-const mk = (value, meta, unit) =>
-  meta.provenance === 'FAIL'
-    ? fail(meta.reason, { unit })
-    : derived(value, { unit, at: meta.at, reason: meta.reason });
+/**
+ * Build the output field from the inputs' verdict.
+ *
+ * THE PROVENANCE IS CARRIED EXPLICITLY, not encoded in the timestamp. The first
+ * version stamped every derived value with its OLDEST input's time, reasoning
+ * that stamping it "now" would launder a stale input into a fresh-looking
+ * output. That reasoning was wrong, and it broke the altimeter outright: a METAR
+ * observation is always several minutes old, indicated altitude's freshness
+ * window is 60 seconds, so indicated and pressure altitude aged out the instant
+ * they were computed and could never be shown at all. Noah's first screenshot
+ * said "no update for 806s (limit 60s)" — 806 seconds being exactly the age of
+ * the observation it was derived from.
+ *
+ * Nothing is laundered by stamping the computation time, because each input is
+ * ALREADY aged against its OWN window by the store, and worstOf propagates that
+ * verdict here. A stale METAR makes this STALE through `provenance`, which the
+ * store then honours via forcedStale. The timestamp now answers the question it
+ * should: "is this derivation still running?"
+ */
+const mk = (value, meta, unit) => {
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit });
+  return makeField({
+    value,
+    unit,
+    provenance: meta.provenance === 'STALE' ? 'STALE' : 'DERIVED',
+    at: meta.at,
+    ageMs: 0,
+    reason: meta.reason,
+  });
+};
 
 /**
  * Mean-sea-level altitude from the GPS geometric altitude.

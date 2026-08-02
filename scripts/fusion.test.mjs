@@ -235,3 +235,97 @@ test('reset clears everything, including convergence', () => {
   assert.equal(read.pitch, null);
   assert.equal(read.reason, 'backgrounded');
 });
+
+/* ---------------------------------------------------------------------------
+ * The tests below exist because the fifteen above ALL passed while the filter
+ * could not converge on a real device. Every one of them fed a ZERO rotation
+ * rate, so the gyro's sign was never exercised: the gyro contributed nothing,
+ * the accelerometer alone was correct, and a sign error in the integration was
+ * invisible. A test that never moves cannot find a bug about movement.
+ * ------------------------------------------------------------------------- */
+
+/** Fly a rotation where the gyro and the accelerometer are made CONSISTENT with
+ *  each other, and see whether the filter tracks it. */
+function flyRotation({ pitchRateDegS = 0, rollRateDegS = 0, seconds = 3, hz = 50, jitterDeg = 0 }) {
+  const fusion = createFusion();
+  const dt = 1 / hz;
+  let t = 0;
+  let pitch = 0;
+  let roll = 0;
+  // Deterministic pseudo-jitter: a real hand shakes, and Math.random is banned
+  // from these scripts anyway.
+  let seed = 1;
+  const wobble = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return ((seed / 2147483648) * 2 - 1) * jitterDeg;
+  };
+
+  for (let i = 0; i < seconds * hz; i += 1) {
+    t += dt * 1000;
+    pitch += pitchRateDegS * dt;
+    roll += rollRateDegS * dt;
+
+    // Ground truth gravity for this attitude, plus any hand wobble.
+    const up = upVectorScreenFrame(pitch + wobble(), roll + wobble());
+    const accel = { x: up.x * G0, y: up.y * G0, z: up.z * G0 };
+
+    // THE RATES THAT PRODUCE THAT ROTATION, from the derivation in fusion.js:
+    // nose-up is POSITIVE beta, right-wing-down is NEGATIVE alpha.
+    fusion.updateGyro({ alpha: -rollRateDegS, beta: pitchRateDegS, gamma: 0 }, accel, t, 0);
+    fusion.updateAccel(accel, 0, t);
+  }
+  return { fusion, read: fusion.read(t), truePitch: pitch, trueRoll: roll };
+}
+
+test('THE GYRO AND THE ACCELEROMETER AGREE THROUGH A ROLL — they used to fight', () => {
+  const { read, trueRoll } = flyRotation({ rollRateDegS: 10, seconds: 3 });
+  assert.equal(read.converged, true, `never converged: ${read.reason}`);
+  assert.ok(
+    Math.abs(read.roll - trueRoll) < 2,
+    `rolled to ${trueRoll} deg, filter says ${read.roll?.toFixed(1)} — the gyro is fighting the accelerometer`,
+  );
+});
+
+test('the gyro and the accelerometer agree through a pitch change', () => {
+  const { read, truePitch } = flyRotation({ pitchRateDegS: 8, seconds: 3 });
+  assert.equal(read.converged, true, `never converged: ${read.reason}`);
+  assert.ok(
+    Math.abs(read.pitch - truePitch) < 2,
+    `pitched to ${truePitch} deg, filter says ${read.pitch?.toFixed(1)}`,
+  );
+});
+
+test('IT CONVERGES IN A SHAKY HAND — the old check measured hand-shake, not convergence', () => {
+  // Four degrees of continuous wobble is roughly what holding a phone produces,
+  // and it is what left Noah's device reporting "converging (residual 3.9 deg)"
+  // thirteen minutes after boot.
+  const { read } = flyRotation({ seconds: 4, jitterDeg: 4 });
+  assert.equal(read.converged, true, `a hand-held device never converged: ${read.reason}`);
+  assert.ok(Math.abs(read.pitch) < 3, `pitch wandered to ${read.pitch}`);
+  assert.ok(Math.abs(read.roll) < 3, `roll wandered to ${read.roll}`);
+});
+
+test('a device rotated in landscape still converges — the screen angle reaches the gyro', () => {
+  // The mounting this app is actually for. If the screen-angle transform is
+  // missing from the gyro path, the two halves of the filter disagree by 90
+  // degrees and this never settles.
+  const fusion = createFusion();
+  const dt = 1 / 50;
+  let t = 0;
+  let pitch = 0;
+  for (let i = 0; i < 150; i += 1) {
+    t += dt * 1000;
+    pitch += 8 * dt;
+    const up = upVectorScreenFrame(pitch, 0);
+    // Screen rotated 90 degrees inside the hardware: the device-frame vector is
+    // the screen-frame one rotated back.
+    const dev = screenToDevice(up, 90);
+    const accel = { x: dev.x * G0, y: dev.y * G0, z: dev.z * G0 };
+    // A pitch rate about the SCREEN x axis appears on the device's y axis.
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 8 }, accel, t, 90);
+    fusion.updateAccel(accel, 90, t);
+  }
+  const read = fusion.read(t);
+  assert.equal(read.converged, true, `landscape mount never converged: ${read.reason}`);
+  assert.ok(Math.abs(read.pitch - pitch) < 2, `pitched to ${pitch}, filter says ${read.pitch?.toFixed(1)}`);
+});

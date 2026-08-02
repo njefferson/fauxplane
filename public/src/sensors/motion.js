@@ -65,7 +65,7 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, clock = ()
       }
 
       if (r) {
-        fusion.updateGyro(r, a, at);
+        fusion.updateGyro(r, a, at, angle);
         const turn = turnRateFromRates(r, a);
         if (turn !== null) state.write('attitude.turnRate', turn, { at });
         else state.fail('attitude.turnRate', 'rotationRate carried no usable axes');

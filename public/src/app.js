@@ -68,6 +68,13 @@ async function boot() {
     onFix: () => {
       if (!sawFirstFix) {
         sawFirstFix = true;
+        // PUBLISH FIRST. This runs inside the geolocation callback, before the
+        // 25 Hz loop has published the fix, so `state.snapshot` still says
+        // there is no position — and the winds fetch, which correctly refuses
+        // to ask for a surrogate position, then declined and waited fifteen
+        // minutes for its next interval. Noah's screenshot showed exactly that:
+        // GPS PASS on the BITE page, "no position fix" on the winds row.
+        state.publishNow();
         // The cold-start boxes stop being used the moment a fix exists, and the
         // feeds are re-asked immediately rather than waiting out their interval.
         refreshMetar();
@@ -121,13 +128,15 @@ async function boot() {
   });
 
   probeBattery().then((r) => {
-    extraBite.push({ id: 'battery-live', label: 'Battery status (BITE entry only)', group: 'Host', status: r.status, reason: r.reason });
+    // Same id as the static probe, so the live answer REPLACES it rather than
+    // adding a second row for the same capability.
+    extraBite.push({ id: 'battery', label: 'Battery status (BITE entry only)', group: 'Host', status: r.status, reason: r.reason });
     bite.setHostEntries(extraBite);
   });
 
   const pushNetwork = (r) => {
-    const i = extraBite.findIndex((e) => e.id === 'network-live');
-    const entry = { id: 'network-live', label: 'Network (BITE entry only)', group: 'Host', status: r.status, reason: r.reason };
+    const i = extraBite.findIndex((e) => e.id === 'network');
+    const entry = { id: 'network', label: 'Network (BITE entry only)', group: 'Host', status: r.status, reason: r.reason };
     if (i >= 0) extraBite[i] = entry;
     else extraBite.push(entry);
     bite.setHostEntries(extraBite);
@@ -218,11 +227,20 @@ async function boot() {
     writeField('aoa.angle', aoa, t);
   });
 
-  /** Copy a computed field into the store, preserving its provenance and its
-   *  reason. A derived FAIL must arrive as a FAIL, not as an absent write. */
+  /**
+   * Copy a computed field into the store, preserving its provenance and reason.
+   *
+   * STAMPED WITH THE COMPUTE TIME, and staleness passed as a flag. Using the
+   * oldest input's timestamp instead made every value derived from a feed age
+   * out immediately — see the long note on mk() in core/derive.js. A derived
+   * FAIL must arrive as a FAIL, not as an absent write.
+   */
   function writeField(path, field, t) {
-    if (!field || field.provenance === 'FAIL') state.fail(path, field?.reason ?? 'not computable');
-    else state.write(path, field.value, { at: field.at ?? t, reason: field.reason });
+    if (!field || field.provenance === 'FAIL') {
+      state.fail(path, field?.reason ?? 'not computable');
+      return;
+    }
+    state.write(path, field.value, { at: t, reason: field.reason, stale: field.provenance === 'STALE' });
   }
 
   /** Pull one member out of a composite field, keeping its provenance. */

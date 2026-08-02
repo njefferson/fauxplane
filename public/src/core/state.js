@@ -122,7 +122,7 @@ class Store {
 
   /** Write a sensor/feed reading. `at` defaults to now; pass it when the
    *  source stamped its own time (a METAR observation is older than its fetch). */
-  write(path, value, { at = this.clock(), reason = null } = {}) {
+  write(path, value, { at = this.clock(), reason = null, stale = false } = {}) {
     const spec = this.spec(path);
     if (value === null || value === undefined || (typeof value === 'number' && !Number.isFinite(value))) {
       // A sensor that fired with nothing in it has not produced a reading.
@@ -132,7 +132,17 @@ class Store {
     }
     this.raw.set(
       path,
-      makeField({ value, unit: spec.unit, provenance: spec.kind === 'derived' ? 'DERIVED' : 'LIVE', at, ageMs: 0, reason }),
+      makeField({
+        value,
+        unit: spec.unit,
+        // `stale` lets a DERIVED value say "my inputs are stale" without
+        // faking its own age. See the note on writeField in app.js.
+        provenance: stale ? 'STALE' : spec.kind === 'derived' ? 'DERIVED' : 'LIVE',
+        at,
+        ageMs: 0,
+        reason,
+        forcedStale: stale,
+      }),
     );
   }
 

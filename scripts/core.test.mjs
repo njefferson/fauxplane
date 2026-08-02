@@ -243,3 +243,103 @@ test('every declared field has a unit, a label and a sane freshness window', () 
     assert.ok(spec.staleMs > spec.freshMs, `${path} would go FAIL before it went STALE`);
   }
 });
+
+/* ---------------------------------------------------------------------------
+ * THE ALTIMETER REGRESSION.
+ *
+ * Indicated and pressure altitude could never be shown at all: they were
+ * stamped with their OLDEST input's timestamp, and a METAR observation is
+ * always several minutes old while their freshness window is sixty seconds. On
+ * Noah's device the altimeter read "no update for 806s (limit 60s)" — 806
+ * seconds being precisely the age of the observation it came from.
+ *
+ * Every unit test passed throughout, because each one exercised the derivation
+ * with same-instant inputs. The bug lived in the interaction between the
+ * derivation and the store's ageing, and only real data has inputs of genuinely
+ * different ages.
+ * ------------------------------------------------------------------------- */
+
+const { indicatedAltitude, mslAltitude } = await import('../public/src/core/derive.js');
+
+/** Mirrors app.js's writeField exactly, so this tests the real path. */
+function writeDerived(store, path, field, now) {
+  if (!field || field.provenance === 'FAIL') {
+    store.fail(path, field?.reason ?? 'not computable');
+    return;
+  }
+  store.write(path, field.value, { at: now, reason: field.reason, stale: field.provenance === 'STALE' });
+}
+
+test('an altitude derived from a 13-MINUTE-OLD METAR is still shown', () => {
+  let now = 10_000_000;
+  const store = createStore({ clock: () => now });
+  const thirteenMinutes = 13 * 60 * 1000;
+
+  // A METAR observed 13 minutes ago is perfectly normal and well inside its own
+  // 65-minute freshness window.
+  store.write('metar.altimeter', 29.99, { at: now - thirteenMinutes });
+  store.write('position.altitudeGeometric', 1200, { at: now });
+  store.write('altitude.geoidSeparation', -105, { at: now });
+  store.write('control.kollsman', 29.99, { at: now });
+
+  const f = store.publishNow().fields;
+  assert.equal(f['metar.altimeter'].provenance, LIVE, 'a 13-minute-old METAR must still be LIVE');
+
+  const msl = mslAltitude({ geometricFt: f['position.altitudeGeometric'], geoidSeparationFt: f['altitude.geoidSeparation'] });
+  const indicated = indicatedAltitude({
+    mslFt: msl,
+    kollsmanInHg: f['control.kollsman'],
+    stationAltimeterInHg: f['metar.altimeter'],
+  });
+  writeDerived(store, 'altitude.indicated', indicated, now);
+
+  now += 100;
+  const out = store.publishNow().fields['altitude.indicated'];
+  assert.equal(out.provenance, DERIVED, `indicated altitude came out ${out.provenance}: ${out.reason}`);
+  assert.ok(Math.abs(out.value - 1305) < 1, `expected about 1305 ft, got ${out.value}`);
+});
+
+test('...but a METAR past its OWN window drags the altitude to STALE, not to fresh', () => {
+  let now = 10_000_000;
+  const store = createStore({ clock: () => now });
+  // Past metar.altimeter's 65-minute freshness window, inside its 3-hour limit.
+  const seventyMinutes = 70 * 60 * 1000;
+
+  store.write('metar.altimeter', 29.99, { at: now - seventyMinutes });
+  store.write('position.altitudeGeometric', 1200, { at: now });
+  store.write('altitude.geoidSeparation', -105, { at: now });
+  store.write('control.kollsman', 29.99, { at: now });
+
+  const f = store.publishNow().fields;
+  assert.equal(f['metar.altimeter'].provenance, STALE, 'setup wrong: the METAR should be STALE by now');
+
+  const msl = mslAltitude({ geometricFt: f['position.altitudeGeometric'], geoidSeparationFt: f['altitude.geoidSeparation'] });
+  const indicated = indicatedAltitude({
+    mslFt: msl,
+    kollsmanInHg: f['control.kollsman'],
+    stationAltimeterInHg: f['metar.altimeter'],
+  });
+  writeDerived(store, 'altitude.indicated', indicated, now);
+
+  now += 100;
+  const out = store.publishNow().fields['altitude.indicated'];
+  // Stamping the compute time must NOT launder a stale input into a fresh
+  // output. The staleness rides the flag instead of the clock.
+  assert.equal(out.provenance, STALE, `a stale altimeter setting must make the altitude STALE, got ${out.provenance}`);
+  assert.ok(out.value !== null, 'a STALE value keeps its last known good number');
+  assert.match(out.reason ?? '', /stale/i);
+});
+
+test('a derived value that STOPS being computed still ages out', () => {
+  let now = 10_000_000;
+  const store = createStore({ clock: () => now });
+  store.write('altitude.indicated', 1300, { at: now });
+  assert.equal(store.publishNow().fields['altitude.indicated'].provenance, DERIVED);
+
+  // The derivation stops running. That is what the timestamp is now for, and it
+  // must still be caught.
+  now += FIELDS['altitude.indicated'].staleMs + 1;
+  const out = store.publishNow().fields['altitude.indicated'];
+  assert.equal(out.provenance, FAIL);
+  assert.match(out.reason, /no update for/);
+});

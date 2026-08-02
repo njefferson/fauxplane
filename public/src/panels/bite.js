@@ -97,6 +97,22 @@ function feedEntries(fields, extra, details = {}) {
   return out;
 }
 
+/**
+ * One row per capability, LAST writer wins.
+ *
+ * The static probe answers "does this browser implement the API" and the async
+ * live probe answers "what is it actually reporting" — both legitimately
+ * describe the same capability, and both were being rendered. Noah's BITE page
+ * showed "Battery status (BITE entry only)" twice with two different reasons,
+ * and Network twice. A page whose whole job is to be an honest inventory must
+ * not list anything twice.
+ */
+function dedupeById(entries) {
+  const byId = new Map();
+  for (const e of entries) byId.set(e.id, byId.has(e.id) ? { ...byId.get(e.id), ...e } : e);
+  return [...byId.values()];
+}
+
 const ORDER = { [FAILED]: 0, [DEGRADED]: 1, [PASS]: 2 };
 
 export function createBite({ host, announcer }) {
@@ -158,7 +174,7 @@ export function createBite({ host, announcer }) {
     render(snapshot) {
       const fields = snapshot.fields;
       const merged = mergeRuntime(staticEntries, fields, CHECKS);
-      const all = [...merged, ...feedEntries(fields, hostEntries, details)];
+      const all = dedupeById([...merged, ...feedEntries(fields, hostEntries, details)]);
 
       // Worst first. A pilot opening BITE is looking for what is broken, and
       // making them scroll past nine PASS rows to find it is the page failing

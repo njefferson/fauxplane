@@ -4,7 +4,7 @@
     "present": false,
     "path": "/data/navdata.json",
     "reason": "navdata bundle not generated — not needed by any v1 panel",
-    "detail": "The airport, runway and navaid database backs the HSI and nav pages, which are v2 and gated behind the attitude stability test. Nothing on the PFD, ATIS or BITE pages reads it, so its absence costs nothing on screen. It is also not generated because OurAirports' published terms at ourairports.com/data/ are not reachable from the build sandbox and have not been read; the data itself IS reachable. Run `npm run navdata` once the terms are read, or `node scripts/build-navdata.mjs --from <dir>` with the three CSVs."
+    "detail": "Backs the HSI and nav pages, which are v2. Nothing on the PFD, ATIS or BITE pages reads it, so its absence costs nothing on screen. Run `npm run navdata` to generate it."
   },
   "geoid": {
     "present": true,
