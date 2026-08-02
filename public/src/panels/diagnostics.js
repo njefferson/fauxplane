@@ -82,7 +82,7 @@ function formatValue(field) {
  * A pure function of the things handed to it, so it can be called from a test
  * without a browser — the same reason every derivation lives in derive.js.
  */
-export function buildReport({ snapshot, fusion, traffic, metar, bootAt, precisePosition = false, env = {} }) {
+export function buildReport({ snapshot, fusion, traffic, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null }) {
   const t = snapshot?.t ?? Date.now();
   const f = snapshot?.fields ?? {};
   const out = [];
@@ -141,6 +141,12 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
       b
         ? `  gyro zero-offset  alpha ${b.alpha.toFixed(2)}  beta ${b.beta.toFixed(2)}  gamma ${b.gamma.toFixed(2)} deg/s  (from ${b.samples} samples)`
         : '  gyro zero-offset  not yet estimated',
+    );
+    line(
+      mount
+        ? `  MOUNT LEVELLING  cradle ${mount.pitchDeg.toFixed(1)} deg pitch, ${mount.rollDeg.toFixed(1)} deg roll` +
+            `  — ${mountApplies === false ? 'NOT APPLIED (screen rotated since it was captured)' : 'being subtracted from every reading'}`
+        : '  MOUNT LEVELLING  none — the horizon is reading the device itself',
     );
     line(
       `  accelerometer convention  ${

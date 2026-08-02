@@ -127,6 +127,24 @@ const SCENES = [
     },
   },
   {
+    name: 'levelled-in-a-cradle',
+    story: 'levelled to a car cradle — the horizon reads zero at a mount that is 18 deg nose-up',
+    writes: [
+      ['attitude.pitch', 0.4],
+      ['attitude.roll', -1.2],
+      ['attitude.heading', 274],
+      ['attitude.turnRate', 0.1],
+      ['motion.gLoad', 1.01],
+      ['motion.lateralG', 0.01],
+      ['position.groundspeed', 38],
+      ['position.track', 271],
+      ['position.altitudeGeometric', 512],
+      ['altitude.msl', 617],
+      ['vsi.rate', -20],
+    ],
+    mount: { pitchDeg: 18.4, rollDeg: -3.1 },
+  },
+  {
     name: 'following',
     story: 'following a real flight: the tapes alive from ADS-B, and pitch honestly crossed out',
     writes: [
@@ -192,6 +210,16 @@ try {
           `${label} — this panel is showing that aircraft's broadcast, not this device`;
       }, scene.follow);
       await page.waitForTimeout(120);
+    }
+
+    if (scene.mount) {
+      await page.evaluate(async ({ pitchDeg, rollDeg }) => {
+        const { upVectorScreenFrame } = await import('/src/core/fusion.js');
+        // Drive the REAL calibration entry point, not a painted-on tag: the
+        // scene has to exercise the same path the button does.
+        globalThis.__previewFusion?.setMount(upVectorScreenFrame(pitchDeg, rollDeg), 0);
+      }, scene.mount);
+      await page.waitForTimeout(80);
     }
 
     await page.evaluate(async ({ writes, stale, reasons, fails }) => {

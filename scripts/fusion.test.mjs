@@ -9,6 +9,12 @@ import {
   matrixFromEuler,
   screenToDevice,
   detectAccelSign,
+  applyMatrix3,
+  transpose3,
+  rotationAligning,
+  mountFromReference,
+  mountAnglesDeg,
+  LEVEL_UP,
   turnRateFromRates,
   upVectorScreenFrame,
 } from '../public/src/core/fusion.js';
@@ -555,4 +561,189 @@ test('the compass fails SEPARATELY from the accelerometer', () => {
 
   // And the heading ages out on its own clock.
   assert.equal(fusion.read(1000 + 6000).hasHeading, false);
+});
+
+// --- mounting offset (boresight calibration) ---------------------------------
+
+/** The gravity vector a device reads at a given pitch and roll — the exact
+ *  inverse of attitudeFromGravity, which is what makes these tests round-trip
+ *  rather than restate the implementation. */
+const gravityAt = (pitchDeg, rollDeg) => {
+  const u = upVectorScreenFrame(pitchDeg, rollDeg);
+  return { x: u.x * G0, y: u.y * G0, z: u.z * G0 };
+};
+
+test('a levelled mount reads ZERO at the attitude it was levelled in', () => {
+  for (const [p, r] of [
+    [18, 0],
+    [0, 12],
+    [22, -9],
+    [-30, 25],
+    [5, -40],
+  ]) {
+    const ref = upVectorScreenFrame(p, r);
+    const mount = mountFromReference(ref);
+    assert.ok(mount, `no mount for ${p}/${r}`);
+    const solved = attitudeFromGravity(gravityAt(p, r), 0, mount);
+    assert.ok(Math.abs(solved.pitch) < 1e-6, `pitch ${solved.pitch} at mount ${p}/${r}`);
+    assert.ok(Math.abs(solved.roll) < 1e-6, `roll ${solved.roll} at mount ${p}/${r}`);
+  }
+});
+
+test('THE REASON IT IS A ROTATION: subtracting the angles is wrong when BOTH are non-zero', () => {
+  // A cradle 20 degrees nose-up and 15 degrees rolled — an ordinary car mount.
+  const mountPitch = 20;
+  const mountRoll = 15;
+  const mount = mountFromReference(upVectorScreenFrame(mountPitch, mountRoll));
+
+  // Now the car itself pitches up 10 and rolls right 8.
+  // Compose the two rotations properly: the device sees the vehicle attitude
+  // THROUGH its own mounting, so the true reading is the mount applied to the
+  // vehicle's up vector.
+  const vehicleUp = upVectorScreenFrame(10, 8);
+  const measured = applyMatrix3(transpose3(mount), vehicleUp);
+  const solved = attitudeFromGravity({ x: measured.x * G0, y: measured.y * G0, z: measured.z * G0 }, 0, mount);
+
+  assert.ok(Math.abs(solved.pitch - 10) < 1e-6, `pitch ${solved.pitch}, expected 10`);
+  assert.ok(Math.abs(solved.roll - 8) < 1e-6, `roll ${solved.roll}, expected 8`);
+
+  // And the naive version — subtract the mount angles from the raw reading —
+  // is measurably wrong on the very same input. This is the whole argument for
+  // doing it in the rotation domain, so it is asserted rather than asserted-in-
+  // a-comment.
+  const raw = attitudeFromGravity({ x: measured.x * G0, y: measured.y * G0, z: measured.z * G0 }, 0);
+  const naivePitch = raw.pitch - mountPitch;
+  const naiveRoll = raw.roll - mountRoll;
+  const naiveError = Math.max(Math.abs(naivePitch - 10), Math.abs(naiveRoll - 8));
+  assert.ok(naiveError > 0.5, `subtracting angles was only ${naiveError.toFixed(3)} deg out — the test has stopped proving anything`);
+});
+
+test('levelling a mount that is ALREADY level is the identity, not a NaN', () => {
+  const mount = mountFromReference(LEVEL_UP);
+  assert.ok(mount);
+  const solved = attitudeFromGravity(gravityAt(0, 0), 0, mount);
+  assert.ok(Math.abs(solved.pitch) < 1e-9);
+  assert.ok(Math.abs(solved.roll) < 1e-9);
+  // A 7 degree pitch still reads 7 through an identity mount.
+  assert.ok(Math.abs(attitudeFromGravity(gravityAt(7, 0), 0, mount).pitch - 7) < 1e-6);
+});
+
+test('an exactly inverted reference is refused rather than guessed at', () => {
+  // Every axis perpendicular to the reference is an equally valid rotation, so
+  // there is no minimal one to pick. Refusing is the honest answer.
+  assert.equal(rotationAligning({ x: 0, y: 1, z: 0 }, { x: 0, y: -1, z: 0 }), null);
+  assert.equal(rotationAligning({ x: 0, y: 0, z: 0 }, LEVEL_UP), null);
+});
+
+test('the mount rotation is orthonormal — it cannot scale or shear the reading', () => {
+  const mount = mountFromReference(upVectorScreenFrame(23, -17));
+  // R * R^T = I, and a gravity vector keeps its magnitude through it.
+  const RT = transpose3(mount);
+  for (const v of [
+    { x: 1, y: 0, z: 0 },
+    { x: 0, y: 1, z: 0 },
+    { x: 0, y: 0, z: 1 },
+    { x: 0.3, y: -0.5, z: 0.81 },
+  ]) {
+    const round = applyMatrix3(RT, applyMatrix3(mount, v));
+    assert.ok(Math.abs(round.x - v.x) < 1e-9 && Math.abs(round.y - v.y) < 1e-9 && Math.abs(round.z - v.z) < 1e-9);
+    const before = Math.hypot(v.x, v.y, v.z);
+    const after = applyMatrix3(mount, v);
+    assert.ok(Math.abs(Math.hypot(after.x, after.y, after.z) - before) < 1e-9, 'the mount changed a vector magnitude');
+  }
+});
+
+test('mountAnglesDeg reports the CRADLE angle, which is what a person can check', () => {
+  const angles = mountAnglesDeg(upVectorScreenFrame(18, -4));
+  assert.ok(Math.abs(angles.pitchDeg - 18) < 1e-6, `pitch ${angles.pitchDeg}`);
+  assert.ok(Math.abs(angles.rollDeg - -4) < 1e-6, `roll ${angles.rollDeg}`);
+});
+
+test('setMount levels the filter, and clearMount gives the device back', () => {
+  const fusion = createFusion();
+  const cradle = { pitch: 18, roll: -4 };
+  const inCradle = gravityAt(cradle.pitch, cradle.roll);
+
+  // Uncalibrated, the horizon reads the CRADLE — which is the complaint.
+  let t = 0;
+  for (let i = 0; i < 60; i += 1) {
+    t += 20;
+    fusion.updateAccel(inCradle, 0, t);
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, inCradle, t);
+  }
+  assert.ok(Math.abs(fusion.read(t).pitch - 18) < 0.5, `uncalibrated pitch ${fusion.read(t).pitch}`);
+
+  // Level it.
+  const applied = fusion.setMount(upVectorScreenFrame(cradle.pitch, cradle.roll), 0);
+  assert.ok(Math.abs(applied.pitchDeg - 18) < 1e-6);
+  assert.equal(fusion.read(t).hasAttitude, false, 'the old attitude must be dropped, not slewed');
+
+  for (let i = 0; i < 60; i += 1) {
+    t += 20;
+    fusion.updateAccel(inCradle, 0, t);
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, inCradle, t);
+  }
+  const levelled = fusion.read(t);
+  assert.ok(Math.abs(levelled.pitch) < 0.5, `levelled pitch ${levelled.pitch}`);
+  assert.ok(Math.abs(levelled.roll) < 0.5, `levelled roll ${levelled.roll}`);
+  assert.ok(fusion.mountOffset, 'the offset must be reportable — an instrument whose zero moved has to say so');
+  assert.ok(Math.abs(fusion.mountOffset.pitchDeg - 18) < 1e-6);
+
+  // And giving it back returns the cradle reading.
+  fusion.clearMount();
+  for (let i = 0; i < 60; i += 1) {
+    t += 20;
+    fusion.updateAccel(inCradle, 0, t);
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, inCradle, t);
+  }
+  assert.equal(fusion.mountOffset, null);
+  assert.ok(Math.abs(fusion.read(t).pitch - 18) < 0.5, `after clearing, pitch ${fusion.read(t).pitch}`);
+});
+
+test('a levelled filter still tracks REAL motion, at the right sign and size', () => {
+  const fusion = createFusion();
+  const mountRef = upVectorScreenFrame(20, 0);
+  fusion.setMount(mountRef, 0);
+  const mount = fusion.mountMatrix;
+
+  // The car pitches nose-up 6 and rolls right 11, seen through the cradle.
+  const vehicleUp = upVectorScreenFrame(6, 11);
+  const seen = applyMatrix3(transpose3(mount), vehicleUp);
+  const measured = { x: seen.x * G0, y: seen.y * G0, z: seen.z * G0 };
+
+  let t = 0;
+  for (let i = 0; i < 120; i += 1) {
+    t += 20;
+    fusion.updateAccel(measured, 0, t);
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, measured, t);
+  }
+  const read = fusion.read(t);
+  assert.ok(Math.abs(read.pitch - 6) < 0.5, `pitch ${read.pitch}, expected 6`);
+  assert.ok(Math.abs(read.roll - 11) < 0.5, `roll ${read.roll}, expected 11`);
+});
+
+test('the gyro is rotated by the mount too, or the two halves fight again', () => {
+  // A cradle rolled 90 degrees makes the phone's pitch axis the vehicle's ROLL
+  // axis. If only the accelerometer were corrected, the gyro would integrate a
+  // yaw rate into pitch and the accelerometer would drag it back for ever —
+  // the exact standoff the zero-offset work removed.
+  const fusion = createFusion();
+  fusion.setMount(upVectorScreenFrame(0, 90), 0);
+  const mount = fusion.mountMatrix;
+
+  const level = applyMatrix3(transpose3(mount), LEVEL_UP);
+  const measured = { x: level.x * G0, y: level.y * G0, z: level.z * G0 };
+  let t = 0;
+  for (let i = 0; i < 400; i += 1) {
+    t += 20;
+    fusion.updateAccel(measured, 0, t);
+    // A real 3 deg/s rate about the SCREEN x axis. Through a 90 degree roll
+    // mount that is a vehicle ROLL rate, not a pitch rate.
+    fusion.updateGyro({ alpha: 0, beta: 3, gamma: 0 }, measured, t);
+  }
+  const read = fusion.read(t);
+  // Whatever the axes do, the filter must stay settled against gravity rather
+  // than sitting at a permanent standoff.
+  assert.ok(read.hasAttitude, 'the horizon vanished under a rotated mount');
+  assert.ok(Math.abs(read.residualDeg ?? 0) < 2, `residual ${read.residualDeg} — the halves are fighting`);
 });

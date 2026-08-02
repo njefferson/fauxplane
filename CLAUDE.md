@@ -68,10 +68,10 @@ validated in the Function before anything is sent and the edge cache carries the
 panel's refresh rate.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 116 unit tests over the pure logic, including the magnetic model
+- `npm test` — 125 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
-  palettes x 4 pages, including the acceptance criteria.
+  palettes x 5 pages, including the acceptance criteria.
 - `npm run palette` — the hub's `palette-check.mjs` against
   `palettes/fauxplane.json`. The gate is never forked; it is run from the hub.
 - `node scripts/plant.mjs` — breaks one thing at a time and proves the gate
@@ -151,6 +151,22 @@ ADS-B gives a recoverable bank and no pitch at all. It is guarded against the
 hazard the convention protects by removing the sky/ground split AND the pitch
 ladder, so nothing on it can be misread as a horizon. Do not "tidy" this into
 either a full horizon or a full ATT flag without reading that note.
+
+## Levelling to a mount (SETUP page)
+**Boresight calibration**, the same procedure a Garmin G5 or a Dynon uses: park
+level, hold still, press once, and the rotation between the phone and whatever
+it is clamped in is recorded and subtracted. Built for a car cradle, which sits
+a phone back ten to thirty degrees.
+
+It is a ROTATION, never a subtraction of Euler angles — those do not compose
+when both pitch and roll are non-zero, which is exactly the cradle case. It is
+applied at the INPUT, to gravity AND to the rotation rates, so the whole filter
+runs in the vehicle frame. The offset is shown on the ADI, on SETUP, on BITE and
+in the diagnostics report, because an instrument whose zero has moved must say
+so. Do not make it silent.
+
+Levelling cannot set which way is FORWARD — gravity carries no yaw information —
+so a phone twisted in its cradle keeps twisted axes. Say so; do not invent one.
 
 ## Repo metadata (manual, confirm — see Doctrine §10)
 Description / website / topics / social-preview are GitHub-UI steps the session

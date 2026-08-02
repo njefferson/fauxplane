@@ -132,13 +132,20 @@ body {
 
 .tabs {
   display: flex;
+  /* WRAPS. Five tabs at the target floor overflow a narrow phone, and a tab row
+     that scrolls sideways hides the last tab from anyone who does not think to
+     swipe it. */
+  flex-wrap: wrap;
   gap: 0.6rem; /* targets are SPACED, not only sized — tremor overshoots */
 }
 
 .tab {
   min-height: var(--target);
-  min-width: 4.5rem;
-  padding: 0 1rem;
+  /* The TARGET floor, not an arbitrary 4.5rem. At 200% text the old value was
+     144px wide per tab, which pushed five tabs onto three rows and left the
+     panel 48px tall. The height is what SC 2.5.8 is about and it is unchanged. */
+  min-width: var(--target);
+  padding: 0 0.85rem;
   background: var(--surface);
   color: var(--text-2);
   border: 2px solid transparent;
@@ -298,7 +305,21 @@ body {
    is a landscape tablet — the mounting this whole app is for — and stacking it
    put the horizon in a letterbox with the readouts scrolled off below. Short and
    wide keeps the row layout and compacts the chrome instead, below. */
+/* AT NARROW WIDTHS THE DOCUMENT SCROLLS, rather than the panel being crushed.
+   A reader at 200% text on a small phone has a genuinely large header — five
+   tabs at the 44px target floor cannot also fit beside each other — and the
+   honest response is to let the page grow and be scrolled, not to shrink the
+   instruments until they are unreadable. The gate caught this as a 390x48
+   panel box, which is exactly what it looked like. */
 @media (max-width: 46rem) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+  }
+  .panel {
+    min-height: 34rem;
+  }
   .pfd-row {
     flex-direction: column;
     overflow-y: auto;
@@ -1056,4 +1077,67 @@ body[data-powered='true'] .gate {
   white-space: pre;
   user-select: text;
   -webkit-user-select: text;
+}
+
+
+/* --- setup ---------------------------------------------------------------- */
+
+.setup-body {
+  margin: 0 0 0.6rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+/* AMBER, because it is a caution the reader should be aware of rather than a
+   condition needing action — the same colour rule the panel follows. */
+.setup-caution {
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--stale);
+  color: var(--stale);
+}
+.setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.setup-btn {
+  min-height: var(--target);
+  padding: 0 1rem;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.setup-primary {
+  background: var(--surface-3);
+  border-color: var(--primary);
+  font-weight: 700;
+}
+.setup-btn:disabled {
+  color: var(--text-3);
+  border-color: var(--hairline);
+  cursor: default;
+}
+.setup-status,
+.setup-current {
+  margin: 0 0 0.4rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.setup-status:empty {
+  display: none;
+}
+.setup-status[data-tone='bad'] {
+  color: var(--fail);
+}
+.setup-status[data-tone='good'] {
+  color: var(--live);
+}
+.setup-current[data-state='stale'] {
+  color: var(--stale);
 }

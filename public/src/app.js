@@ -39,6 +39,7 @@ import { createAtis } from './panels/atis.js';
 import { createBite } from './panels/bite.js';
 import { createRadar } from './panels/radar.js';
 import { buildReport, createDiagnostics, installConsoleCapture } from './panels/diagnostics.js';
+import { createSetup } from './panels/setup.js';
 import { DEGRADED, FAILED, PASS } from './core/capability.js';
 
 const $ = (id) => document.getElementById(id);
@@ -96,6 +97,8 @@ async function boot() {
         bootAt: BOOT_AT,
         precisePosition,
         env: readEnvironment(),
+        mount: fusion.mountOffset,
+        mountApplies: fusion.mountOffset ? fusion.mountOffset.capturedAtScreenAngle === orientation.screenAngle() : null,
       }),
   });
 
@@ -151,9 +154,34 @@ async function boot() {
   // ---- panels --------------------------------------------------------------
   const canvas = $('pfd-canvas');
   const surface = createSurface(canvas);
-  const pfd = createPfd({ canvas, surface, readoutHost: $('pfd-readouts'), announcer });
+  const pfd = createPfd({
+    canvas,
+    surface,
+    readoutHost: $('pfd-readouts'),
+    announcer,
+    // Only reported when it is actually in force; a levelling captured in the
+    // other screen orientation is not being applied and must not claim to be.
+    mountOffset: () => {
+      const o = fusion.mountOffset;
+      return o && o.capturedAtScreenAngle === orientation.screenAngle() ? o : null;
+    },
+  });
   const atis = createAtis({ host: $('page-atis'), state, announcer, clock: now });
   const bite = createBite({ host: $('page-bite'), announcer });
+  // Exposed for scripts/preview.mjs ONLY, which drives the real calibration
+  // entry point from outside so a preview scene cannot diverge from the button.
+  globalThis.__previewFusion = fusion;
+  const setup = createSetup({
+    host: $('page-setup'),
+    fusion,
+    state,
+    announcer,
+    screenAngle: orientation.screenAngle,
+    onChange: () => pfd.render(state.snapshot),
+  });
+  // A saved levelling is re-applied at boot, so it survives a reload without
+  // anyone having to re-level a cradle that has not moved.
+  const restored = setup.restore();
 
   // The standing FOLLOW indicator, wired before the panel that can turn it on.
   const followBanner = $('follow-banner');
@@ -442,7 +470,13 @@ async function boot() {
   }
 
   // ---- page switching ------------------------------------------------------
-  const pages = { pfd: $('page-pfd'), atis: $('page-atis'), radar: $('page-radar'), bite: $('page-bite') };
+  const pages = {
+    pfd: $('page-pfd'),
+    atis: $('page-atis'),
+    radar: $('page-radar'),
+    bite: $('page-bite'),
+    setup: $('page-setup'),
+  };
   const tabs = [...document.querySelectorAll('[data-page]')];
   let active = 'pfd';
 
@@ -484,6 +518,7 @@ async function boot() {
     if (active === 'pfd') pfd.render(snapshot);
     else if (active === 'atis') atis.render(snapshot, metar.last);
     else if (active === 'radar') radar.render(snapshot);
+    else if (active === 'setup') setup.render();
     else bite.render(snapshot);
   });
 
@@ -507,6 +542,31 @@ async function boot() {
     else extraBite.push(entry);
     bite.setHostEntries(extraBite);
   };
+
+  // The levelling, as a BITE row. An instrument whose zero has been MOVED must
+  // say so somewhere a person goes looking when a reading seems wrong, and this
+  // is that page.
+  const mountBite = () => {
+    const offset = fusion.mountOffset;
+    const stale = offset && offset.capturedAtScreenAngle !== orientation.screenAngle();
+    const i = extraBite.findIndex((e) => e.id === 'mount');
+    const entry = {
+      id: 'mount',
+      label: 'Mount levelling',
+      group: 'Sensors',
+      status: !offset ? PASS : stale ? DEGRADED : PASS,
+      reason: !offset
+        ? 'not levelled — the horizon is showing this device\u2019s own attitude'
+        : stale
+          ? `levelled at ${offset.pitchDeg.toFixed(1)}\u00b0 pitch, ${offset.rollDeg.toFixed(1)}\u00b0 roll, but the screen has rotated since so it is NOT being applied`
+          : `levelled: the mount is ${offset.pitchDeg.toFixed(1)}\u00b0 in pitch and ${offset.rollDeg.toFixed(1)}\u00b0 in roll, and that is being subtracted`,
+    };
+    if (i >= 0) extraBite[i] = entry;
+    else extraBite.push(entry);
+    bite.setHostEntries(extraBite);
+  };
+  mountBite();
+  if (restored?.restored) announcer.say('Saved mount levelling restored.');
 
   // ---- panel dimming -------------------------------------------------------
   // Two MEASURED palette blocks, never a brightness filter. See

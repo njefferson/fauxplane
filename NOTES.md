@@ -68,6 +68,103 @@ items.
 
 ---
 
+## 0.4.0 — levelling the panel to whatever it is mounted in
+
+Noah: *"Begin working on the capability of calibrating the horizon to match a
+cell phone holder in a car so someone can use it when they're driving."*
+
+**This has a name and a standard procedure, and it is not a new idea.** It is
+BORESIGHT CALIBRATION — what every installed attitude reference does. A Garmin
+G5 calls it Pitch/Roll Offset; a Dynon calls it Level Calibration. Put the
+vehicle somewhere level, hold still, press a button, and the unit records the
+rotation between its own case and the vehicle. A phone cradle is the same
+problem with a worse mount: cradles sit a phone back ten to thirty degrees and
+are rarely square.
+
+**Nothing is invented by it.** The reading is still entirely the
+accelerometer's. What changes is which direction the instrument has been told to
+call level — the same category of thing as a Kollsman setting, and it is
+displayed for the same reason.
+
+### It is a ROTATION, not a subtraction, and that is the whole implementation
+
+The obvious approach — remember the offending pitch and roll, subtract them from
+every later reading — is wrong, and wrong in a way that looks fine. Euler angles
+do not compose additively once more than one is non-zero. A cradle 20 degrees
+nose-up AND 15 degrees rolled is not "subtract 20 from pitch, subtract 15 from
+roll"; that is exact only when one of the two is zero, and a phone cradle is
+precisely the case where neither is.
+
+So the reference gravity vector is captured and the MINIMAL rotation carrying it
+onto level is derived (Rodrigues). `scripts/fusion.test.mjs` asserts both halves:
+that the rotation is exact at every attitude tested, and that **the naive
+subtraction is measurably wrong on the same input** — if that second assertion
+ever stops failing, the test has stopped proving anything and says so.
+
+**Applied at the INPUT**, to the gravity vector and to the rotation-rate vector
+alike, so the whole filter runs in the vehicle's frame. Correcting the output
+instead would leave the gyro integrating in one frame while the accelerometer
+corrected in another — the same standoff the zero-offset work removed.
+
+**The rotation is minimal, and that has a consequence worth stating.** Aligning
+one vector to another leaves rotation about the vector itself unconstrained:
+gravity says which way is DOWN and nothing whatever about which way is FORWARD.
+Inventing a yaw there would be inventing data. So levelling fixes pitch and
+roll, and a phone sitting twisted in its cradle keeps twisted pitch and roll
+axes. The setup page says exactly that.
+
+### It refuses a bad reference
+
+The capture is declined unless the filter reports the device genuinely STILL.
+A calibration taken while moving bakes the movement into every subsequent
+reading, and the failure is invisible — the horizon looks perfect and is wrong
+for ever. Refusing costs a second; a silently bad zero does not announce itself.
+
+It reads the FILTER's settled attitude rather than one raw accelerometer sample,
+because the filter has already rejected manoeuvring samples and removed the
+gyro's zero-offset. Pressing twice composes rather than discards, so a small
+touch-up does not throw the first calibration away.
+
+### What a car does that an aircraft does not
+
+**Sustained longitudinal acceleration reads as pitch, and there is no fixing
+it.** An accelerometer cannot tell braking from tilting — both press you into
+the seat the same way. Braking at a third of a g reads like nineteen degrees of
+nose-up. The manoeuvring gate already rejects the strongest of those and coasts
+on the gyroscope, saying so while it does, which is the correct behaviour and
+will fire constantly in traffic. Steady acceleration still leans the horizon.
+
+That is on the SETUP page in plain words, in the caution amber, rather than
+being merely true. The page also says what the thing is for: an instrument for a
+passenger to enjoy, not something to drive by.
+
+### Where it is visible
+
+An instrument whose zero has been MOVED has to say so, and it says so in four
+places: a `LVL +18° −3°` tag on the ADI itself, the state on the SETUP page, a
+BITE row under Sensors, and a line in the diagnostics report. A horizon reading
+level at an attitude the device is not at, with nothing saying why, would be the
+most plausible-looking wrong instrument this app could ship.
+
+**Persisted on the device** and re-applied at boot, so a cradle that has not
+moved does not need re-levelling after a reload. Stored as the measured GRAVITY
+REFERENCE rather than the derived rotation: the reference is the observation,
+the rotation is a consequence, and a later change to the maths then needs no
+migration. If the screen orientation differs from the one it was captured in,
+the offset is **kept but not applied**, and every one of those four places says
+so — a calibration taken in portrait says nothing about the same phone lying in
+a landscape cradle.
+
+### What the gate caught
+
+Adding a fifth tab put five targets at the 44px floor into one row, and at 200%
+text on a 390px phone that wrapped to three rows and left the panel **48 pixels
+tall**. The fix is not to shrink the tabs below the target floor — it is to let
+the document scroll at narrow widths, because a reader at 200% text genuinely
+has a large header and crushing the instruments is the wrong trade.
+
+---
+
 ## 0.3.1 — diagnostics, and what checking the standards changed
 
 Noah, plainly: *"ARE YOU LOOKING FOR INDUSTRY STANDARDS OR JUST DOING A
@@ -343,7 +440,7 @@ plants now run against the unit suite instead.
 
 ### Verified
 
-**116 unit tests, 13/13 planted faults caught, the accessibility gate green
+**125 unit tests, 15/15 planted faults caught, the accessibility gate green
 across 3 viewports x 2 palettes x 4 pages, both palettes clearing every hard
 floor.** The radar page is in the gate against a response fixture, so the plan
 view is checked WITH aircraft on it rather than empty.

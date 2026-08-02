@@ -21,7 +21,7 @@ import { ellipsise, failFlag, roundRect, text } from '../canvas.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
+export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate, mount = null }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
   const r = Math.min(w, h) / 2;
@@ -191,6 +191,7 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
 
   drawSlipSkid(ctx, { cx, cy: y + h - r * 0.16, r, tokens, slip });
   drawTurnRate(ctx, { cx, cy: y + h - r * 0.16, r, tokens, turnRate });
+  drawMountTag(ctx, { x, y, w, tokens, mount, r });
 
   if (attitude.provenance === 'STALE') {
     ctx.save();
@@ -201,6 +202,35 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
     text(ctx, `STALE ${attitude.ageText ?? ''}`, cx, y + 16, { size: 13, weight: 700, colour: tokens.stale });
     ctx.restore();
   }
+}
+
+/**
+ * The levelling tag. Present only when a mount offset is in force, and it says
+ * the number so it can be sanity-checked against the cradle you can see.
+ *
+ * Drawn in the DERIVED tone rather than the caution amber: a levelled horizon
+ * is not degraded, and it is not a condition to be aware of in the sense the
+ * colour standard reserves amber for. It is a declared reference, like an
+ * altimeter setting — which is why it shows its VALUE rather than a warning.
+ */
+function drawMountTag(ctx, { x, y, w, tokens, mount, r }) {
+  if (!mount) return;
+  const size = Math.max(8, r * 0.062);
+  const label = `LVL ${mount.pitchDeg >= 0 ? '+' : '−'}${Math.abs(mount.pitchDeg).toFixed(0)}\u00b0 ${
+    mount.rollDeg >= 0 ? '+' : '−'
+  }${Math.abs(mount.rollDeg).toFixed(0)}\u00b0`;
+  ctx.save();
+  ctx.font = `700 ${size}px ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace`;
+  const tw = ctx.measureText(label).width + size;
+  const tx = x + w - tw - size * 0.5;
+  const ty = y + size * 1.4;
+  ctx.globalAlpha = 0.82;
+  ctx.fillStyle = tokens.page;
+  roundRect(ctx, tx, ty - size * 0.9, tw, size * 1.8, size * 0.4);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  text(ctx, label, tx + tw / 2, ty, { size, weight: 700, colour: tokens.derived });
+  ctx.restore();
 }
 
 /**

@@ -24,7 +24,7 @@ import { createReadout, describeField } from '../render/dom.js';
 
 const withAge = (field) => (field ? { ...field, ageText: formatAge(field.ageMs) } : field);
 
-export function createPfd({ canvas, surface, readoutHost, announcer }) {
+export function createPfd({ canvas, surface, readoutHost, announcer, mountOffset = () => null }) {
   let peakG = null;
 
   const readouts = {
@@ -100,6 +100,11 @@ export function createPfd({ canvas, surface, readoutHost, announcer }) {
       attitude,
       slip: withAge(fields['motion.lateralG']),
       turnRate: withAge(fields['attitude.turnRate']),
+      // AN INSTRUMENT WHOSE ZERO HAS BEEN MOVED SAYS SO, on its own face. The
+      // levelling is legitimate and it is not a failure, but "this horizon
+      // reads zero at an attitude the device is not actually at" is exactly the
+      // sort of thing that must not live only in a settings page.
+      mount: mountOffset(),
     });
 
     drawVerticalTape(ctxOf(surface), {

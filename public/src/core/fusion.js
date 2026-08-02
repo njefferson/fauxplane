@@ -167,7 +167,7 @@ export function attitudeFromMatrix(R) {
  * It says nothing about heading — gravity has no yaw information, which is why
  * the magnetometer is a separate correction and not a nicety.
  */
-export function attitudeFromGravity({ x, y, z }, screenAngleDeg = 0) {
+export function attitudeFromGravity({ x, y, z }, screenAngleDeg = 0, mount = null) {
   const m = Math.hypot(x, y, z);
   if (!Number.isFinite(m) || m < 1e-6) return null;
 
@@ -176,9 +176,20 @@ export function attitudeFromGravity({ x, y, z }, screenAngleDeg = 0) {
   const t = degToRad(screenAngleDeg ?? 0);
   const c = Math.cos(t);
   const s = Math.sin(t);
-  const sx = (x * c + y * s) / m;
-  const sy = (-x * s + y * c) / m;
-  const sz = z / m;
+  let sx = (x * c + y * s) / m;
+  let sy = (-x * s + y * c) / m;
+  let sz = z / m;
+
+  // THE MOUNT OFFSET, applied here and nowhere else. It rotates the measured
+  // "down" into the frame of whatever the device is clamped to, so a phone
+  // wedged in a car holder at eighteen degrees nose-up reads level. See
+  // rotationAligning() for why this is a ROTATION and not a subtraction.
+  if (mount) {
+    const r = applyMatrix3(mount, { x: sx, y: sy, z: sz });
+    sx = r.x;
+    sy = r.y;
+    sz = r.z;
+  }
 
   return {
     pitch: radToDeg(Math.asin(Math.max(-1, Math.min(1, -sz)))),
@@ -195,6 +206,117 @@ export function attitudeFromGravity({ x, y, z }, screenAngleDeg = 0) {
     roll: radToDeg(Math.atan2(-sx, sy)),
     magnitudeG: m / G0,
   };
+}
+
+// --- mounting offset ---------------------------------------------------------
+//
+// THIS IS BORESIGHT CALIBRATION, and it is what every installed attitude
+// reference does. A Garmin G5 calls it Pitch/Roll Offset, a Dynon calls it
+// Level Calibration, and the procedure is identical in all of them: put the
+// vehicle in a known-level attitude, press a button, and the unit records the
+// rotation between its own case and the airframe. Nothing is invented by it —
+// the measurement is still entirely the accelerometer's. What changes is which
+// direction the instrument has been told to call "level".
+//
+// A phone in a car cradle is the same problem with a worse mount: cradles sit
+// the phone back ten to thirty degrees and rarely square.
+
+/** Multiply a 3x3 matrix by a vector. */
+export function applyMatrix3(R, { x, y, z }) {
+  return {
+    x: R[0][0] * x + R[0][1] * y + R[0][2] * z,
+    y: R[1][0] * x + R[1][1] * y + R[1][2] * z,
+    z: R[2][0] * x + R[2][1] * y + R[2][2] * z,
+  };
+}
+
+/** Transpose a 3x3 matrix. For a rotation this is also its inverse. */
+export function transpose3(R) {
+  return [
+    [R[0][0], R[1][0], R[2][0]],
+    [R[0][1], R[1][1], R[2][1]],
+    [R[0][2], R[1][2], R[2][2]],
+  ];
+}
+
+/**
+ * The minimal rotation carrying unit vector `from` onto unit vector `to`.
+ *
+ * WHY A ROTATION AND NOT A SUBTRACTION, because subtracting the offending
+ * pitch and roll is the obvious thing and it is wrong. Euler angles do not
+ * compose additively once more than one of them is non-zero: a mount that is
+ * 20 degrees nose-up AND 15 degrees rolled is not "subtract 20 from pitch,
+ * subtract 15 from roll". Doing that is exact only when one of the two is zero
+ * and drifts badly as both grow — and a phone cradle is precisely the case
+ * where both are non-zero. Rodrigues' formula composes correctly at every
+ * attitude.
+ *
+ * The rotation is MINIMAL — about the axis perpendicular to both vectors —
+ * because aligning one vector to another leaves one degree of freedom
+ * (rotation about the vector itself) genuinely unconstrained. Gravity says
+ * which way is down and says nothing whatever about which way is forward, so
+ * inventing a yaw here would be inventing data. The consequence is stated
+ * plainly on the setup page: levelling fixes pitch and roll, and if the phone
+ * sits twisted in its cradle the pitch and roll axes stay twisted with it.
+ */
+export function rotationAligning(from, to) {
+  const fm = Math.hypot(from.x, from.y, from.z);
+  const tm = Math.hypot(to.x, to.y, to.z);
+  if (!Number.isFinite(fm) || !Number.isFinite(tm) || fm < 1e-9 || tm < 1e-9) return null;
+
+  const a = { x: from.x / fm, y: from.y / fm, z: from.z / fm };
+  const b = { x: to.x / tm, y: to.y / tm, z: to.z / tm };
+
+  // v = a x b, c = a . b
+  const v = { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x };
+  const c = a.x * b.x + a.y * b.y + a.z * b.z;
+  const s = Math.hypot(v.x, v.y, v.z);
+
+  // Already aligned: the identity, not a degenerate matrix full of NaN.
+  if (s < 1e-9) {
+    if (c > 0) {
+      return [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ];
+    }
+    // Exactly opposed. A phone mounted upside down relative to level is not a
+    // calibration, it is a different mounting, and there is no minimal
+    // rotation to pick — every axis perpendicular to `a` is equally valid.
+    return null;
+  }
+
+  // Rodrigues: R = I + [v]x + [v]x^2 * (1 - c) / s^2
+  const k = (1 - c) / (s * s);
+  const { x: vx, y: vy, z: vz } = v;
+  return [
+    [1 + k * (-vz * vz - vy * vy), -vz + k * vx * vy, vy + k * vx * vz],
+    [vz + k * vx * vy, 1 + k * (-vz * vz - vx * vx), -vx + k * vy * vz],
+    [-vy + k * vx * vz, vx + k * vy * vz, 1 + k * (-vy * vy - vx * vx)],
+  ];
+}
+
+/**
+ * The mount rotation for a reference "down" measured in SCREEN coordinates.
+ *
+ * Level, for this app's mounting, means earth-up lies along the screen's own
+ * +Y — that is exactly the condition attitudeFromGravity turns into pitch 0,
+ * roll 0. So the mount rotation is whatever carries the measured reference
+ * onto (0, 1, 0).
+ */
+export const LEVEL_UP = Object.freeze({ x: 0, y: 1, z: 0 });
+export const mountFromReference = (referenceUpScreenFrame) => rotationAligning(referenceUpScreenFrame, LEVEL_UP);
+
+/** The pitch and roll a mount reference corresponds to, for display. This is
+ *  how far off level the CRADLE is, which is the number a person can sanity
+ *  check against the thing they can see. */
+export function mountAnglesDeg(referenceUpScreenFrame) {
+  const solved = attitudeFromGravity(
+    { x: referenceUpScreenFrame.x, y: referenceUpScreenFrame.y, z: referenceUpScreenFrame.z },
+    0,
+  );
+  return solved ? { pitchDeg: solved.pitch, rollDeg: solved.roll } : null;
 }
 
 /**
@@ -327,6 +449,17 @@ export function createFusion(options = {}) {
   let aligned = false;
   let lastHeadingAt = null;
 
+  /**
+   * The mounting offset, applied at the INPUT so the whole filter runs in the
+   * VEHICLE's frame rather than the phone's. Correcting the output instead
+   * would leave the gyro integrating in one frame and the accelerometer
+   * correcting in another, and the two would fight exactly as they did over the
+   * zero-offset.
+   */
+  let mount = null;
+  let mountRef = null;
+  let mountAngle = null;
+
   const reset = (why = 'filter reset') => {
     pitch = null;
     roll = null;
@@ -401,8 +534,13 @@ export function createFusion(options = {}) {
     const t = degToRad(screenAngleDeg ?? 0);
     const c = Math.cos(t);
     const sn = Math.sin(t);
-    const pitchRate = cb * c + cg * sn;
-    const rollRate = ca; // about the screen normal; unaffected by screen angle
+    // The full rate vector in SCREEN coordinates, so the mount rotation can be
+    // applied to it as a vector. Taking the two components first and rotating
+    // them afterwards would be rotating scalars, which is not a thing.
+    let omega = { x: cb * c + cg * sn, y: -cb * sn + cg * c, z: ca };
+    if (mount) omega = applyMatrix3(mount, omega);
+    const pitchRate = omega.x;
+    const rollRate = omega.z; // about the screen normal; unaffected by screen angle
 
     pitch += pitchRate * dt;
     roll -= rollRate * dt;
@@ -441,7 +579,7 @@ export function createFusion(options = {}) {
     }
     const sign = accelSign ?? 1;
     const accel = sign === 1 ? rawAccel : { x: -rawAccel.x, y: -rawAccel.y, z: -rawAccel.z };
-    const solved = attitudeFromGravity(accel, screenAngleDeg);
+    const solved = attitudeFromGravity(accel, screenAngleDeg, mount);
     if (!solved) {
       reason = 'accelerometer produced no usable vector';
       return;
@@ -639,6 +777,66 @@ export function createFusion(options = {}) {
      * The filter's opinion, including whether it has one yet. `converged` false
      * means every consumer must render FAIL — not a plausible zero.
      */
+    /**
+     * Record the current attitude as level — boresight calibration.
+     *
+     * `referenceUp` is the measured earth-up unit vector in SCREEN coordinates
+     * at the moment of capture; `screenAngleDeg` is the orientation it was
+     * captured in, kept because a calibration taken in portrait says nothing
+     * about the same phone lying in a landscape cradle.
+     *
+     * Returns the mount angles, or null if the reference is unusable.
+     */
+    setMount(referenceUp, screenAngleDeg) {
+      if (!referenceUp) {
+        mount = null;
+        mountRef = null;
+        mountAngle = null;
+        return null;
+      }
+      const R = mountFromReference(referenceUp);
+      if (!R) return null;
+      mount = R;
+      mountRef = { ...referenceUp };
+      mountAngle = screenAngleDeg ?? 0;
+      // The attitude held right now was solved in the OLD frame. Keeping it
+      // would make the horizon swing from the old zero to the new one over
+      // several seconds; dropping it re-seeds from the very next sample.
+      pitch = null;
+      roll = null;
+      converged = false;
+      aligned = false;
+      settledSince = null;
+      dPitchEma = null;
+      dRollEma = null;
+      reason = 'levelled to the mount — reconverging';
+      return mountAnglesDeg(referenceUp);
+    },
+
+    clearMount() {
+      mount = null;
+      mountRef = null;
+      mountAngle = null;
+      pitch = null;
+      roll = null;
+      converged = false;
+      aligned = false;
+      reason = 'mount offset cleared — reconverging';
+    },
+
+    /** The offset in effect, for the panel and the diagnostics report. Null
+     *  when the horizon is reading the device itself. */
+    get mountOffset() {
+      if (!mountRef) return null;
+      return { ...mountAnglesDeg(mountRef), capturedAtScreenAngle: mountAngle, reference: { ...mountRef } };
+    },
+
+    /** The rotation itself, so the vertical-accelerometer projection can undo
+     *  it. Everything else should use `mountOffset`. */
+    get mountMatrix() {
+      return mount;
+    },
+
     /** The learned gyro zero-offset, or null before any still sample. BITE
      *  prints it: it is invisible otherwise, and it is the difference between a
      *  horizon that settles and one that argues with itself. */

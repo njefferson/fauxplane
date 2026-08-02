@@ -81,6 +81,7 @@ const SHELL = [
   '/src/panels/bite.js',
   '/src/panels/radar.js',
   '/src/panels/diagnostics.js',
+  '/src/panels/setup.js',
 ];
 
 /** Precached if present. Absent in this build — see NOTES.md. A missing

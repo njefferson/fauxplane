@@ -74,7 +74,7 @@ const ALL_VIEWPORTS = [
  */
 const VIEWPORTS = argv.quick ? [ALL_VIEWPORTS[0]] : ALL_VIEWPORTS;
 
-const PAGES = ['pfd', 'atis', 'radar', 'bite'];
+const PAGES = ['pfd', 'atis', 'radar', 'bite', 'setup'];
 
 /**
  * A traffic response in the shape /api/traffic emits, so the radar page renders
@@ -180,6 +180,10 @@ const REGISTRY = [
   { selector: '.ro-unit', label: 'readout unit', min: 4.6, page: 'pfd' },
   { selector: '.ro-reason', label: 'readout failure reason', min: 4.6, page: 'pfd' },
   { selector: '.chip-fail', label: 'FAIL chip', min: 4.6, page: 'pfd' },
+  { selector: '.setup-body', label: 'setup body text', min: 4.6, page: 'setup' },
+  { selector: '.setup-caution', label: 'setup caution (amber)', min: 4.6, page: 'setup' },
+  { selector: '.setup-current', label: 'setup levelling state', min: 4.6, page: 'setup' },
+  { selector: '.setup-btn', label: 'setup button', min: 4.6, page: 'setup' },
   { selector: '.atis-station', label: 'ATIS station line', min: 4.6, page: 'atis' },
   { selector: '.atis-source', label: 'ATIS source line', min: 4.6, page: 'atis' },
   { selector: '.koll-value', label: 'Kollsman value', min: 4.6, page: 'atis' },

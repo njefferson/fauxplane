@@ -14,7 +14,7 @@
  */
 
 import { needsMotionPermission } from '../core/capability.js';
-import { screenToDevice, turnRateFromRates, upVectorScreenFrame } from '../core/fusion.js';
+import { applyMatrix3, screenToDevice, transpose3, turnRateFromRates, upVectorScreenFrame } from '../core/fusion.js';
 import { G0 } from '../core/units.js';
 
 /** `owns` — see the note in sensors/geo.js. False while the panel is following
@@ -64,7 +64,15 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, owns = () 
       // Until the filter has converged there is no trustworthy "up", so there
       // is no vertical acceleration either. That is a FAIL, not a zero.
       const att = fusion.read(at);
-      const upScreen = att.converged ? upVectorScreenFrame(att.pitch, att.roll) : null;
+      let upScreen = att.converged ? upVectorScreenFrame(att.pitch, att.roll) : null;
+      // THE MOUNT HAS TO BE UNDONE HERE. The filter's pitch and roll are in the
+      // VEHICLE's frame once a mount offset is set, so the up vector they
+      // produce is too — but this projection is about to dot it against a raw
+      // accelerometer reading, which is in the DEVICE's. Skipping the inverse
+      // rotation would measure the vertical acceleration along an axis the
+      // phone is not pointing down, and the VSI would read a component of the
+      // car's braking as a climb.
+      if (upScreen && fusion.mountMatrix) upScreen = applyMatrix3(transpose3(fusion.mountMatrix), upScreen);
       if (upScreen) {
         const up = screenToDevice(upScreen, angle);
         const alongUp = a.x * up.x + a.y * up.y + a.z * up.z;

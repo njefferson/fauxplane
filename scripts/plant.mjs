@@ -179,6 +179,19 @@ const PLANTS = [
     expect: /does not lead with what is failing/,
   },
   {
+    // Mount levelling moves what the instrument calls zero. That is legitimate
+    // and it is exactly why it must be visible: a horizon reading level at an
+    // attitude the device is not at, with nothing saying so, is the most
+    // plausible-looking wrong instrument this app could ship.
+    name: 'levelling: the panel stops saying its zero has been moved',
+    check: 'a levelled horizon declares the offset on its own face',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '    get mountOffset() {\n      if (!mountRef) return null;',
+    replace: '    get mountOffset() {\n      return null;\n      // eslint-disable-next-line no-unreachable\n      if (!mountRef) return null;',
+    expect: /the offset must be reportable|mountOffset/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',
