@@ -140,21 +140,84 @@ the old behaviour must still reproduce roll beyond 80 degrees, and the fixed
 behaviour must put an iPad held square inside 8 degrees of level. Both halves
 are planted against.
 
-### Still unverified
+### CONFIRMED on two devices, both orientations
 
-Only ONE orientation of one device has been seen. Portrait on the same iPad, and
-any Android or desktop in landscape, are unconfirmed — the sign was wrong
-everywhere and only portrait hid it, so a landscape Android is the obvious next
-thing to check. Its report will say which angle source it used.
+Three more reports arrived and they isolate the two bugs cleanly, which is
+better evidence than either alone would have been.
 
-### Also spotted in the same report, not yet fixed
+**`screen.orientation.angle` on that iPad is exactly 90 degrees out in BOTH
+orientations**, and `window.orientation` is right in both:
 
-`vsi.rate` read **344,570 fpm**. That is the attitude bug downstream: with the
-horizon ninety degrees over, the "vertical" accelerometer projection was reading
-a horizontal axis, so gravity leaked into the integrator and it ran away. The
-attitude fix removes the cause — but a vertical speed indicator that can display
-three hundred thousand feet per minute has no business doing so whatever the
-cause, and that bound is still to be added.
+| device / orientation | angle | type | window.orientation | truth |
+|---|---|---|---|---|
+| iPad portrait | **90** | portrait-primary | 0 | 0 |
+| iPad landscape | **0** | landscape-primary | 90 | 90 |
+| iPhone portrait | 0 | portrait-primary | 0 | 0 |
+| iPhone landscape | 90 | landscape-primary | 90 | 90 |
+
+That is why the iPad was ninety out in both orientations, and it confirms the
+rule: on iOS, `window.orientation` told the truth on both devices in all four
+positions.
+
+**And two of the reports isolate one bug each**, which is what makes this
+convincing rather than merely consistent:
+
+- **iPad PORTRAIT** — the true angle is 0, where the rotation is the identity
+  and the sign cannot matter. It was wrong purely because the app used the
+  lying `angle` of 90. Bug one alone.
+- **iPhone LANDSCAPE** — all three sources agreed on 90, so the angle was
+  right. It read roll −145 anyway. Bug two alone.
+
+Checked against every one of the four raw vectors:
+
+| | app reported | with both fixes |
+|---|---|---|
+| iPad portrait | −90.8 | **−5.5** |
+| iPad landscape | −89.0 | **+2.9** |
+| iPhone portrait | −0.9 | −0.9 (unchanged, was already right) |
+| iPhone landscape | −145.5 | **+2.1** |
+
+Still unverified: Android and desktop, in landscape. The report names which
+angle source it used, so the first such report either confirms the rule or
+widens it on evidence.
+
+### Three more defects the same reports exposed
+
+**1. The gyro zero-offset integrator had no anti-windup.** Noah's iPhone
+reported `alpha -10.00 deg/s` — dead on the clamp — and the iPad `gamma -9.19`.
+A real gyroscope offset is a degree or two. What those numbers actually were is
+the integrator eating a fifty-degree residual caused by the mis-signed rotation:
+an integrator handed a large PERSISTENT error reads it as a large constant
+offset, which is exactly what it is designed to do and exactly wrong here.
+
+Fixed with the standard gate: the integrator does not learn from a residual it
+cannot explain (`biasGateDeg`, ten degrees). It costs nothing, because the
+proportional term pulls a diverged filter back inside that in about a second,
+and a genuine offset produces a standing residual well under one degree. Tested
+both ways — it must refuse the fake and must still learn the real one.
+
+**2. The VSI could reach 344,570 fpm, and now cannot.** The cause was the
+attitude bug downstream, and the exact path is worth recording because it was
+not obvious: a GPS fix arrives, then stops for a while — routine indoors. The
+FIELD stays LIVE for its full sixty-second window so the gauge keeps answering,
+but `updateAltitude` is never called, so nothing corrects the integrator. With
+the "vertical" accelerometer reading a horizontal axis it was being fed a full
+g, and the rate climbed without bound.
+
+The cause is fixed, but an instrument that CAN display three hundred thousand
+feet per minute should not, whatever is feeding it. Past 20,000 fpm the reading
+is refused AND the filter is reset — refusing without resetting would leave the
+integrator sitting at the runaway value and cross the instrument out for ever.
+Twenty thousand is far beyond an airliner's four and this app's own six-thousand
+full scale, so nothing real is refused.
+
+**3. Two clocks, disagreeing by milliseconds.** Every report showed a NEGATIVE
+coasting time (`-9ms`, `-21ms`, `-34ms`). The store ages fields against
+`performance.timeOrigin + performance.now()`; the sensors were being handed
+`Date.now()`. Both are epoch milliseconds and they agree to within a few — but
+they are not the same clock, so a reading could be stamped just AFTER the
+publish that measured its age. A negative age is a small lie about a timestamp,
+in an app whose whole contract is timestamps. One clock now, the store's.
 
 ---
 

@@ -7,6 +7,7 @@ import {
   angleOfAttack,
   calibratedAirspeed,
   createVsi,
+  VSI_ABSURD_FPM,
   indicatedAltitude,
   mslAltitude,
   pressureAltitude,
@@ -619,4 +620,49 @@ test('OWNERSHIP: the device stops writing the fields a followed aircraft fills',
   geo.acceptFix(deskFix);
   f = store.publishNow().fields;
   assert.equal(f['position.lat'].value, 38.68, 'the device did not take its fields back');
+});
+
+test('THE VSI REFUSES A RUNAWAY, and resets rather than sulking for ever', () => {
+  // THE PATH THAT PRODUCED 344,570 fpm ON NOAH'S IPAD, reproduced.
+  //
+  // A GPS fix arrives, then stops for a while — routine indoors. The FIELD
+  // stays LIVE for its full sixty-second window, so `read` keeps answering,
+  // but `updateAltitude` is never called, so nothing corrects the integrator.
+  // Meanwhile the vertical accelerometer was reading a HORIZONTAL axis (the
+  // horizon was ninety degrees over), so it fed a full g in, and the rate
+  // climbed without bound.
+  const vsi = createVsi();
+  let t = 0;
+  vsi.updateAltitude(1000, t);
+  t += 1000;
+  vsi.updateAltitude(1000, t); // rateFpm is now 0 and the filter is running
+
+  // Forty seconds of a mis-projected axis, with no fix arriving to correct it.
+  for (let i = 0; i < 2000; i += 1) {
+    t += 20;
+    vsi.updateAccel(9.80665, t);
+  }
+
+  const runaway = vsi.read({ altitudeField: R(1000, 'ft'), verticalAccelField: R(9.80665, 'm/s2') });
+  assert.equal(runaway.provenance, 'FAIL');
+  assert.equal(runaway.value, null, 'a runaway must not reach the gauge as a number');
+  assert.match(runaway.reason, /not a real climb/);
+
+  // And it RECOVERS once fixes come back. Refusing without resetting would
+  // cross the instrument out permanently, because the integrator would still be
+  // sitting at the runaway value on every subsequent read.
+  for (let i = 0; i < 40; i += 1) {
+    t += 250;
+    vsi.updateAltitude(1000 + ((i + 1) * 250 * (500 / 60)) / 1000, t);
+    vsi.updateAccel(0, t);
+  }
+  const recovered = vsi.read({ altitudeField: R(1200, 'ft'), verticalAccelField: R(0, 'm/s2') });
+  assert.equal(recovered.provenance, 'DERIVED', `did not recover: ${recovered.reason}`);
+  assert.ok(Math.abs(recovered.value) < VSI_ABSURD_FPM);
+});
+
+test('an ordinary climb is nowhere near the absurd threshold', () => {
+  // The bound must refuse only runaway. An airliner's 4000 fpm and this app's
+  // own 6000 fpm full scale are both far inside it.
+  assert.ok(VSI_ABSURD_FPM > 6000 * 3, `the bound is ${VSI_ABSURD_FPM}, too close to the instrument's own full scale`);
 });

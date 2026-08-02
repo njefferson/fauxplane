@@ -43,7 +43,18 @@ import { createSetup } from './panels/setup.js';
 import { DEGRADED, FAILED, PASS } from './core/capability.js';
 
 const $ = (id) => document.getElementById(id);
-const now = () => Date.now();
+/**
+ * ONE CLOCK, THE STORE'S.
+ *
+ * The store ages every field against its own clock, which is
+ * `performance.timeOrigin + performance.now()`. The sensors were being handed
+ * `Date.now()` instead, so a reading could be stamped a millisecond or two
+ * AFTER the publish that measured its age — which is where the "coasting -21ms"
+ * in Noah's reports came from. Two clocks that agree to within a few
+ * milliseconds still disagree, and a negative age is a small lie about a
+ * timestamp in an app whose entire contract is timestamps.
+ */
+const now = () => state.clock();
 
 // INSTALLED AT MODULE LOAD, NOT INSIDE boot(). "The panel failed to start" is
 // precisely the case worth capturing, and boot() may never run.

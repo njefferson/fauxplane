@@ -6,6 +6,7 @@ import {
   attitudeFromGravity,
   attitudeFromMatrix,
   createFusion,
+  DEFAULTS,
   matrixFromEuler,
   screenToDevice,
   detectAccelSign,
@@ -838,4 +839,45 @@ test('with no orientation API at all, it assumes unrotated and SAYS so', () => {
   const none = resolveScreenAngle({});
   assert.equal(none.angle, 0);
   assert.match(none.source, /no orientation API/);
+});
+
+test('ANTI-WINDUP: a badly diverged filter does not learn a fake gyro offset', () => {
+  // Noah's iPhone in landscape reported the alpha offset pegged at exactly
+  // -10.00 deg/s — dead on the clamp. That is not a gyroscope's zero-offset,
+  // which is a degree or two; it was the integrator eating a fifty-degree
+  // residual caused by the mis-signed screen rotation.
+  const fusion = createFusion();
+  const level = { x: 0, y: G0, z: 0 };
+  // Seed it level and settled.
+  let t = 0;
+  for (let i = 0; i < 200; i += 1) {
+    t += 20;
+    fusion.updateAccel(level, 0, t);
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+  }
+
+  // Now feed a gravity vector fifty degrees away from where the filter is, with
+  // a PERFECT gyro. An ungated integrator reads that persistent residual as an
+  // enormous constant offset and winds straight into its clamp.
+  const wrong = upVectorScreenFrame(50, 0);
+  const diverged = { x: wrong.x * G0, y: wrong.y * G0, z: wrong.z * G0 };
+  for (let i = 0; i < 60; i += 1) {
+    t += 20;
+    fusion.updateAccel(diverged, 0, t);
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, diverged, t);
+  }
+
+  const bias = fusion.gyroBias;
+  const worst = Math.max(Math.abs(bias.alpha), Math.abs(bias.beta), Math.abs(bias.gamma));
+  assert.ok(worst < 3, `the integrator wound up to ${worst.toFixed(2)} deg/s on a residual it could not explain`);
+  assert.ok(worst < DEFAULTS.biasMaxDegS - 1, 'the offset reached the clamp, which is the exact failure this gates');
+});
+
+test('anti-windup does NOT stop a real offset being learned', () => {
+  // The gate must not cost the thing it protects. A genuine 3 deg/s offset
+  // produces a small residual, well inside the gate, and is still recovered.
+  const fusion = createFusion();
+  const t = runLevelWithGyroBias(fusion, { biasDegS: 3, seconds: 40 });
+  assert.ok(Math.abs(fusion.gyroBias.alpha - 3) < 0.6, `alpha ${fusion.gyroBias.alpha}`);
+  assert.equal(fusion.read(t).converged, true);
 });

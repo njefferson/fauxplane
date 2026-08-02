@@ -68,7 +68,7 @@ validated in the Function before anything is sent and the edge cache carries the
 panel's refresh rate.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 131 unit tests over the pure logic, including the magnetic model
+- `npm test` — 135 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
   palettes x 5 pages, including the acceptance criteria.

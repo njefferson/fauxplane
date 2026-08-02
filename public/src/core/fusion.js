@@ -73,6 +73,23 @@ export const DEFAULTS = Object.freeze({
   /** A "bias" past this is a device that is moving, not a gyro that is off.
    *  Clamped so a sustained linear acceleration cannot walk it away. */
   biasMaxDegS: 10,
+  /**
+   * ANTI-WINDUP: the residual above which the integrator stops learning.
+   *
+   * An integrator must not learn from an error it cannot explain. While the
+   * filter was badly diverged — the mis-signed screen rotation put it fifty
+   * degrees out — the residual was enormous and PERSISTENT, which is exactly
+   * the input an ungated integrator reads as "an enormous constant offset".
+   * Noah's iPhone reported the alpha offset pegged at -10.00 deg/s, dead on the
+   * clamp. That is not a gyroscope's zero-offset, which is a degree or two; it
+   * is the loop eating its own error.
+   *
+   * Ten degrees is generous — a real offset shows as a standing residual well
+   * under one — and it costs nothing, because the proportional term pulls a
+   * diverged filter back inside this within about a second and the integrator
+   * then starts from a residual it CAN explain.
+   */
+  biasGateDeg: 10,
 });
 
 // --- geometry ---------------------------------------------------------------
@@ -681,8 +698,11 @@ export function createFusion(options = {}) {
     // time, constant across both regimes. Measured: a fixed Ki reached 57% of a
     // 3 deg/s offset after forty seconds on a desk; this reaches it in about
     // four.
+    // ANTI-WINDUP, and it is why `alpha -10.00` will not happen again. See
+    // biasGateDeg. A residual this large is not evidence about the gyro.
+    const explainable = Math.max(Math.abs(dPitch), Math.abs(dRoll)) <= cfg.biasGateDeg;
     const ts = degToRad(screenAngleDeg ?? 0);
-    const ki = cfg.biasKi * (gain / (1 - cfg.alpha));
+    const ki = explainable ? cfg.biasKi * (gain / (1 - cfg.alpha)) : 0;
     const dPitchBias = -ki * dPitch;
     const dRollBias = ki * dRoll;
     const clampBias = (v) => Math.max(-cfg.biasMaxDegS, Math.min(cfg.biasMaxDegS, v));

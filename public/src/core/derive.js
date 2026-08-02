@@ -310,6 +310,19 @@ export function createTurnRate({ maxGapMs = 30_000, minGapMs = 900 } = {}) {
  * Requires BOTH. If either is missing the result is FAIL, because a VSI running
  * on one of them is a different and worse instrument wearing this one's label.
  */
+/**
+ * Past this, a vertical speed is not a reading — it is a broken integrator.
+ *
+ * Noah's iPad reported 344,570 fpm. The cause was upstream (a horizon ninety
+ * degrees over made the "vertical" projection read a horizontal axis, so
+ * gravity leaked into the integrator at 9.8 m/s^2 and it ran away) and that
+ * cause is fixed — but an instrument that CAN display three hundred thousand
+ * feet per minute should not, whatever is feeding it. Twenty thousand is far
+ * beyond an airliner's four and this app's six-thousand full scale, so nothing
+ * real is refused; it catches only runaway.
+ */
+export const VSI_ABSURD_FPM = 20_000;
+
 export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
   let rateFpm = null;
   let lastAltFt = null;
@@ -380,6 +393,20 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
       const meta = worstOf({ 'GPS altitude': altitudeField, 'vertical acceleration': verticalAccelField });
       if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'fpm' });
       if (rateFpm === null) return fail(reason ?? 'vertical speed filter has not converged', { unit: 'fpm' });
+      if (Math.abs(rateFpm) > VSI_ABSURD_FPM) {
+        // Reset as well as refuse: leaving the integrator at a runaway value
+        // means it stays there, and the instrument is crossed out for ever
+        // rather than recovering once the vertical reference comes back.
+        const runaway = rateFpm;
+        rateFpm = null;
+        lastAltFt = null;
+        lastAltAt = null;
+        reason = 'vertical speed ran away — the vertical reference was wrong; re-converging';
+        return fail(
+          `vertical speed reached ${Math.round(runaway).toLocaleString()} fpm, which is not a real climb — the filter has been reset`,
+          { unit: 'fpm' },
+        );
+      }
       return mk(rateFpm, meta, 'fpm');
     },
   };
