@@ -32,10 +32,34 @@ export const POLICIES = {
     identifies: true,
     honoursRetryAfter: true,
   },
+  /**
+   * adsb.fi open data. Terms read in full from the publisher's own repository
+   * (github.com/adsbfi/opendata) on 2026-08-02, which is the authority
+   * Doctrine §15.1 asks for — not an inference from a sibling project:
+   *
+   *   "adsb.fi open data is for personal, non-commercial use only. You may not
+   *    license, sell, rent, or lease any part of the data or the service ...
+   *    You must cite adsb.fi and include a link to our home page."
+   *
+   * Personal and non-commercial matches this app's own PolyForm Noncommercial
+   * licence exactly. The citation requirement is a REQUIREMENT, not a courtesy,
+   * and it is discharged on the radar page itself — see `attribution` below,
+   * which the client renders rather than deciding for itself.
+   *
+   * The published rate limit is ONE REQUEST PER SECOND, and invalid requests
+   * (400/401/403/404/429) count against it. Two things follow, and both are
+   * implemented: every parameter is validated HERE before anything is sent, and
+   * the edge cache is what the panel's refresh rate actually hits.
+   */
   traffic: {
-    source: 'OpenSky Network',
-    policyUrl: 'https://openskynetwork.github.io/opensky-api/rest.html',
-    cacheSeconds: 10,
+    source: 'adsb.fi',
+    policyUrl: 'https://github.com/adsbfi/opendata',
+    homeUrl: 'https://adsb.fi',
+    attribution: 'Aircraft data from adsb.fi',
+    // Comfortably inside 1 req/s even with several colos each holding their own
+    // copy, and still fresher than the panel can usefully redraw a plan view.
+    cacheSeconds: 8,
+    callsignCacheSeconds: 5,
     identifies: true,
     honoursRetryAfter: true,
   },

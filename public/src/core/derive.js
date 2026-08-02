@@ -13,7 +13,7 @@
  */
 
 import { derived, fail, isUsable, makeField, worstOf } from './provenance.js';
-import { degToRad, msToFpm, mToFt, pressureAltitudeOffsetFt, radToDeg, tasToCas, wrap360 } from './units.js';
+import { G0, degToRad, msToFpm, mToFt, pressureAltitudeOffsetFt, radToDeg, tasToCas, wrap360 } from './units.js';
 
 /** Below this groundspeed, angle of attack is not a meaningful quantity. */
 export const AOA_MIN_GROUNDSPEED_KT = 20;
@@ -183,6 +183,119 @@ export function angleOfAttack({ pitchDeg, groundspeedKt, verticalSpeedFpm }) {
   const groundFpm = (groundspeedKt.value * 6076.115) / 60;
   const fpaDeg = radToDeg(Math.atan2(verticalSpeedFpm.value, groundFpm));
   return mk(pitchDeg.value - fpaDeg, meta, 'deg');
+}
+
+/**
+ * BANK ANGLE FROM A TURN — the one attitude ADS-B lets us honestly recover.
+ *
+ * ADS-B broadcasts no attitude at all. But an aircraft in a COORDINATED turn is
+ * doing textbook physics: the horizontal component of lift supplies the
+ * centripetal force, so
+ *
+ *     tan(bank) = V x omega / g
+ *
+ * with V the true velocity and omega the rate of turn in radians per second.
+ * Both are measured — the velocity is broadcast, and omega is the rate of
+ * change of the broadcast track. Nothing is assumed except coordination, and
+ * airliners are coordinated: an autopilot holds the ball centred far better
+ * than a person does.
+ *
+ * PITCH IS NOT RECOVERABLE THIS WAY AND MUST NOT BE FAKED. What vertical rate
+ * and groundspeed give is FLIGHT PATH ANGLE, which is a different quantity —
+ * an aircraft at 5 degrees nose-up in level flight has a flight path angle of
+ * zero. `angleOfAttack` above is precisely the difference between them, which
+ * is the clearest possible statement that they are not interchangeable.
+ *
+ * The coordination assumption is stated on the field so it reaches the screen
+ * rather than living only here.
+ */
+export function bankAngle({ groundspeedKt, turnRateDegPerSec }) {
+  const meta = worstOf({ groundspeed: groundspeedKt, 'turn rate': turnRateDegPerSec });
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'deg' });
+
+  // Below a walking pace the formula divides a real turn rate by nearly no
+  // velocity and returns an enormous bank for an aircraft on a taxiway.
+  if (groundspeedKt.value < AOA_MIN_GROUNDSPEED_KT) {
+    return fail(`groundspeed below ${AOA_MIN_GROUNDSPEED_KT} kt — bank cannot be inferred from a ground track`, {
+      unit: 'deg',
+    });
+  }
+
+  const vMs = (groundspeedKt.value * 1852) / 3600;
+  const omega = degToRad(turnRateDegPerSec.value);
+  const bank = radToDeg(Math.atan2(vMs * omega, G0));
+  const field = mk(bank, meta, 'deg');
+  return makeField({
+    ...field,
+    reason: field.reason ?? 'inferred from the rate of turn, assuming coordinated flight',
+  });
+}
+
+/**
+ * Load factor in a coordinated turn: n = 1 / cos(bank).
+ *
+ * The same physics as above, read the other way round, and the same single
+ * assumption. Worth having because a G-meter driven by the DEVICE's
+ * accelerometer while the panel is following a distant aircraft would be
+ * showing the desk it is sitting on.
+ */
+export function loadFactorFromBank({ bankDeg }) {
+  const meta = worstOf({ bank: bankDeg });
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'g' });
+  const c = Math.cos(degToRad(bankDeg.value));
+  // Past 90 degrees of bank the expression flips sign and then diverges. An
+  // airliner does not do this; a corrupt broadcast might.
+  if (!(Math.abs(c) > 0.02)) return fail('bank past 88 degrees — load factor is not meaningful', { unit: 'g' });
+  const field = mk(1 / Math.abs(c), meta, 'g');
+  return makeField({ ...field, reason: field.reason ?? 'from the inferred bank, assuming coordinated flight' });
+}
+
+/**
+ * Rate of turn from two successive track readings, degrees per second.
+ *
+ * Kept as a factory holding the previous sample, exactly like the VSI, because
+ * a rate needs two observations and the second one has to remember the first.
+ */
+export function createTurnRate({ maxGapMs = 30_000, minGapMs = 900 } = {}) {
+  let lastTrack = null;
+  let lastAt = null;
+
+  return {
+    reset() {
+      lastTrack = null;
+      lastAt = null;
+    },
+    /** @param trackField a DEGREES-TRUE track field; @param at its timestamp */
+    read(trackField, at) {
+      if (!isUsable(trackField)) {
+        lastTrack = null;
+        lastAt = null;
+        return fail(trackField?.reason ?? 'no track', { unit: 'deg/s' });
+      }
+      const track = trackField.value;
+      if (lastAt === null) {
+        lastTrack = track;
+        lastAt = at;
+        return fail('waiting for a second track reading to measure a rate', { unit: 'deg/s' });
+      }
+      const dt = (at - lastAt) / 1000;
+      // Too soon and the quotient is dominated by the broadcast's own rounding;
+      // too late and we would be averaging across a manoeuvre we cannot see.
+      if (dt * 1000 < minGapMs) return fail('waiting for a second track reading to measure a rate', { unit: 'deg/s' });
+      if (dt * 1000 > maxGapMs) {
+        lastTrack = track;
+        lastAt = at;
+        return fail(`no track for ${Math.round(dt)}s — the rate of turn would span the gap`, { unit: 'deg/s' });
+      }
+
+      // The SHORT way round the compass. Differencing raw degrees turns a
+      // 359 -> 001 crossing into a 358 deg/s rate and a 90 degree bank.
+      const delta = ((track - lastTrack + 540) % 360) - 180;
+      lastTrack = track;
+      lastAt = at;
+      return derived(delta / dt, { unit: 'deg/s', at });
+    },
+  };
 }
 
 /**

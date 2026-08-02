@@ -401,3 +401,158 @@ test('the sign is not latched from an ambiguous sample', () => {
   assert.equal(detectAccelSign({ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }), null);
   assert.equal(detectAccelSign({ x: 0, y: G0, z: 0 }, null), null);
 });
+
+// --- static alignment, and the standoff that made the horizon a red X --------
+//
+// Every test above this line feeds a PERFECT gyro: a rotation rate of exactly
+// zero when the device is not turning. No real gyroscope does that. They read a
+// degree or two per second while sitting on a desk, and the filter integrates
+// it. That single missing property is why twenty-three passing tests coexisted
+// with a horizon that Noah watched stay crossed out.
+
+/** Drive the filter with a level device whose gyro has a constant zero-offset.
+ *  `biasDegS` is what the gyro reports while nothing is actually rotating. */
+const runLevelWithGyroBias = (fusion, { biasDegS = 0, seconds = 20, stepMs = 20, screenAngle = 0 } = {}) => {
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < (seconds * 1000) / stepMs; i += 1) {
+    t += stepMs;
+    fusion.updateAccel(level, screenAngle, t);
+    fusion.updateGyro({ alpha: biasDegS, beta: biasDegS, gamma: 0 }, level, t, screenAngle);
+  }
+  return t;
+};
+
+test('THE HORIZON EXISTS FROM THE FIRST GRAVITY SAMPLE — it does not wait to converge', () => {
+  const fusion = createFusion();
+  fusion.updateAccel({ x: 0, y: G0, z: 0 }, 0, 20);
+  const read = fusion.read(20);
+
+  // The panel has an attitude to draw immediately. Gravity IS a measurement of
+  // which way is down; making the horizon wait on the gyro was conflating the
+  // filter's steadiness with the existence of an answer.
+  assert.equal(read.hasAttitude, true, 'no attitude after a good gravity sample');
+  assert.ok(Math.abs(read.pitch) < 0.001, `pitch ${read.pitch}`);
+  assert.ok(Math.abs(read.roll) < 0.001, `roll ${read.roll}`);
+
+  // ...and it is honest about what it is: gravity alone, not yet gyro-backed.
+  assert.equal(read.quality, 'COARSE');
+  assert.equal(read.converged, false);
+  assert.ok(read.reason, 'a coarse attitude must still say what it is');
+});
+
+test('REGRESSION: a gyro with a real zero-offset no longer holds the horizon crossed out', () => {
+  // 3 deg/s is an ordinary, unremarkable phone gyro offset. Under the old
+  // filter it produced a permanent standoff at residual = offset / (rate x
+  // (1 - alpha)) = 3 degrees, which never fell under the 2-degree convergence
+  // threshold — so `converged` stayed false for ever and every consumer
+  // rendered FAIL. That is the defect this whole test exists for.
+  const fusion = createFusion();
+  const t = runLevelWithGyroBias(fusion, { biasDegS: 3, seconds: 20 });
+  const read = fusion.read(t);
+
+  assert.equal(read.hasAttitude, true, 'the horizon vanished under an ordinary gyro offset');
+  assert.equal(read.converged, true, `never converged: ${read.reason}`);
+  assert.equal(read.quality, 'ALIGNED');
+  assert.ok(Math.abs(read.pitch) < 0.5, `pitch drifted to ${read.pitch} against a biased gyro`);
+  assert.ok(Math.abs(read.roll) < 0.5, `roll drifted to ${read.roll} against a biased gyro`);
+});
+
+test('the gyro zero-offset is LEARNED, on the axes the gyro actually reports', () => {
+  const fusion = createFusion();
+  const t = runLevelWithGyroBias(fusion, { biasDegS: 3, seconds: 40 });
+  const learned = fusion.gyroBias;
+
+  assert.ok(learned, 'no offset was estimated at all');
+  // The filter is told 3 deg/s on alpha and beta and 0 on gamma, and must
+  // recover each separately — an estimate that smeared one axis into another
+  // would still cancel the drift here while being wrong the moment the device
+  // was clamped at a different angle.
+  assert.ok(Math.abs(learned.alpha - 3) < 0.6, `alpha offset estimated at ${learned.alpha}, expected ~3`);
+  assert.ok(Math.abs(learned.beta - 3) < 0.6, `beta offset estimated at ${learned.beta}, expected ~3`);
+  assert.ok(Math.abs(learned.gamma) < 0.6, `gamma offset estimated at ${learned.gamma}, expected ~0`);
+  assert.equal(fusion.read(t).converged, true);
+});
+
+test('the offset is learned in DEVICE axes, so a landscape clamp gets it right too', () => {
+  // Screen angle 90: the screen's pitch axis is the device's gamma axis. An
+  // estimate kept in screen coordinates would land on the wrong axis here and
+  // the test above would not notice, because at angle 0 the two coincide.
+  const fusion = createFusion();
+  // The accelerometer reports in DEVICE axes, so a device level at a 90 degree
+  // screen angle reads earth-up along -x. Deriving it rather than guessing:
+  // attitudeFromGravity rotates by -90, and only -x maps to screen +y. The
+  // first version of this test used +x, which is the same device rotated 180
+  // degrees — level, but inverted, and it read roll = 180.
+  const levelInLandscape = { x: -G0, y: 0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < 2000; i += 1) {
+    t += 20;
+    fusion.updateAccel(levelInLandscape, 90, t);
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 4 }, levelInLandscape, t, 90);
+  }
+  const learned = fusion.gyroBias;
+  assert.ok(Math.abs(learned.gamma - 4) < 0.8, `gamma offset ${learned.gamma}, expected ~4`);
+  assert.ok(Math.abs(learned.beta) < 0.8, `beta offset ${learned.beta} should be ~0 at a 90 degree screen angle`);
+  assert.ok(Math.abs(fusion.read(t).pitch) < 0.8, `pitch drifted to ${fusion.read(t).pitch}`);
+});
+
+test('a still device ALIGNS quickly rather than creeping toward the answer', () => {
+  const fusion = createFusion();
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  // One second of a motionless device, which is how this panel spends most of
+  // its life: clamped to a desk.
+  for (let i = 0; i < 50; i += 1) {
+    t += 20;
+    fusion.updateAccel(level, 0, t);
+    fusion.updateGyro({ alpha: 0.4, beta: -0.3, gamma: 0.2 }, level, t);
+  }
+  const read = fusion.read(t);
+  assert.equal(read.still, true, 'a motionless device was not recognised as still');
+  assert.equal(read.quality, 'ALIGNED', `quality ${read.quality} after a second at rest: ${read.reason}`);
+  assert.equal(read.reason, null, 'an aligned filter at rest has nothing to report');
+});
+
+test('a device being waved about is NOT called still', () => {
+  const fusion = createFusion();
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < 50; i += 1) {
+    t += 20;
+    fusion.updateAccel(level, 0, t);
+    fusion.updateGyro({ alpha: 40, beta: 0, gamma: 0 }, level, t);
+  }
+  assert.equal(fusion.read(t).still, false, 'a 40 deg/s rotation was mistaken for a desk');
+});
+
+test('HONESTY IS NOT WEAKENED: losing gravity entirely still removes the attitude', () => {
+  // The change above makes the horizon appear sooner. It must not make it
+  // linger. A filter with no gravity reference for longer than the coast limit
+  // has an attitude that is pure dead reckoning on a phone gyro, and that is
+  // FAIL — not a coarse attitude, not a stale one.
+  const fusion = createFusion();
+  const t = runLevelWithGyroBias(fusion, { biasDegS: 0, seconds: 5 });
+  assert.equal(fusion.read(t).hasAttitude, true);
+
+  const later = t + 6000;
+  const read = fusion.read(later);
+  assert.equal(read.hasAttitude, false, 'attitude survived a six-second gravity outage');
+  assert.equal(read.converged, false);
+  assert.equal(read.quality, null);
+  assert.match(read.reason ?? '', /no gravity reference/);
+});
+
+test('the compass fails SEPARATELY from the accelerometer', () => {
+  // A device with a working magnetometer and a sulking accelerometer used to
+  // cross out a heading it genuinely had, because heading rode on the
+  // accelerometer's freshness. They are different sensors failing separately.
+  const fusion = createFusion();
+  fusion.updateHeading(120, 1000);
+  const read = fusion.read(1000);
+  assert.equal(read.hasHeading, true, 'a fresh compass reading was not reported');
+  assert.equal(read.hasAttitude, false, 'no accelerometer has spoken, so there is no attitude');
+
+  // And the heading ages out on its own clock.
+  assert.equal(fusion.read(1000 + 6000).hasHeading, false);
+});

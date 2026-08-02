@@ -75,9 +75,11 @@ const SHELL = [
   '/src/render/gauges/adi.js',
   '/src/render/gauges/tape.js',
   '/src/render/gauges/vsi.js',
+  '/src/render/gauges/plan.js',
   '/src/panels/pfd.js',
   '/src/panels/atis.js',
   '/src/panels/bite.js',
+  '/src/panels/radar.js',
 ];
 
 /** Precached if present. Absent in this build — see NOTES.md. A missing

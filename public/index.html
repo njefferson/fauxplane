@@ -43,6 +43,9 @@
           <button type="button" role="tab" id="tab-atis" class="tab" data-page="atis" aria-controls="page-atis" aria-selected="false" tabindex="-1">
             ATIS
           </button>
+          <button type="button" role="tab" id="tab-radar" class="tab" data-page="radar" aria-controls="page-radar" aria-selected="false" tabindex="-1">
+            RADAR
+          </button>
           <button type="button" role="tab" id="tab-bite" class="tab" data-page="bite" aria-controls="page-bite" aria-selected="false" tabindex="-1">
             BITE
           </button>
@@ -69,17 +72,40 @@
     <main id="panel" class="panel">
       <section id="page-pfd" class="page page-pfd" role="tabpanel" aria-labelledby="tab-pfd" tabindex="0">
         <!--
-          A canvas is non-text content (SC 1.1.1). Its aria-label is written at
-          boot and kept current with what is actually on it — the readouts below
-          carry the same values as real, selectable, screen-reader text.
+          THE STANDING FOLLOW INDICATOR (Doctrine §3). While the panel is driven
+          by an aircraft's ADS-B broadcast rather than by this device's own
+          sensors, that fact is on screen the whole time and the way out is
+          beside it — never behind a menu, never only on another page. A panel
+          that is showing somebody else's aeroplane must say so where the
+          numbers are.
         -->
-        <canvas id="pfd-canvas" class="pfd-canvas" role="img" aria-label="Primary flight display. Starting up."></canvas>
-        <!-- A scrollable region must be reachable and scrollable from the
-             keyboard, so it is focusable and named. -->
-        <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
+        <div id="follow-banner" class="follow-banner" role="status" hidden>
+          <span class="follow-badge">FOLLOWING</span>
+          <span id="follow-what" class="follow-what"></span>
+          <button type="button" id="follow-exit" class="follow-exit">Stop following</button>
+        </div>
+        <!--
+          The instrument row is its own element so the banner above can be a
+          plain block. Doing it with flex-wrap instead let the wrapped line size
+          itself to the READOUTS' full content height — about 1000px — and drag
+          the canvas to match, which put the horizon somewhere below the fold.
+        -->
+        <div class="pfd-row">
+          <!--
+            A canvas is non-text content (SC 1.1.1). Its aria-label is written at
+            boot and kept current with what is actually on it — the readouts below
+            carry the same values as real, selectable, screen-reader text.
+          -->
+          <canvas id="pfd-canvas" class="pfd-canvas" role="img" aria-label="Primary flight display. Starting up."></canvas>
+          <!-- A scrollable region must be reachable and scrollable from the
+               keyboard, so it is focusable and named. -->
+          <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
+        </div>
       </section>
 
       <section id="page-atis" class="page page-cards" role="tabpanel" aria-labelledby="tab-atis" tabindex="0" hidden></section>
+
+      <section id="page-radar" class="page page-cards" role="tabpanel" aria-labelledby="tab-radar" tabindex="0" hidden></section>
 
       <section id="page-bite" class="page page-cards" role="tabpanel" aria-labelledby="tab-bite" tabindex="0" hidden></section>
     </main>

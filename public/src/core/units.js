@@ -163,6 +163,26 @@ export function greatCircleNm(a, b) {
 }
 
 /**
+ * Initial great-circle bearing FROM a TO b, degrees true, 0 at north.
+ *
+ * The initial bearing, not the rhumb line: over the tens of nautical miles a
+ * plan view covers the two agree closely, but the initial bearing is the one
+ * that matches what the great-circle distance beside it measured, and a display
+ * that mixes the two is quietly inconsistent.
+ */
+export function bearingDeg(a, b) {
+  if (!a || !b) return null;
+  for (const v of [a.lat, a.lon, b.lat, b.lon]) if (!Number.isFinite(v)) return null;
+  const p1 = degToRad(a.lat);
+  const p2 = degToRad(b.lat);
+  const dl = degToRad(b.lon - a.lon);
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  if (y === 0 && x === 0) return null; // the same point has no bearing
+  return wrap360(radToDeg(Math.atan2(y, x)));
+}
+
+/**
  * A latitude/longitude bounding box a given number of nautical miles either
  * side of a point. Longitude degrees shrink with latitude, so the longitude
  * half-width is divided by cos(lat) — omitting that makes the box far too

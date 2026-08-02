@@ -70,13 +70,24 @@ export function createPfd({ canvas, surface, readoutHost, announcer }) {
 
     const pitch = fields['attitude.pitch'];
     const roll = fields['attitude.roll'];
+    // PITCH AND ROLL ARE PASSED SEPARATELY, because they can fail separately.
+    // Following an aircraft gives a derived bank and no pitch at all, and the
+    // ADI degrades to a bank-only instrument rather than crossing itself out.
+    const okPitch = pitch && pitch.provenance !== 'FAIL';
+    const okRoll = roll && roll.provenance !== 'FAIL';
     const attitude =
-      pitch && roll && pitch.provenance !== 'FAIL' && roll.provenance !== 'FAIL'
+      okRoll
         ? {
-            pitch: pitch.value,
+            pitch: okPitch ? pitch.value : null,
             roll: roll.value,
-            provenance: pitch.provenance === 'STALE' || roll.provenance === 'STALE' ? 'STALE' : pitch.provenance,
-            ageText: formatAge(Math.max(pitch.ageMs ?? 0, roll.ageMs ?? 0)),
+            provenance: (okPitch && pitch.provenance === 'STALE') || roll.provenance === 'STALE' ? 'STALE' : roll.provenance,
+            ageText: formatAge(Math.max(okPitch ? (pitch.ageMs ?? 0) : 0, roll.ageMs ?? 0)),
+            pitchReason: okPitch ? null : (pitch?.reason ?? 'pitch unavailable'),
+            // A usable attitude may still carry a caveat — "the gyro has not
+            // settled, this is the gravity reference alone". That belongs ON
+            // the horizon, not only on BITE: it is the difference between an
+            // instrument that is right and one that is right for now.
+            reason: (okPitch ? pitch.reason : null) ?? roll.reason ?? null,
           }
         : { provenance: 'FAIL', reason: pitch?.reason ?? roll?.reason ?? 'no attitude' };
 
@@ -147,14 +158,29 @@ export function createPfd({ canvas, surface, readoutHost, announcer }) {
       field: withAge(fields['vsi.rate']),
     });
 
+    // THE DIRECTION LADDER, on the same principle as the altitude one above.
+    //
+    //   HDG  magnetic heading — where the nose points. The compass answer.
+    //   TRK  ground track — where the aircraft is actually going.
+    //
+    // They differ by the drift angle. On this device the magnetometer usually
+    // answers; following a flight it usually does not, because most aircraft
+    // broadcast a track and no heading at all. Either way the tape's own label
+    // says which one is on it, and nothing is ever silently substituted.
+    const dirLadder = [
+      ['HDG', fields['attitude.heading']],
+      ['TRK', fields['position.track']],
+    ];
+    const [dirLabel, dirField] = dirLadder.find(([, f]) => f && f.provenance !== 'FAIL') ?? dirLadder[0];
     drawHeadingTape(ctxOf(surface), {
       x: pad,
       y: H - headingH,
       w: W - pad * 2,
       h: headingH - 2,
       tokens: t,
-      heading: withAge(fields['attitude.heading']),
+      heading: withAge(dirField),
       track: withAge(fields['position.track']),
+      label: dirLabel,
     });
 
     const g = fields['motion.gLoad'];

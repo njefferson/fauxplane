@@ -26,6 +26,7 @@ import { probeNetwork, watchNetwork } from './sensors/network.js';
 import { probeMagnetometer } from './sensors/magnetometer.js';
 
 import { createMetarSource } from './data/metar.js';
+import { createTrafficSource } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
@@ -36,6 +37,7 @@ import { createAnnouncer, el } from './render/dom.js';
 import { createPfd } from './panels/pfd.js';
 import { createAtis } from './panels/atis.js';
 import { createBite } from './panels/bite.js';
+import { createRadar } from './panels/radar.js';
 import { DEGRADED, FAILED, PASS } from './core/capability.js';
 
 const $ = (id) => document.getElementById(id);
@@ -45,6 +47,15 @@ const now = () => Date.now();
  *  a refresh that lands early costs the edge cache and not the service. */
 const METAR_INTERVAL_MS = 60_000;
 const WINDS_INTERVAL_MS = 15 * 60_000;
+/** adsb.fi publishes a 1 req/s limit and the Function caches 8 s at the edge.
+ *  Ten seconds keeps a plan view usefully current while sitting comfortably
+ *  inside both — a hobby panel has no business polling a volunteer network at
+ *  its stated ceiling (Doctrine §15.6). */
+const TRAFFIC_INTERVAL_MS = 10_000;
+/** The followed aircraft is polled harder, because it IS the instrument
+ *  source — but still against a 5 s edge cache, so the extra requests land on
+ *  Cloudflare rather than on adsb.fi. */
+const FOLLOW_INTERVAL_MS = 5_000;
 
 async function boot() {
   // ---- the build stamp, written at BOOT ------------------------------------
@@ -87,6 +98,7 @@ async function boot() {
   const metar = createMetarSource({ state, clock: now });
   const winds = createWindsSource({ state, clock: now });
   const geoid = createGeoidSource({ state, clock: now });
+  const traffic = createTrafficSource({ state, clock: now });
 
   // ---- panels --------------------------------------------------------------
   const canvas = $('pfd-canvas');
@@ -94,6 +106,33 @@ async function boot() {
   const pfd = createPfd({ canvas, surface, readoutHost: $('pfd-readouts'), announcer });
   const atis = createAtis({ host: $('page-atis'), state, announcer, clock: now });
   const bite = createBite({ host: $('page-bite'), announcer });
+
+  // The standing FOLLOW indicator, wired before the panel that can turn it on.
+  const followBanner = $('follow-banner');
+  const followWhat = $('follow-what');
+  const syncFollowBanner = () => {
+    const label = traffic.followLabel;
+    followBanner.hidden = !label;
+    followWhat.textContent = label ? `${label} — this panel is showing that aircraft's broadcast, not this device` : '';
+    document.body.dataset.following = label ? 'true' : 'false';
+  };
+  const radar = createRadar({
+    host: $('page-radar'),
+    traffic,
+    announcer,
+    onFollowChange: () => {
+      syncFollowBanner();
+      // Ask at once rather than waiting out the interval: the five seconds
+      // between a tap and the first numbers is the whole first impression.
+      refreshFollowed();
+    },
+  });
+  $('follow-exit').addEventListener('click', () => {
+    traffic.unfollow();
+    syncFollowBanner();
+    announcer.say('Stopped following. The panel is back on this device’s own sensors.');
+  });
+  syncFollowBanner();
 
   // ---- one-shot loads ------------------------------------------------------
   const extraBite = [];
@@ -171,6 +210,32 @@ async function boot() {
     bite.setHostEntries(extraBite);
   };
 
+  // The learned gyro zero-offset. Worth a row for the same reason the
+  // accelerometer convention is: it is completely invisible otherwise, and it
+  // is the difference between a horizon that settles and one that argues with
+  // itself for ever. Reported in whole tenths because the exact figure is not
+  // the point — whether it is a fraction of a degree or five is.
+  let reportedBiasAt = 0;
+  const reportGyroBias = (t) => {
+    const b = fusion.gyroBias;
+    if (!b || t - reportedBiasAt < 10_000) return;
+    reportedBiasAt = t;
+    const worst = Math.max(Math.abs(b.alpha), Math.abs(b.beta), Math.abs(b.gamma));
+    const i = extraBite.findIndex((e) => e.id === 'gyro-bias');
+    const entry = {
+      id: 'gyro-bias',
+      label: 'Gyroscope zero-offset',
+      group: 'Sensors',
+      status: PASS,
+      reason:
+        `measured and removed: ${b.alpha.toFixed(1)}, ${b.beta.toFixed(1)}, ${b.gamma.toFixed(1)} °/s on the three axes` +
+        ` — every gyroscope reads something while sitting still, and left in it becomes drift${worst > 5 ? ' (this one is large)' : ''}`,
+    };
+    if (i >= 0) extraBite[i] = entry;
+    else extraBite.push(entry);
+    bite.setHostEntries(extraBite);
+  };
+
   // ---- derived values ------------------------------------------------------
   // ONE subscriber computes every derived field from what is already in the
   // store. They land in the next publish, 40 ms later, which is invisible and
@@ -181,19 +246,39 @@ async function boot() {
     const t = snapshot.t;
 
     reportAccelSign();
+    reportGyroBias(t);
+
+    // WHO OWNS THE FIELDS RIGHT NOW.
+    //
+    // Exactly one source writes each field, and following an aircraft moves
+    // ownership wholesale rather than blending. A panel showing a real 747's
+    // groundspeed beside the desk's own accelerometer would be two aircraft at
+    // once — which is worse than either alone, and is the sort of thing that
+    // looks fine until somebody believes it.
+    const following = traffic.isFollowing;
 
     // Attitude, from the filter.
-    const att = fusion.read(t);
-    if (att.converged) {
-      state.write('attitude.pitch', att.pitch, { at: t });
-      state.write('attitude.roll', att.roll, { at: t });
-      if (att.heading !== null) state.write('attitude.heading', att.heading, { at: t });
-      else state.fail('attitude.heading', 'no earth-referenced heading source');
-    } else {
-      const why = att.reason ?? 'attitude filter has not converged';
-      state.fail('attitude.pitch', why);
-      state.fail('attitude.roll', why);
-      state.fail('attitude.heading', why);
+    //
+    // PUBLISHED ON `hasAttitude`, NOT ON `converged`. Gravity alone is a real
+    // measurement of which way is down, and it is exact on a device sitting
+    // still — which is how this panel spends most of its life. Convergence is
+    // the filter's steadiness THROUGH MOTION, so it rides along as the field's
+    // reason and shows on the horizon as a caption, instead of deciding whether
+    // there is a horizon at all. See the long note in fusion.read().
+    if (!following) {
+      const att = fusion.read(t);
+      if (att.hasAttitude) {
+        state.write('attitude.pitch', att.pitch, { at: t, reason: att.reason });
+        state.write('attitude.roll', att.roll, { at: t, reason: att.reason });
+      } else {
+        const why = att.reason ?? 'attitude filter has no gravity reference';
+        state.fail('attitude.pitch', why);
+        state.fail('attitude.roll', why);
+      }
+      // The compass fails separately from the accelerometer, because it is a
+      // different sensor answering a different question.
+      if (att.hasHeading) state.write('attitude.heading', att.heading, { at: t });
+      else state.fail('attitude.heading', 'no earth-referenced heading source (this device reports no magnetic heading)');
     }
 
     // Magnetic declination, recomputed when the position moves or every hour.
@@ -216,9 +301,18 @@ async function boot() {
     geoid.apply(f);
     winds.apply(f);
 
-    // Altitude chain.
+    // Altitude chain. MSL runs in BOTH modes: it needs only a geometric
+    // altitude and the geoid separation at that position, and when following an
+    // aircraft both of those are the aircraft's. Everything below it does not,
+    // because it needs local weather — see the note in data/traffic.js.
     const msl = mslAltitude({ geometricFt: f['position.altitudeGeometric'], geoidSeparationFt: f['altitude.geoidSeparation'] });
     writeField('altitude.msl', msl, t);
+
+    if (following) {
+      traffic.apply();
+      return;
+    }
+
     const indicated = indicatedAltitude({
       mslFt: msl,
       kollsmanInHg: f['control.kollsman'],
@@ -285,9 +379,22 @@ async function boot() {
   async function refreshWinds() {
     await winds.refresh(state.snapshot.fields);
   }
+  async function refreshTraffic() {
+    // The plan view is only fetched while it is the page being LOOKED AT.
+    // Polling a volunteer network to draw a canvas nobody has open is exactly
+    // the shape §15.6 forbids — and it is free to avoid, because the page
+    // re-asks the moment it is opened.
+    if (active === 'radar') {
+      await traffic.refreshNearby(state.snapshot.fields, radar.rangeNm);
+      trafficBite();
+    }
+  }
+  async function refreshFollowed() {
+    if (traffic.isFollowing) await traffic.refreshFollowed();
+  }
 
   // ---- page switching ------------------------------------------------------
-  const pages = { pfd: $('page-pfd'), atis: $('page-atis'), bite: $('page-bite') };
+  const pages = { pfd: $('page-pfd'), atis: $('page-atis'), radar: $('page-radar'), bite: $('page-bite') };
   const tabs = [...document.querySelectorAll('[data-page]')];
   let active = 'pfd';
 
@@ -303,6 +410,12 @@ async function boot() {
     // The canvas is only measured while it is on screen; a hidden element has
     // no box, and a size captured then would be zero for ever.
     if (name === 'pfd') surface.measure();
+    if (name === 'radar') {
+      radar.measure();
+      // Opening the page asks at once rather than waiting out the interval —
+      // the same reason the first GPS fix re-asks the weather immediately.
+      refreshTraffic();
+    }
   };
   for (const tab of tabs) {
     tab.addEventListener('click', () => show(tab.dataset.page));
@@ -322,8 +435,30 @@ async function boot() {
   state.subscribe((snapshot) => {
     if (active === 'pfd') pfd.render(snapshot);
     else if (active === 'atis') atis.render(snapshot, metar.last);
+    else if (active === 'radar') radar.render(snapshot);
     else bite.render(snapshot);
   });
+
+  // A BITE row for the traffic service, so "why is the radar empty" is
+  // answerable on the page that answers such questions.
+  const trafficBite = () => {
+    const r = traffic.last;
+    const i = extraBite.findIndex((e) => e.id === 'traffic');
+    const entry = {
+      id: 'traffic',
+      label: 'Traffic (adsb.fi)',
+      group: 'Feeds',
+      status: !r ? DEGRADED : r.ok ? PASS : FAILED,
+      reason: !r
+        ? 'not asked yet — the radar page fetches when it is opened'
+        : r.ok
+          ? `${r.aircraft?.length ?? 0} aircraft within ${r.rangeNm} nm, from adsb.fi`
+          : r.reason,
+    };
+    if (i >= 0) extraBite[i] = entry;
+    else extraBite.push(entry);
+    bite.setHostEntries(extraBite);
+  };
 
   // ---- panel dimming -------------------------------------------------------
   // Two MEASURED palette blocks, never a brightness filter. See
@@ -490,6 +625,14 @@ async function boot() {
   }
 
   state.start();
+
+  // TRAFFIC NEEDS NO PERMISSION AND NO SENSOR — only a network. So it is
+  // scheduled at boot rather than from PANEL POWER, which means someone who
+  // declines every permission still gets a working radar page. That is not a
+  // nicety: on a device clamped indoors and not moving, this is the page with
+  // the most on it.
+  setInterval(refreshTraffic, TRAFFIC_INTERVAL_MS);
+  setInterval(refreshFollowed, FOLLOW_INTERVAL_MS);
 
   // The home reference is shown so nobody reads a pre-fix distance as a
   // distance from the aircraft.

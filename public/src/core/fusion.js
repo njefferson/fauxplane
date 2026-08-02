@@ -34,6 +34,45 @@ export const DEFAULTS = Object.freeze({
   /** Coasting longer than this without an accepted accel correction is not
    *  attitude any more, it is dead reckoning on a phone gyro. */
   maxCoastMs: 5000,
+
+  // --- static alignment -----------------------------------------------------
+  // A device sitting still is the EASIEST case for an attitude reference, not
+  // the hardest: gravity alone gives pitch and roll outright. Every real AHRS
+  // has a static-alignment step for exactly this, and this app's design case is
+  // a panel CLAMPED ON A DESK — so the still case is the common one, not an
+  // edge.
+
+  /** Rotation-rate magnitude below which the device counts as STILL, deg/s.
+   *  Generous on purpose: it is compared against a rate that still carries the
+   *  gyro's own bias, which is the thing being estimated. Deliberate motion is
+   *  an order of magnitude above it. */
+  stillRateDegS: 4,
+  /** Deviation from 1 g below which the device counts as STILL. */
+  stillAccelG: 0.05,
+  /** How long stillness must hold before the filter aligns to gravity. */
+  alignHoldMs: 400,
+  /** Correction weight while still. At rest gravity IS the attitude, so the
+   *  filter is pulled onto it rather than creeping toward it at 2% a sample. */
+  staticAlpha: 0.75,
+  /**
+   * INTEGRAL GAIN ON THE GYRO ZERO-OFFSET, per accepted sample.
+   *
+   * This is the I of a PI complementary filter (Mahony). The accelerometer
+   * residual is not only a correction to apply to the ANGLE, it is evidence
+   * about the RATE: a filter that is persistently below gravity is being
+   * pushed down by a gyro reading that is too low, and integrating that
+   * evidence recovers the offset itself.
+   *
+   * Chosen for a critically damped loop at the sample rates phones deliver.
+   * With the proportional term at (1 - alpha) = 0.02 per sample, 50 Hz gives
+   * Kp·f = 1.0/s and Ki·f = 0.25/s, so the damping ratio is 1.0 and the offset
+   * settles in about six seconds without overshoot. At 60 Hz it is 1.1 — still
+   * damped, which is what makes this safe to run at whatever rate arrives.
+   */
+  biasKi: 0.005,
+  /** A "bias" past this is a device that is moving, not a gyro that is off.
+   *  Clamped so a sustained linear acceleration cannot walk it away. */
+  biasMaxDegS: 10,
 });
 
 // --- geometry ---------------------------------------------------------------
@@ -277,6 +316,17 @@ export function createFusion(options = {}) {
   let rejecting = false;
   let reason = 'filter has not started';
 
+  /** Estimated gyro zero-offset, in the device's own axes, deg/s. A phone gyro
+   *  reads a degree or two per second while dead still; integrated, that is the
+   *  drift the accelerometer then has to keep dragging back, and the standoff
+   *  between the two is what the residual was measuring. */
+  let bias = { alpha: 0, beta: 0, gamma: 0 };
+  let biasSamples = 0;
+  let lastRateMag = null;
+  let stillSince = null;
+  let aligned = false;
+  let lastHeadingAt = null;
+
   const reset = (why = 'filter reset') => {
     pitch = null;
     roll = null;
@@ -290,6 +340,12 @@ export function createFusion(options = {}) {
     dPitchEma = null;
     dRollEma = null;
     rejecting = false;
+    stillSince = null;
+    aligned = false;
+    lastHeadingAt = null;
+    // The bias estimate is NOT cleared. It is a property of the hardware, not
+    // of this run of the filter, and throwing it away on every backgrounding
+    // means re-earning it every time the app comes back.
     reason = why;
   };
 
@@ -332,12 +388,21 @@ export function createFusion(options = {}) {
     const { alpha, beta, gamma } = rotationRate ?? {};
     if (![alpha, beta, gamma].every((v) => Number.isFinite(v))) return;
 
+    // THE ZERO-OFFSET COMES OFF FIRST. Everything below integrates, so a
+    // constant offset here becomes an unbounded angle — and the accelerometer
+    // correction then has to pull against it for ever. That standoff is what a
+    // "residual" of 14.8 degrees on a motionless phone actually was.
+    const ca = alpha - bias.alpha;
+    const cb = beta - bias.beta;
+    const cg = gamma - bias.gamma;
+    lastRateMag = Math.hypot(ca, cb, cg);
+
     // Into SCREEN coordinates first, matching attitudeFromGravity.
     const t = degToRad(screenAngleDeg ?? 0);
     const c = Math.cos(t);
     const sn = Math.sin(t);
-    const pitchRate = beta * c + gamma * sn;
-    const rollRate = alpha; // about the screen normal; unaffected by screen angle
+    const pitchRate = cb * c + cg * sn;
+    const rollRate = ca; // about the screen normal; unaffected by screen angle
 
     pitch += pitchRate * dt;
     roll -= rollRate * dt;
@@ -395,6 +460,21 @@ export function createFusion(options = {}) {
     }
 
     rejecting = false;
+
+    // IS THE DEVICE STILL? Two independent tests, and both are needed. The gyro
+    // must see no rotation AND the accelerometer must see exactly one g: a
+    // device in a steady coordinated turn also reads a constant magnitude, and
+    // one in freefall also reads no rotation. Together they mean "sitting on
+    // the desk", which for this app is not an edge case but the design case.
+    const still =
+      lastRateMag !== null && lastRateMag < cfg.stillRateDegS && Math.abs(solved.magnitudeG - 1) < cfg.stillAccelG;
+
+    if (still) {
+      if (stillSince === null) stillSince = at;
+    } else {
+      stillSince = null;
+    }
+
     if (pitch === null || roll === null) {
       // First good sample seeds the filter outright — blending from a null is
       // how a filter spends its first seconds pointing at zero and calling it
@@ -403,15 +483,60 @@ export function createFusion(options = {}) {
       roll = solved.roll;
       lastAccepted = at;
       acceptedSamples = 1;
-      reason = 'converging';
+      reason = 'levelling on the gravity reference';
       return;
     }
 
     const dPitch = solved.pitch - pitch;
     const dRoll = wrap180(solved.roll - roll);
 
-    pitch += (1 - cfg.alpha) * dPitch;
-    roll = wrap180(roll + (1 - cfg.alpha) * dRoll);
+    // A STILL DEVICE IS CORRECTED HARD. The complementary weight exists to stop
+    // the accelerometer's every bump reaching the horizon while the aircraft is
+    // moving; with nothing moving there is no bump to reject and nothing for the
+    // gyro to contribute, so creeping toward the answer at two percent a sample
+    // is just a slow horizon for no benefit.
+    const gain = still ? 1 - cfg.staticAlpha : 1 - cfg.alpha;
+    pitch += gain * dPitch;
+    roll = wrap180(roll + gain * dRoll);
+
+    // THE INTEGRAL TERM — where the gyro's zero-offset is actually learned.
+    //
+    // The residual is evidence about the RATE, not only about the angle. A
+    // filter sitting persistently BELOW gravity in pitch has been integrating a
+    // rate that is too low, so the offset being subtracted from that rate is
+    // too high. Accumulating that evidence recovers the offset within seconds
+    // — and it does so whether the device is moving or not, which is the whole
+    // reason it is done here rather than from a stillness window. Gating the
+    // estimate on the gyro's own reading would be circular: a large enough
+    // offset would keep the device from ever looking still, and so would lock
+    // the filter out of ever learning the thing making it look that way.
+    //
+    // Without this the two halves of the filter fight to a standoff at
+    // residual = offset / (rate x (1 - alpha)) and simply stay there. That is
+    // what Noah's phone was reporting as "converging (residual 14.8 deg)".
+    //
+    // Projected back onto the DEVICE axes the gyro actually reports, using the
+    // same screen angle the rates were rotated by — an offset learned in screen
+    // coordinates would be wrong the moment the panel was re-clamped.
+    // Ki RIDES THE PROPORTIONAL GAIN, so the loop keeps its shape under both.
+    //
+    // The hard static correction collapses the residual almost immediately —
+    // which is the point of it, but the residual is also the only evidence the
+    // integrator has, so a fixed Ki would starve exactly when the device is
+    // MOST observable: at rest, where the true rotation rate is known to be
+    // zero. Scaling the two together holds the ratio, and with it the settling
+    // time, constant across both regimes. Measured: a fixed Ki reached 57% of a
+    // 3 deg/s offset after forty seconds on a desk; this reaches it in about
+    // four.
+    const ts = degToRad(screenAngleDeg ?? 0);
+    const ki = cfg.biasKi * (gain / (1 - cfg.alpha));
+    const dPitchBias = -ki * dPitch;
+    const dRollBias = ki * dRoll;
+    const clampBias = (v) => Math.max(-cfg.biasMaxDegS, Math.min(cfg.biasMaxDegS, v));
+    bias.beta = clampBias(bias.beta + dPitchBias * Math.cos(ts));
+    bias.gamma = clampBias(bias.gamma + dPitchBias * Math.sin(ts));
+    bias.alpha = clampBias(bias.alpha + dRollBias);
+    biasSamples += 1;
 
     // CONVERGENCE IS THE SMOOTHED *SIGNED* RESIDUAL — the filter's BIAS against
     // gravity, not its noise and not its rate of turn.
@@ -442,6 +567,16 @@ export function createFusion(options = {}) {
     lastAccepted = at;
     acceptedSamples += 1;
 
+    // STATIC ALIGNMENT. Held still long enough, with gravity steady at one g,
+    // the filter is not "hoping to converge" — it is aligned, by exactly the
+    // argument every AHRS uses sitting on the ramp. Declaring it here is what
+    // stops the horizon waiting on a residual that needs MOTION to shrink.
+    if (still && at - stillSince >= cfg.alignHoldMs) {
+      aligned = true;
+      converged = true;
+      reason = null;
+    }
+
     if (lastResidual <= cfg.convergeDeg) {
       if (settledSince === null) settledSince = at;
       if (!converged && at - settledSince >= cfg.convergeHoldMs && acceptedSamples >= cfg.convergeMinSamples) {
@@ -450,7 +585,17 @@ export function createFusion(options = {}) {
       }
     } else {
       settledSince = null;
-      if (!converged) reason = `converging (residual ${lastResidual.toFixed(1)} deg)`;
+      // Aligned once is not aligned for ever. If the gyro and gravity drift
+      // properly apart the badge is given back, rather than kept on the
+      // strength of a minute that has passed.
+      if (aligned && lastResidual > cfg.convergeDeg * 4) {
+        aligned = false;
+        converged = false;
+      }
+      // Leading with what the reader can act on. This string is printed across
+      // the face of the horizon, so it says what the instrument IS before it
+      // says what it is waiting for.
+      if (!converged) reason = `gravity reference only — gyro settling (${lastResidual.toFixed(1)}°)`;
     }
   };
 
@@ -458,6 +603,11 @@ export function createFusion(options = {}) {
   const updateHeading = (headingDeg, at) => {
     if (!Number.isFinite(headingDeg)) return;
     const target = wrap360(headingDeg);
+    // THE COMPASS KEEPS ITS OWN CLOCK. Heading used to share the accelerometer's
+    // freshness, so a device with a working magnetometer and a sulking
+    // accelerometer crossed out a heading it actually had. They are different
+    // sensors answering different questions and they fail separately.
+    lastHeadingAt = at;
     if (heading === null) {
       heading = target;
       return;
@@ -465,7 +615,6 @@ export function createFusion(options = {}) {
     // Blend the SHORTEST way round. Blending the raw difference walks the
     // needle the long way through 359 -> 1 and looks like a spin.
     heading = wrap360(heading + (1 - cfg.alpha) * wrap180(target - heading));
-    lastAccepted = lastAccepted ?? at;
   };
 
   return {
@@ -490,24 +639,66 @@ export function createFusion(options = {}) {
      * The filter's opinion, including whether it has one yet. `converged` false
      * means every consumer must render FAIL — not a plausible zero.
      */
+    /** The learned gyro zero-offset, or null before any still sample. BITE
+     *  prints it: it is invisible otherwise, and it is the difference between a
+     *  horizon that settles and one that argues with itself. */
+    get gyroBias() {
+      return biasSamples > 0 ? { ...bias, samples: biasSamples } : null;
+    },
     read(at) {
       const coastingMs = lastAccepted === null ? null : at - lastAccepted;
       const stale = coastingMs !== null && coastingMs > cfg.maxCoastMs;
+
+      // ATTITUDE EXISTS AS SOON AS GRAVITY HAS BEEN SEEN.
+      //
+      // It does not wait for the gyro to settle. Gravity on its own is a real
+      // measurement of which way is down — that is the entire basis of a
+      // pendulous attitude reference, and on a device sitting still it is not
+      // an approximation, it is exact. What fusion adds is steadiness THROUGH
+      // MOTION. That is a question of QUALITY, not of existence.
+      //
+      // Conflating the two put a permanent red cross over the horizon on Noah's
+      // phone: the smoothed residual never fell under two degrees, so a panel
+      // that knew its own attitude to a fraction of a degree refused to draw
+      // it, and said "converging" for as long as anyone cared to watch.
+      const hasAttitude = pitch !== null && roll !== null && !stale;
+      const trusted = converged && !stale;
+      const headingStale = lastHeadingAt === null || at - lastHeadingAt > cfg.maxCoastMs;
+
       return {
         pitch,
         roll,
         heading,
-        converged: converged && !stale,
+        hasAttitude,
+        hasHeading: heading !== null && !headingStale,
+        /**
+         * 'ALIGNED' — gyro-stabilised and bias-corrected; good through motion.
+         * 'COARSE'  — the gravity reference alone. Exact at rest, disturbed by
+         *             linear acceleration, and it says so on the face of the
+         *             instrument rather than in a log.
+         */
+        quality: !hasAttitude ? null : trusted ? 'ALIGNED' : 'COARSE',
+        converged: trusted,
+        aligned,
+        still: stillSince !== null,
         rejecting,
         acceptedSamples,
         residualDeg: lastResidual,
         coastingMs,
-        // A converged filter normally has nothing to say. But while it is
+        // A trusted filter normally has nothing to say. But while it is
         // REJECTING accelerometer corrections it is coasting on the gyro, and
         // that is worth saying even though the attitude is still trustworthy —
         // BITE prints it, and "why did the horizon stop responding" has to be
         // answerable. Found by a test that asserted the reason and got silence.
-        reason: converged && !stale ? (rejecting ? reason : null) : (reason ?? 'filter has not converged'),
+        reason: stale
+          ? `no gravity reference for ${Math.round(coastingMs / 1000)}s`
+          : trusted
+            ? rejecting
+              ? reason
+              : null
+            : hasAttitude
+              ? (reason ?? 'gravity reference only — the gyro has not settled')
+              : (reason ?? 'no gravity reference yet'),
       };
     },
   };

@@ -119,8 +119,21 @@ export function drawVerticalTape(
   ctx.restore();
 }
 
-/** The heading tape along the bottom of the PFD. */
-export function drawHeadingTape(ctx, { x, y, w, h, tokens, heading, track, spanDeg = 90 }) {
+/**
+ * The heading tape along the bottom of the PFD.
+ *
+ * `label` NAMES WHAT IS ON THE TAPE, exactly as the altitude tape's heading
+ * does, because two genuinely different directions can end up here:
+ *
+ *   HDG  magnetic heading — where the nose is pointing
+ *   TRK  ground track — where the aircraft is actually going
+ *
+ * They differ by the drift angle, which at altitude is routinely ten degrees or
+ * more. Following a flight makes this concrete: most aircraft broadcast a track
+ * and no heading at all, so the tape shows the track — and it must say TRK
+ * rather than silently presenting one as the other.
+ */
+export function drawHeadingTape(ctx, { x, y, w, h, tokens, heading, track, label = 'HDG', spanDeg = 90 }) {
   ctx.save();
   ctx.fillStyle = tokens.surface;
   roundRect(ctx, x, y, w, h, 6);
@@ -131,7 +144,16 @@ export function drawHeadingTape(ctx, { x, y, w, h, tokens, heading, track, spanD
   ctx.stroke();
 
   if (!heading || heading.provenance === 'FAIL') {
-    failFlag(ctx, { x: x + 2, y: y + 2, w: w - 4, h: h - 4, tokens, label: 'HDG FAIL', reason: heading?.reason ?? null, size: Math.max(11, h * 0.22) });
+    failFlag(ctx, {
+      x: x + 2,
+      y: y + 2,
+      w: w - 4,
+      h: h - 4,
+      tokens,
+      label: `${label} FAIL`,
+      reason: heading?.reason ?? null,
+      size: Math.max(11, h * 0.22),
+    });
     ctx.restore();
     return;
   }
@@ -170,7 +192,11 @@ export function drawHeadingTape(ctx, { x, y, w, h, tokens, heading, track, spanD
 
   // Track bug. Drawn as a DIAMOND and labelled TRK, so it is never mistaken for
   // the heading index by shape alone.
-  if (track && track.provenance !== 'FAIL') {
+  //
+  // Suppressed when the TAPE ITSELF is the track: a bug marking the same
+  // quantity the tape is showing would sit permanently under the lubber line
+  // and imply a drift angle of zero, which is a reading we do not have.
+  if (label !== 'TRK' && track && track.provenance !== 'FAIL') {
     let delta = ((track.value - value + 540) % 360) - 180;
     const tx = clamp(cx + delta * pxPerDeg, x + 6, x + w - 6);
     ctx.fillStyle = track.provenance === 'STALE' ? tokens.stale : tokens.primary;
@@ -199,6 +225,14 @@ export function drawHeadingTape(ctx, { x, y, w, h, tokens, heading, track, spanD
     size: Math.max(12, boxH * 0.55),
     weight: 700,
     colour: heading.provenance === 'STALE' ? tokens.stale : tokens.text,
+  });
+  // WHICH direction this is. Beside the digits, always, never inferred from
+  // context — the whole point of the ladder is that the reader is told.
+  text(ctx, label, cx - boxW / 2 - 4, y + h - boxH / 2 - 2, {
+    size: Math.max(9, boxH * 0.34),
+    weight: 700,
+    align: 'right',
+    colour: tokens['text-3'],
   });
   ctx.restore();
 }

@@ -68,6 +68,184 @@ items.
 
 ---
 
+## 0.3.0 — the horizon works, and there is a radar page
+
+Noah's 0.2.4 screenshot showed the panel he did not want: `ATT FAIL` and
+`HDG FAIL` crossed out across the middle, "converging (residual 14.8 deg)", and
+the two flanking tapes plus the VSI red. His instruction: *"I want something
+other than red X panels to show him. Even the ground/air center one is
+inconsistent and slow to load if it ever does."*
+
+Three things came out of that, and the first is a real defect.
+
+### 1. THE HORIZON WAS BEING WITHHELD, NOT MISSING
+
+The filter published NO attitude at all until a smoothed residual held under two
+degrees for 1.5 s. On his device that residual sat at 14.8 and stayed there, so
+the horizon never appeared — and the panel said "converging" for as long as
+anyone cared to watch.
+
+**Two separate mistakes, and they compound.**
+
+**A gyroscope reads a degree or two per second while sitting perfectly still.**
+Integrated, that is drift the accelerometer has to keep dragging back, and the
+two halves of the filter settle into a standoff at
+`residual = offset / (rate x (1 - alpha))` and simply stay there. Nothing about
+that converges, ever. The fix is the integral term of a PI complementary filter
+(Mahony): the accelerometer residual is evidence about the RATE, not only about
+the angle, so accumulating it recovers the offset — in about four seconds,
+in motion or at rest. `Ki` rides the proportional gain so the loop keeps its
+shape under both.
+
+**And convergence was being used as an EXISTENCE test when it is a QUALITY
+test.** Gravity alone is a real measurement of which way is down — that is the
+entire basis of a pendulous attitude reference, and on a device sitting still it
+is not an approximation, it is exact. The panel knew its own attitude to a
+fraction of a degree and refused to draw it. Attitude now publishes on the first
+good gravity sample and carries its caveat as a caption on the horizon
+(`gravity reference only — gyro settling`), which is what the provenance system
+was for in the first place.
+
+Also: **static alignment**, which is what every real AHRS does on the ramp. Held
+still (gyro quiet AND accelerometer at a steady 1 g — both, because a steady
+turn passes the second test and freefall passes the first), the filter is pulled
+onto gravity hard instead of creeping at 2% a sample. The design case for this
+app is a device CLAMPED ON A DESK, so the still case is the common one.
+
+And **the compass now fails separately from the accelerometer.** Heading used to
+ride the accelerometer's freshness, so a device with a working magnetometer and
+a sulking accelerometer crossed out a heading it genuinely had.
+
+### 2. A RADAR PAGE, ON adsb.fi
+
+**Their terms were read in full first** (github.com/adsbfi/opendata), which the
+previous session had recorded as the outstanding blocker:
+
+> "adsb.fi open data is for personal, non-commercial use only. You may not
+> license, sell, rent, or lease any part of the data or the service... You must
+> cite adsb.fi and include a link to our home page."
+
+Personal and non-commercial matches this app's own PolyForm Noncommercial
+licence exactly. **The citation is a REQUIREMENT and is now enforced by the
+accessibility gate and by a planted fault** — a licence condition nobody watches
+lapses in the next tidy-up.
+
+Published limit is **1 request/second**, and 400s and 404s count against it. So
+every parameter is validated in the Function BEFORE anything is sent, and the
+edge cache (8 s by area, 5 s by callsign) is what the panel's refresh actually
+hits. The plan view is fetched only while the radar page is the one being
+looked at.
+
+`/api/traffic` **no longer needs any credential at all** — the OAuth chain, the
+KV namespace and the two unset OpenSky secrets are gone. It answers by area
+(`/v3/lat/lon/dist`), by callsign (`/v2/callsign`) and by Mode-S hex.
+
+**The position sent upstream is deliberately coarse.** A radius query needs a
+centre, so unlike the METAR path this one cannot keep the fix on the device. It
+is quantised to a tenth of a degree — about six nautical miles — which is
+uninformative about a person and, not by coincidence, makes everyone within the
+same six miles share one cache entry. Range and bearing are then computed ON THE
+DEVICE from the precise fix, so the display is not degraded by the privacy
+measure.
+
+### 3. FOLLOW — a real flight drives the panel
+
+Type a flight number, or tap an aircraft on the radar, and the panel shows what
+that aircraft is broadcasting. **This is not a synthetic data path**: every value
+came off a real transponder, was heard by a real receiver, and arrived through a
+fetch — the same category as a METAR. It is an observation of an aircraft, not a
+simulation of one.
+
+What matters more is **what it refuses to write**, each FAILing with its reason
+on screen:
+
+| | why |
+|---|---|
+| pitch | ADS-B carries no attitude. Flight path angle is not pitch. |
+| slip / skid | not broadcast, and coordinated flight is the assumption the bank was derived FROM |
+| TAS / CAS | need winds aloft where the AIRCRAFT is, not where this device is |
+| indicated altitude | the Kollsman setting is a local station's |
+
+And what it honestly derives: **bank** from `tan(bank) = V·ω/g` with ω the rate of
+change of the broadcast track, **load factor** from `n = 1/cos(bank)`, and the
+**rate of turn** from two successive tracks. Both derivations state the
+coordinated-flight assumption on the field itself.
+
+**The ADI now degrades instead of dying.** Bank without pitch is a real partial
+instrument — a real EFIS removes the element it has lost and keeps the rest — so
+the roll scale, pointer, aircraft symbol and turn needle stay, the sky/ground
+split and pitch ladder (both of which state where the horizon is) go, and the
+middle says `NO PITCH` with the reason. Crossing out a measured bank to keep a
+tidier rule would have been the wrong trade.
+
+**The heading tape got the altitude tape's ladder treatment.** It shows HDG
+(magnetic) or TRK (ground track) and its label says which — they differ by the
+drift angle, routinely ten degrees or more, and most aircraft broadcast a track
+and no heading at all.
+
+A standing FOLLOW banner sits on the PFD the whole time with the exit beside it
+(Doctrine §3), because a panel showing somebody else's aeroplane must say so
+where the numbers are.
+
+### What this cost to get right — four bugs the previews caught
+
+None of these were visible to any test; all four came from actually looking at
+`node scripts/preview.mjs` output.
+
+1. **The follow banner became a third flex column**, taking a third of the width
+   as empty space and squeezing the horizon into a strip.
+2. **Fixing that with `flex-wrap` broke the height instead.** A wrapped line
+   sizes to its tallest item, and the readouts are ~1000px of content, so the
+   canvas stretched to match and the horizon went below the fold. The answer was
+   a nested row, which is one flex item with a definite height.
+3. **`hidden` stopped hiding.** An author `display: flex` on `.follow-banner`
+   outranks the user agent's `[hidden] { display: none }`, so the banner showed
+   with an empty label on every page that was not following anything. Any rule
+   that sets `display` on an element the code toggles with `hidden` needs a
+   `[hidden]` companion.
+4. **A second `publishNow()` destroyed the scene it was meant to redraw**,
+   because every publish runs the app's own derived subscriber.
+
+### And one the harness itself had
+
+**Two `plant.mjs` runs overlapped.** The second read a file the first had already
+planted, kept that as its "original", and faithfully restored the planted fault
+into the working tree — leaving a broken BITE page that every gate then passed,
+because the plant it came from had been retired. It surfaced only as a STALE
+plant on the next run. A harness whose whole purpose is to leave the tree as it
+found it now takes a pid lock and refuses to run twice at once.
+
+`plant.mjs` also gained a **second gate**. It only ever ran the accessibility
+gate, and a headless browser has no accelerometer — so it is structurally blind
+to every attitude bug, including the one this release is about. Sensor-logic
+plants now run against the unit suite instead.
+
+### Verified
+
+**111 unit tests, 13/13 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 4 pages, both palettes clearing every hard
+floor.** The radar page is in the gate against a response fixture, so the plan
+view is checked WITH aircraft on it rather than empty.
+
+### NOT verified — and this is the honest list
+
+- **No adsb.fi response has ever been seen.** Their host is blocked from the
+  build sandbox (`000` to CONNECT); the Pages Function runs on Cloudflare, which
+  is not, so it should work in production — but the field mapping was written
+  from the published ADSBexchange-v2 schema and NOT against a live body. This is
+  the same class of risk as the METAR mapping in 0.2.0, which turned out to be
+  right. **The tell is the RADAR page:** aircraft with sensible callsigns,
+  altitudes and distances means the mapping is right; an empty list with the
+  reason "adsb.fi returned a body with no aircraft array" means a field name is
+  wrong.
+- Whether the horizon actually settles on Noah's device, and how big its gyro's
+  zero-offset turns out to be. **BITE now prints it** — Sensors → Gyroscope
+  zero-offset.
+- Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
+  airborne and being heard right now.
+
+---
+
 ## Flight tracking as a SOURCE — what was checked, 2026-08-02
 
 Noah asked whether a flight number could drive the panel, and whether
@@ -106,10 +284,10 @@ airplanes.live all implement that same shape, which means:
   blocking the flight-number feature: `/api/traffic` needs OpenSky secrets that
   are not set.
 
-**NOT verified, and it must be before anything points at them:** adsb.fi itself
-is blocked from this sandbox (`000` to CONNECT), so **its own terms have not been
-read**. Doctrine §15.1 — our inference from a sibling project's README is not the
-authority. adsb.lol's README also says an API key obtained by FEEDING the network
+**RESOLVED in 0.3.0: adsb.fi's own terms HAVE now been read**, in full, from the
+publisher's own repository (`github.com/adsbfi/opendata`), which is the authority
+Doctrine §15.1 asks for. Personal and non-commercial use, citation with a link
+required, no warranty. See the 0.3.0 section above. adsb.lol's README also says an API key obtained by FEEDING the network
 is coming, which tells you the posture these projects expect: they are
 volunteer-funded, so poll lightly, identify the client, and cache hard.
 

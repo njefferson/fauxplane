@@ -132,6 +132,35 @@ export function text(ctx, str, x, y, { size = 14, weight = 500, align = 'center'
 }
 
 /**
+ * Trim a string to fit a width, ending in an ellipsis.
+ *
+ * Clipping instead — which is what a canvas clip path does — cuts mid-word and
+ * gives no sign anything was removed: a reason reading "pitch is not broad"
+ * looks like a typo rather than a truncation. The ellipsis says "there is more,
+ * and BITE has it", which is the split this app already uses for long reasons.
+ */
+export function ellipsise(ctx, str, maxWidth, { size = 12, weight = 500 } = {}) {
+  ctx.save();
+  ctx.font = `${weight} ${size}px ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace`;
+  const full = ctx.measureText(str).width;
+  if (full <= maxWidth) {
+    ctx.restore();
+    return str;
+  }
+  // Binary search rather than a per-character loop: this runs inside the draw
+  // path at 25 Hz, and a reason can be a whole sentence.
+  let lo = 0;
+  let hi = str.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (ctx.measureText(`${str.slice(0, mid).trimEnd()}…`).width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  ctx.restore();
+  return lo > 0 ? `${str.slice(0, lo).trimEnd()}…` : '';
+}
+
+/**
  * The failure flag every instrument shows when its field is FAIL.
  *
  * A RED CROSS OVER THE INSTRUMENT, not a blank and not a frozen needle. The
@@ -163,14 +192,15 @@ export function failFlag(ctx, { x, y, w, h, tokens, label = 'FAIL', reason = nul
   ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
   text(ctx, label, x + w / 2, y + h / 2 - size * 0.9, { size, weight: 700, colour: tokens.fail });
   if (reason) {
-    // One line, clipped. A reason long enough to wrap belongs on BITE, which is
-    // where the full sentence lives; the flag says enough to act on.
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x + 4, y, w - 8, h);
-    ctx.clip();
-    text(ctx, reason, x + w / 2, y + h / 2 + size * 0.9, { size: size * 0.8, weight: 500, colour: tokens.fail });
-    ctx.restore();
+    // One line, TRIMMED rather than clipped. A reason long enough to wrap
+    // belongs on BITE, which is where the full sentence lives; the flag says
+    // enough to act on and the ellipsis says there is more.
+    const rSize = size * 0.8;
+    text(ctx, ellipsise(ctx, reason, w - 10, { size: rSize }), x + w / 2, y + h / 2 + size * 0.9, {
+      size: rSize,
+      weight: 500,
+      colour: tokens.fail,
+    });
   }
   ctx.restore();
 }

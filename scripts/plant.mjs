@@ -128,6 +128,46 @@ const PLANTS = [
     expect: /only 1 dismiss control|no dismiss is on screen after scrolling/,
   },
   {
+    // adsb.fi's terms REQUIRE the citation. A licence condition nobody watches
+    // fail is a condition that quietly lapses in the next tidy-up — which is
+    // the whole reason this file exists.
+    name: 'attribution: the adsb.fi citation their terms require is dropped',
+    check: 'the radar page links adsb.fi, as a condition of using their data',
+    file: 'public/src/panels/radar.js',
+    find: "el('a', { class: 'radar-credit-link', href: 'https://adsb.fi', rel: 'noopener', text: 'adsb.fi' })",
+    replace: "el('span', { class: 'radar-credit-link', text: 'adsb.fi' })",
+    expect: /does not link adsb\.fi|require a citation/,
+  },
+  {
+    // THE REGRESSION THIS RELEASE IS ABOUT. A gyro with an ordinary zero-offset
+    // used to hold the filter at a permanent standoff, so `converged` never
+    // became true and the horizon stayed crossed out for as long as anyone
+    // watched. Removing the integral term puts that back exactly.
+    //
+    // Checked against the UNIT SUITE, not the accessibility gate: a headless
+    // browser has no accelerometer, so the gate sees FAIL either way and would
+    // stay green through this. Planting it against the gate would have "passed"
+    // while proving nothing.
+    name: 'attitude: the gyro zero-offset stops being learned',
+    check: 'an ordinary gyro offset does not hold the horizon crossed out',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '    const ki = cfg.biasKi * (gain / (1 - cfg.alpha));',
+    replace: '    const ki = 0;',
+    expect: /never converged|zero-offset|horizon vanished|estimated at/,
+  },
+  {
+    // The other half of the same claim: attitude must reach the panel from
+    // gravity alone, without waiting for the gyro to settle.
+    name: 'attitude: the horizon goes back to waiting on convergence',
+    check: 'a usable gravity attitude is published without waiting for the gyro',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '      const hasAttitude = pitch !== null && roll !== null && !stale;',
+    replace: '      const hasAttitude = pitch !== null && roll !== null && !stale && converged;',
+    expect: /no attitude after a good gravity sample|hasAttitude/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',
@@ -179,9 +219,32 @@ for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   });
 }
 
-const runGate = () =>
+/**
+ * TWO GATES, BECAUSE THEY SEE DIFFERENT THINGS.
+ *
+ * The accessibility gate drives a real browser, so it is the only thing that
+ * can see contrast, target sizes and what is actually on screen. But a headless
+ * browser has NO ACCELEROMETER, so every attitude in it is FAIL whatever the
+ * filter does — which means the gate is structurally blind to the entire class
+ * of bug this release is about. Planting a broken horizon against it would
+ * "pass" while proving nothing, which is the exact failure this script exists
+ * to prevent, one level up.
+ *
+ * So a plant declares which gate should catch it, and the sensor-logic ones are
+ * checked against the unit suite instead.
+ */
+// The unit entry names the test files EXPLICITLY, matching package.json's
+// `npm test`. Handing node --test the whole scripts/ directory sweeps in this
+// file, the gate and the build scripts and tries to run them as suites.
+const TEST_FILES = ['core', 'fusion', 'derive', 'wmm', 'build-navdata'].map((n) => path.join(HERE, `${n}.test.mjs`));
+const GATES = {
+  a11y: [path.join(HERE, 'a11y-gate.mjs'), '--quick'],
+  tests: ['--test', ...TEST_FILES],
+};
+
+const runGate = (which = 'a11y') =>
   new Promise((resolve) => {
-    const child = spawn(process.execPath, [path.join(HERE, 'a11y-gate.mjs'), '--quick'], { cwd: REPO });
+    const child = spawn(process.execPath, GATES[which], { cwd: REPO });
     let out = '';
     child.stdout.on('data', (d) => {
       out += d;
@@ -197,6 +260,55 @@ const { values: argv } = parseArgs({ options: { only: { type: 'string' } } });
 const selected = argv.only ? [PLANTS[Number(argv.only)]] : PLANTS;
 const results = [];
 
+/**
+ * ONE HARNESS AT A TIME, AND THIS IS NOT THEORETICAL.
+ *
+ * Two runs overlapped once. The second read a file the FIRST had already
+ * planted, kept that as its "original", and faithfully restored the planted
+ * fault when it finished — so the working tree silently kept a broken BITE page
+ * that every gate then passed, because the plant it came from had been retired.
+ * It surfaced only as a STALE plant on the next run.
+ *
+ * A harness whose whole purpose is to leave the tree exactly as it found it has
+ * to refuse to run twice at once. The lock carries the pid so a stale one from a
+ * killed run can be told apart from a live one.
+ */
+// A SIBLING of the backup directory, never inside it: restoreLeftovers() wipes
+// that directory wholesale, so a lock kept in there would delete itself and
+// then be restored on top of the repo as a file called LOCK.
+const LOCK = path.join(REPO, '.plant-backup.lock');
+try {
+  const held = readFileSync(LOCK, 'utf8').trim();
+  const pid = Number(held);
+  let alive = false;
+  try {
+    process.kill(pid, 0);
+    alive = true;
+  } catch {
+    /* no such process — the lock outlived its run */
+  }
+  if (alive) {
+    process.stderr.write(
+      `plant: another run is already planting (pid ${pid}).\n` +
+        'Running two at once makes one restore the other\'s injected code into the tree.\n',
+    );
+    process.exit(1);
+  }
+  process.stdout.write(`plant: clearing a stale lock from pid ${pid}\n`);
+} catch {
+  /* no lock file: the normal case */
+}
+mkdirSync(path.dirname(LOCK), { recursive: true });
+writeFileSync(LOCK, String(process.pid));
+const releaseLock = () => {
+  try {
+    rmSync(LOCK, { force: true });
+  } catch {
+    /* nothing to release */
+  }
+};
+process.on('exit', releaseLock);
+
 const leftovers = restoreLeftovers();
 if (leftovers.length) {
   process.stdout.write(`restored from an interrupted earlier run: ${leftovers.join(', ')}\n`);
@@ -204,13 +316,18 @@ if (leftovers.length) {
 
 // Baseline first: if the tree is already red, every plant "passes" for the
 // wrong reason and this whole script proves nothing.
-process.stdout.write('baseline (nothing planted) ... ');
-const baseline = await runGate();
-if (baseline.code !== 0) {
-  process.stderr.write(`\nthe gate is already failing before anything was planted:\n${baseline.out}\n`);
-  process.exit(1);
+// Both gates, because a plant is only evidence if the thing it turns red was
+// green to begin with.
+for (const which of Object.keys(GATES)) {
+  process.stdout.write(`baseline ${which} (nothing planted) ... `);
+  const baseline = await runGate(which);
+  if (baseline.code !== 0) {
+    process.stderr.write(`\nthe ${which} gate is already failing before anything was planted:\n${baseline.out}\n`);
+    process.exit(1);
+  }
+  process.stdout.write('green\n');
 }
-process.stdout.write('green\n\n');
+process.stdout.write('\n');
 
 for (const plant of selected) {
   const target = file(plant.file);
@@ -225,7 +342,7 @@ for (const plant of selected) {
   try {
     saveBackup(plant.file, original);
     await writeFile(target, original.replace(plant.find, plant.replace));
-    const { code, out } = await runGate();
+    const { code, out } = await runGate(plant.gate ?? 'a11y');
     const caught = plant.expect.test(out);
     if (code === 0) {
       results.push({ plant, ok: false, why: 'the gate stayed GREEN with the fault planted' });

@@ -223,16 +223,40 @@ body {
   display: none;
 }
 
+/* A COLUMN: the follow banner, then the instrument row.
+   Two earlier shapes were wrong and both are worth remembering. As a plain ROW
+   the banner became a third item beside the canvas and the readouts and took a
+   third of the width as an empty column. Adding flex-wrap fixed the width and
+   broke the height instead: a wrapped line sizes to its tallest item, and the
+   readouts are about a thousand pixels of content, so the canvas stretched to
+   match and the horizon ended up below the fold. A nested row has neither
+   problem, because the row is one flex item with a definite height. */
 .page-pfd {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: var(--gap);
   padding: var(--gap);
   min-height: 0;
 }
+.page-pfd > .follow-banner {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+.pfd-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  gap: var(--gap);
+  min-height: 0;
+  min-width: 0;
+}
 
 .pfd-canvas {
-  flex: 1 1 62%;
+  /* BASIS ZERO, GROWING 62:38 against the readouts. With a percentage basis the
+     two of them plus the gap add to more than 100%, which under flex-wrap (added
+     for the follow banner) put them on separate rows and pushed the readouts off
+     screen entirely. A zero basis cannot overflow, and the ratio is preserved. */
+  flex: 62 1 0;
   /* No fixed height. The canvas is whatever the flex box gives it, measured at
      the moment it draws. A minimum in px would be the next fixed size that
      fails at 200% text — this one is in rem and stays proportional to the
@@ -245,7 +269,7 @@ body {
 }
 
 .readouts {
-  flex: 1 1 38%;
+  flex: 38 1 0;
   min-width: 14rem;
   overflow-y: auto;
   display: flex;
@@ -262,8 +286,11 @@ body {
    put the horizon in a letterbox with the readouts scrolled off below. Short and
    wide keeps the row layout and compacts the chrome instead, below. */
 @media (max-width: 46rem) {
-  .page-pfd {
+  .pfd-row {
     flex-direction: column;
+    overflow-y: auto;
+  }
+  .page-pfd {
     overflow-y: auto;
   }
   .pfd-canvas {
@@ -707,4 +734,203 @@ body[data-powered='true'] .gate {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+/* --- RADAR ----------------------------------------------------------------
+   The plan view is a PICTURE of the aircraft list; the list is the interface.
+   Every aircraft is a real DOM button, so selection works from the keyboard and
+   from a screen reader without any canvas hit-testing (Doctrine §4). */
+
+.radar-canvas {
+  display: block;
+  width: 100%;
+  /* Square-ish, but never taller than half the viewport: on a phone in
+     portrait a 1:1 canvas pushes the list and the flight-number box off the
+     bottom, and the list is the part you interact with. */
+  aspect-ratio: 1 / 1;
+  max-height: 46vh;
+  margin: 0 auto;
+  border-radius: var(--radius);
+}
+
+.radar-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.radar-range-btn {
+  min-height: var(--target);
+  min-width: 4rem;
+  padding: 0 0.85rem;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.radar-range-btn[aria-pressed='true'] {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--rail);
+}
+
+.radar-status {
+  margin: 0.6rem 0 0.2rem;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+.radar-credit {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.radar-credit-link {
+  color: var(--primary);
+}
+
+.radar-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.radar-label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.radar-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.radar-input {
+  flex: 1 1 8rem;
+  min-height: var(--target);
+  padding: 0 0.75rem;
+  background: var(--page);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1.0625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.radar-go,
+.radar-stop {
+  min-height: var(--target);
+  padding: 0 1rem;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.radar-stop {
+  border-color: var(--rail);
+}
+.radar-help {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.radar-follow-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+.radar-follow-note[data-state='waiting'] {
+  color: var(--stale);
+}
+
+.radar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.radar-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-height: var(--target);
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.radar-row-name {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.radar-row-detail {
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+.radar-empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-3);
+}
+
+/* --- the standing FOLLOW indicator (Doctrine §3) --------------------------
+   On screen the whole time the panel is driven by somebody else's aeroplane,
+   with the way out beside it. Never behind a menu, never only on another
+   page. */
+ /* [hidden] MUST STILL HIDE IT. An author `display: flex` outranks the user
+    agent's `[hidden] { display: none }`, so the banner stayed on screen with an
+    empty label on every page that was not following anything. Any rule in this
+    file that sets `display` on an element the code toggles with `hidden` needs
+    this companion. */
+.follow-banner[hidden] {
+  display: none;
+}
+.follow-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: var(--gap);
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-3);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+}
+.follow-badge {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  color: var(--primary);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.follow-what {
+  flex: 1 1 12rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.follow-exit {
+  min-height: var(--target);
+  padding: 0 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }

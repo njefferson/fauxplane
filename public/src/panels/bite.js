@@ -31,7 +31,12 @@ const CHECKS = {
     const p = f['attitude.pitch'];
     if (!p || p.provenance === 'FAIL') return { status: FAILED, reason: p?.reason ?? 'no attitude' };
     if (p.provenance === 'STALE') return { status: DEGRADED, reason: `last attitude ${formatAge(p.ageMs)} ago` };
-    return { status: PASS, reason: 'attitude filter converged and updating' };
+    // A usable attitude that still carries a reason is the gravity reference
+    // ALONE — real, and exact while the device is still, but not yet backed by
+    // a settled gyroscope. DEGRADED says that plainly without crossing out a
+    // horizon that is working.
+    if (p.reason) return { status: DEGRADED, reason: p.reason };
+    return { status: PASS, reason: 'attitude filter aligned and updating' };
   },
   heading: (f) => {
     const h = f['attitude.heading'];

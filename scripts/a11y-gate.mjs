@@ -74,7 +74,89 @@ const ALL_VIEWPORTS = [
  */
 const VIEWPORTS = argv.quick ? [ALL_VIEWPORTS[0]] : ALL_VIEWPORTS;
 
-const PAGES = ['pfd', 'atis', 'bite'];
+const PAGES = ['pfd', 'atis', 'radar', 'bite'];
+
+/**
+ * A traffic response in the shape /api/traffic emits, so the radar page renders
+ * WITH AIRCRAFT rather than empty.
+ *
+ * A plan view with nothing on it exercises none of the code that matters: the
+ * symbols, the labels, their contrast against the surface, and the aircraft
+ * list's buttons and target sizes. This is the same argument scripts/preview.mjs
+ * makes about the horizon — a gate that only ever sees one state has only ever
+ * checked one state.
+ *
+ * It says NOTHING about whether the live adsb.fi response looks like this. That
+ * cannot be checked from here and is recorded in NOTES.md as unverified.
+ */
+const TRAFFIC_FIXTURE = {
+  ok: true,
+  source: 'adsb.fi',
+  sourceUrl: 'https://adsb.fi',
+  attribution: 'Aircraft data from adsb.fi',
+  query: { lat: 38.7, lon: -121.0, distNm: 40 },
+  upstreamTime: '2026-08-02T15:04:05.000Z',
+  fetchedAt: '2026-08-02T15:04:05.000Z',
+  count: 3,
+  aircraft: [
+    {
+      hex: 'a1b2c3',
+      callsign: 'UAL328',
+      registration: 'N77261',
+      type: 'B739',
+      lat: 38.9,
+      lon: -121.15,
+      altBaroFt: 34000,
+      altGeomFt: 34350,
+      onGround: false,
+      groundspeedKt: 452,
+      trackDeg: 118,
+      headingDeg: null,
+      verticalRateFpm: -1216,
+      squawk: '2451',
+      seenPosS: 1.2,
+      seenS: 0.4,
+    },
+    {
+      hex: 'ab1201',
+      callsign: 'SWA1509',
+      registration: 'N8654B',
+      type: 'B738',
+      lat: 38.5,
+      lon: -120.72,
+      altBaroFt: 12250,
+      altGeomFt: 12600,
+      onGround: false,
+      groundspeedKt: 331,
+      trackDeg: 302,
+      headingDeg: 297,
+      verticalRateFpm: 2240,
+      squawk: '4703',
+      seenPosS: 3.9,
+      seenS: 1.1,
+    },
+    // An aircraft on the ground with no callsign and no track: the case that
+    // must NOT be drawn as a triangle pointing somewhere it is not going.
+    {
+      hex: 'a99f10',
+      callsign: null,
+      registration: 'N172SP',
+      type: 'C172',
+      lat: 38.69,
+      lon: -121.06,
+      altBaroFt: null,
+      altGeomFt: null,
+      onGround: true,
+      groundspeedKt: 0,
+      trackDeg: null,
+      headingDeg: null,
+      verticalRateFpm: null,
+      squawk: '1200',
+      seenPosS: 8.5,
+      seenS: 2.2,
+    },
+  ],
+};
 const DIMS = argv.quick ? ['day'] : ['day', 'night'];
 
 /**
@@ -420,7 +502,10 @@ async function checkNames(page, where) {
 /* --------------------------------------------------------------- the run */
 
 async function main() {
-  const server = await createStaticServer({ extraRoutes: { '/__gate__/axe.js': AXE } });
+  const server = await createStaticServer({
+    extraRoutes: { '/__gate__/axe.js': AXE },
+    apiStubs: { '/api/traffic': TRAFFIC_FIXTURE },
+  });
   await new Promise((r) => server.listen(0, r));
   const port = server.address().port;
   const base = `http://127.0.0.1:${port}`;
@@ -719,20 +804,45 @@ async function checkNoSecrets(base) {
     }
     // The client must never name a third-party host directly: every call goes
     // through a Pages Function on this origin.
-    for (const host of ['opensky-network.org', 'aviationweather.gov', 'api.open-meteo.com']) {
+    for (const host of ['opendata.adsb.fi', 'aviationweather.gov', 'api.open-meteo.com']) {
       if (file.startsWith('/src/') && body.includes(`https://${host}`)) {
         fail(where, `${file} references ${host} directly — the client must go through /api/*`);
       }
     }
   }
 
-  // And the functions must read their credentials from env bindings only.
-  const traffic = await readFile(path.join(REPO, 'functions', 'api', 'traffic.js'), 'utf8');
-  if (!/env\.OPENSKY_CLIENT_ID/.test(traffic) || !/env\.OPENSKY_CLIENT_SECRET/.test(traffic)) {
-    fail(where, 'functions/api/traffic.js does not read its credentials from env bindings');
+  // NO PAGES FUNCTION MAY CARRY A LITERAL CREDENTIAL.
+  //
+  // This used to assert the opposite shape — that traffic.js READ two specific
+  // OpenSky env bindings — which stopped being the right question the moment
+  // that endpoint moved to a service needing no credentials at all. A check
+  // naming one upstream's variables is really a check that the upstream has not
+  // changed; this asks the thing that stays true whoever we call.
+  for (const name of ['traffic.js', 'metar.js', 'winds.js']) {
+    const body = await readFile(path.join(REPO, 'functions', 'api', name), 'utf8');
+    for (const pattern of forbidden) {
+      if (pattern.test(body)) fail(where, `functions/api/${name} matches a secret pattern: ${pattern}`);
+    }
+    // Anything that IS a credential must arrive through an env binding, never
+    // through a literal on the right of an assignment.
+    if (/(?:secret|token|password|apikey|api_key)\s*[:=]\s*['"][^'"]{8,}['"]/i.test(body)) {
+      fail(where, `functions/api/${name} appears to assign a literal credential`);
+    }
   }
-  if (/OPENSKY_CLIENT_SECRET['"]?\s*[:=]\s*['"][^'"]+/.test(traffic)) {
-    fail(where, 'functions/api/traffic.js appears to contain a literal secret');
+
+  // ADSB.FI'S TERMS REQUIRE A CITATION, SO THE GATE ENFORCES ONE.
+  //
+  // "You must cite adsb.fi and include a link to our home page." That is a
+  // condition of use, not a courtesy, and a condition nobody checks is one that
+  // quietly lapses in a refactor. Doctrine §15.1 makes the publisher's policy
+  // the authority; this is the policy expressed as a test.
+  const radarSrc = await (await fetch(`${base}/src/panels/radar.js`)).text();
+  if (!/https:\/\/adsb\.fi/.test(radarSrc)) {
+    fail(where, 'the radar panel does not link adsb.fi — their terms require a citation with a link to their home page');
+  }
+  const libSrc = await readFile(path.join(REPO, 'functions', 'api', '_lib.js'), 'utf8');
+  if (!/attribution:\s*['"][^'"]*adsb\.fi/.test(libSrc)) {
+    fail(where, 'POLICIES.traffic carries no adsb.fi attribution string for the client to render');
   }
 }
 

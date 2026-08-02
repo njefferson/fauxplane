@@ -107,6 +107,54 @@ const SCENES = [
     ],
     stale: ['position.groundspeed', 'position.altitudeGeometric'],
   },
+  {
+    name: 'gravity-only',
+    story: 'the horizon on the gravity reference alone — the state that used to be a red X',
+    writes: [
+      ['attitude.pitch', 2.5],
+      ['attitude.roll', -8],
+      ['attitude.heading', 91],
+      ['attitude.turnRate', 0],
+      ['motion.gLoad', 1.0],
+      ['motion.lateralG', 0],
+      ['position.altitudeGeometric', 1533],
+    ],
+    // The caveat rides on the FIELD, so it reaches the horizon as a caption
+    // rather than living only in a log. This is the case Noah photographed.
+    reasons: {
+      'attitude.pitch': 'gravity reference only — gyro settling (3.2°)',
+      'attitude.roll': 'gravity reference only — gyro settling (3.2°)',
+    },
+  },
+  {
+    name: 'following',
+    story: 'following a real flight: the tapes alive from ADS-B, and pitch honestly crossed out',
+    writes: [
+      ['attitude.roll', 21.4],
+      ['attitude.turnRate', 2.6],
+      ['motion.gLoad', 1.07],
+      ['position.groundspeed', 452],
+      ['position.track', 118],
+      ['position.altitudeGeometric', 34350],
+      ['altitude.msl', 34455],
+      ['vsi.rate', -1216],
+      ['position.lat', 38.9],
+      ['position.lon', -121.15],
+    ],
+    // Everything ADS-B does not carry. The point of this scene is that the
+    // panel is MOSTLY ALIVE while still crossing out the things it has no
+    // source for — pitch above all, and the heading tape falling back to TRK.
+    fails: {
+      'attitude.pitch': 'ADS-B carries no attitude — pitch is not broadcast',
+      'attitude.heading': 'UAL328 is not broadcasting a heading — the tape is showing its ground TRACK instead',
+      'motion.lateralG': 'ADS-B carries no slip information',
+      'speed.tas': 'true airspeed needs winds aloft where the AIRCRAFT is',
+      'speed.cas': 'calibrated airspeed needs a pressure altitude from the aircraft position',
+      'altitude.indicated': 'the Kollsman setting is from a station near this device',
+      'aoa.angle': 'angle of attack needs pitch, and ADS-B does not broadcast it',
+    },
+    follow: 'UAL328',
+  },
 ];
 
 const { values: argv } = parseArgs({ options: { out: { type: 'string' } } });
@@ -126,14 +174,37 @@ try {
     await page.evaluate(() => document.querySelector('[data-dismiss-gate]').click());
     await page.waitForTimeout(200);
 
-    await page.evaluate(async ({ writes, stale }) => {
+    // THE LAYOUT IS SETTLED FIRST, BEFORE ANY STATE IS WRITTEN.
+    //
+    // Un-hiding the follow banner reflows the page; the ResizeObserver then
+    // re-measures the canvas, and re-measuring sets canvas.width, which CLEARS
+    // it. Doing this after the writes photographed a blank instrument.
+    //
+    // And it cannot be fixed by publishing a second time: every publish runs the
+    // app's OWN derived subscriber, which recomputes the attitude and altitude
+    // chains from live sensors that do not exist here and overwrites the scene.
+    // One publish, after the boxes have stopped moving.
+    if (scene.follow) {
+      await page.evaluate((label) => {
+        const banner = document.getElementById('follow-banner');
+        banner.hidden = false;
+        document.getElementById('follow-what').textContent =
+          `${label} — this panel is showing that aircraft's broadcast, not this device`;
+      }, scene.follow);
+      await page.waitForTimeout(120);
+    }
+
+    await page.evaluate(async ({ writes, stale, reasons, fails }) => {
       const { state } = await import('/src/core/state.js');
       // The app's own derived subscriber runs every publish and would overwrite
       // the attitude fields from the (unconverged) filter. Stopping the loop
       // first is what lets a scene hold still long enough to be photographed.
       state.stop();
-      for (const [pathName, value] of writes) state.write(pathName, value);
+      for (const [pathName, value] of writes) state.write(pathName, value, { reason: reasons?.[pathName] ?? null });
       for (const pathName of stale ?? []) state.markStale(pathName, 'network lost — held from the last fetch');
+      // A FAIL with its reason is half of what these scenes are for: the panel
+      // saying what it does NOT have is as much a rendering path as the tapes.
+      for (const [pathName, why] of Object.entries(fails ?? {})) state.fail(pathName, why);
       state.publishNow();
     }, scene);
 

@@ -68,7 +68,23 @@ const matches = (pattern, pathname) => {
  * injected inline one. Making the gate work around the CSP by weakening it
  * would be testing a policy the deploy does not have.
  */
-export async function createStaticServer({ root = ROOT, extraRoutes = {} } = {}) {
+/**
+ * `apiStubs` maps an /api/ pathname to a JSON body to answer with.
+ *
+ * The default remains a 503, which is the honest answer for a route served by a
+ * Pages Function that is not running. But a page that FETCHES on open — the
+ * radar page does — then produces a failed request the browser logs as a
+ * console error, and acceptance criterion 1 is "no console errors". Suppressing
+ * that in the gate would hide the real ones too.
+ *
+ * So the gate supplies a fixture instead, which is strictly better than
+ * silencing: the plan view gets drawn WITH AIRCRAFT ON IT, so the labels and
+ * symbols are inside the contrast and layout checks rather than being a code
+ * path nothing automated has ever rendered. It verifies our own rendering of a
+ * documented response shape. It verifies NOTHING about the live service, and no
+ * result from it should ever be reported as though it did.
+ */
+export async function createStaticServer({ root = ROOT, extraRoutes = {}, apiStubs = {} } = {}) {
   const rules = await loadHeaderRules(path.join(root, '_headers'));
 
   return createServer(async (req, res) => {
@@ -94,6 +110,12 @@ export async function createStaticServer({ root = ROOT, extraRoutes = {} } = {})
     // answer 503 rather than 404 so a client can tell "not deployed locally"
     // from "this route does not exist".
     if (pathname.startsWith('/api/')) {
+      const stub = apiStubs[pathname];
+      if (stub) {
+        res.writeHead(200, { ...headers, 'content-type': 'application/json', 'x-fauxplane-stale': '0' });
+        res.end(JSON.stringify(typeof stub === 'function' ? stub(url) : stub));
+        return;
+      }
       res.writeHead(503, { ...headers, 'content-type': 'application/json' });
       res.end(JSON.stringify({ ok: false, reason: 'Pages Functions are not served by the local static server' }));
       return;

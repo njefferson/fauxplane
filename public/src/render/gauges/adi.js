@@ -17,7 +17,7 @@
  * conditions people fit instruments for.
  */
 
-import { failFlag, roundRect, text } from '../canvas.js';
+import { ellipsise, failFlag, roundRect, text } from '../canvas.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -30,21 +30,65 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
   roundRect(ctx, x, y, w, h, Math.min(12, r * 0.1));
   ctx.clip();
 
-  if (!attitude || attitude.provenance === 'FAIL') {
+  const hasPitch = attitude && Number.isFinite(attitude.pitch);
+  const hasRoll = attitude && Number.isFinite(attitude.roll);
+
+  if (!attitude || !hasRoll) {
     // The ball is not frozen at its last attitude, and it is not blanked to a
     // level horizon either — a level horizon is a reading, and we do not have
     // one. It is crossed out and it says why.
     failFlag(ctx, { x, y, w, h, tokens, label: 'ATT FAIL', reason: attitude?.reason ?? 'no attitude', size: Math.max(11, r * 0.09) });
     ctx.restore();
     drawFixedSymbol(ctx, { cx, cy, r, tokens });
+    drawSlipSkid(ctx, { cx, cy: y + h - r * 0.16, r, tokens, slip });
+    drawTurnRate(ctx, { cx, cy: y + h - r * 0.16, r, tokens, turnRate });
     return;
   }
 
-  const pitch = attitude.pitch;
+  const pitch = hasPitch ? attitude.pitch : null;
   const roll = attitude.roll;
   /** Pixels per degree of pitch. Ten degrees across a quarter of the box is the
    *  proportion a real ADI uses; anything tighter turns the ladder into noise. */
   const pxPerDeg = r * 0.05;
+
+  // BANK WITHOUT PITCH IS A REAL, PARTIAL INSTRUMENT — not a dead one.
+  //
+  // Following an aircraft over ADS-B gives exactly this: bank is recoverable
+  // from the rate of turn, and pitch is not broadcast at all. A real EFIS
+  // degrades the same way, removing the element it has lost and keeping the
+  // ones it still has. Crossing out the WHOLE ball because one of its two
+  // angles is missing would throw away a measured bank to make a tidier rule.
+  //
+  // What is NOT drawn is the sky/ground split and the pitch ladder, because
+  // both of them state where the horizon is and that is precisely the thing we
+  // do not know. The roll scale, the pointer and the aircraft symbol all remain
+  // truthful, and the middle says plainly what is missing.
+  if (!hasPitch) {
+    ctx.fillStyle = tokens.page;
+    ctx.fillRect(x, y, w, h);
+    drawRollScale(ctx, { cx, cy, r, tokens, roll });
+    ctx.restore();
+    drawFixedSymbol(ctx, { cx, cy, r, tokens });
+
+    const size = Math.max(11, r * 0.1);
+    const why = attitude.pitchReason ?? attitude.reason ?? 'pitch unavailable';
+    ctx.save();
+    text(ctx, 'NO PITCH', cx, cy - r * 0.42, { size, weight: 700, colour: tokens.fail });
+    text(ctx, ellipsise(ctx, why, w - 12, { size: size * 0.78 }), cx, cy - r * 0.42 + size * 1.25, {
+      size: size * 0.78,
+      colour: tokens.fail,
+    });
+    text(ctx, `BANK ${roll >= 0 ? 'R' : 'L'} ${Math.abs(roll).toFixed(0)}°`, cx, cy + r * 0.42, {
+      size: size * 1.1,
+      weight: 700,
+      colour: tokens.primary,
+    });
+    ctx.restore();
+
+    drawSlipSkid(ctx, { cx, cy: y + h - r * 0.16, r, tokens, slip });
+    drawTurnRate(ctx, { cx, cy: y + h - r * 0.16, r, tokens, turnRate });
+    return;
+  }
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -94,7 +138,60 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
   }
   ctx.restore();
 
-  // --- roll scale, fixed to the case ---------------------------------------
+  drawRollScale(ctx, { cx, cy, r, tokens, roll });
+
+  ctx.restore();
+  drawFixedSymbol(ctx, { cx, cy, r, tokens });
+
+  // A USABLE ATTITUDE THAT STILL HAS SOMETHING TO SAY.
+  //
+  // Most often: this is the gravity reference alone, which is exact while the
+  // device is still and disturbed by acceleration while it is not. That is a
+  // real caveat and it belongs on the instrument, not only on BITE — but it is
+  // emphatically NOT a failure, and crossing the horizon out over it is how a
+  // panel that knew its own attitude to a fraction of a degree spent thirteen
+  // minutes showing a red X.
+  //
+  // Backed with a plate in the page colour so the text renders against the
+  // measured token pair rather than against whatever the sky happens to be.
+  if (attitude.reason && attitude.provenance !== 'STALE') {
+    const size = Math.max(9, r * 0.075);
+    const ty = y + h - r * 0.46;
+    ctx.save();
+    const caption = ellipsise(ctx, attitude.reason, w - 16, { size });
+    ctx.font = `500 ${size}px ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace`;
+    const tw = Math.min(w - 10, ctx.measureText(caption).width + size);
+    ctx.globalAlpha = 0.82;
+    ctx.fillStyle = tokens.page;
+    roundRect(ctx, cx - tw / 2, ty - size * 0.85, tw, size * 1.7, size * 0.4);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    text(ctx, caption, cx, ty, { size, weight: 500, colour: tokens.derived });
+    ctx.restore();
+  }
+
+  drawSlipSkid(ctx, { cx, cy: y + h - r * 0.16, r, tokens, slip });
+  drawTurnRate(ctx, { cx, cy: y + h - r * 0.16, r, tokens, turnRate });
+
+  if (attitude.provenance === 'STALE') {
+    ctx.save();
+    ctx.strokeStyle = tokens.stale;
+    ctx.lineWidth = 3;
+    roundRect(ctx, x + 2, y + 2, w - 4, h - 4, 10);
+    ctx.stroke();
+    text(ctx, `STALE ${attitude.ageText ?? ''}`, cx, y + 16, { size: 13, weight: 700, colour: tokens.stale });
+    ctx.restore();
+  }
+}
+
+/**
+ * The roll scale and its pointer, fixed to the case.
+ *
+ * Pulled out of the main draw because it is the one part of the ball that is
+ * still truthful when pitch is missing — and a copy of it in the partial path
+ * would be two roll scales to keep in agreement.
+ */
+function drawRollScale(ctx, { cx, cy, r, tokens, roll }) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.strokeStyle = tokens.text;
@@ -119,21 +216,6 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
   ctx.closePath();
   ctx.fill();
   ctx.restore();
-
-  ctx.restore();
-  drawFixedSymbol(ctx, { cx, cy, r, tokens });
-  drawSlipSkid(ctx, { cx, cy: y + h - r * 0.16, r, tokens, slip });
-  drawTurnRate(ctx, { cx, cy: y + h - r * 0.16, r, tokens, turnRate });
-
-  if (attitude.provenance === 'STALE') {
-    ctx.save();
-    ctx.strokeStyle = tokens.stale;
-    ctx.lineWidth = 3;
-    roundRect(ctx, x + 2, y + 2, w - 4, h - 4, 10);
-    ctx.stroke();
-    text(ctx, `STALE ${attitude.ageText ?? ''}`, cx, y + 16, { size: 13, weight: 700, colour: tokens.stale });
-    ctx.restore();
-  }
 }
 
 /** The fixed aircraft reference. Amber clears 3:1 against both sky and ground

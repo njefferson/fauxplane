@@ -24,13 +24,22 @@ A glass-cockpit PWA: a phone or tablet clamped where a panel would be, showing
 instruments driven by the device's own sensors and by fetched aviation feeds.
 It is not a simulator and it is not certified for anything.
 
-## The rule that shapes the whole v1
-**v1 contains no synthetic data path at all.** Every value on screen traces to
-a device sensor or a fetched feed. Provenance is one of LIVE, DERIVED, STALE or
+## The rule that shapes the whole app
+**There is no synthetic data path at all.** Every value on screen traces to a
+device sensor or a fetched feed. Provenance is one of LIVE, DERIVED, STALE or
 FAIL, and it is shown. Any code path that would produce a value from neither a
 sensor nor a feed is a defect, not a placeholder — this includes "reasonable"
 defaults standing in for a reading that is missing. A missing reading is FAIL,
 and it says so.
+
+**FOLLOW mode does not bend this and must not be read as an exception.** A real
+flight's ADS-B broadcast is a FEED, in the same category as METAR: an
+observation of an aircraft, never a simulation of one. It is held to the rule
+rather than excused from it, which is why it crosses out pitch, slip, TAS, CAS
+and indicated altitude, each with the reason ADS-B or local weather cannot
+answer it. Exactly one source owns each field at a time — following an aircraft
+moves ownership wholesale rather than blending, because a panel showing a real
+747's groundspeed beside this desk's accelerometer would be two aircraft at once.
 
 ## Stack
 Static, self-contained, **no build step** — `public/` is the deployed app,
@@ -51,15 +60,27 @@ Data the app bundles is generated, never hand-written:
 - `npm run navdata` — the OurAirports database. Still refuses to fetch until
   someone reads the published terms; no v1 panel needs it.
 
+Live traffic comes from **adsb.fi** (`/api/traffic`), whose terms are personal,
+non-commercial, and **require a citation with a link to their home page**. That
+citation is enforced by the accessibility gate and by a planted fault; do not
+remove it. Their published limit is 1 request/second, so every parameter is
+validated in the Function before anything is sent and the edge cache carries the
+panel's refresh rate.
+
 Every gate, and each one exits non-zero:
-- `npm test` — 84 unit tests over the pure logic, including the magnetic model
+- `npm test` — 111 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
-  palettes x 3 pages, including the acceptance criteria.
+  palettes x 4 pages, including the acceptance criteria.
 - `npm run palette` — the hub's `palette-check.mjs` against
   `palettes/fauxplane.json`. The gate is never forked; it is run from the hub.
 - `node scripts/plant.mjs` — breaks one thing at a time and proves the gate
   goes red **about that thing**. A check nobody has watched fail is not evidence.
+  Each plant names the gate that should catch it: `a11y` (the default) or
+  `tests`. Sensor-logic plants MUST use `tests` — a headless browser has no
+  accelerometer, so the accessibility gate is structurally blind to them and
+  would stay green. It takes a pid lock; never run two at once, because the
+  second restores the first's injected code into the tree.
 - `node scripts/preview.mjs` — renders the panel in live states a sandbox cannot
   reach. Not shipped, not imported by the app; it drives the store from outside
   through the same public write the sensors use.

@@ -12,11 +12,12 @@ import {
   pressureAltitude,
   trueAirspeed,
 } from '../public/src/core/derive.js';
+import { bankAngle, createTurnRate, loadFactorFromBank } from "../public/src/core/derive.js";
 import { selectStation } from '../public/src/data/metar.js';
 import { interpolateLevels } from '../public/src/data/windsaloft.js';
 import { decimalYear, magneticField, parseCof } from '../public/src/data/wmm.js';
 import { sampleGrid } from '../public/src/data/geoid.js';
-import { trafficBbox } from '../public/src/data/traffic.js';
+import { radarCentre, withRangeAndBearing } from '../public/src/data/traffic.js';
 import { brightnessFromLux, brightnessFromSolarElevation, DIM_FLOOR, solarElevationDeg } from '../public/src/sensors/ambient.js';
 
 const at = 1_000_000;
@@ -322,19 +323,35 @@ test('the geoid sampler refuses outside its own grid rather than clamping', () =
 
 /* ------------------------------------------------------ traffic + ambient */
 
-test('the traffic bbox uses the cold-start box only until a fix exists', () => {
-  const cold = trafficBbox({});
+test('the radar centres on home only until a fix exists', () => {
+  const cold = radarCentre({});
   assert.equal(cold.fromFix, false);
-  assert.equal(cold.lamin, 38.1);
-  assert.equal(cold.lomax, -120.15);
+  assert.equal(cold.lat, 38.68);
+  assert.equal(cold.lon, -121.0);
 
-  const warm = trafficBbox({
-    'position.lat': R(37.0, 'deg'),
-    'position.lon': R(-122.0, 'deg'),
-  });
+  const warm = radarCentre({ 'position.lat': R(37.0, 'deg'), 'position.lon': R(-122.0, 'deg') });
   assert.equal(warm.fromFix, true);
-  assert.ok(warm.lamin < 37 && warm.lamax > 37, 'the box must surround the fix');
-  assert.ok(Math.abs(warm.lamax - warm.lamin - 80 / 60) < 1e-9, 'a 40 nm half-width is 80 nm across');
+  assert.equal(warm.lat, 37);
+  assert.equal(warm.lon, -122);
+});
+
+test('range and bearing are measured from the DEVICE, and sorted nearest first', () => {
+  // The Function deliberately coarsens the position it sends upstream to about
+  // six nautical miles, so any distance computed up there inherits that error.
+  // These are computed here, from the precise fix.
+  const centre = { lat: 38.68, lon: -121.0 };
+  const out = withRangeAndBearing(
+    [
+      { hex: 'far', lat: 39.68, lon: -121.0 }, // 60 nm due north
+      { hex: 'near', lat: 38.68, lon: -120.8 }, // a little to the east
+    ],
+    centre,
+  );
+
+  assert.equal(out[0].hex, 'near', 'the list must be nearest first');
+  assert.ok(Math.abs(out[1].distanceNm - 60) < 0.5, `60 nm north measured as ${out[1].distanceNm}`);
+  assert.ok(Math.abs(out[1].bearingDeg - 0) < 0.5, `due north measured as ${out[1].bearingDeg}`);
+  assert.ok(Math.abs(out[0].bearingDeg - 90) < 0.5, `due east measured as ${out[0].bearingDeg}`);
 });
 
 test('panel dimming never dims below the level the contrast gate measured', () => {
@@ -353,4 +370,77 @@ test('solar elevation is negative at local midnight and positive at local noon',
   assert.ok(noon > 60, `midsummer noon elevation was ${noon}`);
   assert.ok(midnight < -10, `midsummer midnight elevation was ${midnight}`);
   assert.equal(solarElevationDeg({ lat: NaN, lon: 0, date: new Date() }), null);
+});
+
+/* ------------------------------------------- what ADS-B can and cannot say */
+
+test('BANK IS DERIVABLE from a turn: a standard-rate turn at 250 kt is about 25 degrees', () => {
+  // tan(bank) = V x omega / g. At 250 kt (128.6 m/s) and 3 deg/s (0.05236
+  // rad/s) that is atan(6.734 / 9.807) = 34.5 degrees. Checked against the
+  // textbook approximation for a standard rate turn, bank ~ TAS/10 + 7, which
+  // gives 32 — close enough to confirm the formula is not off by a conversion.
+  const bank = bankAngle({ groundspeedKt: R(250, 'kt'), turnRateDegPerSec: R(3, 'deg/s') });
+  assert.equal(bank.provenance, 'DERIVED');
+  assert.ok(Math.abs(bank.value - 34.5) < 1, `bank ${bank.value}`);
+  assert.match(bank.reason ?? '', /coordinated/, 'the assumption must reach the screen');
+
+  // A LEFT turn banks left. A sign error here mirrors the horizon.
+  assert.ok(bankAngle({ groundspeedKt: R(250, 'kt'), turnRateDegPerSec: R(-3, 'deg/s') }).value < 0);
+
+  // Straight and level is zero bank, not a missing reading.
+  assert.equal(bankAngle({ groundspeedKt: R(250, 'kt'), turnRateDegPerSec: R(0, 'deg/s') }).value, 0);
+});
+
+test('bank refuses to be inferred from a ground track at taxi speed', () => {
+  const parked = bankAngle({ groundspeedKt: R(5, 'kt'), turnRateDegPerSec: R(20, 'deg/s') });
+  assert.equal(parked.provenance, 'FAIL');
+  assert.equal(parked.value, null);
+  assert.match(parked.reason, /below 20 kt/);
+});
+
+test('a missing input makes the bank FAIL and names it — never a level attitude', () => {
+  const noSpeed = bankAngle({ groundspeedKt: fail('not broadcast'), turnRateDegPerSec: R(3, 'deg/s') });
+  assert.equal(noSpeed.provenance, 'FAIL');
+  assert.match(noSpeed.reason, /groundspeed/);
+  assert.equal(bankAngle({ groundspeedKt: R(250, 'kt'), turnRateDegPerSec: fail('no track') }).provenance, 'FAIL');
+});
+
+test('load factor follows the bank, and gives up before it diverges', () => {
+  assert.ok(Math.abs(loadFactorFromBank({ bankDeg: R(0, 'deg') }).value - 1) < 1e-9);
+  // 60 degrees of bank is exactly 2 g — the one figure every pilot knows, which
+  // is what makes it a good check on the formula.
+  assert.ok(Math.abs(loadFactorFromBank({ bankDeg: R(60, 'deg') }).value - 2) < 1e-6);
+  assert.ok(Math.abs(loadFactorFromBank({ bankDeg: R(-60, 'deg') }).value - 2) < 1e-6, 'a left turn pulls g too');
+  assert.equal(loadFactorFromBank({ bankDeg: R(89.5, 'deg') }).provenance, 'FAIL');
+  assert.equal(loadFactorFromBank({ bankDeg: fail('no bank') }).provenance, 'FAIL');
+});
+
+test('the rate of turn needs TWO track readings, and crosses the 360 seam correctly', () => {
+  const turn = createTurnRate();
+  // One reading is not a rate. Returning zero here would read as "wings level"
+  // for every aircraft the moment it was selected.
+  const first = turn.read(R(350, 'degT'), 1000);
+  assert.equal(first.provenance, 'FAIL');
+  assert.match(first.reason, /second track reading/);
+
+  // 350 -> 010 is a 20 degree RIGHT turn, not a 340 degree left one. Taking the
+  // raw difference gives -340 deg over 4 s, which through the bank formula is a
+  // fully inverted aircraft.
+  const rate = turn.read(R(10, 'degT'), 5000);
+  assert.equal(rate.provenance, 'DERIVED');
+  assert.ok(Math.abs(rate.value - 5) < 1e-9, `rate ${rate.value} deg/s`);
+
+  // A long gap is not a slow turn — it is an unknown one.
+  const stale = turn.read(R(180, 'degT'), 5000 + 60_000);
+  assert.equal(stale.provenance, 'FAIL');
+  assert.match(stale.reason, /would span the gap/);
+});
+
+test('losing the track resets the rate rather than differencing across the hole', () => {
+  const turn = createTurnRate();
+  turn.read(R(90, 'degT'), 1000);
+  assert.equal(turn.read(fail('aircraft stopped being heard'), 3000).provenance, 'FAIL');
+  // The next good reading is a FIRST reading again, not a partner for the one
+  // from before the outage.
+  assert.match(turn.read(R(180, 'degT'), 5000).reason, /second track reading/);
 });
