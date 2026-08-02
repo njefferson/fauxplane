@@ -134,7 +134,8 @@ self.addEventListener('fetch', (event) => {
         try {
           return await fetch(request);
         } catch {
-          const cached = await caches.match('/index.html');
+          const cache = await caches.open(CACHE_NAME);
+          const cached = await cache.match('/index.html');
           // No invented error document. Either the real shell, or the failure
           // the browser would have shown anyway.
           if (cached) return cached;
@@ -147,11 +148,22 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     (async () => {
-      const cached = await caches.match(request);
+      // THIS VERSION'S CACHE ONLY.
+      //
+      // `caches.match(request)` searches EVERY cache in the origin, oldest
+      // first — including the previous release's. So after a deploy the old
+      // modules kept being served: the page got the new index.html and the old
+      // JavaScript, ran old code, and displayed the old version stamp. Noah
+      // reloaded, saw the previous build, and reasonably concluded nothing had
+      // shipped.
+      //
+      // Opening the named cache scopes the lookup to the release the running
+      // worker belongs to, so a new worker cannot serve an old module.
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(request);
       if (cached) return cached;
       const response = await fetch(request);
       if (response.ok && response.type === 'basic') {
-        const cache = await caches.open(CACHE_NAME);
         cache.put(request, response.clone());
       }
       return response;

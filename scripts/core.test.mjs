@@ -343,3 +343,26 @@ test('a derived value that STOPS being computed still ages out', () => {
   assert.equal(out.provenance, FAIL);
   assert.match(out.reason, /no update for/);
 });
+
+/* ------------------------------------------------------------------------- */
+
+test('the service worker never searches OTHER releases’ caches', async () => {
+  // `caches.match(x)` searches every cache in the origin, oldest first, so a new
+  // worker will happily serve the previous release's modules — the page then
+  // runs old code behind a new index.html and reports the old version. There is
+  // no headless way to exercise a real service-worker upgrade here, so this
+  // pins the one line that causes it.
+  const { readFile } = await import('node:fs/promises');
+  const path = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const sw = await readFile(path.join(repo, 'public', 'sw.js'), 'utf8');
+
+  const unscoped = sw.match(/(?<!\/\/.*)\bcaches\.match\s*\(/g) ?? [];
+  assert.equal(
+    unscoped.length,
+    0,
+    'sw.js uses caches.match(), which searches every release’s cache. Open CACHE_NAME and match on that instead.',
+  );
+  assert.match(sw, /caches\.open\(CACHE_NAME\)/, 'sw.js must scope lookups to its own cache');
+});

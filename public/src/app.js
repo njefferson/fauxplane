@@ -466,6 +466,22 @@ async function boot() {
   }
 
   if ('serviceWorker' in navigator) {
+    // TAKE EFFECT ON THE RELOAD THE USER ALREADY DID.
+    //
+    // A new worker calls skipWaiting and claims the page, but by then this page
+    // has already been built from the previous release's cache. Without this,
+    // seeing a new version takes TWO reloads — which reads exactly like the
+    // deploy not having happened, and is what Noah hit.
+    //
+    // Guarded so it can only fire once: a reload loop on a cockpit panel would
+    // be considerably worse than a stale one.
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+
     // The version travels in the URL so the worker has ONE source for it
     // without needing to be a module worker — see the note at the top of sw.js.
     navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(VERSION)}`).catch(() => {

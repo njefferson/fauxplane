@@ -6,6 +6,17 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 0.2.3 — ITERATION — 2026-08-02
+
+**A new version would not appear until you reloaded twice.** The offline cache
+was being searched across every release the device had ever stored, oldest
+first, so a reload fetched the new page and then ran the previous release's code
+behind it — including the version number in the corner. It looked exactly like
+nothing had been deployed.
+
+The cache now only ever answers from the release it belongs to, and when a new
+version does take over it refreshes the page itself, so one reload is enough.
+
 ## 0.2.2 — ITERATION — 2026-08-02
 
 **The artificial horizon was upside down on iPhone and iPad.** Ground on top,
