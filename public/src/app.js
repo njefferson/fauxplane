@@ -184,6 +184,7 @@ async function boot() {
 
     // Altitude chain.
     const msl = mslAltitude({ geometricFt: f['position.altitudeGeometric'], geoidSeparationFt: f['altitude.geoidSeparation'] });
+    writeField('altitude.msl', msl, t);
     const indicated = indicatedAltitude({
       mslFt: msl,
       kollsmanInHg: f['control.kollsman'],

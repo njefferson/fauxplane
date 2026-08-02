@@ -7,12 +7,13 @@
  * "every numeric readout traces to a state field" checkable rather than
  * aspirational — there is no other source in this file to trace to.
  *
- * ALTITUDE, AND THE ONE THING WORTH READING CAREFULLY. The altitude tape shows
- * whichever altitude the app actually has, and NAMES IT. With a geoid model
- * bundled that is indicated altitude; without one it is GPS geometric altitude,
- * labelled GPS ALT, which is a different quantity honestly titled rather than a
- * substitute wearing the altimeter's label. The panel never silently swaps one
- * for the other — the heading on the tape changes with it.
+ * ALTITUDE, AND THE ONE THING WORTH READING CAREFULLY. The tape shows whichever
+ * of three genuinely different altitudes the app actually has, best first, and
+ * the tape's own heading NAMES the one on it: ALT (indicated), MSL (above mean
+ * sea level), or GPS ALT (geometric, above the ellipsoid). That is a selection
+ * displayed on its own label, never a substitution — a pilot must never have to
+ * guess which of the three they are reading, and the panel never silently swaps
+ * one for another.
  */
 
 import { formatAge } from '../core/units.js';
@@ -29,6 +30,7 @@ export function createPfd({ canvas, surface, readoutHost, announcer }) {
   const readouts = {
     groundspeed: createReadout({ label: 'Groundspeed', unit: 'kt' }),
     altitude: createReadout({ label: 'GPS altitude', unit: 'ft', format: (v) => Math.round(v).toLocaleString() }),
+    msl: createReadout({ label: 'MSL altitude', unit: 'ft', format: (v) => Math.round(v).toLocaleString() }),
     indicated: createReadout({ label: 'Indicated altitude', unit: 'ft', format: (v) => Math.round(v).toLocaleString() }),
     vsi: createReadout({ label: 'Vertical speed', unit: 'fpm', format: (v) => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v / 10) * 10)}` }),
     heading: createReadout({ label: 'Heading', unit: '°M', format: (v) => String(Math.round(v) % 360).padStart(3, '0') }),
@@ -104,11 +106,22 @@ export function createPfd({ canvas, surface, readoutHost, announcer }) {
       side: 'left',
     });
 
-    // Which altitude is on the tape is a real decision, and the LABEL is what
-    // makes it honest.
-    const indicated = fields['altitude.indicated'];
-    const usingIndicated = indicated && indicated.provenance !== 'FAIL';
-    const altField = usingIndicated ? indicated : fields['position.altitudeGeometric'];
+    // WHICH ALTITUDE IS ON THE TAPE IS A REAL DECISION, AND THE LABEL CARRIES IT.
+    //
+    // Three genuinely different quantities, best first:
+    //   ALT     indicated altitude — needs the geoid AND a station altimeter
+    //   MSL     height above mean sea level — needs only the geoid, so it
+    //           works with the radio off, which matters for an offline app
+    //   GPS ALT geometric height above the ellipsoid — the raw sensor reading
+    //
+    // This is a SELECTION shown on the tape's own heading, never a substitution.
+    // A pilot must never have to guess which of the three they are reading.
+    const ladder = [
+      ['ALT', fields['altitude.indicated']],
+      ['MSL', fields['altitude.msl']],
+      ['GPS ALT', fields['position.altitudeGeometric']],
+    ];
+    const [altLabel, altField] = ladder.find(([, f]) => f && f.provenance !== 'FAIL') ?? ladder[ladder.length - 1];
     drawVerticalTape(ctxOf(surface), {
       x: W - pad - tapeW - vsiW - pad,
       y: pad,
@@ -116,7 +129,7 @@ export function createPfd({ canvas, surface, readoutHost, announcer }) {
       h: bodyH - pad,
       tokens: t,
       field: withAge(altField),
-      label: usingIndicated ? 'ALT' : 'GPS ALT',
+      label: altLabel,
       unit: 'ft',
       step: 100,
       major: 2,
@@ -160,6 +173,7 @@ export function createPfd({ canvas, surface, readoutHost, announcer }) {
   const updateReadouts = (fields) => {
     readouts.groundspeed.update(fields['position.groundspeed']);
     readouts.altitude.update(fields['position.altitudeGeometric']);
+    readouts.msl.update(fields['altitude.msl']);
     readouts.indicated.update(fields['altitude.indicated']);
     readouts.vsi.update(fields['vsi.rate']);
     readouts.heading.update(fields['attitude.heading']);

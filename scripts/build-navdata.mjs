@@ -15,12 +15,28 @@
  *   Files  : airports.csv, runways.csv, navaids.csv
  *   Terms  : OurAirports publishes these files as public-domain data.
  *
- *   NOT RE-READ THIS SESSION. The egress proxy denied the host (403 to
- *   CONNECT), so the published terms could not be fetched and confirmed.
- *   SOURCE_POLICY.policyReadOn is therefore null and this adapter refuses to
- *   fetch until it is filled in — see the check in assertPolicyReadable().
- *   Supplying the CSVs with --from bypasses the network entirely and is the
- *   supported route while the host is blocked.
+ *   STILL NOT READ, and the reason CHANGED on 2026-08-02 — recorded because
+ *   the old reason had become false, and a stale reason is worse than none:
+ *
+ *   The DATA is reachable after all. `davidmegginson.github.io` is blocked by
+ *   this sandbox, but the same publisher's same repository is served by
+ *   `raw.githubusercontent.com`, which is not (all three CSVs fetch, 200, ~18
+ *   MB total). MIRRORS below records that so nobody rediscovers it.
+ *
+ *   What is NOT reachable is `ourairports.com/data/`, the page carrying the
+ *   published TERMS. The repo README calls these "open-data downloads", which
+ *   is the publisher's own words in the repo we would be downloading from —
+ *   but it is not the terms page, and Doctrine §15.1 says our inference is not
+ *   the authority. So policyReadOn stays null and this adapter still refuses.
+ *
+ *   AND SEPARATELY, IT IS NOT WORTH FETCHING YET. No v1 panel reads navdata —
+ *   the nav pages are v2, gated behind the attitude stability test. Pulling 18
+ *   MB from a volunteer-run project to populate a file nothing displays is the
+ *   wrong shape even where it is permitted (§15.5). Read the terms first, and
+ *   fetch it when something needs it.
+ *
+ *   Supplying the CSVs with --from bypasses the network entirely and remains
+ *   the supported route.
  * ---------------------------------------------------------------------------
  *
  * Usage:
@@ -75,6 +91,18 @@ const SOURCE_FILES = {
   airports: 'https://davidmegginson.github.io/ourairports-data/airports.csv',
   runways: 'https://davidmegginson.github.io/ourairports-data/runways.csv',
   navaids: 'https://davidmegginson.github.io/ourairports-data/navaids.csv',
+};
+
+/**
+ * The same files from the same publisher's git host, verified reachable from
+ * this sandbox on 2026-08-02 when the Pages host was not. Not used
+ * automatically — switching hosts is a decision, not a fallback, and it belongs
+ * to whoever reads the terms and decides the fetch is warranted.
+ */
+export const MIRRORS = {
+  airports: 'https://raw.githubusercontent.com/davidmegginson/ourairports-data/main/airports.csv',
+  runways: 'https://raw.githubusercontent.com/davidmegginson/ourairports-data/main/runways.csv',
+  navaids: 'https://raw.githubusercontent.com/davidmegginson/ourairports-data/main/navaids.csv',
 };
 
 // --- CSV ---------------------------------------------------------------------

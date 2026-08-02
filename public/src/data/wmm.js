@@ -139,10 +139,20 @@ export function magneticField(model, { latDeg, lonDeg, heightM = 0, date = new D
     }
   }
 
-  // Schmidt normalisation factors.
+  // Schmidt quasi-normalisation factors.
+  //
+  // THE m = 0 FACTOR IS NOT 1. It accumulates (2n-1)/n across n, and only the
+  // m >= 1 factors are the square-root recurrence. Setting the m=0 column to 1
+  // — which is the obvious-looking mistake, and the one this file shipped with
+  // first — mis-scales every zonal term by a different amount per degree. The
+  // damage is subtle in exactly the way that hurts: total intensity and
+  // inclination stay close, because the n=1 dipole dominates both, while
+  // DECLINATION comes out several degrees wrong. Verified against NOAA's own
+  // 213-row test table; see scripts/wmm.test.mjs.
   const schmidt = Array.from({ length: nMax + 1 }, () => new Float64Array(nMax + 1));
-  for (let n = 0; n <= nMax; n += 1) {
-    schmidt[n][0] = 1;
+  schmidt[0][0] = 1;
+  for (let n = 1; n <= nMax; n += 1) {
+    schmidt[n][0] = (schmidt[n - 1][0] * (2 * n - 1)) / n;
     for (let m = 1; m <= n; m += 1) {
       schmidt[n][m] = schmidt[n][m - 1] * Math.sqrt(((n - m + 1) * (m === 1 ? 2 : 1)) / (n + m));
     }
@@ -175,13 +185,43 @@ export function magneticField(model, { latDeg, lonDeg, heightM = 0, date = new D
       // Nothing about the number looked wrong — it was finite, stable, and
       // varied sensibly with position.
       X += rPow * (gnm * cosMl + hnm * sinMl) * dPnm;
-      Y += rPow * m * (gnm * sinMl - hnm * cosMl) * (Pnm / (cosPhi === 0 ? 1e-10 : cosPhi));
+      Y += rPow * m * (gnm * sinMl - hnm * cosMl) * Pnm;
       Z -= rPow * (n + 1) * (gnm * cosMl + hnm * sinMl) * Pnm;
     }
   }
 
+  // The east component carries a 1/sin(colatitude) that is singular at the
+  // poles. Dividing by an epsilon there — which is what this did first — turns
+  // a singularity into a very large wrong number rather than into an error.
+  // The polar branch is the reference implementation's: only the m = 1 terms
+  // survive, evaluated with their own recurrence.
+  if (Math.abs(cosPhi) > 1e-10) {
+    Y /= cosPhi;
+  } else {
+    Y = 0;
+    let qn1 = 1;
+    const ps = [1];
+    for (let n = 1; n <= nMax; n += 1) {
+      const qn2 = (qn1 * (2 * n - 1)) / n;
+      const qn3 = qn2 * Math.sqrt((2 * n) / (n + 1));
+      qn1 = qn2;
+      if (n === 1) ps[n] = ps[n - 1];
+      else ps[n] = sinPhi * ps[n - 1] - (((n - 1) * (n - 1) - 1) / ((2 * n - 1) * (2 * n - 3))) * ps[n - 2];
+
+      const gnm = (model.g[n]?.[1] ?? 0) + t * (model.dg[n]?.[1] ?? 0);
+      const hnm = (model.h[n]?.[1] ?? 0) + t * (model.dh[n]?.[1] ?? 0);
+      Y += ratio ** (n + 2) * (gnm * Math.sin(lon) - hnm * Math.cos(lon)) * ps[n] * qn3;
+    }
+  }
+
   // Rotate the geocentric components back into the geodetic frame.
-  const psi = lat - Math.asin(Math.max(-1, Math.min(1, sinPhi)));
+  //
+  // psi is GEOCENTRIC MINUS GEODETIC latitude, in that order. Reversing it
+  // rotates the field the wrong way by twice the angle between the two — zero
+  // at the equator and at the poles, worst around 45 degrees, which is exactly
+  // the signature the official test table showed: near-perfect at low latitude
+  // and degrees out higher up.
+  const psi = Math.asin(Math.max(-1, Math.min(1, sinPhi))) - lat;
   const Xg = X * Math.cos(psi) - Z * Math.sin(psi);
   const Zg = X * Math.sin(psi) + Z * Math.cos(psi);
 

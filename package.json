@@ -15,12 +15,13 @@
     "a11y:verbose": "node scripts/a11y-gate.mjs --verbose",
     "palette": "node ../noahjefferson/palette-check.mjs palettes/fauxplane.json",
     "icons": "node scripts/render-icons.mjs",
-    "serve": "node scripts/serve.mjs"
+    "serve": "node scripts/serve.mjs",
+    "geodata": "node scripts/build-geodata.mjs"
   },
   "devDependencies": {
     "axe-core": "4.10.2",
     "playwright-core": "1.56.0"
   },
-  "//runtime-dependencies": "The DEPLOYED app still has none. public/ ships exactly as written, with no bundler and no runtime package. The two devDependencies exist only for the accessibility gate and the icon renderer; nothing they touch is deployed, and automation uses npm ci against the committed lockfile (Doctrine §16.1/§16.3).",
-  "//browser": "playwright-core 1.56.0 ships chromium revision 1194, matching /opt/pw-browsers/chromium-1194 in the session sandbox. These are a MATCHED PAIR — the hub learned this the expensive way: a playwright-core expecting a different revision connects and then hangs on a protocol mismatch with no error. If the sandbox browser changes, re-pin here and re-verify."
+  "//runtime-dependencies": "The DEPLOYED app still has none. public/ ships exactly as written, with no bundler and no runtime package. The two devDependencies exist only for the accessibility gate and the icon renderer; nothing they touch is deployed, and automation uses npm ci against the committed lockfile (Doctrine \u00a716.1/\u00a716.3).",
+  "//browser": "playwright-core 1.56.0 ships chromium revision 1194, matching /opt/pw-browsers/chromium-1194 in the session sandbox. These are a MATCHED PAIR \u2014 the hub learned this the expensive way: a playwright-core expecting a different revision connects and then hangs on a protocol mismatch with no error. If the sandbox browser changes, re-pin here and re-verify."
 }

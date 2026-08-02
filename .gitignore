@@ -5,5 +5,10 @@ node_modules/
 .cache/
 *.csv
 
+# ...but NOAA's official WMM test table IS committed. It is the fixture the
+# magnetic model is held to, and a blanket *.csv rule would have silently
+# dropped it — leaving a test file importing a fixture that is not in the repo.
+!scripts/fixtures/*.csv
+
 # Local preview renders from scripts/preview.mjs — not deployed.
 .preview/

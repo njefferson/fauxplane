@@ -3,19 +3,19 @@
   "navdata": {
     "present": false,
     "path": "/data/navdata.json",
-    "reason": "navdata bundle not generated yet",
-    "detail": "Run `npm run navdata` with the OurAirports CSVs. The session that built this app could not fetch them: the egress proxy denies davidmegginson.github.io, and Doctrine §15 says report that rather than route around it. No panel in v1 reads navdata, so nothing on screen depends on it."
+    "reason": "navdata bundle not generated — not needed by any v1 panel",
+    "detail": "The airport, runway and navaid database backs the HSI and nav pages, which are v2 and gated behind the attitude stability test. Nothing on the PFD, ATIS or BITE pages reads it, so its absence costs nothing on screen. It is also not generated because OurAirports' published terms at ourairports.com/data/ are not reachable from the build sandbox and have not been read; the data itself IS reachable. Run `npm run navdata` once the terms are read, or `node scripts/build-navdata.mjs --from <dir>` with the three CSVs."
   },
   "geoid": {
-    "present": false,
+    "present": true,
     "path": "/data/geoid-norcal.json",
-    "reason": "no geoid model bundled — GPS altitude is shown as GEOMETRIC, uncorrected",
-    "detail": "Without a geoid model, GPS height above the WGS84 ellipsoid cannot be converted to altitude above mean sea level, so indicated altitude, pressure altitude, TAS and CAS all read FAIL and the tape is labelled GPS ALT. Typing approximate separation values would make every one of those look right and be wrong by tens of feet — the exact defect v1 exists to forbid. The expected file shape is documented at the top of src/data/geoid.js."
+    "reason": null,
+    "detail": "EGM96 geoid heights over the region, 17x21 at 0.25 degrees, -37.83 to -21.22 m. NGA/NASA, public domain."
   },
   "wmm": {
-    "present": false,
+    "present": true,
     "path": "/data/wmm-cof.json",
-    "reason": "no World Magnetic Model coefficients bundled — declination unavailable",
-    "detail": "True/magnetic conversion is therefore unavailable. The evaluation algorithm is implemented and tested in src/data/wmm.js; it needs NOAA's published WMM.COF wrapped as {\"cof\": \"<file text>\"}. The coefficients are 90 numbers, and approximating them from memory would produce a plausible, wrong declination on a value a pilot uses to reconcile a compass against a GPS track."
+    "reason": null,
+    "detail": "World Magnetic Model 2025, degree 12, valid 2024-11-13T03:00:00.000Z to 2029-11-13T03:00:00.000Z. NOAA NCEI and BGS."
   }
 }

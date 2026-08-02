@@ -504,6 +504,9 @@ async function main() {
 
     /* ---- 3. acceptance criterion 4: every readout traces to a field ----- */
     await checkProvenanceCoverage(browser, base);
+
+    /* ---- 4. the bundled geophysical data actually reaches the panel ----- */
+    await checkGeoDataChain(browser, base);
   } finally {
     await browser.close();
     server.close();
@@ -757,6 +760,109 @@ async function checkProvenanceCoverage(browser, base) {
   }
   for (const b of result.bad) fail(where, b);
 
+  await context.close();
+}
+
+/**
+ * THE DATA FILES ARE CHECKED IN THE APP, not only in Node.
+ *
+ * wmm.test.mjs proves the model is right and the grid is right. Neither proves
+ * the browser can FETCH them, that the manifest points at the correct paths,
+ * that the service-worker shell lists them, or that the altitude chain actually
+ * consumes them. Those are four separate ways for a correct file to reach
+ * nothing — and every one of them would leave the panel reading FAIL while the
+ * unit tests stayed green.
+ *
+ * So: grant a real position and assert the fields that depend on the bundles
+ * stop reading FAIL.
+ */
+async function checkGeoDataChain(browser, base) {
+  const where = 'geodata-chain';
+  const context = await browser.newContext({
+    viewport: { width: 1024, height: 768 },
+    permissions: ['geolocation'],
+    // The home reference, which is inside both the geoid grid and the METAR box.
+    geolocation: { latitude: 38.68, longitude: -121.0, accuracy: 8 },
+  });
+  const page = await context.newPage();
+  const consoleErrors = [];
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    // NARROW, AND ONLY THIS. Pressing PANEL POWER makes the app fetch its
+    // feeds, and the local static server cannot serve Pages Functions — it
+    // answers /api/* with a 503 on purpose. The browser logs any error status
+    // as a console error, so that one is expected HERE and nowhere else.
+    // Matching on the URL rather than the message text keeps the exclusion from
+    // quietly swallowing a real 503 from somewhere else.
+    const url = m.location()?.url ?? '';
+    if (url.startsWith(`${base}/api/`)) return;
+    consoleErrors.push(`${m.text()} (${url})`);
+  });
+  page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`));
+
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.getElementById('power-btn').click());
+  // The declination recompute is throttled and the geoid needs a fix to sample.
+  await page.waitForTimeout(2500);
+
+  const result = await page.evaluate(async () => {
+    const mod = await import('/src/core/state.js');
+    const f = mod.state.snapshot.fields;
+    const pick = (p) => ({ provenance: f[p]?.provenance ?? 'MISSING', value: f[p]?.value ?? null, reason: f[p]?.reason ?? null });
+    return {
+      geoid: pick('altitude.geoidSeparation'),
+      declination: pick('nav.declination'),
+      lat: pick('position.lat'),
+    };
+  });
+
+  if (result.lat.provenance === 'FAIL') {
+    fail(where, `the mocked position never arrived (${result.lat.reason}) — this check proved nothing`);
+    await context.close();
+    return;
+  }
+
+  if (result.geoid.provenance === 'FAIL') {
+    fail(where, `geoid separation still FAILs with a fix and a bundled grid: ${result.geoid.reason}`);
+  } else if (!(result.geoid.value < -78 && result.geoid.value > -130)) {
+    // About -105 ft at the home reference. A number outside that is the grid
+    // being sampled wrongly, which is worse than it being absent.
+    fail(where, `geoid separation is ${result.geoid.value} ft at the home reference, expected about -105`);
+  }
+
+  // The tape must have climbed the ladder to MSL now that a geoid is bundled,
+  // and must SAY so. A tape still labelled GPS ALT with a working geoid means
+  // the selection never happened.
+  const tapeLabel = await page.evaluate(() => {
+    const c = document.getElementById('pfd-canvas');
+    return c.getAttribute('aria-label') ?? '';
+  });
+  const msl = await page.evaluate(async () => {
+    const mod = await import('/src/core/state.js');
+    const f = mod.state.snapshot.fields['altitude.msl'];
+    return { provenance: f?.provenance, value: f?.value, reason: f?.reason };
+  });
+  //
+  // A mocked geolocation fix carries no ALTITUDE — Playwright supplies latitude,
+  // longitude and accuracy only — so MSL legitimately cannot be computed here.
+  // The assertion is therefore the precise one: whatever MSL is missing, it must
+  // no longer be the geoid. That still fails loudly if the grid stops loading,
+  // and it does not pretend the harness can produce an altitude it cannot.
+  if (msl.provenance !== 'FAIL' && !Number.isFinite(msl.value)) {
+    fail(where, 'MSL altitude is not FAIL but carries no number');
+  }
+  if (msl.provenance === 'FAIL' && /geoid/i.test(msl.reason ?? '')) {
+    fail(where, `MSL altitude still blames the geoid with a grid bundled: ${msl.reason}`);
+  }
+  if (!tapeLabel) fail(where, 'the canvas lost its text alternative');
+
+  if (result.declination.provenance === 'FAIL') {
+    fail(where, `declination still FAILs with a fix and bundled coefficients: ${result.declination.reason}`);
+  } else if (!(result.declination.value > 12 && result.declination.value < 14)) {
+    fail(where, `declination is ${result.declination.value} at the home reference, expected about 13 east`);
+  }
+
+  for (const err of consoleErrors) fail(where, `console error: ${err}`);
   await context.close();
 }
 

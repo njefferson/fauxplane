@@ -11,8 +11,25 @@ Required Notice: Copyright © 2026 Noah Jefferson (https://github.com/njefferson
 > - **Airports, runways and navaids** come from [OurAirports](https://ourairports.com/data/),
 >   which publishes them as public-domain data. `public/data/navdata.json` is a
 >   filtered extract of that data and carries its origin in its own `meta` block.
-> - **Observations (METAR)** are fetched at runtime from their publisher and are
->   never redistributed by this repo.
+> - **Observations (METAR)** and **winds aloft** are fetched at runtime from
+>   their publishers and are never redistributed by this repo.
+> - **The World Magnetic Model 2025 coefficients** in
+>   `public/data/wmm-cof.json` are produced by NOAA NCEI and the British
+>   Geological Survey — a US Government work, distributed without restriction on
+>   use. Obtained via the `geomagnetism` package (Apache-2.0), which
+>   redistributes the coefficient set and NOAA's test values; the extracted data
+>   is what this repo carries, not that package's code.
+> - **The EGM96 geoid heights** in `public/data/geoid-norcal.json` are produced
+>   by NGA and NASA — a US Government work, in the public domain. Obtained via
+>   the `egm96-universal` package (MIT) on the same terms.
+> - **NOAA's WMM test values** in `scripts/fixtures/` are the model publisher's
+>   own validation table, carried so the implementation can be held to it.
+>
+> For the two bundled geophysical datasets, the publishers' own sites were NOT
+> reachable from the build sandbox; the public-domain statements above are read
+> from the redistributing packages' LICENSE and README files. That is recorded
+> here, and in `scripts/build-geodata.mjs`, rather than rounded up to a claim
+> nobody verified at the source.
 >
 > Each ingest declares its source's license in its file header (Doctrine §8).
 

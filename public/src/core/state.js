@@ -58,6 +58,7 @@ export const FIELDS = {
 
   // --- derived flight values ------------------------------------------------
   'altitude.geoidSeparation': { unit: 'ft', kind: 'derived', freshMs: 3600000, staleMs: 86400000, label: 'Geoid separation' },
+  'altitude.msl': { unit: 'ft', kind: 'derived', freshMs: 10000, staleMs: 60000, label: 'MSL altitude' },
   'altitude.indicated': { unit: 'ft', kind: 'derived', freshMs: 10000, staleMs: 60000, label: 'Indicated altitude' },
   'altitude.pressure': { unit: 'ft', kind: 'derived', freshMs: 10000, staleMs: 60000, label: 'Pressure altitude' },
   'speed.tas': { unit: 'kt', kind: 'derived', freshMs: 10000, staleMs: 60000, label: 'True airspeed' },

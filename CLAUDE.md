@@ -35,17 +35,25 @@ and it says so.
 ## Stack
 Static, self-contained, **no build step** — `public/` is the deployed app,
 exactly as written. The module tree lives at `public/src/` (not repo-root
-`/src`) precisely so that stays true; see NOTES.md for the reasoning and for the
-esbuild alternative if Noah prefers the literal spec layout. Pages Functions are
-at repo-root `/functions/api/`, which is where Cloudflare expects them.
+`/src`) precisely so that stays true: native ES modules need no bundler, and
+`public/` is the deploy root. Pages Functions are at repo-root `/functions/api/`,
+which is where Cloudflare expects them.
 
 **No runtime dependencies, and that is a rule.** The two devDependencies
 (`playwright-core`, `axe-core`, pinned to match the sandbox's Chromium 1194)
 exist only for the accessibility gate and the icon renderer; nothing they touch
 is deployed. Automation uses `npm ci` against the committed lockfile.
 
+Data the app bundles is generated, never hand-written:
+- `npm run geodata` — the WMM 2025 coefficients and the EGM96 geoid grid, plus
+  NOAA's own test fixture. Reads two npm packages once and commits the extracted
+  data; neither becomes a dependency.
+- `npm run navdata` — the OurAirports database. Still refuses to fetch until
+  someone reads the published terms; no v1 panel needs it.
+
 Every gate, and each one exits non-zero:
-- `npm test` — 77 unit tests over the pure logic.
+- `npm test` — 84 unit tests over the pure logic, including the magnetic model
+  against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
   palettes x 3 pages, including the acceptance criteria.
 - `npm run palette` — the hub's `palette-check.mjs` against

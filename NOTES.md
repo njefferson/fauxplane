@@ -46,13 +46,14 @@ a type error, not a convention.
 
 ### Deviations from the spec, each deliberate, with the reason
 
-1. **The module tree lives at `public/src/`, not at repo-root `/src`.** The repo
-   has no build step (settled, and in CLAUDE.md), and a browser cannot fetch
-   `/src` if only `public/` is deployed. Adding esbuild to satisfy the letter of
-   the layout would add a bundler dependency and make the deployed artifact stop
-   being the source. The tree is otherwise exactly as specified —
-   `core/ sensors/ data/ panels/ render/gauges/`. **Say the word and it becomes
-   a root `/src` with an esbuild step instead.**
+1. **The module tree lives at `public/src/`, not at repo-root `/src`.** Decided,
+   not open. The spec allows esbuild "if bundling is required" — it is not.
+   Native ES modules load without a bundler, `public/` is the deploy root, and a
+   browser cannot fetch `/src` from outside it. Bundling to satisfy the letter of
+   a directory drawing would add a build step this repo has settled against, add
+   a dependency, and make the deployed artifact stop being the source. The tree
+   below that is exactly as specified: `core/ sensors/ data/ panels/
+   render/gauges/`.
 
 2. **The turn needle projects the body rate onto the earth vertical**, rather
    than reading `rotationRate.alpha` directly. For a device clamped vertical as
@@ -78,28 +79,28 @@ a type error, not a convention.
 
 ### The altitude chain, and the one thing worth reading carefully
 
-**The altitude tape shows GPS GEOMETRIC altitude and is labelled `GPS ALT`.**
-It is not indicated altitude, and it does not pretend to be.
+**The tape carries one of three genuinely different altitudes, best first, and
+its own heading names which:**
 
-GPS reports height above the WGS84 ellipsoid; altimeters, charts and terrain are
-referenced to mean sea level, and the two differ by about -100 ft here. Worse,
+- `ALT` — indicated altitude. Needs the geoid AND a station altimeter setting,
+  so it needs the METAR feed, so it needs a deploy.
+- `MSL` — height above mean sea level. Needs only the geoid, so it works with
+  the radio off, which matters for an offline-first app.
+- `GPS ALT` — geometric height above the WGS84 ellipsoid. The raw sensor value.
+
+GPS reports ellipsoidal height; altimeters, charts and terrain are referenced to
+mean sea level, and the two differ by about **-105 ft** in this region. Worse,
 the platforms disagree about which one they hand you — iOS applies the
 correction internally, Android does not — so there is no safe assumption
-available, only a real geoid model or an admission.
+available, only a real geoid model.
 
-There is no geoid model bundled (the CSVs and grids could not be fetched, see
-below), so:
+**The geoid model is now bundled** (see the data section below), so MSL works
+offline. Indicated and pressure altitude, TAS and CAS still read FAIL until the
+Pages Functions are deployed and a station altimeter arrives; each names the
+input it is missing.
 
-- `altitude.geoidSeparation` is FAIL with the reason.
-- Indicated altitude, pressure altitude, TAS and CAS are all FAIL, each naming
-  the input it is missing.
-- The tape falls back to a **different, honestly-titled quantity** rather than a
-  substitute wearing the altimeter's label. The heading on the tape changes with
-  the source; the panel never silently swaps one for the other.
-
-Drop a real `public/data/geoid-norcal.json` in, flip its manifest entry, and all
-four light up with no other change. The expected shape is documented at the top
-of `src/data/geoid.js`.
+This is a SELECTION shown on the tape's label, never a substitution. The gate
+asserts the ladder rather than trusting it.
 
 ### The Kollsman window is a real control
 It defaults to the selected station's setting and can be dialled by hand; the
@@ -110,6 +111,29 @@ auto-syncing — moving a control the user just set is silent mutation.
 
 The amendment's fallback is implemented as written: no station in the box
 reporting an altimeter setting means 29.92, flagged, with the reason on screen.
+
+### The bundled geophysical data, and how it was verified
+
+`npm run geodata` (`scripts/build-geodata.mjs`) emits both files and the test
+fixture, and is reproducible.
+
+- **`public/data/wmm-cof.json`** — World Magnetic Model 2025, degree 12, from
+  NOAA NCEI and the British Geological Survey. Held to NOAA's own published test
+  values at 100 points.
+- **`public/data/geoid-norcal.json`** — EGM96 geoid heights, a 17x21 grid at
+  0.25 degrees (which is EGM96's own 15-arc-minute resolution, so it is a
+  resample and not a smoothing), spanning -37.8 to -21.2 m across the region.
+  From NGA and NASA.
+
+Both are US Government works. **How their terms were read, precisely:** the
+publishers' own sites (`ncei.noaa.gov`, `earth-info.nga.mil`) are blocked by the
+build sandbox and were NOT reached. The public-domain statements come from the
+redistributing packages' own LICENSE and README files. That is weaker than
+reading the publisher's page and is recorded as such in the script header and in
+the emitted files rather than rounded up.
+
+Neither package is a dependency. They are read once, the data is committed, and
+the deployed app still has zero runtime dependencies.
 
 ### Feeds and the services behind them
 All three Pages Functions declare the policy they operate under, identify
@@ -166,11 +190,24 @@ because each one was invisible on screen.
   it was caught by deriving the gravity vector *from* the rotation matrix and
   asserting the two agree. The test now also pins the aviation convention
   itself, so a future refactor that mirrors both routes together still fails.
-- **The WMM north component was 180 degrees out.** X is the *northward*
-  component but theta-hat points *south*, so the sign flips — Y and Z were both
-  right, which put the horizontal field exactly reversed. A pure axial dipole
-  reported a declination of 180 everywhere on earth. Nothing about the number
-  looked wrong: finite, stable, varying sensibly with position.
+- **THREE separate bugs in the magnetic model, and the first two synthetic
+  tests could not see the worst of them.** In order found:
+  1. The north component was 180 degrees out — X is the *northward* component
+     but theta-hat points *south*. Caught by a pure-dipole invariant.
+  2. The Schmidt normalisation for m=0 was 1 at every degree, where it should
+     accumulate (2n-1)/n. This mis-scales every zonal term differently and put
+     declination **three to five degrees out** — while total intensity and
+     inclination stayed close, because the dipole dominates both. **The
+     synthetic dipole tests were structurally blind to it: they are degree 1,
+     and every Schmidt factor at degree 1 is exactly 1.**
+  3. The geocentric-to-geodetic rotation used geodetic-minus-geocentric where it
+     needed geocentric-minus-geodetic. Zero error at the equator, degrees of it
+     at high latitude — the exact signature the official table showed.
+
+  Only real published test values found 2 and 3. `scripts/wmm.test.mjs` now runs
+  the model against NOAA's own 213-row table (100 rows inside the WMM2025
+  window, including polar and high-altitude points) and holds it to 0.05 degrees
+  of declination and inclination and 5 nT of intensity.
 - **`markStale` was undone 40 ms later.** Ageing re-derived provenance from the
   timestamp, saw the reading was still fresh, and called it LIVE again — so
   "mark the sensors stale the moment we are backgrounded" survived exactly one
@@ -225,21 +262,18 @@ working until he has looked.
    METAR and winds need no key and no KV. Per Doctrine §16.4 those two secrets
    go on the step that needs them, never through `$GITHUB_OUTPUT`.
 
-2. **The three absent data bundles.** All three are absent for the same reason —
-   the egress proxy denies the hosts, and Doctrine §15 says report that rather
-   than route around it. `public/data/manifest.json` carries a written reason for
-   each, which is what BITE prints. Two are cheap to fix from anywhere with
-   egress:
-   - **navdata** — `node scripts/build-navdata.mjs --from <dir>` with the three
-     OurAirports CSVs. Updates the manifest itself. No v1 panel reads it.
-   - **geoid** — a real EGM96/EGM2008 grid over the region. This one unlocks
-     indicated altitude, pressure altitude, TAS and CAS.
-   - **WMM** — NOAA's `WMM.COF` wrapped as `{"cof": "<file text>"}`. Unlocks
-     declination and true/magnetic conversion.
+2. **Navdata is the only bundle still absent, and it needs nothing from you
+   right now.** The geoid and the magnetic model are both bundled and verified
+   (below). Navdata backs the HSI and nav pages, which are v2, so nothing on
+   screen depends on it.
 
-3. **OurAirports' published terms still have not been read** — same block. The
-   code says "believed" by holding `SOURCE_POLICY.policyReadOn = null`, which
-   makes the fetch path refuse to run until someone fills it in.
+   Its reason CHANGED and the old one was recorded as false: the CSVs *are*
+   reachable, from `raw.githubusercontent.com`, which is noted in
+   `scripts/build-navdata.mjs` as `MIRRORS`. What is not reachable is
+   `ourairports.com/data/`, the page carrying the published terms — so
+   `SOURCE_POLICY.policyReadOn` stays null and the fetch path still refuses.
+   Pulling 18 MB from a volunteer-run project for a file nothing displays is
+   also the wrong shape (§15.5). Read the terms, then `npm run navdata`.
 
 4. **The attitude stability test, which gates all of v2.** The spec sets it at
    "fusion holds attitude within 2 degrees over a 60 s static test". That needs
