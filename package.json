@@ -1,0 +1,16 @@
+{
+  "name": "fauxplane",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tooling for the fauxplane jet panel PWA. The deployed app is public/ and has no build step; scripts/ regenerates the navdata the app precaches.",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "navdata": "node scripts/build-navdata.mjs",
+    "test": "node --test scripts/build-navdata.test.mjs"
+  },
+  "//dependencies": "Deliberately none. build-navdata.mjs uses only node: builtins (crypto, fs, path, url, util) and global fetch, so there is no lockfile to pin and nothing third-party executes on a runner (Doctrine §16.1/§16.3). If that stops being true, add package-lock.json and switch automation to npm ci in the same commit."
+}

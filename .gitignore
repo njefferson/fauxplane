@@ -1,0 +1,6 @@
+node_modules/
+
+# Raw OurAirports CSVs are never committed — only the filtered
+# public/data/navdata.json is. scripts/build-navdata.mjs caches them here.
+.cache/
+*.csv
