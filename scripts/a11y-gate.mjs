@@ -578,6 +578,45 @@ async function main() {
           }, name);
           if (painted.w < 100 || painted.h < 60) fail(where, `panel box is ${painted.w}x${painted.h} — effectively invisible`);
           if (name !== 'pfd' && painted.text < 40) fail(where, `panel rendered only ${painted.text} characters — blank screen`);
+
+          // THE MISSING-TOKEN SENTINEL, and this is the check that should have
+          // existed the day it was invented.
+          //
+          // Every gauge takes its colour from a CSS custom property and falls
+          // back to magenta when one cannot be read, deliberately hideous so it
+          // gets noticed. Nothing ever LOOKED. The radar canvas read its tokens
+          // while its page was still hidden — where getComputedStyle returns
+          // empty for every property — cached the result, and shipped as a solid
+          // magenta rectangle through several releases. Axe cannot see into a
+          // canvas and neither could any check here, so every gate stayed green
+          // about a screen that was one flat colour.
+          const sentinel = await page.evaluate(() => {
+            const bad = [];
+            for (const c of document.querySelectorAll('canvas')) {
+              const box = c.getBoundingClientRect();
+              if (box.width < 4 || box.height < 4) continue; // not on screen
+              const ctx = c.getContext('2d');
+              if (!ctx || !c.width || !c.height) continue;
+              const data = ctx.getImageData(0, 0, c.width, c.height).data;
+              // Sample a grid rather than every pixel; the failure mode is a
+              // large flat fill, not a stray pixel.
+              const step = 4 * Math.max(1, Math.floor((c.width * c.height) / 4000));
+              let hits = 0;
+              let seen = 0;
+              for (let i = 0; i < data.length; i += step) {
+                if (data[i + 3] < 8) continue; // transparent
+                seen += 1;
+                if (data[i] === 255 && data[i + 1] === 0 && data[i + 2] === 255) hits += 1;
+              }
+              if (seen && hits / seen > 0.01) {
+                bad.push(
+                  `<canvas ${c.id || c.className || '(unnamed)'}> is ${Math.round((hits / seen) * 100)}% missing-token magenta — a colour token could not be read`,
+                );
+              }
+            }
+            return bad;
+          });
+          for (const s of sentinel) fail(where, s);
         }
 
         /* ---- the DIAGNOSTICS dialog, in its open state ------------------

@@ -274,6 +274,18 @@ const PLANTS = [
     expect: /wiggle|shaken desk|no net vertical speed|stationary/,
   },
   {
+    // The exact defect that shipped: tokens read while the page was hidden get
+    // cached, so every gauge on it draws in the missing-token sentinel colour.
+    // Caught by the ACCESSIBILITY gate, because it is the only thing that runs
+    // a real browser and can read pixels back out of a canvas.
+    name: 'canvas: token reads taken while hidden are cached again',
+    check: 'no gauge draws in the missing-token magenta',
+    file: 'public/src/render/canvas.js',
+    find: '    tokens = complete ? out : null;',
+    replace: '    tokens = out;',
+    expect: /missing-token magenta/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

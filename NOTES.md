@@ -68,6 +68,77 @@ items.
 
 ---
 
+## 0.4.7 — the radar page was a solid magenta rectangle, and every gate was green
+
+Noah opened RADAR for the first time. The plan view was one flat sheet of
+`#ff00ff`.
+
+That colour is not a bug, it is the SENTINEL — `canvas.js` takes every gauge
+colour from a CSS custom property and falls back to magenta when one cannot be
+read, deliberately hideous so that a missing token gets noticed. It worked
+perfectly. **Nothing was looking.**
+
+### Why it happened
+
+`createSurface` reads its tokens once, at construction. Every panel except the
+one visible at boot is built inside a `[hidden]` element, and
+`getComputedStyle` on an element in a hidden subtree returns an **empty string
+for every custom property**. So all eighteen tokens fell back to magenta — and
+the result was then CACHED for the life of the page, because `tokens` is only
+re-read when it is null.
+
+The PFD was fine for one reason: it is the page showing at boot.
+
+Fixed by refusing to cache an incomplete read. The next access retries, which
+costs eighteen property lookups until the page is shown and nothing afterwards.
+A token genuinely missing from the stylesheet still goes magenta, loudly, which
+is the entire point of it.
+
+### Why no gate caught it, which is the part worth keeping
+
+**Axe cannot see into a canvas, and neither could anything else here.** The
+accessibility gate ran the radar page across three viewports and two palettes
+every release; it checked contrast on DOM nodes, target sizes, names, and that
+the panel box was not empty. A canvas is one opaque element to all of it. The
+page was one flat colour and every check passed.
+
+This is the same shape as "a headless browser has no accelerometer", and the
+same answer applies: **when a check is structurally blind to a whole class of
+output, say so and build the check that is not.** The gate now reads pixels back
+out of every on-screen canvas and fails on the sentinel colour. Planted and
+watched fail: restoring the caching turns the gate red naming the canvas and the
+percentage.
+
+The sentinel had existed for many releases. An alarm nobody has wired to
+anything is a decoration.
+
+### adsb.fi returns HTTP 403 — NOT diagnosed
+
+The radar page also reported `No traffic: adsb.fi returned HTTP 403`.
+
+Checked and ruled out: the base URL and all three paths are exactly as adsb.fi
+publish them (`/v3/lat/{lat}/lon/{lon}/dist/{dist}`, `/v2/callsign/{cs}`,
+`/v2/hex/{hex}`), and 250 nm is their documented maximum. So this is not a wrong
+endpoint.
+
+**What it actually is, is unknown, and this sandbox cannot find out** — the
+proxy refuses CONNECT to adsb.fi, so no request can be made from here. The
+remaining candidates are adsb.fi refusing this User-Agent, adsb.fi refusing
+Cloudflare Worker egress generally, or a bot rule on their edge.
+
+Rather than guess, the Function now reports what the server said: the response
+body, bounded and flattened, plus its `server` header. "HTTP 403" is a status
+code, not a reason — and the app enforces "a failure explains itself" on its own
+sensors while accepting a bare status from somebody else's. The next report
+Noah sends will name the cause.
+
+### Verified
+
+**160 unit tests, 23/23 planted faults caught, both palettes clear, the
+accessibility gate green — now including a canvas the gate can finally see.**
+
+---
+
 ## 0.4.6 — zero is a measurement, and treating it as a gap was the bug
 
 Noah, looking at a panel with groundspeed crossed out on a stationary desk:

@@ -148,7 +148,28 @@ async function relay(upstreamUrl, meta, cacheSeconds) {
       { cacheSeconds },
     );
   }
-  if (!res.ok) return problem(`adsb.fi returned HTTP ${res.status}`, { status: 502 });
+  if (!res.ok) {
+    // CARRY THE EVIDENCE. "HTTP 403" is a status code, not a reason, and it
+    // left the one question that matters unanswered: whether adsb.fi is
+    // refusing this request, this User-Agent, or every Cloudflare Worker.
+    // Their reply usually says which, and the panel's whole contract is that a
+    // failure explains itself — a rule the app applies to its own sensors and
+    // had not been applying to somebody else's server.
+    //
+    // Bounded and stripped of newlines because it goes on the face of a gauge,
+    // and read defensively: an error path that throws is an error path that
+    // hides the error.
+    let detail = '';
+    try {
+      const body = (await res.text()).replace(/\s+/g, ' ').trim();
+      if (body) detail = ` — ${body.slice(0, 160)}`;
+    } catch {
+      /* no readable body; the status is all there is */
+    }
+    const server = res.headers.get('server');
+    const via = server ? ` [server: ${server}]` : '';
+    return problem(`adsb.fi returned HTTP ${res.status}${via}${detail}`, { status: 502 });
+  }
 
   let payload;
   try {

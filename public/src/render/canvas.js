@@ -60,13 +60,31 @@ export function createSurface(canvas, { onResize = () => {} } = {}) {
     return true;
   };
 
+  /**
+   * NEVER CACHE A READ TAKEN WHILE THE CANVAS WAS NOT RENDERED.
+   *
+   * `getComputedStyle` on an element inside a `[hidden]` subtree returns an
+   * EMPTY STRING for every custom property, so every token fell back to the
+   * missing-token magenta — and the result was cached for the life of the page.
+   * Every panel except the one visible at boot is built hidden, so the radar
+   * page had been a solid magenta rectangle since it was added, and the sentinel
+   * that exists to be noticed was never looked at by anything.
+   *
+   * An incomplete read is therefore not stored. The next access retries, which
+   * costs eighteen property reads on one element until the page is shown and
+   * nothing at all afterwards. A token genuinely absent from the stylesheet
+   * still goes magenta, loudly, which is the point of it.
+   */
   const readTokens = () => {
     const style = getComputedStyle(canvas);
     const out = {};
+    let complete = true;
     for (const name of TOKEN_NAMES) {
-      out[name] = style.getPropertyValue(`--${name}`).trim() || '#ff00ff';
+      const value = style.getPropertyValue(`--${name}`).trim();
+      if (!value) complete = false;
+      out[name] = value || '#ff00ff';
     }
-    tokens = out;
+    tokens = complete ? out : null;
     return out;
   };
 
