@@ -68,6 +68,45 @@ items.
 
 ---
 
+## OPEN DEFECT — the iPad reads roll ~90 degrees out, 2026-08-02
+
+Noah's iPad, on `fauxplane.pages.dev` (0.2.4):
+
+| shot | orientation | pitch | roll |
+|---|---|---|---|
+| IMG_1381 | landscape | -0.2 | **-89.2** |
+| IMG_1382 | portrait | -23.6 | **-91.2** |
+| IMG_1383 | portrait | -24.5 | **-90.1** |
+
+**The error is a CONSTANT ninety degrees and does not change with orientation,
+and that rules out the obvious cause.** If the screen-angle compensation were
+simply missing, portrait would read correctly and only landscape would be out by
+ninety. It is out by ninety in both.
+
+So it is not "iPads do not report `screen.orientation.angle`". Something else
+disagrees, and the candidates cannot be separated from a photograph: the
+platform's reported angle, the axis convention of the accelerometer relative to
+the iPad's natural orientation, and which orientation iPadOS considers natural
+are three different explanations that all look identical on screen.
+
+**NOT GUESSED AT.** Hardcoding a +90 for iPads would be the user-agent sniffing
+that `detectAccelSign` exists specifically to avoid, and it would break every
+iPad whose natural orientation is the other one. 0.4.1 adds a RAW SENSOR AXES
+block to the diagnostics report — the three accelerometer components before any
+correction, the raw orientation angles, `screen.orientation.angle` AND `.type`
+AND the legacy `window.orientation`, and the viewport aspect. One paste from the
+iPad in each orientation identifies which of the three is lying, and then the
+fix is a measurement rather than a guess.
+
+**Also worth recording, because it wasted a round trip:** all three screenshots
+are of `fauxplane.pages.dev`, which is `main`, which is 0.2.4. The diagnostics
+button (0.3.1), RADAR (0.3.0) and SETUP (0.4.0) are all on `staging`. "Touching
+the version number does nothing" was entirely correct — that build has no such
+control. A session should check the version stamp in a screenshot before
+diagnosing anything from it.
+
+---
+
 ## 0.4.0 — levelling the panel to whatever it is mounted in
 
 Noah: *"Begin working on the capability of calibrating the horizon to match a

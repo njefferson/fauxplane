@@ -82,7 +82,7 @@ function formatValue(field) {
  * A pure function of the things handed to it, so it can be called from a test
  * without a browser — the same reason every derivation lives in derive.js.
  */
-export function buildReport({ snapshot, fusion, traffic, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null }) {
+export function buildReport({ snapshot, fusion, traffic, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {} }) {
   const t = snapshot?.t ?? Date.now();
   const f = snapshot?.fields ?? {};
   const out = [];
@@ -170,6 +170,37 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
     const a = traffic.followed;
     if (a) line(`             ${a.hex} ${a.registration ?? ''} ${a.type ?? ''}  seen_pos ${a.seenPosS}s ago`);
   }
+  line();
+
+  // ---- RAW SENSOR AXES -------------------------------------------------------
+  //
+  // The three numbers, before anything is done to them, alongside the screen
+  // angle they are about to be rotated by. This block exists because an axis
+  // convention cannot be diagnosed from a photograph of a horizon — an iPad
+  // reading roll -90 in BOTH orientations and an iPad with a missing screen
+  // rotation look identical on screen and are different bugs.
+  line('RAW SENSOR AXES  (before any correction)');
+  const a = raw.accel;
+  line(
+    a
+      ? `  accelerationIncludingGravity  x ${a.x.toFixed(3)}  y ${a.y.toFixed(3)}  z ${a.z.toFixed(3)}  |g| ${(Math.hypot(a.x, a.y, a.z) / 9.80665).toFixed(3)}`
+      : '  accelerationIncludingGravity  no event received',
+  );
+  if (a?.rotation) {
+    const r = a.rotation;
+    const n = (v) => (Number.isFinite(v) ? v.toFixed(2) : '—');
+    line(`  rotationRate                  alpha ${n(r.alpha)}  beta ${n(r.beta)}  gamma ${n(r.gamma)} deg/s`);
+  }
+  const o = raw.orientation;
+  line(
+    o
+      ? `  deviceorientation             alpha ${o.alpha === null ? '—' : Number(o.alpha).toFixed(1)}  beta ${o.beta === null ? '—' : Number(o.beta).toFixed(1)}  gamma ${o.gamma === null ? '—' : Number(o.gamma).toFixed(1)}  absolute ${o.absolute}`
+      : '  deviceorientation             no event received',
+  );
+  if (o && o.webkitCompassHeading !== null) line(`  webkitCompassHeading          ${Number(o.webkitCompassHeading).toFixed(1)}`);
+  line(`  screen angle in use           ${env.screenAngle}   (screen.orientation.angle ${env.rawScreenAngle}, type ${env.orientation}, window.orientation ${env.windowOrientation})`);
+  line(`  viewport                      ${env.viewportW}x${env.viewportH}  ${env.viewportW > env.viewportH ? '(landscape as the reader sees it)' : '(portrait as the reader sees it)'}`);
+  line(`  screen                        ${env.screenW}x${env.screenH}`);
   line();
 
   // ---- the device ------------------------------------------------------------

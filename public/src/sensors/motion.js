@@ -25,6 +25,10 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, owns = () 
   let listening = false;
   let sawEvent = false;
   let handler = null;
+  /** The last RAW event, kept solely so the diagnostics report can print the
+   *  actual axes. Diagnosing an axis convention from a photograph of a horizon
+   *  is guesswork; diagnosing it from the three numbers is arithmetic. */
+  let lastRaw = null;
 
   const onMotion = (event) => {
     const at = clock();
@@ -32,6 +36,7 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, owns = () 
     const r = event.rotationRate;
 
     if (raw && [raw.x, raw.y, raw.z].every((v) => Number.isFinite(v))) {
+      lastRaw = { x: raw.x, y: raw.y, z: raw.z, rotation: r ? { alpha: r.alpha, beta: r.beta, gamma: r.gamma } : null };
       // ONE conversion, at the source. The slip ball, the vertical
       // accelerometer and the turn needle all read the same vector as the
       // horizon does, so a platform that negates it cannot flip one of them
@@ -107,6 +112,11 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, owns = () 
 
     get sawEvent() {
       return sawEvent;
+    },
+
+    /** Raw accelerometer axes, exactly as the platform delivered them. */
+    get lastRaw() {
+      return lastRaw;
     },
 
     start() {

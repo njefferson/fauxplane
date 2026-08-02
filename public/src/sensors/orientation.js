@@ -28,6 +28,8 @@ const screenAngle = () => {
 
 export function createOrientationSensor({ state, fusion, clock = () => Date.now() }) {
   let listening = false;
+  /** The last RAW orientation event, for the diagnostics report. */
+  let lastRaw = null;
   let absoluteSensor = null;
   let headingMechanism = null;
   let teardown = [];
@@ -35,6 +37,7 @@ export function createOrientationSensor({ state, fusion, clock = () => Date.now(
   const onOrientation = (event) => {
     const at = clock();
     const { beta, gamma, alpha } = event;
+    lastRaw = { alpha, beta, gamma, webkitCompassHeading: event.webkitCompassHeading ?? null, absolute: event.absolute ?? null };
 
     if (Number.isFinite(beta)) state.write('orientation.beta', beta, { at });
     else state.fail('orientation.beta', 'orientation event carried no beta');
@@ -105,6 +108,11 @@ export function createOrientationSensor({ state, fusion, clock = () => Date.now(
   return {
     get mechanism() {
       return headingMechanism;
+    },
+
+    /** Raw orientation angles, exactly as the platform delivered them. */
+    get lastRaw() {
+      return lastRaw;
     },
 
     /**

@@ -99,6 +99,7 @@ async function boot() {
         env: readEnvironment(),
         mount: fusion.mountOffset,
         mountApplies: fusion.mountOffset ? fusion.mountOffset.capturedAtScreenAngle === orientation.screenAngle() : null,
+        raw: { accel: motion.lastRaw, orientation: orientation.lastRaw },
       }),
   });
 
@@ -692,6 +693,10 @@ async function boot() {
       viewportW: window.innerWidth,
       viewportH: window.innerHeight,
       screenAngle: orientation.screenAngle(),
+      // BOTH the value in use and the raw platform readings, because "which of
+      // these three disagrees" is the whole question on an iPad.
+      rawScreenAngle: screen?.orientation?.angle ?? 'absent',
+      windowOrientation: typeof window.orientation === 'number' ? window.orientation : 'absent',
       orientation: screen?.orientation?.type ?? 'unknown',
       rootFontPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
       dim: `${document.documentElement.dataset.dim} (${$('dim-note').textContent})`,
