@@ -68,6 +68,74 @@ items.
 
 ---
 
+## 0.4.6 — zero is a measurement, and treating it as a gap was the bug
+
+Noah, looking at a panel with groundspeed crossed out on a stationary desk:
+*"Why can you not show ground speed of zero?? Why the fuck can't you tell a
+wiggle isn't vertical acceleration when stationary?!"*
+
+He is right on both, and they are the same defect. The no-synthetic-data rule is
+correct and stays — but **"the platform handed me null" is not the same fact as
+"the quantity is unknowable"**, and this app had been treating them as one.
+
+The old reason string named its own defect and nobody read it:
+
+> `this fix carried no speed (stationary, or the platform does not report it)`
+
+It could not tell those two apart, and did not try — while holding two position
+fixes and a clock, which is everything a groundspeed is made of.
+
+### Groundspeed is differenced from the fixes
+
+`coords.speed` is null on a stationary iOS receiver. When it is, the speed is
+now differenced from consecutive fixes, and the **resolution bound is computed
+and shown**: each fix carries its own accuracy, so their difference carries both
+in quadrature, and divided by the interval that is the smallest speed
+distinguishable from standing still. Below it the answer is **0 kt**, DERIVED,
+with the bound on the face of it. It is a measurement of not moving, not the
+absence of one.
+
+The floor is not a formality. Writing the tests, a "walking pace is obviously
+motion" case FAILED: two ±5 m fixes 5 s apart resolve to ±1.41 m/s, and a
+1.40 m/s walk is inside that. The physics was right and the expectation was
+wrong. That case is kept as a test of the limitation — a slow walk on an indoor
+fix genuinely cannot be told from standing still, and the panel says so with the
+number rather than pretending either way.
+
+**Track stays crossed out, and that is the distinction.** A stationary receiver
+has a groundspeed of zero, but it has no direction of travel at all — there is
+no true value to report, not merely one below the noise. Zero speed is a
+measurement; zero track is a category error.
+
+### A wiggle is not a climb — ZUPT
+
+The vertical-speed integrator had no **zero-velocity update**, which is what
+every inertial system does about exactly this. A wiggle is bounded oscillation
+with no net displacement, but an integrator cannot tell it from the start of a
+climb, so a shaken desk accrued vertical speed until it tripped the runaway
+bound and crossed itself out. That is the X Noah saw.
+
+The fix is not a better integrator. It is to use the independent evidence that
+the device is not translating: the attitude filter ALREADY detects stillness
+from gyro rate and gravity magnitude, and that detection was sitting there
+unused by the VSI. When it says still, vertical velocity **is** zero and the
+integrator is told so. Same correction a pedestrian dead-reckoning system
+applies at every footfall; a parked aeroplane gets it too and correctly reads
+zero rather than drifting.
+
+The stationary path deliberately does **not** consult GPS altitude. The evidence
+for "not moving" is the motion sensors, and a fix that stopped arriving cannot
+make a stationary device's vertical speed unknown — inheriting that fix's
+provenance is what crossed the instrument out indoors.
+
+### Verified
+
+**160 unit tests, 22/22 planted faults caught, both palettes clear.** Two new
+plants, one per direction: groundspeed going back to failing instead of reading
+zero, and the zero-velocity update no longer being applied.
+
+---
+
 ## 0.4.5 — the diagnostics report crashed on exactly the device that needed it
 
 Found while writing the report's first test. It had none, which is how a tool

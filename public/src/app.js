@@ -332,6 +332,9 @@ async function boot() {
   // store. They land in the next publish, 40 ms later, which is invisible and
   // keeps the derivation out of the render path.
   let lastDeclinationAt = 0;
+  // The most recent attitude read, so the vertical-speed integrator can be told
+  // when the device is being held still without reading the filter twice.
+  let lastAttitude = null;
   state.subscribe((snapshot) => {
     const f = snapshot.fields;
     const t = snapshot.t;
@@ -358,6 +361,7 @@ async function boot() {
     // there is a horizon at all. See the long note in fusion.read().
     if (!following) {
       const att = fusion.read(t);
+      lastAttitude = att;
       if (att.hasAttitude) {
         state.write('attitude.pitch', att.pitch, { at: t, reason: att.reason });
         state.write('attitude.roll', att.roll, { at: t, reason: att.reason });
@@ -426,6 +430,13 @@ async function boot() {
     writeField('speed.tas', tas, t);
     const cas = calibratedAirspeed({ tasKt: tas, pressureAltFt: pAlt, oatC: f['winds.oat'] });
     writeField('speed.cas', cas, t);
+
+    // ZERO-VELOCITY UPDATE. The attitude filter already decides, from gyro rate
+    // and gravity magnitude, whether this thing is being held still — so tell
+    // the vertical-speed integrator, which otherwise reads a wiggle as the
+    // start of a climb. Only when the device owns its own fields: a followed
+    // aircraft's vertical speed has nothing to do with this desk being still.
+    if (!following) vsi.setStationary(lastAttitude?.still === true, t);
 
     // Vertical speed and angle of attack.
     const vs = vsi.read({

@@ -328,6 +328,7 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
   let lastAltFt = null;
   let lastAltAt = null;
   let lastAccelAt = null;
+  let stationaryAt = null;
   let reason = 'no altitude samples yet';
 
   const reset = (why = 'vertical speed filter reset') => {
@@ -335,11 +336,39 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
     lastAltFt = null;
     lastAltAt = null;
     lastAccelAt = null;
+    stationaryAt = null;
     reason = why;
   };
 
   return {
     reset,
+    /**
+     * ZERO-VELOCITY UPDATE (ZUPT), which is what every inertial system does
+     * about exactly this and what this filter was missing.
+     *
+     * A wiggle is bounded oscillation with no net displacement, but an
+     * integrator cannot tell it from the start of a climb — so a shaken desk
+     * accrued vertical speed and the instrument crossed itself out. The
+     * standard answer is not a better integrator: it is to USE the independent
+     * evidence that the device is not translating. The attitude filter already
+     * detects stillness from gyro rate and gravity magnitude, so when it says
+     * still, the vertical velocity IS zero and the integrator is told so.
+     *
+     * This is the same correction a pedestrian dead-reckoning system applies at
+     * every footfall. It is not a special case for a desk — a parked aeroplane
+     * gets it too, and correctly reads zero rather than drifting.
+     */
+    setStationary(isStationary, at) {
+      if (!isStationary) {
+        stationaryAt = null;
+        return;
+      }
+      rateFpm = 0;
+      lastAccelAt = at;
+      reason = null;
+      stationaryAt = at;
+    },
+
     /** Integrate the vertical accelerometer forward. Fast, drifts. */
     updateAccel(verticalAccelMs2, at) {
       if (!Number.isFinite(verticalAccelMs2)) return;
@@ -390,6 +419,17 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
     },
 
     read({ altitudeField, verticalAccelField }) {
+      // STATIONARY SHORT-CIRCUIT, and it deliberately does NOT consult GPS
+      // altitude. When the motion sensors say the device is not translating,
+      // they are the evidence for zero — a fix that stopped arriving cannot
+      // make a stationary device's vertical speed unknown, and inheriting that
+      // fix's provenance is what crossed this instrument out on a desk.
+      if (stationaryAt !== null) {
+        const still = worstOf({ 'vertical acceleration': verticalAccelField });
+        if (still.provenance !== 'FAIL') {
+          return mk(0, { ...still, reason: 'stationary — the device is not moving vertically' }, 'fpm');
+        }
+      }
       const meta = worstOf({ 'GPS altitude': altitudeField, 'vertical acceleration': verticalAccelField });
       if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'fpm' });
       if (rateFpm === null) return fail(reason ?? 'vertical speed filter has not converged', { unit: 'fpm' });
@@ -414,3 +454,60 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
 
 /** Convenience for the panels: is this field showing a number right now? */
 export { isUsable, mToFt };
+
+/**
+ * ZERO IS A MEASUREMENT, AND THIS SECTION EXISTS BECAUSE IT WAS TREATED AS A GAP.
+ *
+ * `coords.speed` is null on a stationary iOS receiver, and the panel crossed
+ * groundspeed out with the reason "stationary, OR the platform does not report
+ * it". That reason names its own defect: it could not tell the two apart, and
+ * did not try — while holding two position fixes and a clock, which is all a
+ * groundspeed has ever needed.
+ *
+ * A receiver that is not moving HAS a groundspeed. It is zero, it traces
+ * entirely to the sensor, and refusing to say so is not honesty — it is a panel
+ * declining to report a measurement it is holding. The doctrine's rule is
+ * against values that come from NEITHER a sensor nor a feed. A difference of
+ * two fixes comes from the sensor.
+ */
+
+/** WGS-84 mean radius, metres. */
+const EARTH_R_M = 6_371_008.8;
+
+/**
+ * Metres between two fixes.
+ *
+ * Equirectangular rather than haversine on purpose: over the metres-to-hundreds
+ * of metres a fix moves between samples the two agree far inside the receiver's
+ * own accuracy, and this one cannot lose precision to catastrophic cancellation
+ * the way haversine does at short range.
+ */
+export function metresBetween(a, b) {
+  const dLat = degToRad(b.lat - a.lat);
+  const dLon = degToRad(b.lon - a.lon) * Math.cos(degToRad((a.lat + b.lat) / 2));
+  return Math.hypot(dLat, dLon) * EARTH_R_M;
+}
+
+/**
+ * Groundspeed differenced from two consecutive fixes, with the resolution that
+ * differencing can actually claim.
+ *
+ * THE FLOOR IS THE HONEST PART. Each fix carries its own accuracy, so their
+ * difference carries both added in quadrature; divided by the interval that is
+ * the smallest speed distinguishable from the receiver standing still. Below
+ * it, the measurement is zero — not "unknown", and not the noise value, which
+ * would be a number invented by jitter.
+ */
+export function groundspeedFromFixes(prev, next, { maxGapS = 30 } = {}) {
+  if (!prev || !next) return null;
+  const dt = (next.at - prev.at) / 1000;
+  if (!(dt > 0)) return null;
+  // Differencing across a long gap is the same error the VSI makes across a
+  // dropped fix: the aircraft may have gone anywhere in between, and a straight
+  // line between the endpoints is not the path it took. Returning null crosses
+  // the instrument out honestly rather than averaging over a hole.
+  if (dt > maxGapS) return null;
+  const speedMs = metresBetween(prev, next) / dt;
+  const floorMs = Math.hypot(prev.accuracy ?? 0, next.accuracy ?? 0) / dt;
+  return { speedMs, floorMs, dt, moving: speedMs > floorMs };
+}

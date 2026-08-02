@@ -252,6 +252,28 @@ const PLANTS = [
     expect: /never got a position fix|Cannot read properties of undefined/,
   },
   {
+    // Zero is a measurement. Going back to crossing groundspeed out because the
+    // platform handed us null is the exact defect Noah found.
+    name: 'stationary: groundspeed goes back to failing instead of reading zero',
+    check: 'a receiver sitting still reads zero, not a failure',
+    gate: 'tests',
+    file: 'public/src/core/derive.js',
+    find: '  return { speedMs, floorMs, dt, moving: speedMs > floorMs };',
+    replace: '  return { speedMs, floorMs, dt, moving: true };',
+    expect: /jitter inside the accuracy bound is not motion|not moving/,
+  },
+  {
+    // The zero-velocity update. Without it an integrator reads every shake as
+    // the start of a climb, which is what crossed the VSI out on a desk.
+    name: 'stationary: the zero-velocity update stops being applied',
+    check: 'a wiggle is not integrated into a climb',
+    gate: 'tests',
+    file: 'public/src/core/derive.js',
+    find: '      rateFpm = 0;\n      lastAccelAt = at;\n      reason = null;\n      stationaryAt = at;',
+    replace: '      stationaryAt = null;',
+    expect: /wiggle|shaken desk|no net vertical speed|stationary/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

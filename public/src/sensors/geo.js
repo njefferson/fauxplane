@@ -16,6 +16,7 @@
  */
 
 import { mToFt, msToKt } from '../core/units.js';
+import { groundspeedFromFixes } from '../core/derive.js';
 
 export const GEO_OPTIONS = Object.freeze({
   enableHighAccuracy: true,
@@ -47,6 +48,9 @@ const POSITION_FIELDS = [
 export function createGeoSensor({ state, vsi, onFix = () => {}, owns = () => true, clock = () => Date.now() }) {
   let watchId = null;
   let sawFix = false;
+  // The previous fix, kept so a speed can be differenced when the platform
+  // declines to supply one. Cleared on reset with everything else.
+  let lastFix = null;
   let lastError = null;
 
   const onPosition = (position) => {
@@ -63,6 +67,10 @@ export function createGeoSensor({ state, vsi, onFix = () => {}, owns = () => tru
     // Only the position FIELDS change hands.
     if (!owns()) {
       if (Number.isFinite(c.altitude)) vsi.updateAltitude(mToFt(c.altitude), at);
+      // Keep differencing the reader's own fixes even while a followed aircraft
+      // owns the FIELDS, so groundspeed is right on the first fix after
+      // unfollowing rather than differencing across the whole follow.
+      lastFix = { lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, at };
       onFix({ lat: c.latitude, lon: c.longitude, at });
       return;
     }
@@ -70,8 +78,34 @@ export function createGeoSensor({ state, vsi, onFix = () => {}, owns = () => tru
     state.write('position.lon', c.longitude, { at });
     state.write('position.accuracy', c.accuracy, { at });
 
-    if (Number.isFinite(c.speed)) state.write('position.groundspeed', msToKt(c.speed), { at });
-    else state.fail('position.groundspeed', 'this fix carried no speed (stationary, or the platform does not report it)');
+    // GROUNDSPEED. The platform's own figure when there is one — but a
+    // stationary iOS receiver reports null, and this used to cross the
+    // instrument out with the reason "stationary, OR the platform does not
+    // report it". That reason names its own defect: it could not tell the two
+    // apart and did not try, while holding the two fixes and the clock that a
+    // groundspeed is made of. A receiver that is not moving HAS a groundspeed.
+    if (Number.isFinite(c.speed) && c.speed >= 0) {
+      state.write('position.groundspeed', msToKt(c.speed), { at });
+    } else {
+      const solved = groundspeedFromFixes(lastFix, { lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, at });
+      if (!solved) {
+        state.fail('position.groundspeed', 'waiting for a second fix to difference — one fix cannot carry a speed');
+      } else if (!solved.moving) {
+        // Below what differencing two fixes of this accuracy can resolve. That
+        // is a measurement of standing still, not an absence of one, and the
+        // bound it is known to is on the face of it.
+        state.write('position.groundspeed', 0, {
+          at,
+          reason: `not moving — differenced fixes resolve to ±${msToKt(solved.floorMs).toFixed(1)} kt`,
+        });
+      } else {
+        state.write('position.groundspeed', msToKt(solved.speedMs), {
+          at,
+          reason: `differenced from consecutive fixes (±${msToKt(solved.floorMs).toFixed(1)} kt); the platform reported no speed`,
+        });
+      }
+    }
+    lastFix = { lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, at };
 
     if (Number.isFinite(c.heading)) {
       state.write('position.track', c.heading, { at });
