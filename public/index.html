@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en" data-dim="day">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      NO user-scalable=no AND NO maximum-scale. Page zoom is never locked
+      (Doctrine §4). viewport-fit=cover is what lets the panel reach into the
+      notch area on a clamped phone; the safe-area insets in styles.css keep the
+      instruments out of it.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="A glass-cockpit instrument panel for a phone or tablet, driven by the device's own sensors and live aviation data."
+    />
+    <title>fauxplane — glass panel</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <!--
+      Every script and style in this app is an external file, with no inline
+      <script> and no inline style attribute anywhere. That is what makes the
+      strict Content-Security-Policy in public/_headers possible rather than
+      decorative (Doctrine §16.6 — a CSP is a refactor, not a header).
+    -->
+    <script type="module" src="/src/app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#panel">Skip to the panel</a>
+
+    <header class="bar">
+      <!-- Inside the banner landmark: content outside every landmark is
+           unreachable by landmark navigation, which axe correctly flagged. -->
+      <h1 class="sr-only">fauxplane — glass cockpit panel</h1>
+      <nav aria-label="Panel pages">
+        <div role="tablist" aria-label="Panel pages" class="tabs">
+          <button type="button" role="tab" id="tab-pfd" class="tab" data-page="pfd" aria-controls="page-pfd" aria-selected="true">
+            PFD
+          </button>
+          <button type="button" role="tab" id="tab-atis" class="tab" data-page="atis" aria-controls="page-atis" aria-selected="false" tabindex="-1">
+            ATIS
+          </button>
+          <button type="button" role="tab" id="tab-bite" class="tab" data-page="bite" aria-controls="page-bite" aria-selected="false" tabindex="-1">
+            BITE
+          </button>
+        </div>
+      </nav>
+
+      <div class="bar-right">
+        <button type="button" id="dim-toggle" class="dim-btn">
+          <span class="dim-label">Brightness</span>
+          <span class="dim-note" id="dim-note">Auto</span>
+        </button>
+        <!--
+          The build stamp. Always on screen in the normal working view, never
+          behind a tap, written at boot from the one constant the release
+          process bumps, dimmed with a COLOUR TOKEN and never with opacity, and
+          selectable so it can be pasted rather than transcribed (Doctrine §7b).
+        -->
+        <output class="stamp" id="build-stamp" aria-label="Build version">v—</output>
+      </div>
+    </header>
+
+    <p class="boot-error" id="boot-error" role="alert" hidden></p>
+
+    <main id="panel" class="panel">
+      <section id="page-pfd" class="page page-pfd" role="tabpanel" aria-labelledby="tab-pfd" tabindex="0">
+        <!--
+          A canvas is non-text content (SC 1.1.1). Its aria-label is written at
+          boot and kept current with what is actually on it — the readouts below
+          carry the same values as real, selectable, screen-reader text.
+        -->
+        <canvas id="pfd-canvas" class="pfd-canvas" role="img" aria-label="Primary flight display. Starting up."></canvas>
+        <!-- A scrollable region must be reachable and scrollable from the
+             keyboard, so it is focusable and named. -->
+        <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
+      </section>
+
+      <section id="page-atis" class="page page-cards" role="tabpanel" aria-labelledby="tab-atis" tabindex="0" hidden></section>
+
+      <section id="page-bite" class="page page-cards" role="tabpanel" aria-labelledby="tab-bite" tabindex="0" hidden></section>
+    </main>
+
+    <footer class="foot">
+      <span class="foot-item">Home reference <span id="home-note">—</span></span>
+      <span class="foot-item">Not a simulator · not certified for anything · never for navigation</span>
+      <a class="foot-link" href="https://noahjefferson.pages.dev/accessibility">Accessibility</a>
+    </footer>
+
+    <!--
+      PANEL POWER. iOS will not deliver motion or orientation events until
+      DeviceMotionEvent.requestPermission() is called from inside a user
+      gesture, and this button is that gesture.
+
+      Every requirement of Doctrine §4 for an interrupting surface is met here:
+      the dismiss is visible in the first frame without scrolling, it is
+      repeated at the bottom, it is wired before anything that can throw, it is
+      never conditional on granting anything, and the panel is short enough that
+      nothing can push it off screen.
+    -->
+    <dialog id="power-gate" class="gate" aria-labelledby="gate-h" open>
+      <div class="gate-head">
+        <h2 id="gate-h" class="gate-title">PANEL POWER</h2>
+        <button type="button" class="gate-close" data-dismiss-gate aria-label="Close panel power and continue without sensors">
+          Close
+        </button>
+      </div>
+
+      <p class="gate-body">
+        This panel runs on your device's own sensors and on live aviation feeds. Nothing is simulated: if a reading is
+        missing, the instrument shows a failure flag and the BITE page explains why.
+      </p>
+      <p class="gate-body">
+        Switching on asks for motion, orientation and location access. Everything stays on the device — no account, no
+        analytics, nothing sent anywhere but the weather and traffic requests the panel makes on your behalf.
+      </p>
+
+      <button type="button" id="power-btn" class="gate-power">Switch the panel on</button>
+
+      <p class="gate-body gate-small">
+        You can decline and still use the panel. Every instrument will show its failure flag, which is exactly what it
+        is supposed to do.
+      </p>
+      <button type="button" class="gate-close gate-close-foot" data-dismiss-gate>Continue without sensors</button>
+    </dialog>
+
+    <!--
+      Status messages reach assistive technology without stealing focus
+      (SC 4.1.3). Transitions only — never a value every frame.
+    -->
+    <p id="announcer" class="sr-only" role="status" aria-live="polite"></p>
+  </body>
+</html>

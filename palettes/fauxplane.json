@@ -1,0 +1,41 @@
+{
+  "_readme": "fauxplane's colour, in the ROLE terms the hub's PALETTES.md defines. The gate lives in the hub and is never forked: run it from this repo with `npm run palette`, which is `node ../noahjefferson/palette-check.mjs palettes/fauxplane.json`. Two entries, because panel DIMMING is implemented as measured palette blocks rather than as a brightness filter — see the note below.",
+
+  "_why-two-blocks": "A CSS brightness() filter over the whole panel is the obvious way to dim a cockpit display and it silently destroys every contrast pair this gate measured: the +0.05 term in the WCAG formula means scaling both foreground and background REDUCES the ratio. Measured on this palette, brightness(0.45) takes primary text from 14.5:1 to about 3.7:1 — a fail state, arrived at by a control whose whole purpose is legibility. So dimming switches between two blocks that have each been measured, and the dimmest one still clears every floor.",
+
+  "fauxplane-day": {
+    "kind": "app",
+    "page": "#1a1a1a",
+    "pageAlt": "#232323",
+    "surfaces": ["#3a3a3a", "#414141", "#484848"],
+    "rail": "rgba(255,255,255,.62)",
+    "hairline": "rgba(255,255,255,.17)",
+    "text": ["#eaeaea", "#d2d2d2", "#c1c1c1"],
+    "accents": {
+      "live": "#6ed194",
+      "derived": "#a5e9f8",
+      "stale": "#fadfa2",
+      "fail": "#ffa8a8",
+      "primary": "#9fc2f5"
+    },
+    "accentSoftAlpha": 0.15
+  },
+
+  "fauxplane-night": {
+    "kind": "app",
+    "page": "#0f0f0f",
+    "pageAlt": "#141414",
+    "surfaces": ["#262626", "#2e2e2e", "#363636"],
+    "rail": "rgba(255,255,255,.62)",
+    "hairline": "rgba(255,255,255,.17)",
+    "text": ["#c8c8c8", "#bfbfbf", "#b6b6b6"],
+    "accents": {
+      "live": "#5cc186",
+      "derived": "#8fd9ea",
+      "stale": "#e8c98b",
+      "fail": "#f08f8f",
+      "primary": "#8fb2e5"
+    },
+    "accentSoftAlpha": 0.15
+  }
+}

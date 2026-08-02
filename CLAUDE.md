@@ -33,10 +33,28 @@ defaults standing in for a reading that is missing. A missing reading is FAIL,
 and it says so.
 
 ## Stack
-Static, self-contained, no build step — `public/` is the deployed app. The one
-piece of tooling is `scripts/build-navdata.mjs`, which regenerates
-`public/data/navdata.json` from the OurAirports CSVs. The raw CSVs are never
-committed. `npm test` runs the navdata tests; there are no runtime dependencies.
+Static, self-contained, **no build step** — `public/` is the deployed app,
+exactly as written. The module tree lives at `public/src/` (not repo-root
+`/src`) precisely so that stays true; see NOTES.md for the reasoning and for the
+esbuild alternative if Noah prefers the literal spec layout. Pages Functions are
+at repo-root `/functions/api/`, which is where Cloudflare expects them.
+
+**No runtime dependencies, and that is a rule.** The two devDependencies
+(`playwright-core`, `axe-core`, pinned to match the sandbox's Chromium 1194)
+exist only for the accessibility gate and the icon renderer; nothing they touch
+is deployed. Automation uses `npm ci` against the committed lockfile.
+
+Every gate, and each one exits non-zero:
+- `npm test` — 77 unit tests over the pure logic.
+- `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
+  palettes x 3 pages, including the acceptance criteria.
+- `npm run palette` — the hub's `palette-check.mjs` against
+  `palettes/fauxplane.json`. The gate is never forked; it is run from the hub.
+- `node scripts/plant.mjs` — breaks one thing at a time and proves the gate
+  goes red **about that thing**. A check nobody has watched fail is not evidence.
+- `node scripts/preview.mjs` — renders the panel in live states a sandbox cannot
+  reach. Not shipped, not imported by the app; it drives the store from outside
+  through the same public write the sensors use.
 
 ## Branches
 `staging` and `main` only (Noah, 2026-08-02). Staging is a **hard release gate**

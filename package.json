@@ -1,16 +1,26 @@
 {
   "name": "fauxplane",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Tooling for the fauxplane jet panel PWA. The deployed app is public/ and has no build step; scripts/ regenerates the navdata the app precaches.",
+  "description": "Tooling for the fauxplane jet panel PWA. The deployed app is public/ and has no build step; scripts/ regenerates the navdata the app precaches and runs the accessibility gate.",
   "license": "SEE LICENSE IN LICENSE.md",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "navdata": "node scripts/build-navdata.mjs",
-    "test": "node --test scripts/build-navdata.test.mjs"
+    "test": "node --test scripts/*.test.mjs",
+    "a11y": "node scripts/a11y-gate.mjs",
+    "a11y:verbose": "node scripts/a11y-gate.mjs --verbose",
+    "palette": "node ../noahjefferson/palette-check.mjs palettes/fauxplane.json",
+    "icons": "node scripts/render-icons.mjs",
+    "serve": "node scripts/serve.mjs"
   },
-  "//dependencies": "Deliberately none. build-navdata.mjs uses only node: builtins (crypto, fs, path, url, util) and global fetch, so there is no lockfile to pin and nothing third-party executes on a runner (Doctrine §16.1/§16.3). If that stops being true, add package-lock.json and switch automation to npm ci in the same commit."
+  "devDependencies": {
+    "axe-core": "4.10.2",
+    "playwright-core": "1.56.0"
+  },
+  "//runtime-dependencies": "The DEPLOYED app still has none. public/ ships exactly as written, with no bundler and no runtime package. The two devDependencies exist only for the accessibility gate and the icon renderer; nothing they touch is deployed, and automation uses npm ci against the committed lockfile (Doctrine §16.1/§16.3).",
+  "//browser": "playwright-core 1.56.0 ships chromium revision 1194, matching /opt/pw-browsers/chromium-1194 in the session sandbox. These are a MATCHED PAIR — the hub learned this the expensive way: a playwright-core expecting a different revision connects and then hangs on a protocol mismatch with no error. If the sandbox browser changes, re-pin here and re-verify."
 }

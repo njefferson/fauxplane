@@ -4,3 +4,6 @@ node_modules/
 # public/data/navdata.json is. scripts/build-navdata.mjs caches them here.
 .cache/
 *.csv
+
+# Local preview renders from scripts/preview.mjs — not deployed.
+.preview/

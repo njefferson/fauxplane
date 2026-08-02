@@ -1,0 +1,39 @@
+# Security headers for fauxplane (Doctrine §16.6).
+#
+# THIS SITE HAS A REAL CONTENT-SECURITY-POLICY, and it is worth saying why that
+# was possible here when the hub's own _headers file explains why it was not
+# possible there. A CSP is a REFACTOR, not a header: it only works if the page
+# carries no inline script and no inline style. This app was written that way
+# from the first commit — index.html has no <script> body and no style
+# attribute, every module is an external file, and every colour is a custom
+# property in styles.css. So `script-src 'self'` costs nothing and is not a
+# decoration.
+#
+# connect-src is 'self' ONLY. Every third-party call goes through a Pages
+# Function on this origin (/api/metar, /api/winds, /api/traffic), so the client
+# never talks to aviationweather.gov, open-meteo.com or opensky-network.org
+# directly. That is the same rule the code follows, enforced by the browser
+# rather than by everyone remembering it — and if a later session adds a direct
+# fetch, this line is what breaks first.
+#
+# Permissions-Policy GRANTS what this app genuinely needs and nothing else.
+# accelerometer, gyroscope and magnetometer drive the instruments; geolocation
+# drives position. Camera is allowed because the ambient-light fallback can use
+# a camera frame's luminance — it is never started without an explicit request.
+# Everything else is denied outright.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Cross-Origin-Opener-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'
+  Permissions-Policy: accelerometer=(self), gyroscope=(self), magnetometer=(self), geolocation=(self), camera=(self), ambient-light-sensor=(self), screen-wake-lock=(self), microphone=(), payment=(), usb=(), midi=(), serial=(), bluetooth=(), display-capture=(), idle-detection=(), interest-cohort=()
+
+# The service worker must not be served from a stale edge cache, or a release
+# cannot take effect until the old worker happens to expire.
+/sw.js
+  Cache-Control: no-cache
+
+# The API responses carry their own Cache-Control from the Pages Functions,
+# which set it from each source's declared policy. Nothing here overrides them.

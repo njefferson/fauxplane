@@ -1,0 +1,250 @@
+/**
+ * derive.js — every computed value on the panel, and nothing else.
+ *
+ * These are the four derivations the spec names, implemented exactly, and each
+ * one labelled DERIVED by construction. They are pure functions over fields, so
+ * they can be tested without a browser, a sensor or a network — which is the
+ * only way to prove that a missing input produces FAIL rather than a plausible
+ * number.
+ *
+ * THE HOUSE RULE, in one line: if an input is missing, the output is FAIL and
+ * it names the input. There is no branch anywhere in this file that supplies a
+ * value the inputs did not contain.
+ */
+
+import { derived, fail, isUsable, worstOf } from './provenance.js';
+import { degToRad, msToFpm, mToFt, pressureAltitudeOffsetFt, radToDeg, tasToCas, wrap360 } from './units.js';
+
+/** Below this groundspeed, angle of attack is not a meaningful quantity. */
+export const AOA_MIN_GROUNDSPEED_KT = 20;
+
+const mk = (value, meta, unit) =>
+  meta.provenance === 'FAIL'
+    ? fail(meta.reason, { unit })
+    : derived(value, { unit, at: meta.at, reason: meta.reason });
+
+/**
+ * Mean-sea-level altitude from the GPS geometric altitude.
+ *
+ *   MSL = geometric altitude - geoid separation
+ *
+ * The geoid term is NOT optional and is NOT approximated. GPS reports height
+ * above the WGS84 ellipsoid on some platforms and above the geoid on others,
+ * and the separation in this region is around -100 ft — comfortably enough to
+ * matter, and exactly the kind of "reasonable default" v1 forbids. Without a
+ * real separation this returns FAIL and says why; it does not quietly assume
+ * the platform already applied it.
+ */
+export function mslAltitude({ geometricFt, geoidSeparationFt }) {
+  const meta = worstOf({ 'GPS altitude': geometricFt, 'geoid separation': geoidSeparationFt });
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'ft' });
+  return mk(geometricFt.value - geoidSeparationFt.value, meta, 'ft');
+}
+
+/**
+ * Indicated altitude — what a barometric altimeter would read with the pilot's
+ * Kollsman setting dialled in, standing in the pressure field the nearest
+ * reporting station is measuring.
+ *
+ *   indicated = MSL + [offset(station setting) - offset(dialled setting)]
+ *
+ * With the dialled setting equal to the station's, that bracket is zero and the
+ * altimeter indicates true MSL — which is the whole point of setting it. Dial
+ * something else and the reading moves exactly as a real altimeter's would,
+ * which is what makes the Kollsman window a real control rather than a label.
+ *
+ * Requires a station altimeter setting. Without one there is no pressure field
+ * to indicate against, so this FAILs and the ATIS page's 29.92 fallback governs
+ * the tape instead — flagged, with the reason shown.
+ */
+export function indicatedAltitude({ mslFt, kollsmanInHg, stationAltimeterInHg }) {
+  const meta = worstOf({
+    'MSL altitude': mslFt,
+    'altimeter setting': kollsmanInHg,
+    'station altimeter': stationAltimeterInHg,
+  });
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'ft' });
+
+  const dialled = pressureAltitudeOffsetFt(kollsmanInHg.value);
+  const station = pressureAltitudeOffsetFt(stationAltimeterInHg.value);
+  if (dialled === null || station === null) return fail('altimeter setting is not a usable pressure', { unit: 'ft' });
+
+  return mk(mslFt.value + (station - dialled), meta, 'ft');
+}
+
+/**
+ * Pressure altitude — altitude in the standard atmosphere. Independent of what
+ * the pilot has dialled: it is MSL corrected by the ACTUAL pressure field, which
+ * is what the airspeed and density computations need.
+ */
+export function pressureAltitude({ mslFt, stationAltimeterInHg }) {
+  const meta = worstOf({ 'MSL altitude': mslFt, 'station altimeter': stationAltimeterInHg });
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'ft' });
+
+  const offset = pressureAltitudeOffsetFt(stationAltimeterInHg.value);
+  if (offset === null) return fail('altimeter setting is not a usable pressure', { unit: 'ft' });
+  return mk(mslFt.value + offset, meta, 'ft');
+}
+
+/**
+ * True airspeed — the GPS groundspeed vector minus the modelled wind vector at
+ * the current altitude.
+ *
+ * Wind direction from a weather feed is the direction the wind blows FROM,
+ * which is 180 degrees from the vector it contributes. Getting that backwards
+ * doubles the wind instead of removing it, and the result still looks like an
+ * airspeed.
+ */
+export function trueAirspeed({ groundspeedKt, trackDegTrue, windDirDegFrom, windSpeedKt }) {
+  const meta = worstOf({
+    groundspeed: groundspeedKt,
+    track: trackDegTrue,
+    'wind direction': windDirDegFrom,
+    'wind speed': windSpeedKt,
+  });
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'kt' });
+
+  const trackRad = degToRad(trackDegTrue.value);
+  const gE = groundspeedKt.value * Math.sin(trackRad);
+  const gN = groundspeedKt.value * Math.cos(trackRad);
+
+  const towardRad = degToRad(wrap360(windDirDegFrom.value + 180));
+  const wE = windSpeedKt.value * Math.sin(towardRad);
+  const wN = windSpeedKt.value * Math.cos(towardRad);
+
+  const aE = gE - wE;
+  const aN = gN - wN;
+  const tas = Math.hypot(aE, aN);
+  const heading = wrap360(radToDeg(Math.atan2(aE, aN)));
+
+  const field = mk(tas, meta, 'kt');
+  // The air-mass heading falls out of the same subtraction and is worth
+  // keeping: it is the only true-heading estimate this app has that does not
+  // go through the magnetometer.
+  return Object.freeze({ ...field, airHeadingDegTrue: field.provenance === 'FAIL' ? null : heading });
+}
+
+/** Calibrated airspeed, back-converted from TAS using pressure altitude and OAT. */
+export function calibratedAirspeed({ tasKt, pressureAltFt, oatC }) {
+  const meta = worstOf({ TAS: tasKt, 'pressure altitude': pressureAltFt, OAT: oatC });
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'kt' });
+
+  const cas = tasToCas(tasKt.value, { pressureAltFt: pressureAltFt.value, oatC: oatC.value });
+  if (cas === null) return fail('airspeed conversion had no usable atmosphere', { unit: 'kt' });
+  return mk(cas, meta, 'kt');
+}
+
+/**
+ * Angle of attack — pitch minus the GPS flight-path angle.
+ *
+ * FORCED TO FAIL BELOW 20 KT GROUNDSPEED, as specified: the flight-path angle
+ * is atan(vertical speed / groundspeed) and at a standstill that is a division
+ * by nearly nothing, so the number becomes enormous and meaningless. This is
+ * the one place in the app where a real computation is refused on purpose, and
+ * the reason is shown rather than the gauge simply going quiet.
+ */
+export function angleOfAttack({ pitchDeg, groundspeedKt, verticalSpeedFpm }) {
+  const meta = worstOf({ pitch: pitchDeg, groundspeed: groundspeedKt, 'vertical speed': verticalSpeedFpm });
+  if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'deg' });
+
+  if (groundspeedKt.value < AOA_MIN_GROUNDSPEED_KT) {
+    return fail(`groundspeed below ${AOA_MIN_GROUNDSPEED_KT} kt — flight path angle is undefined`, { unit: 'deg' });
+  }
+
+  // Both legs in the same units: feet per minute. One knot is 6076.115 ft/h,
+  // so 101.27 ft/min — the conversion is written out because getting it wrong
+  // scales the flight-path angle by 60 and still produces a believable number.
+  const groundFpm = (groundspeedKt.value * 6076.115) / 60;
+  const fpaDeg = radToDeg(Math.atan2(verticalSpeedFpm.value, groundFpm));
+  return mk(pitchDeg.value - fpaDeg, meta, 'deg');
+}
+
+/**
+ * Vertical speed — a complementary filter of differentiated GPS altitude
+ * against integrated vertical acceleration. NEITHER ALONE, as specified:
+ *
+ *   - Differentiated GPS altitude is honest but lags 2-5 seconds, so on its own
+ *     the needle reports the climb you were in, not the one you are in.
+ *   - Integrated vertical acceleration is instant and drifts without bound, so
+ *     on its own it reads a steady climb while sitting on the ramp.
+ *
+ * Requires BOTH. If either is missing the result is FAIL, because a VSI running
+ * on one of them is a different and worse instrument wearing this one's label.
+ */
+export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
+  let rateFpm = null;
+  let lastAltFt = null;
+  let lastAltAt = null;
+  let lastAccelAt = null;
+  let reason = 'no altitude samples yet';
+
+  const reset = (why = 'vertical speed filter reset') => {
+    rateFpm = null;
+    lastAltFt = null;
+    lastAltAt = null;
+    lastAccelAt = null;
+    reason = why;
+  };
+
+  return {
+    reset,
+    /** Integrate the vertical accelerometer forward. Fast, drifts. */
+    updateAccel(verticalAccelMs2, at) {
+      if (!Number.isFinite(verticalAccelMs2)) return;
+      if (lastAccelAt === null) {
+        lastAccelAt = at;
+        return;
+      }
+      const dt = (at - lastAccelAt) / 1000;
+      lastAccelAt = at;
+      if (!(dt > 0) || dt > 0.5) return;
+      if (rateFpm === null) return;
+      rateFpm += msToFpm(verticalAccelMs2 * dt);
+    },
+
+    /** Correct toward the differentiated GPS altitude. Slow, honest. */
+    updateAltitude(altitudeFt, at) {
+      if (!Number.isFinite(altitudeFt)) return;
+      if (lastAltFt === null || lastAltAt === null) {
+        lastAltFt = altitudeFt;
+        lastAltAt = at;
+        reason = 'converging';
+        return;
+      }
+      const dt = (at - lastAltAt) / 1000;
+      if (!(dt > 0)) return;
+      if (at - lastAltAt > maxGapMs) {
+        // A gap this long means the fix stopped arriving. Differencing across
+        // it produces a spike that reads as a 6000 fpm dive.
+        lastAltFt = altitudeFt;
+        lastAltAt = at;
+        reason = 'position fix gap — filter restarted';
+        rateFpm = null;
+        return;
+      }
+
+      const gpsRate = ((altitudeFt - lastAltFt) / dt) * 60;
+      lastAltFt = altitudeFt;
+      lastAltAt = at;
+
+      if (rateFpm === null) {
+        rateFpm = gpsRate;
+        reason = null;
+        return;
+      }
+      const k = Math.min(1, dt / tau);
+      rateFpm += k * (gpsRate - rateFpm);
+      reason = null;
+    },
+
+    read({ altitudeField, verticalAccelField }) {
+      const meta = worstOf({ 'GPS altitude': altitudeField, 'vertical acceleration': verticalAccelField });
+      if (meta.provenance === 'FAIL') return fail(meta.reason, { unit: 'fpm' });
+      if (rateFpm === null) return fail(reason ?? 'vertical speed filter has not converged', { unit: 'fpm' });
+      return mk(rateFpm, meta, 'fpm');
+    },
+  };
+}
+
+/** Convenience for the panels: is this field showing a number right now? */
+export { isUsable, mToFt };

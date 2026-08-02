@@ -1,0 +1,674 @@
+/*
+ * styles.css — the ONE place colour is declared.
+ *
+ * The two blocks below are the two measured palettes from palettes/fauxplane.json,
+ * verified by the hub's palette-check.mjs. Panel dimming switches between them.
+ * It is NOT a brightness filter: scaling foreground and background together
+ * reduces the WCAG ratio (the +0.05 term), so brightness(0.45) would take
+ * primary text from 14.5:1 to about 3.7:1 — a fail state produced by the one
+ * control whose entire purpose is legibility.
+ *
+ * Type is sized in rem so it honours the reader's TEXT-SIZE preference and not
+ * only page zoom (Doctrine §4).
+ */
+
+:root {
+  /* fauxplane-day — worst text 4.88:1, worst rail 4.68:1 */
+  --page: #1a1a1a;
+  --page-alt: #232323;
+  --surface: #3a3a3a;
+  --surface-2: #414141;
+  --surface-3: #484848;
+  --rail: rgba(255, 255, 255, 0.62);
+  --hairline: rgba(255, 255, 255, 0.17);
+  --text: #eaeaea;
+  --text-2: #d2d2d2;
+  --text-3: #c1c1c1;
+  --live: #6ed194;
+  --derived: #a5e9f8;
+  --stale: #fadfa2;
+  --fail: #ffa8a8;
+  --primary: #9fc2f5;
+
+  /* ADI. Sky and ground are 9.8 apart in GRAYSCALE ΔE — four times the 2.3 JND
+     the family treats as "these read as different" — so which way is up
+     survives a grayscale render on luminance alone, before the solid/dashed
+     ladder convention is counted. */
+  --sky: #2f6087;
+  --ground: #5a3d22;
+  --symbol: #ffc247;
+  --symbol-outline: #0b0b0b;
+
+  --target: 2.75rem; /* 44px at the default root size, and it grows with the reader's */
+  --gap: 0.75rem;
+  --radius: 0.5rem;
+}
+
+:root[data-dim='night'] {
+  /* fauxplane-night — worst text 5.20:1, worst rail 5.74:1 */
+  --page: #0f0f0f;
+  --page-alt: #141414;
+  --surface: #262626;
+  --surface-2: #2e2e2e;
+  --surface-3: #363636;
+  --text: #c8c8c8;
+  --text-2: #bfbfbf;
+  --text-3: #b6b6b6;
+  --live: #5cc186;
+  --derived: #8fd9ea;
+  --stale: #e8c98b;
+  --fail: #f08f8f;
+  --primary: #8fb2e5;
+  --sky: #244865;
+  --ground: #422d19;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 1rem;
+  display: flex;
+  flex-direction: column;
+  /* The panel is clamped where an instrument panel would be, so it must not
+     run under a notch or a home indicator. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: absolute;
+  left: 0.5rem;
+  top: -4rem;
+  z-index: 20;
+  background: var(--surface-3);
+  color: var(--text);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--rail);
+}
+.skip:focus {
+  top: 0.5rem;
+}
+
+/* Focus is never removed. A visible ring on every focusable thing. */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* --- top bar ------------------------------------------------------------- */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.6rem; /* targets are SPACED, not only sized — tremor overshoots */
+}
+
+.tab {
+  min-height: var(--target);
+  min-width: 4.5rem;
+  padding: 0 1rem;
+  background: var(--surface);
+  color: var(--text-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+/* The selected tab changes its BORDER and its fill, and reserves the border in
+   both states, so pressing it never changes its size and never reflows the row
+   underneath a finger already moving (Doctrine §4). */
+.tab[aria-selected='true'] {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--rail);
+}
+
+.bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dim-btn {
+  min-height: var(--target);
+  padding: 0 0.9rem;
+  background: var(--surface);
+  color: var(--text-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  cursor: pointer;
+}
+.dim-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+.dim-note {
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/* The build stamp is dimmed with a TOKEN (--text-3, a measured 5.08:1 on the
+   page), never with opacity — an opacity is invisible to a contrast gate, and
+   two sibling apps shipped a 2.54:1 stamp that way. */
+.stamp {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+  padding: 0.25rem 0.4rem;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.boot-error {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  color: var(--fail);
+  border-bottom: 2px solid var(--fail);
+}
+
+/* --- panel --------------------------------------------------------------- */
+
+.panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.page {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.page[hidden] {
+  display: none;
+}
+
+.page-pfd {
+  display: flex;
+  flex-direction: row;
+  gap: var(--gap);
+  padding: var(--gap);
+  min-height: 0;
+}
+
+.pfd-canvas {
+  flex: 1 1 62%;
+  /* No fixed height. The canvas is whatever the flex box gives it, measured at
+     the moment it draws. A minimum in px would be the next fixed size that
+     fails at 200% text — this one is in rem and stays proportional to the
+     reader's own type size. */
+  min-height: 12rem;
+  min-width: 0;
+  background: var(--page-alt);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+.readouts {
+  flex: 1 1 38%;
+  min-width: 14rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-right: 0.25rem;
+}
+
+/* Narrow or short: stack rather than squeeze. Checked at the
+   small-phone-at-200%-text case, where the canvas would otherwise be a sliver. */
+@media (max-width: 46rem), (max-height: 26rem) {
+  .page-pfd {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .pfd-canvas {
+    flex: 0 0 auto;
+    height: 60vh;
+    min-height: 10rem;
+  }
+  .readouts {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+}
+
+/* --- readout rows -------------------------------------------------------- */
+
+.readout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0.5rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--hairline);
+}
+.readout[data-provenance='FAIL'] {
+  border-left-color: var(--fail);
+}
+.readout[data-provenance='STALE'] {
+  border-left-color: var(--stale);
+}
+.readout[data-provenance='DERIVED'] {
+  border-left-color: var(--derived);
+}
+.readout[data-provenance='LIVE'] {
+  border-left-color: var(--live);
+}
+
+.ro-label {
+  flex: 1 1 8rem;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+}
+.ro-figure {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ro-unit {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin-left: 0.2rem;
+}
+.ro-reason {
+  flex: 1 1 100%;
+  font-size: 0.75rem;
+  color: var(--fail);
+}
+.ro-reason:empty {
+  display: none;
+}
+
+/* The provenance chip. Colour reinforces; the glyph and the word carry it. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.7rem;
+  border: 1px solid currentColor;
+}
+.chip-live {
+  color: var(--live);
+}
+.chip-derived {
+  color: var(--derived);
+}
+.chip-stale {
+  color: var(--stale);
+}
+.chip-fail {
+  color: var(--fail);
+}
+.chip-age {
+  color: inherit;
+  font-weight: 500;
+}
+
+/* --- cards (ATIS, BITE) --------------------------------------------------- */
+
+.page-cards {
+  overflow-y: auto;
+  padding: var(--gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+}
+.card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.atis-station {
+  margin: 0 0 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.atis-station[data-provenance='FAIL'] {
+  color: var(--fail);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+.atis-source {
+  margin: 0 0 0.6rem;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.atis-raw {
+  margin: 0.6rem 0 0;
+  padding: 0.6rem;
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+  /* A long METAR scrolls INSIDE itself; it never overflows a screen edge. */
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* --- Kollsman ------------------------------------------------------------ */
+
+.koll-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.koll-row-2 {
+  gap: 1.4rem; /* Sync sits well clear of the nudge buttons */
+}
+
+.koll-btn {
+  min-width: var(--target);
+  min-height: var(--target);
+  font-size: 1.5rem;
+  line-height: 1;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.koll-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  /* A fixed-width box so the digits changing never resizes anything around
+     them — the control must not move when it is used. */
+  min-width: 7.5rem;
+  justify-content: center;
+}
+.koll-value {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.koll-unit {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+
+.koll-label {
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+.koll-input {
+  min-height: var(--target);
+  width: 7rem;
+  padding: 0 0.6rem;
+  background: var(--page);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.koll-sync {
+  min-height: var(--target);
+  padding: 0 1rem;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  cursor: pointer;
+}
+.koll-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+.koll-note[data-state='off-station'] {
+  color: var(--stale);
+}
+.koll-note[data-state='fail'] {
+  color: var(--fail);
+}
+
+/* --- BITE ---------------------------------------------------------------- */
+
+.bite-intro {
+  margin: 0 0 0.6rem;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+.bite-summary {
+  margin: 0 0 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+/* A LIST, not a grid (Doctrine §2). Each entry is a heading plus two lines, so
+   it reflows at 200% text instead of becoming columns of clipped words. */
+.bite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.bite-item {
+  padding: 0.5rem 0.7rem;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--hairline);
+}
+.bite-item[data-status='PASS'] {
+  border-left-color: var(--live);
+}
+.bite-item[data-status='DEGRADED'] {
+  border-left-color: var(--stale);
+}
+.bite-item[data-status='FAIL'] {
+  border-left-color: var(--fail);
+}
+.bite-label {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.bite-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  margin: 0.2rem 0;
+}
+.bite-item[data-status='PASS'] .bite-mark {
+  color: var(--live);
+}
+.bite-item[data-status='DEGRADED'] .bite-mark {
+  color: var(--stale);
+}
+.bite-item[data-status='FAIL'] .bite-mark {
+  color: var(--fail);
+}
+.bite-reason {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+
+/* --- footer -------------------------------------------------------------- */
+
+.foot {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.foot-link {
+  color: var(--primary);
+  /* This link is a FLEX ITEM, not a target inline in a sentence, so SC 2.5.8's
+     exemption does not govern it — the gate said so, and the rule was checked
+     before the data was edited to please it. It gets a real 44px target. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  padding: 0 0.5rem;
+  border-radius: var(--radius);
+}
+
+/* --- PANEL POWER --------------------------------------------------------- */
+
+.gate {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  /* Sized from the space AVAILABLE, never a constant, and it scrolls inside
+     itself rather than overflowing an edge. */
+  width: min(38rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem 1.25rem;
+  z-index: 30;
+}
+.gate::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+}
+.gate[hidden] {
+  display: none;
+}
+
+.gate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  /* The way out is visible in the first frame WITHOUT scrolling, and stays on
+     screen however far down the panel someone has read. */
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  padding-bottom: 0.5rem;
+}
+.gate-title {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.12em;
+}
+.gate-close {
+  min-height: var(--target);
+  padding: 0 1rem;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  cursor: pointer;
+}
+.gate-close-foot {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+.gate-body {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.gate-small {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+.gate-power {
+  display: block;
+  width: 100%;
+  min-height: 3.25rem;
+  margin: 0.5rem 0 1rem;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+body[data-powered='true'] .gate {
+  display: none;
+}
+
+/* Reduced motion is honoured: nothing in this app animates, and any future
+   transition must be wrapped in this query. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

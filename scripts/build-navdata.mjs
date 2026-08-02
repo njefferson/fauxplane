@@ -43,17 +43,16 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
 
 // --- Region -----------------------------------------------------------------
-// Single source of truth for the region constants. Anything else that needs
-// the home reference or the bbox imports it from here rather than retyping it
-// (LESSONS: "a hand-written carry list is a bug with a delay fuse").
+// The single source of truth for the region constants MOVED to
+// public/src/core/region.js when the app was built, because the app needs the
+// same numbers — the home reference is its position surrogate before the first
+// GPS fix. It is imported, never retyped ("a hand-written carry list is a bug
+// with a delay fuse"), and re-exported here so this module's existing callers
+// and tests are unaffected.
 
-export const REGION = {
-  id: 'norcal',
-  kvKey: 'navdata:norcal',
-  home: { name: 'Cameron Park, CA', lat: 38.68, lon: -121.0 },
-  // Roughly a 100 nm radius around the home reference.
-  bbox: { latMin: 37.0, latMax: 40.4, lonMin: -123.2, lonMax: -118.8 },
-};
+import { REGION } from '../public/src/core/region.js';
+
+export { REGION };
 
 // --- Source policy (Doctrine §15) -------------------------------------------
 // Declared, not implied. A CI etiquette gate reads this block; see NOTES.md
@@ -364,6 +363,26 @@ async function loadSources({ from }) {
 
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 
+/** Mark the navdata bundle present, keeping every other entry untouched. */
+async function updateManifest(outPath, data) {
+  const manifestPath = path.join(REPO, 'public', 'data', 'manifest.json');
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch (err) {
+    process.stderr.write(`build-navdata: could not read the data manifest (${err.message}); navdata will still read as absent\n`);
+    return;
+  }
+  manifest.navdata = {
+    present: true,
+    path: `/${path.relative(path.join(REPO, 'public'), outPath).split(path.sep).join('/')}`,
+    reason: null,
+    detail: `${data.airports.length} airports, ${data.runways.length} runways, ${data.navaids.length} navaids for ${REGION.id}.`,
+  };
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  process.stdout.write('  manifest public/data/manifest.json updated: navdata present\n');
+}
+
 // --- Main --------------------------------------------------------------------
 
 async function main() {
@@ -411,6 +430,12 @@ async function main() {
 
   await mkdir(path.dirname(outPath), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(payload, null, 0)}\n`);
+
+  // Flip the data manifest, so the app stops reporting the bundle as absent.
+  // The app asks the manifest BEFORE fetching a bundle (public/data/manifest.json
+  // explains why), so writing the file without updating the manifest would
+  // leave a perfectly good navdata database that nothing ever reads.
+  await updateManifest(outPath, data);
 
   const rel = path.relative(REPO, outPath);
   process.stdout.write(
