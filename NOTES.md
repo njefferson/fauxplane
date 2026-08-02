@@ -68,7 +68,7 @@ items.
 
 ---
 
-## 0.4.2 — the iPad roll defect, FOUND, and it was two bugs
+## 0.4.2 / 0.4.3 — the iPad roll defect, FOUND, and it was two bugs
 
 Noah's iPad read roll about ninety degrees out **in both orientations**, which
 is what ruled out the obvious cause: a missing screen rotation would be right in
@@ -174,8 +174,23 @@ Checked against every one of the four raw vectors:
 |---|---|---|
 | iPad portrait | −90.8 | **−5.5** |
 | iPad landscape | −89.0 | **+2.9** |
+| iPad landscape (second report) | −88.6 | **+3.1** |
 | iPhone portrait | −0.9 | −0.9 (unchanged, was already right) |
 | iPhone landscape | −145.5 | **+2.1** |
+
+All five are now a **table-driven test** in `fusion.test.mjs`, asserting each
+solves to under ten degrees of roll. They are kept as a table rather than folded
+into one representative case because their value is that they came off real
+hardware: none of these vectors was constructed to pass, and four of the five
+are numbers the app itself got wrong.
+
+That test also exists because of *how* the sign bug survived two releases. There
+WAS a round-trip test over the rotation, and it passed throughout — it asserted
+that `screenToDevice` was the exact inverse of `attitudeFromGravity`'s rotation,
+which stayed true when both were flipped together. **A test that checks two
+functions against each other cannot see an error they share.** The fix for that
+class of blindness is not a better round-trip; it is one measurement from
+outside the system.
 
 Still unverified: Android and desktop, in landscape. The report names which
 angle source it used, so the first such report either confirms the rule or
@@ -218,6 +233,35 @@ coasting time (`-9ms`, `-21ms`, `-34ms`). The store ages fields against
 they are not the same clock, so a reading could be stamped just AFTER the
 publish that measured its age. A negative age is a small lie about a timestamp,
 in an app whose whole contract is timestamps. One clock now, the store's.
+
+### Verified
+
+**136 unit tests, 17/17 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.** Two of the seventeen plants are new and guard this release
+specifically: one puts the screen angle back on the lying API, the other applies
+the rotation backwards again. Both are checked against the UNIT suite, not the
+accessibility gate — a headless browser has no accelerometer, so the gate is
+structurally blind to the entire class of bug this release is about and would
+have stayed green through both.
+
+**One plant had silently stopped working, and that is worth recording.** The
+plant proving the gyro zero-offset keeps being learned was anchored to the line
+`const ki = cfg.biasKi * …`. Adding the anti-windup gate above rewrote that line,
+so the plant no longer matched anything — the app was no worse, but the evidence
+was gone. It surfaced as `UNPROVEN … this script has gone stale` and dropped the
+run to 16/17. Re-anchored and re-run green. The harness reporting an unmatchable
+plant as a LOUD FAILURE rather than skipping it is the only reason this was seen
+at all; a harness that skipped would have printed a clean 16/16.
+
+### NOT verified
+
+- **Android and desktop in landscape.** The rotation sign was wrong on every
+  platform, and only the fact that every device tested was in portrait hid it.
+  iOS is now confirmed in both orientations on two devices; nothing else is.
+- **No adsb.fi response body has ever been seen from this sandbox.** The field
+  mapping in `data/traffic.js` is written from their published schema and
+  exercised against a fixture, not against a live reply.
 
 ---
 
