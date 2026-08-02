@@ -576,6 +576,32 @@ async function main() {
           if (name !== 'pfd' && painted.text < 40) fail(where, `panel rendered only ${painted.text} characters — blank screen`);
         }
 
+        /* ---- the DIAGNOSTICS dialog, in its open state ------------------
+           A surface nobody checks open is a surface nobody has checked. It is
+           reached from the version stamp rather than from a tab, so the page
+           loop above cannot see it — and it is the one place in the app a
+           reader is likely to be at 200% text, hunting for a reason string. */
+        {
+          const where = `${vp.name}/${dim}/diagnostics`;
+          await page.evaluate(() => document.getElementById('build-stamp').click());
+          await page.waitForTimeout(200);
+          const open = await page.evaluate(() => !!document.querySelector('.diag[open], .diag[open=""]'));
+          if (!open) fail(where, 'pressing the version stamp did not open the diagnostics dialog');
+          await runAxe(page, where);
+          await checkTargets(page, where);
+          await checkNames(page, where);
+          const report = await page.evaluate(() => document.querySelector('.diag-body')?.textContent ?? '');
+          // It must contain the version and an actual diagnosis, not a shell.
+          if (!report.includes('fauxplane diagnostics')) fail(where, 'the diagnostics report has no header');
+          if (!/WHAT IS NOT WORKING/.test(report)) fail(where, 'the report does not lead with what is failing');
+          if (!/ALL FIELDS/.test(report)) fail(where, 'the report carries no field table');
+          if (report.length < 400) fail(where, `the report is only ${report.length} characters — effectively empty`);
+          // It must not carry a precise position unless asked.
+          if (/position rounded/.test(report) === false) fail(where, 'the report does not say the position was coarsened');
+          await page.evaluate(() => document.querySelector('.diag-close').click());
+          await page.waitForTimeout(150);
+        }
+
         /* ---- acceptance criterion 1, asserted rather than claimed ------- */
         if (dim === 'day' && vp === VIEWPORTS[0]) await checkDeniedState(page);
 

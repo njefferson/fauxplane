@@ -10,7 +10,7 @@
  * rather than merely stated.
  */
 
-import { VERSION } from './core/version.js';
+import { CACHE_NAME, VERSION } from './core/version.js';
 import { state } from './core/state.js';
 import { createFusion } from './core/fusion.js';
 import { createVsi, angleOfAttack, calibratedAirspeed, indicatedAltitude, mslAltitude, pressureAltitude, trueAirspeed } from './core/derive.js';
@@ -38,10 +38,16 @@ import { createPfd } from './panels/pfd.js';
 import { createAtis } from './panels/atis.js';
 import { createBite } from './panels/bite.js';
 import { createRadar } from './panels/radar.js';
+import { buildReport, createDiagnostics, installConsoleCapture } from './panels/diagnostics.js';
 import { DEGRADED, FAILED, PASS } from './core/capability.js';
 
 const $ = (id) => document.getElementById(id);
 const now = () => Date.now();
+
+// INSTALLED AT MODULE LOAD, NOT INSIDE boot(). "The panel failed to start" is
+// precisely the case worth capturing, and boot() may never run.
+installConsoleCapture();
+const BOOT_AT = now();
 
 /** Feed cadences. Each is at or below what the upstream's own cache allows, so
  *  a refresh that lands early costs the edge cache and not the service. */
@@ -62,10 +68,36 @@ async function boot() {
   // Doctrine §7b: not when a panel opens. The whole point is that it is already
   // there in a screenshot nobody thought to compose.
   $('build-stamp').textContent = `v${VERSION}`;
+  // The accessible name CONTAINS the visible text (SC 2.5.3, Label in Name),
+  // built from the same constant so the two can never disagree.
+  $('build-stamp').setAttribute('aria-label', `v${VERSION} — open diagnostics`);
 
   const announcer = createAnnouncer($('announcer'));
   const fusion = createFusion();
   const vsi = createVsi();
+
+  // THE VERSION STAMP IS THE DIAGNOSTICS BUTTON.
+  //
+  // Every defect this app has had was found by photographing a phone and
+  // reading pixels off it, which loses the reason strings, cannot show a field
+  // that is off screen, and cannot show the filter's internals at all. One tap
+  // here produces the whole state as text to paste. It is wired to the stamp
+  // rather than to a fifth tab because it is a diagnostic, not an instrument,
+  // and the tab row is for things a pilot scans.
+  const stamp = $('build-stamp');
+  const diagnostics = createDiagnostics({
+    trigger: stamp,
+    build: ({ precisePosition }) =>
+      buildReport({
+        snapshot: state.snapshot,
+        fusion,
+        traffic,
+        metar,
+        bootAt: BOOT_AT,
+        precisePosition,
+        env: readEnvironment(),
+      }),
+  });
 
   // ---- sensors (constructed now, started only by PANEL POWER) --------------
   const orientation = createOrientationSensor({ state, fusion, clock: now });
@@ -588,6 +620,26 @@ async function boot() {
     await startSensors();
     announcer.say('Panel powered.');
   });
+
+  /** Everything about the device the report needs. Gathered here because it is
+   *  the only place that can see the DOM, the surface and the worker at once. */
+  function readEnvironment() {
+    return {
+      userAgent: navigator.userAgent,
+      screenW: screen?.width,
+      screenH: screen?.height,
+      dpr: window.devicePixelRatio,
+      viewportW: window.innerWidth,
+      viewportH: window.innerHeight,
+      screenAngle: orientation.screenAngle(),
+      orientation: screen?.orientation?.type ?? 'unknown',
+      rootFontPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+      dim: `${document.documentElement.dataset.dim} (${$('dim-note').textContent})`,
+      standalone: window.matchMedia?.('(display-mode: standalone)')?.matches ?? false,
+      swState: navigator.serviceWorker?.controller ? `controlled (${CACHE_NAME})` : 'not controlled',
+      wakeLock: wakeLock ? 'held' : 'not held',
+    };
+  }
 
   // ---- PWA plumbing --------------------------------------------------------
   let wakeLock = null;

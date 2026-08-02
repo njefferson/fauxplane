@@ -51,18 +51,29 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
    *  proportion a real ADI uses; anything tighter turns the ladder into noise. */
   const pxPerDeg = r * 0.05;
 
-  // BANK WITHOUT PITCH IS A REAL, PARTIAL INSTRUMENT — not a dead one.
+  // BANK WITHOUT PITCH — AND THIS IS A KNOWING DEPARTURE FROM THE CONVENTION.
   //
-  // Following an aircraft over ADS-B gives exactly this: bank is recoverable
-  // from the rate of turn, and pitch is not broadcast at all. A real EFIS
-  // degrades the same way, removing the element it has lost and keeping the
-  // ones it still has. Crossing out the WHOLE ball because one of its two
-  // angles is missing would throw away a measured bank to make a tidier rule.
+  // CHECKED, and the certified answer is the opposite of this: when a real
+  // EFIS loses attitude it clears the ENTIRE artificial horizon and shows an
+  // ATT flag. Neither axis is presented separately. There is no transport
+  // aircraft that draws bank without pitch.
   //
-  // What is NOT drawn is the sky/ground split and the pitch ladder, because
-  // both of them state where the horizon is and that is precisely the thing we
-  // do not know. The roll scale, the pointer and the aircraft symbol all remain
-  // truthful, and the middle says plainly what is missing.
+  // The reason that convention exists is that a partial ball invites the pilot
+  // to read it as a whole one — and that hazard is real. The reason it does not
+  // decide OUR case is that our case does not arise in an aeroplane: a certified
+  // AHRS gives both angles or neither, so "we have a measured bank and no pitch
+  // source at all" is not a failure mode the standard was written against. It
+  // is what an ADS-B broadcast is: bank is recoverable from the rate of turn,
+  // and pitch is simply not transmitted.
+  //
+  // So the departure is deliberate and it is guarded against the hazard the
+  // convention is protecting: the sky/ground split and the pitch ladder are
+  // BOTH removed, because both of them state where the horizon is and that is
+  // exactly what is unknown. What is left cannot be mistaken for a horizon —
+  // there is no horizon on it. The middle says NO PITCH in the failure colour
+  // and names the reason.
+  //
+  // Recorded in NOTES.md as a departure rather than left looking conventional.
   if (!hasPitch) {
     ctx.fillStyle = tokens.page;
     ctx.fillRect(x, y, w, h);
@@ -152,6 +163,14 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
   // panel that knew its own attitude to a fraction of a degree spent thirteen
   // minutes showing a red X.
   //
+  // AMBER, NOT CYAN, AND THAT IS THE CONVENTION RATHER THAN A PREFERENCE. The
+  // flight-deck colour standard reserves RED for a condition needing immediate
+  // action and AMBER for one the crew should be AWARE of. A displayed parameter
+  // that is usable but degraded is the amber case exactly — it is the same
+  // channel a real PFD uses for CHECK ATT, which is an amber annunciation over
+  // a horizon that is still being drawn. Cyan was the DERIVED provenance tone
+  // and said nothing about severity.
+  //
   // Backed with a plate in the page colour so the text renders against the
   // measured token pair rather than against whatever the sky happens to be.
   if (attitude.reason && attitude.provenance !== 'STALE') {
@@ -166,7 +185,7 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate }) {
     roundRect(ctx, cx - tw / 2, ty - size * 0.85, tw, size * 1.7, size * 0.4);
     ctx.fill();
     ctx.globalAlpha = 1;
-    text(ctx, caption, cx, ty, { size, weight: 500, colour: tokens.derived });
+    text(ctx, caption, cx, ty, { size, weight: 700, colour: tokens.stale });
     ctx.restore();
   }
 

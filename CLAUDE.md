@@ -123,6 +123,35 @@ may skip the gate.
 harness keeps naming one; this repo's policy is staging and main, so work lands
 on `staging` and the session says so.
 
+## Diagnostics — use this instead of asking for screenshots
+Pressing the **version stamp** opens a report of the whole panel state as text,
+with Copy / Share / Save. It leads with the diagnosis (root causes separated
+from what they knocked over), then the attitude filter's internals including the
+learned gyro zero-offset, then every field, then console errors captured since
+boot. Position is rounded to ~1 km unless the box is ticked.
+
+**Ask Noah for that report, not for a photograph.** Reading pixels off a phone
+loses every reason string and cannot show the filter at all.
+
+## Standards, and where this app knowingly departs
+The physics is referenced, not invented: a **Mahony PI complementary filter**
+with gains chosen by computing the damping ratio, static alignment as every AHRS
+does on the ramp, and the textbook coordinated-turn relations. WMM/EGM96 are
+held to NOAA's published test table.
+
+The flight-deck **colour convention** is followed: RED for a condition needing
+immediate action, AMBER for one the reader should merely be aware of. A usable
+but degraded parameter is amber, never red and never a provenance tone.
+
+**One deliberate departure, documented in NOTES.md:** a real EFIS clears the
+entire artificial horizon when attitude is lost, and no certified aircraft draws
+bank without pitch. This app does, in FOLLOW mode, because the case does not
+arise in an aeroplane — a certified AHRS gives both angles or neither, while
+ADS-B gives a recoverable bank and no pitch at all. It is guarded against the
+hazard the convention protects by removing the sky/ground split AND the pitch
+ladder, so nothing on it can be misread as a horizon. Do not "tidy" this into
+either a full horizon or a full ATT flag without reading that note.
+
 ## Repo metadata (manual, confirm — see Doctrine §10)
 Description / website / topics / social-preview are GitHub-UI steps the session
 token cannot perform. None are set. List the exact values and ask Noah to

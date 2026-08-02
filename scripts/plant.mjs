@@ -59,16 +59,16 @@ const PLANTS = [
     name: 'contrast: the build stamp is dimmed below the floor',
     check: 'contrast registry, measured from real pixels',
     file: 'public/styles.css',
-    find: '.stamp {\n  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;\n  font-size: 0.8125rem;\n  color: var(--text-3);',
-    replace: '.stamp {\n  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;\n  font-size: 0.8125rem;\n  color: #3f3f3f;',
+    find: '  font-size: 0.8125rem;\n  color: var(--text-3);\n  cursor: pointer;',
+    replace: '  font-size: 0.8125rem;\n  color: #3f3f3f;\n  cursor: pointer;',
     expect: /build stamp measured \d+\.\d+:1 against the real backdrop/,
   },
   {
     name: 'contrast: the build stamp is dimmed with opacity instead of a token',
     check: 'opacity is invisible to a contrast gate',
     file: 'public/styles.css',
-    find: '  color: var(--text-3);\n  padding: 0.25rem 0.4rem;\n  user-select: text;',
-    replace: '  color: var(--text-3);\n  opacity: 0.35;\n  padding: 0.25rem 0.4rem;\n  user-select: text;',
+    find: '  color: var(--text-3);\n  cursor: pointer;\n  user-select: text;',
+    replace: '  color: var(--text-3);\n  opacity: 0.35;\n  cursor: pointer;\n  user-select: text;',
     expect: /build stamp: dimmed with opacity/,
   },
   {
@@ -166,6 +166,17 @@ const PLANTS = [
     find: '      const hasAttitude = pitch !== null && roll !== null && !stale;',
     replace: '      const hasAttitude = pitch !== null && roll !== null && !stale && converged;',
     expect: /no attitude after a good gravity sample|hasAttitude/,
+  },
+  {
+    // The diagnostics report exists so nobody has to read pixels off a photo.
+    // If it silently stops carrying the diagnosis, the whole reason for it is
+    // gone and nothing else on screen would look different.
+    name: 'diagnostics: the report stops leading with what is failing',
+    check: 'one tap on the version stamp produces a usable diagnosis',
+    file: 'public/src/panels/diagnostics.js',
+    find: "  line(\n    `WHAT IS NOT WORKING",
+    replace: "  line(\n    `panel state",
+    expect: /does not lead with what is failing/,
   },
   {
     name: 'BITE: the page stops reading the live store',

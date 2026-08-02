@@ -68,6 +68,102 @@ items.
 
 ---
 
+## 0.3.1 — diagnostics, and what checking the standards changed
+
+Noah, plainly: *"ARE YOU LOOKING FOR INDUSTRY STANDARDS OR JUST DOING A
+GUESS-AND-CHECK?"* and *"create a debug info page or overlay ... so I stop
+screenshotting like a fucking tool."*
+
+Both were fair. The honest split at the time: **standards for the physics,
+invention for the presentation.**
+
+### Where it WAS a standard (and this is checkable)
+
+- The attitude filter is a **Mahony PI complementary filter** — the standard
+  low-cost AHRS approach. Estimating gyro bias AS THE INTEGRAL TERM is the
+  textbook method.
+- `Ki` was chosen by computing the loop damping ratio, ζ = Kp·f / 2√(Ki·f) = 1.0
+  at 50 Hz, critically damped. Not by trying numbers until a test passed.
+- **Static alignment** on a stationary IMU is what every AHRS does on the ramp.
+- `tan(bank) = V·ω/g` and `n = 1/cos(bank)` are textbook coordinated-turn
+  relations.
+- WMM 2025 and EGM96 held to NOAA's own 213-row published test table.
+- WCAG 2.2, including SC 2.5.3 and SC 2.5.8, measured by the gate.
+
+### Where it was NOT, and what checking changed
+
+The **display** conventions were reasoned, not referenced. Checking took ten
+minutes and contradicted something already built.
+
+**A real EFIS clears the ENTIRE artificial horizon when attitude is lost.** No
+transport aircraft draws bank without pitch. That is the opposite of the
+bank-only ADI added in 0.3.0.
+
+Kept anyway, but **relabelled in the code as a knowing departure**, because the
+standard does not decide this case: a certified AHRS gives both angles or
+neither, so "a measured bank and no pitch source in existence" is not a failure
+mode the convention was written against. It is simply what an ADS-B broadcast
+is. And it is guarded against the hazard the convention protects — a partial
+ball being misread as a whole one — by removing BOTH the sky/ground split and
+the pitch ladder, so there is no horizon on it to misread.
+
+**The colour standard is specific, and one thing was wrong.** RED is reserved
+for a condition needing immediate action; AMBER for one the crew should be aware
+of. A usable-but-degraded parameter is the amber case exactly — it is the same
+channel a real PFD uses for CHECK ATT over a horizon it is still drawing. The
+"gravity reference only — gyro settling" caption was being drawn in the cyan
+DERIVED tone, which says nothing about severity. **It is amber now.**
+
+Not read directly: `faa.gov` and `skybrary.aero` are both blocked from the build
+sandbox at the CONNECT layer, so AC 25-11B itself was NOT opened. The findings
+above come from search summaries and manufacturer documentation, which is weaker
+than the publisher's own text and is recorded as such rather than rounded up.
+
+### The diagnostics report — one tap on the version stamp
+
+Every defect this app has had was found by photographing a phone. That channel
+loses the reason strings, cannot show a field that is off screen, cannot show
+the filter's internals at all, and makes Noah do OCR for me.
+
+Pressing the version stamp now produces the whole state as text, with **Copy**,
+**Share** and **Save as file**. What makes it worth more than a dump:
+
+- **The first lines are the diagnosis**, and root causes are separated from what
+  they knocked over. A derived field names the inputs it is missing, so its
+  reason contains "unavailable (" — that makes it a consequence. In the
+  all-permissions-denied state that collapses 38 failures to 3 real ones.
+- **The attitude filter's internals**: quality, residual, accepted samples,
+  coasting, the learned gyro zero-offset per axis, and which accelerometer
+  convention was detected.
+- **Console errors captured from BOOT**, by wrapping `console.error` at module
+  load rather than inside `boot()` — "the panel failed to start" is exactly the
+  case worth capturing, and `boot()` may never run.
+- **Position rounded to ~1 km by default**, with a tick box for the exact fix,
+  because a report built to be pasted should not carry a precise location by
+  accident. The report says which mode it is in.
+
+The stamp became a **button**, which is a better reading of Doctrine §7b than
+its literal text: the rule wants the version pasteable rather than transcribed,
+and this yields the version *and everything else* as selectable text. Its
+accessible name is built from the same constant as its visible text, because
+**SC 2.5.3 (Label in Name)** requires the name to contain the label — the gate
+caught that violation the moment the button was added.
+
+### What the gate caught in the new work, immediately
+
+Three real defects, none visible by looking:
+1. **SC 2.5.3**: the stamp showed "v0.3.0" while its accessible name said "Build
+   version" — someone driving the panel by voice could not address it.
+2. **SC 2.5.8**: the "include exact position" checkbox was 22x22.
+3. **Two controls answering to the accessible name "close"** — ambiguous for
+   voice control. The bottom one is "Close diagnostics" now.
+
+The gate now opens the diagnostics dialog and checks it in every
+viewport/palette combination, and asserts the report actually leads with the
+diagnosis. A surface nobody checks open is a surface nobody has checked.
+
+---
+
 ## 0.3.0 — the horizon works, and there is a radar page
 
 Noah's 0.2.4 screenshot showed the panel he did not want: `ATT FAIL` and

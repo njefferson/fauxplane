@@ -60,10 +60,25 @@
         <!--
           The build stamp. Always on screen in the normal working view, never
           behind a tap, written at boot from the one constant the release
-          process bumps, dimmed with a COLOUR TOKEN and never with opacity, and
-          selectable so it can be pasted rather than transcribed (Doctrine §7b).
+          process bumps, and dimmed with a COLOUR TOKEN rather than with opacity
+          (Doctrine §7b).
+
+          IT IS A BUTTON, and that is a deliberate reading of §7b rather than a
+          departure from it. The rule wants the version PASTEABLE rather than
+          transcribed; pressing this produces the version and the entire panel
+          state as selectable text, which serves that intent far better than
+          being able to select six characters. It keeps user-select as well, so
+          nothing is lost either way.
         -->
-        <output class="stamp" id="build-stamp" aria-label="Build version">v—</output>
+        <!--
+          NO aria-label HERE. It is set at boot, from the same constant as the
+          visible text, because SC 2.5.3 (Label in Name) requires the accessible
+          name to CONTAIN the visible label — otherwise someone driving the
+          panel by voice says "tap v0.3.0" and nothing matches. A static label
+          cannot contain a version written at runtime, and the gate caught
+          exactly that.
+        -->
+        <button type="button" class="stamp" id="build-stamp">v—</button>
       </div>
     </header>
 

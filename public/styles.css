@@ -190,12 +190,25 @@ body {
    page), never with opacity — an opacity is invisible to a contrast gate, and
    two sibling apps shipped a 2.54:1 stamp that way. */
 .stamp {
+  /* A real button now: keyboard reachable, and at the 44px target floor like
+     every other control. It still LOOKS like a stamp — dimmed with a token,
+     no border — because it is primarily an always-visible version label and
+     only secondarily the way into diagnostics. */
+  min-height: var(--target);
+  padding: 0.25rem 0.5rem;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.8125rem;
   color: var(--text-3);
-  padding: 0.25rem 0.4rem;
+  cursor: pointer;
   user-select: text;
   -webkit-user-select: text;
+}
+.stamp:hover {
+  border-color: var(--hairline);
+  color: var(--text-2);
 }
 
 .boot-error {
@@ -933,4 +946,114 @@ body[data-powered='true'] .gate {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+
+/* --- diagnostics ----------------------------------------------------------
+   A dialog, not a fifth tab: it is a diagnostic, not an instrument, and the tab
+   row is for things a pilot scans. Every requirement of Doctrine §4 for an
+   interrupting surface still applies — a dismiss at the top AND the bottom,
+   both wired before anything that can throw.
+
+   Layout hangs off [open] rather than off the class, because a closed <dialog>
+   is display:none from the user agent and an author `display` on .diag would
+   outrank it — the same trap the follow banner fell into. */
+.diag {
+  max-width: min(62rem, 94vw);
+  width: 100%;
+  max-height: 88vh;
+  padding: 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+}
+.diag[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem 1rem;
+}
+.diag::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+}
+.diag-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+.diag-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  letter-spacing: 0.06em;
+}
+.diag-intro,
+.diag-status {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+.diag-status:empty {
+  display: none;
+}
+.diag-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.diag-action,
+.diag-close {
+  min-height: var(--target);
+  padding: 0 1rem;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.diag-primary {
+  background: var(--surface-3);
+  border-color: var(--primary);
+  font-weight: 700;
+}
+.diag-close-foot {
+  align-self: flex-start;
+}
+.diag-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--target);
+  font-size: 0.8125rem;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.diag-check {
+  /* AT THE TARGET FLOOR, not at the size a checkbox usually looks. SC 2.5.8
+     measures the control, and the gate caught this at 22x22. A large checkbox
+     on a panel meant to be used with a thumb is the right answer anyway. */
+  width: var(--target);
+  height: var(--target);
+  flex: 0 0 auto;
+}
+/* The report scrolls INSIDE itself and never overflows a screen edge. */
+.diag-body {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0.6rem;
+  min-height: 8rem;
+  overflow: auto;
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-2);
+  white-space: pre;
+  user-select: text;
+  -webkit-user-select: text;
 }
