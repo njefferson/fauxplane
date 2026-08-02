@@ -385,14 +385,52 @@ all work with no changes. The panel would show LIVE from the sim and correctly
 fall back to FAIL the moment it stops — which is the honest behaviour and is
 already implemented and tested.
 
-**THE OPEN QUESTION, and the reason not to start yet.** The second program's
-name decides the route. If it is a cockpit-builder suite of the ProSim /
-Sim Avionics / Project Magenta family, those are DESIGNED to drive networked
-glass-cockpit display clients over the LAN, and this panel would become exactly
-the kind of client they already expect — which is a far better fit than anything
-bolted onto DCS. If it is Helios, SimAppPro or Ikarus, they sit on the same
-`Export.lua` chain as DCS-BIOS and the conflict question matters. Wait for the
-name.
+### ANSWERED: X-Plane + SimVimX (Noah, relaying his friend, 2026-08-02)
+
+**The simulator is X-Plane. The cockpit interface is SimVimX driving Arduino
+Mega boards.** He also plays DCS, but X-Plane is what flies the 747.
+
+**SimVimX is not the data route.** It is a hardware I/O system — an X-Plane
+plugin that drives switches, encoders, steppers and displays over USB serial to
+Arduino boards. It exists to get X-Plane's state INTO physical hardware, not to
+broadcast it to other software. Nothing to hook into, and nothing to disturb.
+
+**X-Plane's own Web API is the route, and it is better than anything expected.**
+VERIFIED from the `xp-command` package's own documentation (npm, targets
+X-Plane 12): *"X-Plane 12 runs a local Web API automatically on
+`http://localhost:8086`"* — no plugin to install, no `Export.lua` to chain, no
+configuration beyond leaving it enabled. It serves datarefs over REST, and
+datarefs are exactly the values this panel needs. It can be disabled in X-Plane
+settings, which is the first thing to check if nothing connects.
+
+**THE OBSTACLE, and it is a real one that shapes everything.** The panel is
+served over HTTPS from `pages.dev`. A browser will not let an HTTPS page fetch
+`http://<sim-pc>:8086` — that is mixed content, and it is blocked outright. The
+`localhost` secure-context carve-out does NOT extend to a private LAN address,
+so it does not help a tablet talking to a different machine.
+
+Options, none of them free, and this needs a decision before any code:
+- **Serve the panel over plain HTTP from the sim PC** on the LAN. No mixed
+  content, no certificates, no internet needed. Costs the installed-PWA and
+  offline behaviour, because a service worker needs a secure context. The
+  `pages.dev` build stays the real-sensors version for portable use, and the
+  LAN build is the sim version. Cleanest split, probably the right answer.
+- **A local bridge that terminates TLS.** Requires a certificate the tablet
+  trusts. Too much to ask of a hobbyist.
+- **A tunnel** exposing the sim PC over HTTPS. Works, but sends cockpit
+  telemetry through a third party for a machine sitting in the same room, which
+  is the wrong shape for this app's privacy posture.
+
+**NOT verified, and it decides the first option's feasibility:** whether
+X-Plane's Web API binds to all interfaces or to loopback only. If loopback only,
+a tablet on the LAN cannot reach it at all and a small forwarding process on the
+sim PC becomes mandatory regardless. `developer.x-plane.com` is blocked from
+this sandbox (`000` to CONNECT) so the API's own documentation could not be
+read; this came from a third-party package instead. Check it before building.
+
+**Nothing has been built.** The state store already accepts a sim source with no
+changes — it writes through the same public `write` as every sensor, and gets
+provenance, ageing and STALE-then-FAIL for free when the sim pauses.
 
 3. **Navdata is the only bundle still absent, and it needs nothing from you
    right now.** The geoid and the magnetic model are both bundled and verified
