@@ -18,13 +18,60 @@
 
 import { needsOrientationPermission } from '../core/capability.js';
 
-const screenAngle = () => {
-  if (typeof screen !== 'undefined' && screen.orientation && Number.isFinite(screen.orientation.angle)) {
-    return screen.orientation.angle;
+const wrapAngle = (deg) => (((Math.round(deg / 90) * 90) % 360) + 360) % 360;
+
+/**
+ * WHICH WAY IS THE SCREEN ROTATED — AND WHY THE MODERN API IS NOT TRUSTED ON
+ * iOS.
+ *
+ * Noah's iPad, Safari 26.5, held in landscape, reported ALL of this at once,
+ * from its own diagnostics report:
+ *
+ *     screen.orientation.angle   0                   "not rotated"
+ *     screen.orientation.type    landscape-primary
+ *     window.orientation         90                  "rotated a quarter turn"
+ *     screen                     820 x 1180          natural shape is PORTRAIT
+ *     viewport                   1180 x 688          currently LANDSCAPE
+ *
+ * The accelerometer axes on that device are portrait-referenced — `screen` says
+ * so and the raw vector confirms it — so the honest angle is 90, and
+ * `screen.orientation.angle` reporting 0 is simply wrong. The app believed it,
+ * applied no rotation, and the horizon sat ninety degrees over.
+ *
+ * THE RULE, and it is deliberately narrow: where `window.orientation` exists,
+ * prefer it. That property is iOS-only — Android Chrome and every desktop
+ * removed it years ago — so this reads as "on iOS use the iOS answer, and use
+ * the standard one everywhere else", which is exactly the evidence available.
+ *
+ * WHAT WAS TRIED AND DISCARDED. Deriving the angle by comparing the viewport
+ * against `screen`'s natural shape looks more principled and is not: iOS keeps
+ * `screen` at the natural dimensions while Android swaps it with the current
+ * orientation, so the same comparison means opposite things on the two
+ * platforms. Inventing a cross-platform theory from one device's report would
+ * be the guess this whole exercise was about avoiding. If an Android or a
+ * desktop ever reads ninety out, its report will say so and the rule can widen
+ * on evidence.
+ *
+ * Returns { angle, source } so the diagnostics report can say which one won —
+ * a fix nobody can see the working of is a fix nobody can check.
+ */
+export function resolveScreenAngle({ orientationAngle, windowOrientation } = {}) {
+  if (Number.isFinite(windowOrientation)) {
+    return { angle: wrapAngle(windowOrientation), source: 'window.orientation (iOS)' };
   }
-  if (typeof window !== 'undefined' && Number.isFinite(window.orientation)) return window.orientation;
-  return 0;
-};
+  if (Number.isFinite(orientationAngle)) {
+    return { angle: wrapAngle(orientationAngle), source: 'screen.orientation.angle' };
+  }
+  return { angle: 0, source: 'no orientation API — assuming unrotated' };
+}
+
+const resolveNow = () =>
+  resolveScreenAngle({
+    orientationAngle: typeof screen !== 'undefined' ? screen.orientation?.angle : undefined,
+    windowOrientation: typeof window !== 'undefined' ? window.orientation : undefined,
+  });
+
+const screenAngle = () => resolveNow().angle;
 
 export function createOrientationSensor({ state, fusion, clock = () => Date.now() }) {
   let listening = false;
@@ -113,6 +160,11 @@ export function createOrientationSensor({ state, fusion, clock = () => Date.now(
     /** Raw orientation angles, exactly as the platform delivered them. */
     get lastRaw() {
       return lastRaw;
+    },
+
+    /** Which platform reading the screen angle came from, for the report. */
+    get screenAngleSource() {
+      return resolveNow().source;
     },
 
     /**

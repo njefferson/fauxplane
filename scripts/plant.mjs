@@ -192,6 +192,29 @@ const PLANTS = [
     expect: /the offset must be reportable|mountOffset/,
   },
   {
+    // The iPad defect. Believing screen.orientation.angle put the horizon
+    // ninety degrees over in every orientation, and no test could see it
+    // because every device tried until then was in portrait.
+    name: 'orientation: the screen angle goes back to trusting the lying API',
+    check: 'the screen angle comes from the source that told the truth on iOS',
+    gate: 'tests',
+    file: 'public/src/sensors/orientation.js',
+    find: '  if (Number.isFinite(windowOrientation)) {',
+    replace: '  if (false && Number.isFinite(windowOrientation)) {',
+    expect: /window\.orientation|iPad/i,
+  },
+  {
+    // The other half: the rotation itself was applied backwards, invisible for
+    // two releases because portrait makes it the identity.
+    name: 'orientation: the screen rotation is applied backwards again',
+    check: 'a quarter turn moves earth-up to the screen axis it should',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '  let sx = (x * c - y * s) / m;\n  let sy = (x * s + y * c) / m;',
+    replace: '  let sx = (x * c + y * s) / m;\n  let sy = (-x * s + y * c) / m;',
+    expect: /quarter turn was applied backwards|held square is not banked/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

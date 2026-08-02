@@ -198,7 +198,8 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
       : '  deviceorientation             no event received',
   );
   if (o && o.webkitCompassHeading !== null) line(`  webkitCompassHeading          ${Number(o.webkitCompassHeading).toFixed(1)}`);
-  line(`  screen angle in use           ${env.screenAngle}   (screen.orientation.angle ${env.rawScreenAngle}, type ${env.orientation}, window.orientation ${env.windowOrientation})`);
+  line(`  screen angle in use           ${env.screenAngle}  from ${env.screenAngleSource}`);
+  line(`    candidates                  screen.orientation.angle ${env.rawScreenAngle}, type ${env.orientation}, window.orientation ${env.windowOrientation}`);
   line(`  viewport                      ${env.viewportW}x${env.viewportH}  ${env.viewportW > env.viewportH ? '(landscape as the reader sees it)' : '(portrait as the reader sees it)'}`);
   line(`  screen                        ${env.screenW}x${env.screenH}`);
   line();

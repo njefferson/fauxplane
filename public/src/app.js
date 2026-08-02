@@ -696,6 +696,7 @@ async function boot() {
       // BOTH the value in use and the raw platform readings, because "which of
       // these three disagrees" is the whole question on an iPad.
       rawScreenAngle: screen?.orientation?.angle ?? 'absent',
+      screenAngleSource: orientation.screenAngleSource,
       windowOrientation: typeof window.orientation === 'number' ? window.orientation : 'absent',
       orientation: screen?.orientation?.type ?? 'unknown',
       rootFontPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),

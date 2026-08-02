@@ -19,6 +19,7 @@ import {
   upVectorScreenFrame,
 } from '../public/src/core/fusion.js';
 import { G0 } from '../public/src/core/units.js';
+import { resolveScreenAngle } from '../public/src/sensors/orientation.js';
 
 /**
  * THE SIGN TEST, and it is the reason this file exists.
@@ -328,8 +329,9 @@ test('a device rotated in landscape still converges — the screen angle reaches
     // the screen-frame one rotated back.
     const dev = screenToDevice(up, 90);
     const accel = { x: dev.x * G0, y: dev.y * G0, z: dev.z * G0 };
-    // A pitch rate about the SCREEN x axis appears on the device's y axis.
-    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 8 }, accel, t, 90);
+    // A pitch rate about the SCREEN x axis appears on the device's y axis, and
+    // NEGATED: at a quarter turn the screen x axis is the device's -y.
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: -8 }, accel, t, 90);
     fusion.updateAccel(accel, 90, t);
   }
   const read = fusion.read(t);
@@ -486,19 +488,18 @@ test('the offset is learned in DEVICE axes, so a landscape clamp gets it right t
   // the test above would not notice, because at angle 0 the two coincide.
   const fusion = createFusion();
   // The accelerometer reports in DEVICE axes, so a device level at a 90 degree
-  // screen angle reads earth-up along -x. Deriving it rather than guessing:
-  // attitudeFromGravity rotates by -90, and only -x maps to screen +y. The
-  // first version of this test used +x, which is the same device rotated 180
-  // degrees — level, but inverted, and it read roll = 180.
-  const levelInLandscape = { x: -G0, y: 0, z: 0 };
+  // screen angle reads earth-up along +x: the screen's top edge is the device's
+  // +x when the device is turned a quarter turn. Derived, not guessed — and it
+  // changed sign when the screen rotation was corrected against Noah's iPad.
+  const levelInLandscape = { x: G0, y: 0, z: 0 };
   let t = 0;
   for (let i = 0; i < 2000; i += 1) {
     t += 20;
     fusion.updateAccel(levelInLandscape, 90, t);
-    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 4 }, levelInLandscape, t, 90);
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: -4 }, levelInLandscape, t, 90);
   }
   const learned = fusion.gyroBias;
-  assert.ok(Math.abs(learned.gamma - 4) < 0.8, `gamma offset ${learned.gamma}, expected ~4`);
+  assert.ok(Math.abs(learned.gamma - -4) < 0.8, `gamma offset ${learned.gamma}, expected ~-4`);
   assert.ok(Math.abs(learned.beta) < 0.8, `beta offset ${learned.beta} should be ~0 at a 90 degree screen angle`);
   assert.ok(Math.abs(fusion.read(t).pitch) < 0.8, `pitch drifted to ${fusion.read(t).pitch}`);
 });
@@ -746,4 +747,95 @@ test('the gyro is rotated by the mount too, or the two halves fight again', () =
   // than sitting at a permanent standoff.
   assert.ok(read.hasAttitude, 'the horizon vanished under a rotated mount');
   assert.ok(Math.abs(read.residualDeg ?? 0) < 2, `residual ${read.residualDeg} — the halves are fighting`);
+});
+
+// --- the screen angle, pinned to a REAL DEVICE -------------------------------
+//
+// The round-trip test near the top of this file could not see the bug these
+// pin down, and it is worth being precise about why: `screenToDevice` is the
+// exact inverse of the screen rotation inside `attitudeFromGravity`, so the two
+// agreed with each other while both disagreed with the world. Self-consistency
+// is not correctness — the same structural blindness as the degree-1 magnetic
+// tests, which passed while the Schmidt normalisation was wrong at every degree
+// above one.
+//
+// So these assert against MEASURED NUMBERS from Noah's iPad, taken from its own
+// diagnostics report while it was held square in landscape.
+
+test('NOAH’S IPAD: an iPad held square in landscape reads roll near zero', () => {
+  // Raw accelerationIncludingGravity, after the iOS negation is undone —
+  // exactly the vector in the report, and |g| 1.15 because he was holding it.
+  const up = { x: 6.887, y: 0.351, z: 8.936 };
+
+  // What the app used to do: believe screen.orientation.angle, which said 0.
+  const believingTheLie = attitudeFromGravity(up, 0);
+  assert.ok(
+    Math.abs(believingTheLie.roll) > 80,
+    `the old behaviour should reproduce the fault, got roll ${believingTheLie.roll}`,
+  );
+
+  // With the true angle AND the corrected rotation sign.
+  const fixed = attitudeFromGravity(up, 90);
+  assert.ok(Math.abs(fixed.roll) < 8, `roll ${fixed.roll} — an iPad held square is not banked`);
+  // Reclined about fifty degrees, which is what its own gamma of -45 said.
+  assert.ok(fixed.pitch < -40 && fixed.pitch > -65, `pitch ${fixed.pitch}`);
+});
+
+test('THE ROTATION SIGN: a quarter turn moves earth-up to the screen axis it should', () => {
+  // Device +x is the short edge, to the right in portrait. Turn the device a
+  // quarter turn so that edge points UP, and the screen's +y — the top of what
+  // the reader sees — must now be the device's +x.
+  const solved = attitudeFromGravity({ x: G0, y: 0, z: 0 }, 90);
+  assert.ok(Math.abs(solved.pitch) < 1e-9, `pitch ${solved.pitch}`);
+  assert.ok(Math.abs(solved.roll) < 1e-9, `roll ${solved.roll} — a quarter turn was applied backwards`);
+
+  // And the other way: at 270 the same device vector is upside down.
+  const other = attitudeFromGravity({ x: G0, y: 0, z: 0 }, 270);
+  assert.ok(Math.abs(Math.abs(other.roll) - 180) < 1e-6, `roll ${other.roll} at 270`);
+});
+
+test('screenToDevice is still the exact inverse after the sign flip', () => {
+  for (const angle of [0, 90, 180, 270]) {
+    for (const v of [
+      { x: 0.3, y: -0.7, z: 0.2 },
+      { x: -0.9, y: 0.1, z: 0.4 },
+    ]) {
+      const solved = attitudeFromGravity(screenToDevice(v, angle), angle);
+      const direct = attitudeFromGravity(v, 0);
+      assert.ok(Math.abs(solved.pitch - direct.pitch) < 1e-9, `angle ${angle} pitch`);
+      const dRoll = ((solved.roll - direct.roll + 540) % 360) - 180;
+      assert.ok(Math.abs(dRoll) < 1e-9, `angle ${angle} roll`);
+    }
+  }
+});
+
+test('NOAH’S IPAD: window.orientation wins where it exists, because iOS’s modern one lied', () => {
+  // Verbatim from the report: angle says 0, window.orientation says 90, and the
+  // device really was turned a quarter turn.
+  const ipad = resolveScreenAngle({ orientationAngle: 0, windowOrientation: 90 });
+  assert.equal(ipad.angle, 90);
+  assert.match(ipad.source, /window\.orientation/);
+
+  // Same iPad in portrait: both agree, and it stays 0.
+  assert.equal(resolveScreenAngle({ orientationAngle: 0, windowOrientation: 0 }).angle, 0);
+
+  // Upside-down landscape is preserved rather than flattened to 90.
+  assert.equal(resolveScreenAngle({ orientationAngle: 0, windowOrientation: -90 }).angle, 270);
+});
+
+test('where window.orientation does not exist, the standard API is used', () => {
+  // Android and desktop removed window.orientation years ago, and their
+  // screen.orientation.angle is not in dispute.
+  const android = resolveScreenAngle({ orientationAngle: 90, windowOrientation: undefined });
+  assert.equal(android.angle, 90);
+  assert.match(android.source, /screen\.orientation/);
+
+  assert.equal(resolveScreenAngle({ orientationAngle: 270 }).angle, 270);
+  assert.equal(resolveScreenAngle({ orientationAngle: 0 }).angle, 0);
+});
+
+test('with no orientation API at all, it assumes unrotated and SAYS so', () => {
+  const none = resolveScreenAngle({});
+  assert.equal(none.angle, 0);
+  assert.match(none.source, /no orientation API/);
 });

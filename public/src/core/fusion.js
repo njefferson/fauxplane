@@ -121,10 +121,11 @@ export function applyScreenAngle(R, angleDeg) {
   const t = degToRad(angleDeg ?? 0);
   const c = Math.cos(t);
   const s = Math.sin(t);
-  // Rotation about the device z axis, applied on the right (device -> screen).
+  // Screen -> device, applied on the right, so R (device -> earth) composes
+  // into screen -> earth. Flipped with attitudeFromGravity; see the note there.
   const S = [
-    [c, -s, 0],
-    [s, c, 0],
+    [c, s, 0],
+    [-s, c, 0],
     [0, 0, 1],
   ];
   const out = [
@@ -171,13 +172,25 @@ export function attitudeFromGravity({ x, y, z }, screenAngleDeg = 0, mount = nul
   const m = Math.hypot(x, y, z);
   if (!Number.isFinite(m) || m < 1e-6) return null;
 
-  // Undo the screen rotation so the vector is in SCREEN coordinates, matching
-  // the mounting the pitch/roll formulas below assume.
+  // Into SCREEN coordinates, matching the mounting the pitch/roll formulas
+  // below assume.
+  //
+  // THE SIGN HERE WAS WRONG FOR TWO RELEASES AND NOTHING COULD SEE IT. Every
+  // device tested was in PORTRAIT, where the screen angle is zero and the
+  // rotation is the identity whichever way round it goes. The round-trip test
+  // above it could not see it either: screenToDevice was the exact inverse of
+  // this, so the pair agreed with each other while both disagreed with the
+  // world — the same structural blindness as the degree-1 magnetic tests.
+  //
+  // Derived from Noah's iPad, held square in landscape, from the raw axes in
+  // its own diagnostics report: earth-up in device coords (0.610, 0.031, 0.792)
+  // at a reported angle of 90. Rz(-90) gives roll -177; Rz(+90) gives roll
+  // +2.9, which is what an iPad held square actually is.
   const t = degToRad(screenAngleDeg ?? 0);
   const c = Math.cos(t);
   const s = Math.sin(t);
-  let sx = (x * c + y * s) / m;
-  let sy = (-x * s + y * c) / m;
+  let sx = (x * c - y * s) / m;
+  let sy = (x * s + y * c) / m;
   let sz = z / m;
 
   // THE MOUNT OFFSET, applied here and nowhere else. It rotates the measured
@@ -338,12 +351,14 @@ export function upVectorScreenFrame(pitchDeg, rollDeg) {
   return { x: -Math.sin(r) * cosP, y: Math.cos(r) * cosP, z: -Math.sin(p) };
 }
 
-/** Rotate a screen-frame vector back into the hardware (device) frame. */
+/** Rotate a screen-frame vector back into the hardware (device) frame. The
+ *  exact inverse of the screen rotation in attitudeFromGravity, and it flipped
+ *  with it — see the note there. */
 export function screenToDevice({ x, y, z }, screenAngleDeg = 0) {
   const t = degToRad(screenAngleDeg ?? 0);
   const c = Math.cos(t);
   const s = Math.sin(t);
-  return { x: x * c - y * s, y: x * s + y * c, z };
+  return { x: x * c + y * s, y: -x * s + y * c, z };
 }
 
 /**
@@ -537,7 +552,7 @@ export function createFusion(options = {}) {
     // The full rate vector in SCREEN coordinates, so the mount rotation can be
     // applied to it as a vector. Taking the two components first and rotating
     // them afterwards would be rotating scalars, which is not a thing.
-    let omega = { x: cb * c + cg * sn, y: -cb * sn + cg * c, z: ca };
+    let omega = { x: cb * c - cg * sn, y: cb * sn + cg * c, z: ca };
     if (mount) omega = applyMatrix3(mount, omega);
     const pitchRate = omega.x;
     const rollRate = omega.z; // about the screen normal; unaffected by screen angle
@@ -671,8 +686,13 @@ export function createFusion(options = {}) {
     const dPitchBias = -ki * dPitch;
     const dRollBias = ki * dRoll;
     const clampBias = (v) => Math.max(-cfg.biasMaxDegS, Math.min(cfg.biasMaxDegS, v));
+    // Projected back through the SAME transform the rates were rotated by. The
+    // screen pitch rate is (beta·cos t − gamma·sin t), so an increment to the
+    // screen-frame bias lands on beta as +cos and on gamma as −sin. This sign
+    // flipped with the rotation above; leaving it would put the learned offset
+    // on the wrong axis at every angle except zero.
     bias.beta = clampBias(bias.beta + dPitchBias * Math.cos(ts));
-    bias.gamma = clampBias(bias.gamma + dPitchBias * Math.sin(ts));
+    bias.gamma = clampBias(bias.gamma - dPitchBias * Math.sin(ts));
     bias.alpha = clampBias(bias.alpha + dRollBias);
     biasSamples += 1;
 

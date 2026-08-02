@@ -68,42 +68,93 @@ items.
 
 ---
 
-## OPEN DEFECT — the iPad reads roll ~90 degrees out, 2026-08-02
+## 0.4.2 — the iPad roll defect, FOUND, and it was two bugs
 
-Noah's iPad, on `fauxplane.pages.dev` (0.2.4):
+Noah's iPad read roll about ninety degrees out **in both orientations**, which
+is what ruled out the obvious cause: a missing screen rotation would be right in
+portrait and wrong only in landscape.
 
-| shot | orientation | pitch | roll |
-|---|---|---|---|
-| IMG_1381 | landscape | -0.2 | **-89.2** |
-| IMG_1382 | portrait | -23.6 | **-91.2** |
-| IMG_1383 | portrait | -24.5 | **-90.1** |
+The diagnostics report added in 0.4.1 answered it in one paste. Held in
+landscape it said, all at once:
 
-**The error is a CONSTANT ninety degrees and does not change with orientation,
-and that rules out the obvious cause.** If the screen-angle compensation were
-simply missing, portrait would read correctly and only landscape would be out by
-ninety. It is out by ninety in both.
+```
+screen.orientation.angle   0                   "not rotated"
+screen.orientation.type    landscape-primary
+window.orientation         90                  "rotated a quarter turn"
+screen                     820 x 1180          natural shape is PORTRAIT
+viewport                   1180 x 688          currently LANDSCAPE
+accelerationIncludingGravity  x -6.887  y -0.351  z -8.936
+```
 
-So it is not "iPads do not report `screen.orientation.angle`". Something else
-disagrees, and the candidates cannot be separated from a photograph: the
-platform's reported angle, the axis convention of the accelerometer relative to
-the iPad's natural orientation, and which orientation iPadOS considers natural
-are three different explanations that all look identical on screen.
+### Bug one: the app believed the wrong API
 
-**NOT GUESSED AT.** Hardcoding a +90 for iPads would be the user-agent sniffing
-that `detectAccelSign` exists specifically to avoid, and it would break every
-iPad whose natural orientation is the other one. 0.4.1 adds a RAW SENSOR AXES
-block to the diagnostics report — the three accelerometer components before any
-correction, the raw orientation angles, `screen.orientation.angle` AND `.type`
-AND the legacy `window.orientation`, and the viewport aspect. One paste from the
-iPad in each orientation identifies which of the three is lying, and then the
-fix is a measurement rather than a guess.
+Everything except `screen.orientation.angle` agreed the device was turned.
+Safari 26.5 on that iPad reports `angle` 0 in landscape. The app preferred
+`angle` and fell back to `window.orientation` only if it was absent — so the
+fallback, which was the one telling the truth, was never reached.
 
-**Also worth recording, because it wasted a round trip:** all three screenshots
-are of `fauxplane.pages.dev`, which is `main`, which is 0.2.4. The diagnostics
-button (0.3.1), RADAR (0.3.0) and SETUP (0.4.0) are all on `staging`. "Touching
-the version number does nothing" was entirely correct — that build has no such
-control. A session should check the version stamp in a screenshot before
-diagnosing anything from it.
+**The rule is now deliberately narrow: where `window.orientation` exists, prefer
+it.** That property is iOS-only — Android Chrome and every desktop removed it
+years ago — so this reads as "on iOS use the iOS answer, and the standard one
+everywhere else", which is exactly as far as the evidence goes.
+
+**What was tried and discarded:** deriving the angle by comparing the viewport
+against `screen`'s natural shape. It looks more principled and is not. iOS keeps
+`screen` at the natural dimensions while Android swaps it with the current
+orientation, so the identical comparison means opposite things on the two
+platforms. Building a cross-platform theory out of one device's report is the
+guess this whole exercise existed to avoid. The report now prints WHICH source
+won, so the next device either confirms the rule or widens it on evidence.
+
+### Bug two: the rotation was applied backwards, and had been for two releases
+
+With the true angle of 90 the horizon was still wrong — 177 degrees of roll
+instead of 89. The screen rotation had the wrong sign.
+
+**Nothing could see it.** Every device tested had been in PORTRAIT, where the
+angle is zero and the rotation is the identity whichever way round it goes. And
+the test that should have caught it could not: `screenToDevice` was written as
+the exact inverse of the rotation inside `attitudeFromGravity`, so the round-trip
+test asserted the two agreed with **each other** while both disagreed with the
+world. That is the same structural blindness as the degree-1 magnetic tests,
+which passed while the Schmidt normalisation was wrong at every degree above
+one, and it is now the third time this repo has been bitten by a
+self-consistency test standing in for a correctness one.
+
+Worked from Noah's own raw axes: earth-up in device coordinates
+(0.610, 0.031, 0.792) at a reported angle of 90.
+
+| what | pitch | roll |
+|---|---|---|
+| the app as shipped (angle 0) | −52.3 | **−87.1** ← reproduces the fault |
+| true angle, old sign | −52.3 | −177.1 |
+| **true angle, corrected sign** | −52.3 | **+2.9** ← an iPad held square |
+
+The sign flip carried into three other places that had to move with it —
+`screenToDevice`, `applyScreenAngle`, the gyro's rate vector, and the gyro
+zero-offset's projection back onto the device axes. All four were derived, not
+guessed, and the landscape fixtures in the test suite changed sign with them.
+
+**The tests are now pinned to the measured device**, not to self-consistency:
+the old behaviour must still reproduce roll beyond 80 degrees, and the fixed
+behaviour must put an iPad held square inside 8 degrees of level. Both halves
+are planted against.
+
+### Still unverified
+
+Only ONE orientation of one device has been seen. Portrait on the same iPad, and
+any Android or desktop in landscape, are unconfirmed — the sign was wrong
+everywhere and only portrait hid it, so a landscape Android is the obvious next
+thing to check. Its report will say which angle source it used.
+
+### Also spotted in the same report, not yet fixed
+
+`vsi.rate` read **344,570 fpm**. That is the attitude bug downstream: with the
+horizon ninety degrees over, the "vertical" accelerometer projection was reading
+a horizontal axis, so gravity leaked into the integrator and it ran away. The
+attitude fix removes the cause — but a vertical speed indicator that can display
+three hundred thousand feet per minute has no business doing so whatever the
+cause, and that bound is still to be added.
 
 ---
 
