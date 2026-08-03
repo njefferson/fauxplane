@@ -907,3 +907,60 @@ test('anti-windup does NOT stop a real offset being learned', () => {
   assert.ok(Math.abs(fusion.gyroBias.alpha - 3) < 0.6, `alpha ${fusion.gyroBias.alpha}`);
   assert.equal(fusion.read(t).converged, true);
 });
+
+test('LEVELLING: the filter remembers the last still moment, so the press is not the measurement', () => {
+  // Noah: "when I tap the button, it wiggles too much to work." Levelling read
+  // stillness at the instant of the click, which is the one instant guaranteed
+  // to be disturbed — the press IS the disturbance. On a hand-held tablet it
+  // could never succeed.
+  const fusion = createFusion();
+
+  // Resting in its cradle: still, tilted back the way a real mount sits.
+  const up = upVectorScreenFrame(25, 0);
+  const cradle = { x: up.x * G0, y: up.y * G0, z: up.z * G0 };
+  let t = 0;
+  for (let i = 0; i < 200; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, cradle, t);
+    fusion.updateAccel(cradle, 0, t);
+  }
+  const settled = fusion.lastStillAttitude;
+  assert.ok(settled, 'a device resting in a cradle must record a still attitude');
+  assert.ok(Math.abs(settled.pitch - 25) < 2, `the cradle tilt is real: pitch ${settled.pitch?.toFixed(1)}`);
+
+  // Now the finger arrives: rates spike and the accelerometer leaves 1 g.
+  const shoved = { x: 3, y: G0 + 2.5, z: -4 };
+  for (let i = 0; i < 12; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 45, beta: -38, gamma: 26 }, shoved, t);
+    fusion.updateAccel(shoved, 0, t);
+  }
+  assert.equal(fusion.read(t).still, false, 'the press must genuinely register as motion');
+
+  // THE POINT: the reading from before the touch survives, and it is the one
+  // levelling uses — so the capture no longer depends on the calmest instant
+  // being the instant of the press.
+  const remembered = fusion.lastStillAttitude;
+  assert.ok(remembered, 'the pre-touch reference must survive the press');
+  assert.ok(remembered.at <= t, 'and it is from the past, not fabricated now');
+  assert.ok(
+    Math.abs(remembered.pitch - settled.pitch) < 2,
+    `must be the settled reference, not the disturbed one ` +
+      `(${remembered.pitch?.toFixed(1)} vs ${settled.pitch?.toFixed(1)})`,
+  );
+});
+
+test('LEVELLING: a device that has never been still offers no reference to fake', () => {
+  // The arm-and-wait path depends on this being null rather than a guess. A
+  // reference invented here would be baked into every later reading and look
+  // perfectly fine, which is the failure mode the whole procedure guards.
+  const fusion = createFusion();
+  let t = 0;
+  for (let i = 0; i < 80; i += 1) {
+    t += 20;
+    const jerk = { x: 4 * Math.sin(i), y: G0 + 3 * Math.cos(i), z: 3 * Math.sin(i / 2) };
+    fusion.updateGyro({ alpha: 55, beta: 44, gamma: -48 }, jerk, t);
+    fusion.updateAccel(jerk, 0, t);
+  }
+  assert.equal(fusion.lastStillAttitude, null);
+});

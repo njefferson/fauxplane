@@ -68,6 +68,62 @@ items.
 
 ---
 
+## 0.4.8 — the press is the disturbance, so stop measuring at the press
+
+Noah, on the levelling button: *"When I tap the button, it wiggles too much to
+work…"*
+
+The check was right and the MOMENT was wrong. Levelling read stillness at the
+instant of the click — the one instant guaranteed to be disturbed, because the
+press is itself the disturbance. On a tablet held in two hands it could never
+succeed, and the panel kept explaining why it was refusing rather than doing the
+obvious thing.
+
+**The reference worth having is the one from just before the touch.** A cradled
+device is still right up until a finger reaches it, so the filter now records
+its attitude whenever it is genuinely still, and levelling reaches back for that
+instead. Retroactive, instant, and it needs no countdown.
+
+Two things guard it. The remembered reading must be recent (eight seconds), so a
+reference from before the device was moved somewhere else cannot be used. And if
+there is no still moment to reach back to at all, the button ARMS rather than
+refuses: it waits, and captures by itself the moment the device settles, with a
+cancel and a twenty-second give-up. That is how a Dynon or a G5 does it — the
+unit does the capturing, the human just holds the aircraft still.
+
+Recorded in the UPDATE path, deliberately not in `read()`. The first attempt put
+it in `read()`, which made "when was this last still" depend on somebody
+polling — true in the app by accident, and false the moment a test drove the
+filter directly. The test caught it immediately, which is the whole argument for
+writing it.
+
+### And it turned up something worse
+
+Chasing the test failure exposed a real defect: **`still` stayed TRUE through a
+manoeuvre.** The rejection path — the branch that throws away accelerometer
+samples too violent to trust — returned BEFORE stillness was recomputed, so
+`stillSince` kept whatever it last held. The filter was simultaneously rejecting
+samples for being too violent and reporting that the device was sitting on a
+desk.
+
+That was mostly cosmetic until 0.4.6, when the vertical-speed integrator started
+keying its **zero-velocity update** off exactly this flag. A climb rough enough
+to reject samples would have been told its vertical speed was zero. **A ZUPT
+firing during a manoeuvre is the one thing a ZUPT must never do**, and it shipped
+two releases ago in the change that introduced it.
+
+Worth stating plainly: the wiggle fix in 0.4.6 was correct, and it made a
+pre-existing dormant bug dangerous. **Adding a consumer to a flag is a reason to
+re-read what sets it.**
+
+### Verified
+
+**162 unit tests, 25/25 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+---
+
 ## 0.4.7 — the radar page was a solid magenta rectangle, and every gate was green
 
 Noah opened RADAR for the first time. The plan view was one flat sheet of

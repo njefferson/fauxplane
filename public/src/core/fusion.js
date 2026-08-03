@@ -461,6 +461,8 @@ export function createFusion(options = {}) {
   let acceptedSamples = 0;
   let settledSince = null;
   let lastAccepted = null;
+  /** The most recent attitude solved while the device was still. See read(). */
+  let lastStillAttitude = null;
   let lastGyroAt = null;
   let lastResidual = null;
   let tiltUp = null;
@@ -626,6 +628,19 @@ export function createFusion(options = {}) {
         settledSince = null;
         reason = `no gravity reference for ${Math.round((at - lastAccepted) / 1000)}s`;
       }
+      // A SAMPLE VIOLENT ENOUGH TO BE REJECTED IS NOT A STILL DEVICE.
+      //
+      // This path returned before stillness was recomputed, so `stillSince`
+      // kept whatever it last held and `still` stayed TRUE right through a
+      // manoeuvre — the filter was rejecting samples for being too violent
+      // while simultaneously reporting the device was sitting on a desk.
+      //
+      // That is much worse than it sounds now that the vertical-speed
+      // integrator keys its ZERO-VELOCITY UPDATE off this flag: a real climb
+      // rough enough to reject samples would have been told its vertical speed
+      // was zero. A ZUPT firing during a manoeuvre is the one thing a ZUPT must
+      // never do.
+      stillSince = null;
       return;
     }
 
@@ -753,6 +768,22 @@ export function createFusion(options = {}) {
       aligned = true;
       converged = true;
       reason = null;
+
+      // THE LAST MOMENT THIS THING WAS STILL, remembered as it happens.
+      //
+      // Levelling used to read stillness at the instant the button was pressed,
+      // which is the one instant guaranteed to be disturbed — the press IS the
+      // disturbance. On a tablet it never succeeded: Noah, "when I tap the
+      // button, it wiggles too much to work." A cradled device is still right
+      // up until a finger reaches it, so the reference worth capturing is the
+      // one from just BEFORE the touch.
+      //
+      // Recorded HERE, in the update path, and deliberately not in read(): a
+      // filter must know when it was last still whether or not anything has
+      // asked it. Recording on read made it depend on somebody polling, which
+      // is true in the app by accident and was false the moment a test drove
+      // the filter directly.
+      lastStillAttitude = { pitch: solved.pitch, roll: solved.roll, at };
     }
 
     if (lastResidual <= cfg.convergeDeg) {
@@ -827,6 +858,16 @@ export function createFusion(options = {}) {
      *
      * Returns the mount angles, or null if the reference is unusable.
      */
+    /**
+     * The most recent attitude solved while the device was genuinely still,
+     * with the time it was taken. Levelling reads THIS rather than the instant
+     * of the button press, because the press is itself the disturbance.
+     * Null until the device has been still at least once.
+     */
+    get lastStillAttitude() {
+      return lastStillAttitude;
+    },
+
     setMount(referenceUp, screenAngleDeg) {
       if (!referenceUp) {
         mount = null;

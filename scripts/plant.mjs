@@ -286,6 +286,29 @@ const PLANTS = [
     expect: /missing-token magenta/,
   },
   {
+    // A rejected sample means the device is being thrown around. Leaving
+    // `still` set through that told the ZUPT a manoeuvring aircraft was
+    // stationary, which would zero a real climb.
+    name: 'stillness: a rejected manoeuvring sample stops clearing stillness',
+    check: 'a shove genuinely registers as motion',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '      stillSince = null;\n      return;\n    }\n\n    rejecting = false;',
+    replace: '      return;\n    }\n\n    rejecting = false;',
+    expect: /must genuinely register as motion|still/,
+  },
+  {
+    // Levelling must not depend on the calmest instant being the instant of
+    // the press, which is the instant the finger lands.
+    name: 'levelling: the filter stops remembering when it was last still',
+    check: 'the pre-touch reference survives the press',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '      lastStillAttitude = { pitch: solved.pitch, roll: solved.roll, at };',
+    replace: '      lastStillAttitude = null;',
+    expect: /still attitude|pre-touch reference/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

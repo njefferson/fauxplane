@@ -67,7 +67,60 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, onCha
   const clearBtn = el('button', { class: 'setup-btn', type: 'button', text: 'Clear levelling' });
 
   /**
-   * Capture. Reads the filter's CURRENT solved attitude rather than a single
+   * How far back a still moment may be and still count as "this mount, now".
+   * Long enough to cover reaching for the button, short enough that a reading
+   * from before the device was moved somewhere else cannot be used.
+   */
+  const STILL_WINDOW_MS = 8000;
+
+  let armedTimer = null;
+
+  /** Stop waiting, whatever the reason. */
+  const disarm = () => {
+    if (armedTimer !== null) clearInterval(armedTimer);
+    armedTimer = null;
+    levelBtn.textContent = 'Set this as level';
+  };
+
+  /**
+   * Wait for the device to be still, then capture on its own.
+   *
+   * Polled rather than driven off the publish loop so this panel keeps owning
+   * its own behaviour; it stops itself on success, on timeout, and whenever the
+   * reader presses again.
+   */
+  const arm = () => {
+    if (armedTimer !== null) {
+      disarm();
+      status.textContent = 'Levelling cancelled.';
+      status.dataset.tone = null;
+      return;
+    }
+    const startedAt = Date.now();
+    levelBtn.textContent = 'Waiting for it to settle…';
+    status.textContent =
+      'Waiting for the device to be still — let go of it, or set it down in its mount. It will level itself the moment it settles. Press again to cancel.';
+    status.dataset.tone = null;
+    announcer.say('Waiting for the device to be still.');
+    armedTimer = setInterval(() => {
+      const now = Date.now();
+      const recent = fusion.lastStillAttitude;
+      if (recent && now - recent.at <= 1200) {
+        disarm();
+        capture();
+        return;
+      }
+      if (now - startedAt > 20000) {
+        disarm();
+        status.textContent =
+          'Gave up waiting — the device never settled. It has to rest still for about a second; a hand-held tablet rarely does, so put it in its mount first.';
+        status.dataset.tone = 'bad';
+      }
+    }, 200);
+  };
+
+  /**
+   * Capture. Reads the filter's SOLVED attitude rather than a single
    * accelerometer sample: the filter has already rejected manoeuvring samples,
    * removed the gyro's zero-offset and settled, so its answer is a far better
    * reference than whatever one raw reading happens to say.
@@ -80,10 +133,26 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, onCha
       status.dataset.tone = 'bad';
       return;
     }
-    if (!att.still) {
-      status.textContent =
-        'Cannot level while the device is moving. Park somewhere level, let it settle for a second, and press again — a reference captured while moving is wrong for ever and looks fine.';
-      status.dataset.tone = 'bad';
+    // THE PRESS IS THE DISTURBANCE, so do not measure at the press.
+    //
+    // This used to read stillness at the instant of the click and refuse if the
+    // device was moving — which, on a tablet held in two hands, it always was.
+    // Noah: "when I tap the button, it wiggles too much to work." The check was
+    // right and the moment was wrong.
+    //
+    // A device in a cradle is still right up until a finger reaches it, so the
+    // reference worth having is the one from just before the touch. The filter
+    // remembers it continuously; this reads it back.
+    const recent = fusion.lastStillAttitude;
+    const age = recent ? Date.now() - recent.at : Infinity;
+    const usable = recent && age <= STILL_WINDOW_MS ? recent : att.still ? att : null;
+
+    if (!usable) {
+      // Nothing still to reach back to. Rather than refusing outright, ARM:
+      // capture by itself the moment the device does settle, so the reader can
+      // simply put it down. Standard practice on a Dynon or a G5 — the unit
+      // does the capturing, the human just holds the aircraft still.
+      arm();
       return;
     }
 
@@ -94,8 +163,8 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, onCha
     // does not throw the first calibration away — the second reading is
     // relative to the first, and what gets stored is the total.
     const existing = fusion.mountOffset;
-    const totalPitch = att.pitch + (existing?.pitchDeg ?? 0);
-    const totalRoll = att.roll + (existing?.rollDeg ?? 0);
+    const totalPitch = usable.pitch + (existing?.pitchDeg ?? 0);
+    const totalRoll = usable.roll + (existing?.rollDeg ?? 0);
     const reference = upVectorScreenFrame(totalPitch, totalRoll);
 
     const applied = fusion.setMount(reference, screenAngle());
