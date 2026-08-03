@@ -1741,37 +1741,84 @@ body[data-powered='true'] .gate {
    (§4) — ON or OFF in real text — so it survives a grayscale render and a
    colour-blind reader, and colour only reinforces it. */
 
+/* IT LOOKS LIKE EQUIPMENT, NOT LIKE A MENU ITEM. Noah: "The power button looks
+   like a menu button rather than equipment button. It hides among the others
+   and draws no attention when it's off."
+
+   THE DARK COCKPIT CONVENTION, which is the answer to "what does it look like
+   in a normal jet". There is no power button in an airliner — the nearest
+   equivalents are the battery switch and the IRS mode selectors on the overhead
+   panel — and they are square backlit pushbuttons with the legend on the cap.
+   Boeing's philosophy is that a LIT annunciator means something is NOT normal:
+   the panel is dark when all is well, and you never illuminate to say "OK".
+
+   So this is inverted from a consumer power lamp, and that inversion is exactly
+   what Noah asked for. OFF is the non-normal state, so OFF is the one that
+   lights. Switched on, it goes dark and stops competing with everything else.
+
+   AMBER, NOT RED (§4). Red is for a condition needing immediate action; a panel
+   you have not switched on yet is crew awareness. --caution is an alias of the
+   one measured amber this palette has, because a flight deck uses ONE caution
+   colour across every annunciator rather than a different one per system.
+
+   NON-HUE CHANNELS, both present before colour is counted: the WORD changes
+   (OFF / ON), and the lit cap changes its fill and its border weight. It reads
+   correctly in grayscale and to a colour-blind reader. */
+
+:root {
+  --caution: var(--stale);
+}
+
 .power-btn {
   min-height: var(--target);
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0 0.8rem;
-  background: var(--surface);
+  justify-content: center;
+  gap: 0.1rem;
+  padding: 0.25rem 0.7rem;
+  /* Square-ish and bezelled: a switch cap, not a pill. */
+  border-radius: 0.2rem;
   border: 2px solid var(--rail);
-  border-radius: var(--radius);
-  color: var(--text-2);
+  background: var(--page-alt);
+  color: var(--text-3);
   font: inherit;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   cursor: pointer;
 }
 .power-word {
-  font-size: 0.75rem;
+  font-size: 0.5625rem;
+  line-height: 1;
+  color: var(--text-3);
 }
+/* The annunciator half — the part that lights. */
 .power-state {
-  font-size: 0.75rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.25rem;
-  background: var(--surface-3);
-  color: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.15rem;
+  border: 1px solid transparent;
 }
-.power-btn[aria-checked='true'] {
-  background: var(--surface-3);
-  color: var(--text);
+
+/* OFF: LIT. The non-normal state annunciates, which is the whole convention. */
+.power-btn[aria-checked='false'] {
+  border-color: var(--caution);
 }
+.power-btn[aria-checked='false'] .power-state {
+  background: var(--surface-3);
+  border-color: var(--caution);
+  color: var(--caution);
+}
+
+/* ON: DARK AND QUIET. Nothing to say, so it says nothing. */
+.power-btn[aria-checked='true'] .power-state {
+  background: transparent;
+  color: var(--text-2);
+}
+
 .power-btn:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
 

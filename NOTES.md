@@ -2206,6 +2206,39 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.13.1 — the switch annunciates, 2026-08-03
+
+Noah: *"The power button looks like a menu button rather than equipment button.
+It hides among the others and draws no attention when it's off. Maybe a
+red/green 'LED' on it? What does it look like in a normal jet?"*
+
+**The answer to the last question changed the design.** There is no power button
+in an airliner. The nearest equivalents are the battery switch and the IRS mode
+selectors on the overhead panel — the IRS being the closer analogue, since that
+is what actually brings attitude and nav data alive. Physically they are guarded
+toggles or SQUARE BACKLIT PUSHBUTTONS with the legend on the cap.
+
+**And the governing convention is the DARK COCKPIT.** A lit annunciator means
+something is NOT normal; a Boeing overhead panel is dark when all is well, and
+nothing illuminates to say "OK". So a green power lamp is backwards for a system
+switch — what lights is the OFF legend.
+
+That inversion is exactly what was asked for, arrived at from the convention
+rather than from taste: the panel being off IS the non-normal state, so off is
+the state that annunciates. Switched on, it goes dark and stops competing with
+everything around it.
+
+**AMBER, NOT RED** (§4). Red is for a condition needing immediate action; a
+panel nobody has switched on yet is crew awareness. `--caution` is a semantic
+alias of the one measured amber this palette has, because a flight deck uses ONE
+caution colour across every annunciator rather than a different one per system —
+which also means no new colour had to be measured.
+
+**Both non-hue channels first, colour second.** The WORD changes (OFF / ON) and
+the lit cap changes its fill and its border. It reads correctly in grayscale and
+to a colour-blind reader before hue is counted at all. Both states are in the
+contrast registry, added in this commit as §4 requires.
+
 ## 1.13.0 — the probe, because the sandbox cannot reach the provider, 2026-08-03
 
 Noah: *"If you want to test something, put it in the damn debug screen behind

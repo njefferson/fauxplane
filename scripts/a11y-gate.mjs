@@ -185,6 +185,11 @@ const REGISTRY = [
   // button changes BOTH its fill and its text colour.
   { selector: ".radar-pick[aria-pressed='true']", label: 'airframe picker (selected)', min: 4.6, page: 'radar' },
   { selector: ".radar-pick[aria-pressed='false']", label: 'airframe picker (unselected)', min: 4.6, page: 'radar' },
+  // The power annunciator, both states (§4: a new fg/bg pair joins the gate in
+  // the same commit). The LIT state is the one that matters — an annunciator
+  // nobody can read is worse than no annunciator.
+  { selector: ".power-btn[aria-checked='false'] .power-state", label: 'power annunciator (OFF, lit)', min: 4.6, page: 'pfd' },
+  { selector: '.power-word', label: 'power switch legend', min: 4.6, page: 'pfd' },
   { selector: '.setup-body', label: 'setup body text', min: 4.6, page: 'setup' },
   { selector: '.setup-caution', label: 'setup caution (amber)', min: 4.6, page: 'setup' },
   { selector: ".pfd-range-btn[aria-pressed='true']", label: 'PFD range (selected)', min: 4.6, page: 'pfd' },

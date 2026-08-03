@@ -29,6 +29,16 @@
  */
 export const RELEASES = [
   {
+    version: '1.13.1',
+    date: '2026-08-03',
+    headline: 'The power switch looks like equipment, and lights up when it is off.',
+    changed: [
+      'PWR is a switch cap now rather than another rounded button hiding among the menu controls — square, bezelled, with the legend on the face.',
+      'When the panel is off, the OFF legend is LIT in amber so it draws the eye. Switched on, it goes dark and quiet. That is the way a real flight deck works: a lit annunciator means something is not normal, and nothing lights up to tell you things are fine.',
+    ],
+    broken: [],
+  },
+  {
     version: '1.13.0',
     date: '2026-08-03',
     headline: 'The diagnostics report now says what the aircraft feed actually sent.',
