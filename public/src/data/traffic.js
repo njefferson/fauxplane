@@ -74,6 +74,38 @@ const clampRange = (nm) => {
   return allowed.includes(nm) ? nm : allowed[2];
 };
 
+/**
+ * ONE RADIUS IS EVER FETCHED, and it is the widest the panel offers.
+ *
+ * `dist` is part of the Function's cache key, so four range buttons meant four
+ * cache entries and four upstream requests for THE SAME SKY. Tapping through
+ * the ranges — which is the obvious thing to do with four buttons — quadrupled
+ * what a volunteer network was asked for, and the old code knew it: the comment
+ * on the failure path said so and then worked around the symptom.
+ *
+ * The 80 nm response already contains every aircraft a 10 nm view can show, and
+ * the renderer clips to the drawn circle regardless. So the wider fetch is not
+ * extra data, it is the same data asked for once instead of four times, and
+ * changing range becomes free and instant rather than a network round trip.
+ */
+export const FETCH_RANGE_NM = RADAR_RANGE_NM[RADAR_RANGE_NM.length - 1];
+
+/**
+ * Aircraft inside a display range. The fetch is wider; the scope is not.
+ *
+ * Reads `distanceNm`, the field `withRangeAndBearing` actually writes. The
+ * first version of this invented `rangeNm` and silently filtered EVERY aircraft
+ * away — and its unit test passed, because the fixtures were written from the
+ * same wrong name. Only the radar's own test caught it. That is why the test
+ * for this now runs real aircraft through `withRangeAndBearing` first.
+ *
+ * An aircraft with no computed distance is DROPPED, not treated as zero: a
+ * missing measurement placed at the centre would sit on top of the reader.
+ */
+export function withinRange(aircraft, rangeNm) {
+  return (aircraft ?? []).filter((a) => Number.isFinite(a.distanceNm) && a.distanceNm <= rangeNm);
+}
+
 /** Position to search around: the live fix if there is one, else home. */
 /**
  * The path a followed aircraft has actually flown, as observed.
@@ -130,6 +162,11 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
   const doFetch = (...args) => (fetchImpl ?? fetch)(...args);
 
   let nearby = [];
+  /** Every aircraft the last successful fetch returned, out to FETCH_RANGE_NM.
+   *  `nearby` is this filtered to the display range — kept separately so that
+   *  changing range is a filter over data already in hand, not a request. */
+  let allNearby = [];
+  let displayRangeNm = RADAR_RANGE_NM[2];
   /** When `nearby` last actually CHANGED — a successful fetch. Null until one. */
   let nearbyAt = null;
   let lastResult = null;
@@ -182,6 +219,23 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
     get nearby() {
       return nearby;
     },
+
+    /**
+     * Change the display range with NO network request.
+     *
+     * The aircraft for every range are already here — one fetch covers the
+     * widest scope, and a narrower one is a filter over it. This is also why
+     * "the radar loses everything when you change range" is gone at the root
+     * rather than patched: there is no request to fail.
+     *
+     * Returns the aircraft now shown, so a caller can redraw immediately.
+     */
+    setDisplayRange(rangeNm) {
+      displayRangeNm = clampRange(rangeNm);
+      nearby = withinRange(allNearby, displayRangeNm);
+      if (lastResult) lastResult.rangeNm = displayRangeNm;
+      return nearby;
+    },
     get last() {
       return lastResult;
     },
@@ -207,9 +261,14 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
     /** The plan view: everything within `rangeNm` of the centre. */
     async refreshNearby(fields, rangeNm) {
       const centre = radarCentre(fields);
-      const dist = clampRange(rangeNm);
-      const result = await query(`lat=${centre.lat.toFixed(4)}&lon=${centre.lon.toFixed(4)}&dist=${dist}`);
-      lastResult = { ...result, centre, rangeNm: dist, at: clock() };
+      // The DISPLAY range, which is what the scope and every count describe.
+      const display = clampRange(rangeNm);
+      // The FETCH range, always the widest, so all four buttons share one cache
+      // entry upstream instead of issuing four requests for the same sky.
+      const result = await query(
+        `lat=${centre.lat.toFixed(4)}&lon=${centre.lon.toFixed(4)}&dist=${FETCH_RANGE_NM}`,
+      );
+      lastResult = { ...result, centre, rangeNm: display, fetchedRangeNm: FETCH_RANGE_NM, at: clock() };
       // A FAILED REFRESH IS NOT AN EMPTY SKY, and this cleared the plan view on
       // any failure at all. Changing range is the way to hit it: each range is a
       // different cache key upstream, so tapping through them issues real
@@ -222,7 +281,11 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       // contract every other field in this app keeps. `sw.js` refuses to invent
       // an empty sky for exactly this reason and this path was doing it anyway.
       if (result.ok) {
-        nearby = withRangeAndBearing(result.aircraft ?? [], centre);
+        // Everything the fetch returned, kept whole so a range change can be
+        // answered from memory. `nearby` is the filtered view of it.
+        allNearby = withRangeAndBearing(result.aircraft ?? [], centre);
+        displayRangeNm = display;
+        nearby = withinRange(allNearby, display);
         // STAMPED WHEN THE DATA ARRIVED, not when the attempt was made. `at`
         // above marks the attempt; using it for the display age would let kept
         // aircraft claim to be fresh the moment a refresh failed, which is a

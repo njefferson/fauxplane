@@ -29,6 +29,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.9.0',
+    date: '2026-08-03',
+    headline: 'Far fewer requests to the aircraft feed, so it stops shutting you out.',
+    changed: [
+      'The radar asks for aircraft about a third as often. The cache in front of the aircraft feed was set shorter than the panel\'s own refresh, so it expired moments before every single request and never once saved one — the panel was asking a volunteer network eighteen times a minute.',
+      'Changing range no longer costs a request at all. One fetch covers the widest scope and the smaller ranges filter what is already on the device, so the buttons are instant.',
+    ],
+    broken: [
+      'Being rate limited is still possible and is not entirely ours to fix: the panel reaches the feed through Cloudflare, which shares one address across an enormous number of sites, so other people\'s traffic can use up the allowance.',
+      'adsb.fi refuses this app outright — their protection blocks anything arriving from Cloudflare. The panel falls back to it and gets a block page, which is why you sometimes see two failures at once.',
+      'You still cannot pick an aircraft type and see only those overhead. That is next.',
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-08-03',
     headline: 'An i menu at the top, holding everything that is not an instrument.',
@@ -39,7 +53,6 @@ export const RELEASES = [
       'The first-time instructions now live in that menu rather than being parked on the SETUP page under the levelling controls.',
     ],
     broken: [
-      'You cannot yet pick an aircraft type and see only those overhead. That is the next release.',
       'Following an aircraft still cannot show pitch, airspeed or slip. ADS-B does not broadcast them, and the panel will not invent them.',
     ],
   },

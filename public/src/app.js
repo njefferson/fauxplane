@@ -67,15 +67,27 @@ const BOOT_AT = now();
  *  a refresh that lands early costs the edge cache and not the service. */
 const METAR_INTERVAL_MS = 60_000;
 const WINDS_INTERVAL_MS = 15 * 60_000;
-/** adsb.fi publishes a 1 req/s limit and the Function caches 8 s at the edge.
- *  Ten seconds keeps a plan view usefully current while sitting comfortably
- *  inside both — a hobby panel has no business polling a volunteer network at
- *  its stated ceiling (Doctrine §15.6). */
-const TRAFFIC_INTERVAL_MS = 10_000;
+/**
+ * EACH INTERVAL IS HALF ITS EDGE CACHE TTL, and that relationship is the point.
+ *
+ * These were 10 s and 5 s against caches of 8 s and 5 s — every entry expired
+ * just before the poll that would have used it, so the cache never once served
+ * a single user and every poll reached adsb.lol. The old comment right here
+ * claimed the opposite. Noah was rate limited off the radar repeatedly, which
+ * is what a false claim about pacing buys.
+ *
+ * A plan view fifteen seconds old is still a useful plan view; provenance ages
+ * it honestly either way. A hobby panel has no business polling a volunteer
+ * network at its ceiling (Doctrine §15.6), and being inside the ceiling is not
+ * the same as being frugal.
+ *
+ * `traffic-pacing.test.mjs` holds these against POLICIES so the two files
+ * cannot drift back apart.
+ */
+const TRAFFIC_INTERVAL_MS = 15_000;
 /** The followed aircraft is polled harder, because it IS the instrument
- *  source — but still against a 5 s edge cache, so the extra requests land on
- *  Cloudflare rather than on adsb.fi. */
-const FOLLOW_INTERVAL_MS = 5_000;
+ *  source — but still under its own 20 s edge cache. */
+const FOLLOW_INTERVAL_MS = 10_000;
 
 async function boot() {
   // ---- the build stamp, written at BOOT ------------------------------------
@@ -305,6 +317,10 @@ async function boot() {
   pfdRangeHost.replaceChildren(...pfdRangeButtons);
   radar.onRange((nm) => {
     for (const b of pfdRangeButtons) b.setAttribute('aria-pressed', b.textContent === String(nm) ? 'true' : 'false');
+    // NO FETCH. One radius is ever requested and it is the widest, so a narrower
+    // scope is a filter over aircraft already in hand. This is why changing
+    // range can no longer empty the display: there is no request to fail.
+    traffic.setDisplayRange(nm);
   });
 
   $('follow-exit').addEventListener('click', () => {

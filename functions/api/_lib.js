@@ -59,11 +59,23 @@ export const POLICIES = {
     policyUrl: 'https://www.adsb.lol/docs/open-data/api/',
     homeUrl: 'https://adsb.lol',
     attribution: 'Aircraft data from adsb.lol (ODbL)',
-    // Comfortably inside the tightest published limit even with several colos
-    // each holding their own copy, and still fresher than the panel can
-    // usefully redraw a plan view.
-    cacheSeconds: 8,
-    callsignCacheSeconds: 5,
+    /**
+     * THE TTL MUST EXCEED THE CLIENT'S POLL INTERVAL OR THE CACHE DOES NOTHING.
+     *
+     * These were 8 s and 5 s against polls of 10 s and 5 s. Every entry expired
+     * a moment BEFORE the poll that would have used it, so essentially every
+     * request went upstream and the cache was decorative — while the comments
+     * here and in app.js both claimed the refresh rate "lands on Cloudflare
+     * rather than on adsb.fi". One iPad following an aircraft on the radar page
+     * was asking a volunteer network eighteen times a minute.
+     *
+     * Now each TTL is twice its poll interval, so at most every other poll can
+     * reach upstream: six requests a minute in the same situation, and usually
+     * fewer. `traffic-pacing.test.mjs` fails the build if the relationship is
+     * ever inverted again, because prose did not stop it the first time.
+     */
+    cacheSeconds: 30,
+    callsignCacheSeconds: 20,
     identifies: true,
     honoursRetryAfter: true,
   },

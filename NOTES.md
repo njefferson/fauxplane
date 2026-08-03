@@ -2206,6 +2206,63 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.9.0 — the cache that never once worked, 2026-08-03
+
+Noah, with a screenshot of an empty scope: "I am getting rate limited far too
+much from the radar source. Are we doing it wrong?" Yes, in two ways that were
+ours, and a third that is not.
+
+**THE EDGE CACHE WAS SHORTER THAN THE POLL INTERVAL, SO IT NEVER SERVED ANYONE.**
+Nearby was an 8 s TTL against a 10 s poll; followed was 5 s against 5 s. Each
+entry expired a moment BEFORE the request that would have used it, so a single
+user hit upstream on essentially every poll — eighteen requests a minute while
+following on the radar page. Both files asserted the opposite in prose: app.js
+said the extra requests "land on Cloudflare rather than on adsb.fi", and
+`_lib.js` called 8 s "comfortably inside the tightest published limit". Neither
+claim was ever true, and a comment cannot be a gate.
+
+Now 30 s and 20 s against 15 s and 10 s — each TTL twice its poll, so at most
+every other poll can leave the edge. `traffic-pacing.test.mjs` fails the build
+if the relationship inverts, and was watched failing on the shipped numbers
+before being trusted.
+
+**`dist` IS PART OF THE CACHE KEY, so four range buttons meant four upstream
+requests for the same sky.** Tapping through the ranges — the obvious thing to
+do with four buttons — quadrupled what a volunteer network was asked for. The
+old code KNEW: the comment on the failed-refresh path said "each range is a
+different cache key upstream, so tapping through them issues real requests",
+and then fixed the symptom. One radius is fetched now, always the widest, and a
+narrower scope is a filter over aircraft already in hand. The renderer already
+clipped to the drawn circle, so nothing about the display changed — and range
+switching is now instant and free, which fixes "the radar loses everything when
+you change range" at the root rather than by keeping stale aircraft.
+
+**The part that is NOT ours.** A Pages Function egresses from a Cloudflare colo
+address shared with an enormous number of other tenants, and adsb.lol limits by
+address. So perfect pacing on our side can still be refused because of traffic
+we neither sent nor can see. It is the same phenomenon as adsb.fi's blanket 403
+— his screenshot shows ray ...-SJC, a Cloudflare San Jose edge being turned away
+by another Cloudflare edge. Doctrine §15.3 forbids the obvious workarounds and
+they stay forbidden: no retrying harder, no rotating providers to evade a 429,
+no browser-shaped headers to get past adsb.fi's bot rule. The legitimate moves
+are to ask for less (done) and to ask adsb.lol for a key or a higher allowance
+under our own identity (not yet done, and it is the right next step).
+
+**adsb.lol's published limit is still unread.** `_lib.js` quotes adsb.fi's 1
+req/s in full from their own repository, but the adsb.lol figure has never been
+quoted anywhere — the docs URL is 403 from this sandbox, the same block that
+stops the API working. The comment claiming we sit "comfortably inside the
+tightest published limit" was therefore comparing against a number nobody here
+has read. Doctrine §15.3 point 1 says read the published policy before writing
+or changing any pacing; that is outstanding and Noah can open the page.
+
+**A test agreed with the code and both were wrong.** `withinRange` filtered on
+`a.rangeNm`; the producer writes `a.distanceNm`. Every aircraft was silently
+dropped. The new unit test passed, because its fixtures were written from the
+same invented name — self-consistent and measuring nothing. The RADAR test
+caught it. The fixture now runs real aircraft through `withRangeAndBearing`
+first, so a rename breaks it loudly instead of emptying the sky.
+
 ## 1.8.0 — the panel says what changed (Doctrine §7d), 2026-08-03
 
 **`public/src/data/releases.js` is the only place release notes are written.**
