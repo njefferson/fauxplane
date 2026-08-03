@@ -122,7 +122,20 @@
             boot and kept current with what is actually on it — the readouts below
             carry the same values as real, selectable, screen-reader text.
           -->
-          <canvas id="pfd-canvas" class="pfd-canvas" role="img" aria-label="Primary flight display. Starting up."></canvas>
+          <div class="pfd-main">
+            <canvas id="pfd-canvas" class="pfd-canvas" role="img" aria-label="Primary flight display. Starting up."></canvas>
+            <!--
+              LEVELLING LIVES WHERE THE CROOKED HORIZON IS. It was on the SETUP
+              page, which is the one place a reader is NOT looking when they
+              notice the horizon is wrong. The behaviour still has exactly one
+              implementation, in setup.js; these call it.
+            -->
+            <div class="pfd-level" role="group" aria-label="Levelling">
+              <button type="button" id="pfd-level" class="pfd-level-btn">Level the horizon</button>
+              <button type="button" id="pfd-level-clear" class="pfd-level-btn pfd-level-clear" hidden>Clear levelling</button>
+              <p id="pfd-level-status" class="pfd-level-status" role="status" aria-live="polite"></p>
+            </div>
+          </div>
           <!--
             THE RIGHT-HAND COLUMN IS A NAVIGATION DISPLAY OVER THE VALUES, which
             is how an airliner is actually laid out: PFD on the left, ND beside

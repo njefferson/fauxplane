@@ -68,6 +68,58 @@ items.
 
 ---
 
+## 1.2.0 — levelling moved to where the crooked horizon is
+
+Noah: *"Please move the level function out of setup so it's intuitive."*
+
+It was on the SETUP page, which is the one place a reader is NOT looking at the
+moment they notice the horizon is wrong. **Level the horizon** now sits directly
+under the ADI, with the current state beside it and a Clear button that appears
+only once there is something to clear.
+
+**The behaviour did not move — only the reach did.** The capture procedure, the
+retroactive still-window, the arm-and-wait, and every refusal string still have
+exactly ONE implementation in `setup.js`; the PFD buttons call `setup.capture()`
+and `setup.clearLevelling()`. Two buttons doing the same thing is fine. Two
+copies of a safety-critical procedure is how they drift apart, and this one
+already refuses bad references for reasons that took a release each to get right.
+
+The status wording is read straight off the node SETUP shows it on
+(`setup.lastStatus`), so the PFD copy cannot say something different from the
+SETUP copy about the same event.
+
+SETUP keeps its controls and, more importantly, keeps the long explanation —
+what levelling is, what it cannot do (it cannot set which way is forward), and
+what a car does that an aeroplane does not. That text is worth reading once and
+does not belong crammed under a horizon.
+
+### What a preview render is for
+
+The gate passed before I looked. `preview.mjs` is what showed the control in
+place, correctly sized, with its status text beside it rather than wrapped under
+it — none of which a contrast check or an axe pass can tell you. **Two releases
+in a row now, the gate has been necessary and not sufficient.**
+
+### Still not fixed, and now visible in the preview render
+
+The nested-reason defect, in the altitude chain:
+
+> MSL altitude, altimeter setting, station altimeter unavailable (MSL altitude:
+> GPS altitude, geoid separation unavailable (GPS altitude: not yet initialised))
+
+Unchanged from 1.1.0. It wants a depth limit inside `worstOf`, which is shared
+provenance code and deserves its own release rather than being folded into a
+layout change.
+
+### Verified
+
+**172 unit tests, the accessibility gate green across 3 viewports x 2 palettes x
+5 pages including the 200%-text case — with the new control registered for
+contrast, so a selector that stops matching FAILS the build — both palettes
+clearing every hard floor, and the layout rendered and looked at.**
+
+---
+
 ## 1.1.0 — a navigation display beside the horizon, which is where one goes
 
 Noah: *"The radar would be better next to the PFD than these diagnostics."*

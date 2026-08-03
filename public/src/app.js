@@ -211,6 +211,44 @@ async function boot() {
     screenAngle: orientation.screenAngle,
     onChange: () => pfd.render(state.snapshot),
   });
+
+  // LEVELLING, ON THE PFD, WHERE THE CROOKED HORIZON IS.
+  //
+  // It lived only on SETUP — which is the one page a reader is NOT looking at
+  // when they notice the horizon is wrong. Noah: "move the level function out
+  // of setup so it's intuitive." These buttons call setup's own capture and
+  // clear, so there is still exactly ONE implementation of the procedure and
+  // one place the refusals are worded; only the reach changed.
+  const levelBtn = $('pfd-level');
+  const levelClearBtn = $('pfd-level-clear');
+  const levelStatus = $('pfd-level-status');
+
+  /** Mirror setup's own wording rather than inventing a second vocabulary. */
+  const syncLevelUi = () => {
+    const applied = fusion.mountOffset;
+    levelClearBtn.hidden = !applied;
+    levelBtn.textContent = applied ? 'Re-level the horizon' : 'Level the horizon';
+    if (!applied && !levelStatus.dataset.tone) {
+      levelStatus.textContent = 'Not levelled — the horizon shows the device’s own angle.';
+    }
+  };
+
+  levelBtn.addEventListener('click', () => {
+    const said = setup.capture();
+    // capture() writes its own status onto the SETUP page; repeat the outcome
+    // here so a reader who never opens that page still learns what happened.
+    levelStatus.textContent = setup.lastStatus?.text ?? '';
+    levelStatus.dataset.tone = setup.lastStatus?.tone ?? '';
+    syncLevelUi();
+    return said;
+  });
+  levelClearBtn.addEventListener('click', () => {
+    setup.clearLevelling();
+    levelStatus.textContent = 'Levelling cleared — the horizon shows the device’s own angle again.';
+    levelStatus.dataset.tone = '';
+    syncLevelUi();
+  });
+  syncLevelUi();
   // A saved levelling is re-applied at boot, so it survives a reload without
   // anyone having to re-level a cradle that has not moved.
   const restored = setup.restore();

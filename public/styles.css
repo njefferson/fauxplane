@@ -288,6 +288,51 @@ body {
   border-radius: var(--radius);
 }
 
+/* The horizon and its levelling control, as one column. The canvas keeps the
+   62 share; the control is intrinsic height beneath it. */
+.pfd-main {
+  flex: 62 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pfd-level {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pfd-level-btn {
+  /* var(--target) is the 44px floor. Never a px literal here: this is the
+     control a reader reaches for on a moving vehicle. */
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--rail);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pfd-level-status {
+  flex: 1 1 12rem;
+  margin: 0;
+  min-width: 0;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+}
+
+.pfd-level-status[data-tone='bad'] {
+  color: var(--fail);
+}
+
 /* The ND stacked over the values. The COLUMN owns the 38 share and the width
    floor; its children divide the height between them, so the readouts can still
    scroll without the plan view collapsing to nothing. */

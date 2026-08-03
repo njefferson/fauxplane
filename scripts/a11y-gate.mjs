@@ -182,6 +182,8 @@ const REGISTRY = [
   { selector: '.chip-fail', label: 'FAIL chip', min: 4.6, page: 'pfd' },
   { selector: '.setup-body', label: 'setup body text', min: 4.6, page: 'setup' },
   { selector: '.setup-caution', label: 'setup caution (amber)', min: 4.6, page: 'setup' },
+  { selector: '#pfd-level', label: 'PFD levelling button', min: 4.6, page: 'pfd' },
+  { selector: '.pfd-level-status', label: 'PFD levelling state', min: 4.6, page: 'pfd' },
   { selector: '.setup-current', label: 'setup levelling state', min: 4.6, page: 'setup' },
   { selector: '.setup-btn', label: 'setup button', min: 4.6, page: 'setup' },
   { selector: '.atis-station', label: 'ATIS station line', min: 4.6, page: 'atis' },

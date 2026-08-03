@@ -248,6 +248,23 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, onCha
 
   return {
     render,
+    /**
+     * The two actions, exposed so the PFD can carry them.
+     *
+     * LEVELLING BELONGS WHERE THE CROOKED HORIZON IS. Noah: "move the level
+     * function out of setup so it's intuitive" — and he is right, because the
+     * moment a reader wants it is the moment they are looking at a horizon that
+     * is wrong, which is never the moment they are on a settings page. The
+     * BEHAVIOUR stays here, in one implementation, and the PFD calls it: two
+     * buttons doing the same thing is fine, two copies of the logic is not.
+     */
+    capture,
+    clearLevelling: clear,
+    /** The wording of the last outcome, read straight off the node that shows
+     *  it, so the PFD copy cannot drift from the SETUP copy. */
+    get lastStatus() {
+      return { text: status.textContent ?? '', tone: status.dataset.tone ?? '' };
+    },
     /** Re-apply a saved calibration at boot. Separate from capture so a stored
      *  value can never be treated as a fresh one. */
     restore() {
