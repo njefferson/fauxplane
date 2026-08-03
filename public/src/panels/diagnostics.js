@@ -123,7 +123,24 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
   // means it is a CONSEQUENCE, not a cause. Listing all thirty-eight together
   // buries the two or three that actually went wrong, and the whole point of
   // putting this at the top is that the first lines answer the question.
-  const failing = Object.keys(FIELDS).filter((p) => f[p]?.provenance === 'FAIL');
+  // A field that can only have a value in a mode the panel is not in is NOT a
+  // failure. Counting it as one inflates the headline on a healthy panel and
+  // teaches the reader to discount the number, which is the one thing this
+  // report cannot afford.
+  //
+  // Only a field that is ACTUALLY EMPTY counts as inapplicable. A field with a
+  // value is applicable by definition — setting one aside because of its
+  // declared mode would hide a real reading, which is the opposite failure and
+  // a worse one.
+  const inapplicable = Object.keys(FIELDS).filter(
+    (p) =>
+      FIELDS[p].onlyWhen === 'following' &&
+      !traffic?.isFollowing &&
+      (!f[p] || f[p].provenance === 'FAIL'),
+  );
+  const failing = Object.keys(FIELDS).filter(
+    (p) => f[p]?.provenance === 'FAIL' && !inapplicable.includes(p),
+  );
   const stale = Object.keys(FIELDS).filter((p) => f[p]?.provenance === 'STALE');
   const isDownstream = (p) => /unavailable \(|: not yet initialised\)/.test(f[p].reason ?? '');
   const roots = failing.filter((p) => !isDownstream(p));
@@ -144,6 +161,10 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
   if (notStarted.length) {
     line(`  NEVER STARTED (${notStarted.length}) — no reading has arrived at all:`);
     line(`    ${notStarted.join(', ')}`);
+  }
+  if (inapplicable.length) {
+    line(`  NOT APPLICABLE (${inapplicable.length}) — nothing is wrong; these need a followed aircraft:`);
+    line(`    ${inapplicable.join(', ')}`);
   }
   for (const p of stale) line(`  STALE  ${pad(p, 28)} ${formatAge(f[p].ageMs)} old — ${f[p].reason ?? ''}`);
   if (downstream.length) {

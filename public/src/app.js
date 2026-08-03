@@ -1002,6 +1002,13 @@ async function boot() {
   // the most on it.
   setInterval(refreshTraffic, TRAFFIC_INTERVAL_MS);
   setInterval(refreshFollowed, FOLLOW_INTERVAL_MS);
+  // ASK ONCE AT BOOT, not only on the first interval tick. The PFD carries a
+  // navigation display and is the page a reader lands on, so waiting a full
+  // interval left it empty for fifteen seconds for no reason — Noah's report
+  // was captured at nine seconds and said "traffic: not asked yet". Opening
+  // RADAR already re-asks immediately; the page that is ALREADY open should
+  // not be the one that waits.
+  refreshTraffic();
 
   // The home reference is shown so nobody reads a pre-fix distance as a
   // distance from the aircraft.

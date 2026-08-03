@@ -118,3 +118,73 @@ test('REPORT: a filter returning undefined readings does not throw', () => {
   assert.ok(text.includes('ATTITUDE FILTER'));
   assert.ok(text.includes('pitch —'), 'a missing angle prints as a dash, not a crash');
 });
+
+/**
+ * A FIELD THAT NEEDS A MODE THE PANEL IS NOT IN IS NOT A FAILURE.
+ *
+ * Noah's report read "8 of 41 fields failed" on a panel that was working. Five
+ * had genuinely failed; three were the followed-aircraft autopilot readouts,
+ * which cannot have a value unless an aircraft is being followed — this device
+ * has no autopilot to read. Counting them inflates the headline on a healthy
+ * panel, and a count that treats "inapplicable" as "broken" teaches the reader
+ * to discount the number. That is the one thing this report cannot afford.
+ */
+test('the failure count excludes fields that need a followed aircraft', () => {
+  const seen = [];
+  // The three autopilot fields, FAILED — which is their state on every panel
+  // that is not following an aircraft.
+  const withNavFailed = (t) => ({
+    t,
+    fields: {
+      'nav.selectedAltitude': { provenance: 'FAIL', value: null, reason: 'not yet initialised' },
+      'nav.selectedHeading': { provenance: 'FAIL', value: null, reason: 'not yet initialised' },
+      'nav.crewQnh': { provenance: 'FAIL', value: null, reason: 'not yet initialised' },
+    },
+  });
+
+  const notFollowing = buildReport({
+    snapshot: withNavFailed(5000),
+    fusion: fusionAt(5001, seen),
+    traffic: { isFollowing: false },
+    bootAt: 0,
+    now: 5011,
+  });
+  const following = buildReport({
+    snapshot: withNavFailed(5000),
+    fusion: fusionAt(5001, seen),
+    traffic: { isFollowing: true },
+    bootAt: 0,
+    now: 5011,
+  });
+
+  const failedCount = (text) => Number(text.match(/(\d+) of \d+ fields failed/)[1]);
+
+  assert.match(notFollowing, /NOT APPLICABLE \(3\)/, 'the three autopilot fields were not set aside');
+  assert.doesNotMatch(following, /NOT APPLICABLE/, 'while following, those fields ARE applicable');
+  assert.equal(
+    failedCount(following) - failedCount(notFollowing),
+    3,
+    'exactly the three autopilot fields should move between the two counts',
+  );
+});
+
+test('a field with a VALUE is never set aside as inapplicable', () => {
+  // The opposite failure, and the worse one: hiding a real reading because of a
+  // declared mode. If it has a value it is applicable, whatever the mode says.
+  const seen = [];
+  const text = buildReport({
+    snapshot: {
+      t: 5000,
+      fields: { 'nav.selectedAltitude': { provenance: 'LIVE', value: 35000, reason: null, ageMs: 10 } },
+    },
+    fusion: fusionAt(5001, seen),
+    traffic: { isFollowing: false },
+    bootAt: 0,
+    now: 5011,
+  });
+  const block = text.slice(text.indexOf('NOT APPLICABLE'));
+  assert.ok(
+    !/NOT APPLICABLE[^\n]*\n\s*[^\n]*nav\.selectedAltitude/.test(block),
+    'a field carrying a real value was hidden as "not applicable"',
+  );
+});

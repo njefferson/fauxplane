@@ -2206,6 +2206,40 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.13.2 — two things Noah's report exposed, 2026-08-03
+
+The report he sent could not answer the question it was built for, and that is
+itself the finding.
+
+**`traffic: not asked yet` at nine seconds of uptime.** Opening RADAR re-asks
+immediately, but the PFD — which carries a navigation display and is the page a
+reader LANDS on — waited out a full fifteen-second interval before its first
+fetch. The page that is already open was the one that waited. One `refreshTraffic()`
+at boot fixes it, and it costs a single request the reader was expecting anyway.
+
+**"8 of 41 fields failed" on a working panel.** Five had genuinely failed. Three
+were `nav.selectedAltitude`, `nav.selectedHeading` and `nav.crewQnh` — the
+autopilot readouts added in 1.11.0, which cannot have a value unless an aircraft
+is being followed, because this device has no autopilot to read.
+
+**A count that treats "inapplicable" as "broken" teaches the reader to discount
+the number**, and this report cannot afford that: it is the instrument used to
+diagnose every other instrument. `FIELDS` now carries `onlyWhen: 'following'`
+and the report sets those aside under NOT APPLICABLE, excluded from the count.
+
+**The first implementation of that was wrong in the opposite direction** and a
+test caught it: it set the fields aside on their declared MODE alone, regardless
+of provenance, so a field carrying a real value would have been hidden as "not
+applicable". That is the worse failure of the two — the report exists to show
+readings, not to suppress them. It now requires the field to be genuinely empty,
+and there is a test that fails if a LIVE value is ever hidden this way.
+
+**Still unanswered:** whether any aircraft broadcasts the autopilot selections.
+The feed-shape block only prints once traffic has been fetched, which had not
+happened when the report was captured. The boot fetch above means the next
+report will carry it without anyone having to remember to open RADAR first —
+which is the same lesson as §7f: build the check so it runs itself.
+
 ## 1.13.1 — the switch annunciates, 2026-08-03
 
 Noah: *"The power button looks like a menu button rather than equipment button.

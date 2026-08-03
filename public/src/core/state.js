@@ -81,9 +81,16 @@ export const FIELDS = {
    * on the same schedule as the rest of the broadcast, so a followed aircraft
    * that stops being heard takes them STALE and then FAIL like everything else.
    */
-  'nav.selectedAltitude': { unit: 'ft', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Selected altitude' },
-  'nav.selectedHeading': { unit: 'deg', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Selected heading' },
-  'nav.crewQnh': { unit: 'hPa', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Crew altimeter setting' },
+  //
+  // `onlyWhen: 'following'` marks a field that CANNOT have a value in the normal
+  // panel — this device has no autopilot to read. Without it the diagnostics
+  // report counted all three as failures on a perfectly healthy panel: Noah's
+  // report said "8 of 41 fields failed" when five had failed and three were
+  // simply not applicable. A count that treats "inapplicable" as "broken"
+  // teaches the reader to discount the number.
+  'nav.selectedAltitude': { unit: 'ft', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Selected altitude', onlyWhen: 'following' },
+  'nav.selectedHeading': { unit: 'deg', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Selected heading', onlyWhen: 'following' },
+  'nav.crewQnh': { unit: 'hPa', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Crew altimeter setting', onlyWhen: 'following' },
 
   // --- feeds ----------------------------------------------------------------
   'metar.station': { unit: null, kind: 'feed', freshMs: 3900000, staleMs: 10800000, label: 'METAR station' },

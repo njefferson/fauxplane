@@ -29,6 +29,16 @@
  */
 export const RELEASES = [
   {
+    version: '1.13.2',
+    date: '2026-08-03',
+    headline: 'The radar fills in immediately, and the report stops calling healthy things broken.',
+    changed: [
+      'The plan view beside the horizon asks for aircraft the moment the panel opens instead of waiting out its refresh interval. It used to sit empty for the first fifteen seconds for no reason.',
+      'The diagnostics report no longer counts the followed-aircraft autopilot readouts as failures when you are not following anything. They cannot have a value on your own device — there is no autopilot to read — so they are listed as NOT APPLICABLE rather than padding the failure count.',
+    ],
+    broken: [],
+  },
+  {
     version: '1.13.1',
     date: '2026-08-03',
     headline: 'The power switch looks like equipment, and lights up when it is off.',
