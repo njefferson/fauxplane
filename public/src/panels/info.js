@@ -148,6 +148,19 @@ export function createInfo({ trigger, onDiagnostics }) {
         class: 'info-body info-small',
         text: 'Not a simulator · not certified for anything · never for navigation.',
       }),
+      // The licence, required by §7e item 7. It was missing from the first
+      // build of this menu — caught by checking this app against the doctrine
+      // section written from it, which is the only reason it is here.
+      el('p', { class: 'info-body info-small' }, [
+        el('span', { text: 'Free to use, never sold. Licensed PolyForm Noncommercial 1.0.0. ' }),
+        el('a', {
+          class: 'info-link',
+          href: 'https://github.com/njefferson/fauxplane',
+          rel: 'noopener',
+          target: '_blank',
+          text: 'Source on GitHub',
+        }),
+      ]),
       el('p', { class: 'info-body info-small', text: `Version ${VERSION}` }),
     ]),
 

@@ -146,6 +146,17 @@ may skip the gate.
 harness keeps naming one; this repo's policy is staging and main, so work lands
 on `staging` and the session says so.
 
+## The doctrine baseline this app satisfies (§7e, §7f)
+The **(i) menu** in the header carries all seven items §7e requires: what this
+app is, what it is NOT, how to install it with both platforms named, what
+changed, where every number comes from with its terms, how to report a problem,
+and the accessibility statement and licence. First-run orientation MOVES into it
+when the power gate is dismissed rather than being copied or destroyed, and the
+a11y gate asserts both the control's accessible name and that survival.
+
+Item 7 was missing from the first build and was caught only by checking this app
+against the doctrine section written from it. Check the list, do not assume.
+
 ## Diagnostics — use this instead of asking for screenshots
 Pressing the **version stamp** opens a report of the whole panel state as text,
 with Copy / Share / Save. It leads with the diagnosis (root causes separated
