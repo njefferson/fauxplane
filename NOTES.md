@@ -2206,6 +2206,50 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.13.3 — a 429 on the FIRST request, 2026-08-03
+
+Noah's report, panel up 36 s, one traffic request made:
+
+> `traffic  FAILED — adsb.lol rate limited us (HTTP 429) | adsb.fi returned
+> HTTP 403 — server: cloudflare; ray a25790806923af1b-SJC`
+
+**ONE request. That settles it.** 1.9.0's pacing fix was real and necessary — the
+edge cache genuinely never worked — but it cannot be the cause here and neither
+can any future pacing change. A single request at boot is refused. The allowance
+was already spent before this app asked for anything, which is exactly what the
+shared-egress theory predicted and is now observed rather than argued.
+
+**The 429 handler threw away the instruction.** Doctrine §15.3 says a 429 IS an
+instruction, and the instruction lives in `Retry-After` — which this code read
+inside `politeFetch` for short waits and then discarded on the way out. So the
+panel could say it was rate limited and never how long for, and nobody could
+tell "we are asking too often" from "this address is exhausted". Now carried:
+`retry-after`, the `x-ratelimit-*` family, and the ray id.
+
+**The backoff IS engaging** — the composed reason still matches the client's
+rate-limit test, so each refusal doubles the wait up to two minutes. We are not
+adding to their load.
+
+**What is left is not a code change.** Two honest options, both needing someone
+who can reach the network:
+
+1. **Ask adsb.lol for an allowance under this app's own identity.** They are
+   volunteer-run, the app already identifies itself in its User-Agent with a
+   contactable URL (§15.2), and this is the polite route.
+2. **A provider that does not blanket-block Cloudflare origins.**
+   `airplanes.live` publishes a free community API and is the obvious candidate
+   — but its terms are UNREAD, and §15.1 says the published policy is the
+   authority before a single request is written. Not to be added until someone
+   has read them.
+
+**What is NOT an option**, and stays that way: retrying harder, rotating
+providers to dodge a 429, or sending browser-shaped headers to get past
+adsb.fi's bot rule (CLAUDE.md, verbatim).
+
+**Still unanswered, for the same reason:** whether any aircraft broadcasts the
+autopilot selections. The feed-shape block rides on a SUCCESSFUL response, and
+there has not been one from his device yet.
+
 ## 1.13.2 — two things Noah's report exposed, 2026-08-03
 
 The report he sent could not answer the question it was built for, and that is

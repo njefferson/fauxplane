@@ -275,7 +275,21 @@ async function tryProvider(provider, pathname, meta, cacheSeconds) {
     // a short Retry-After; reaching here means back off properly. There is
     // nothing to serve instead, and inventing an empty sky would read as "no
     // traffic" — which is a lie a radar page must never tell.
-    return { retry: `${provider.id} rate limited us (HTTP 429)` };
+    //
+    // CARRY WHAT THEY ASKED FOR. The instruction lives in the headers and this
+    // threw every one of them away, so the panel could say it was rate limited
+    // but never how long for — and Noah's report showed a 429 on the FIRST
+    // request of a session, which no amount of pacing on our side explains.
+    // Answering "is this us, or is it the address we share with every other
+    // Cloudflare tenant" needs the numbers, not the status code.
+    const said = [];
+    for (const h of ['retry-after', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'ratelimit-reset', 'cf-ray']) {
+      const v = res.headers?.get?.(h);
+      if (v) said.push(`${h} ${v}`);
+    }
+    return {
+      retry: `${provider.id} rate limited us (HTTP 429${said.length ? `; ${said.join(', ')}` : '; it sent no retry guidance'})`,
+    };
   }
   if (res.status === 404) {
     // The callsign endpoint 404s for a flight that is not currently airborne

@@ -29,6 +29,17 @@
  */
 export const RELEASES = [
   {
+    version: '1.13.3',
+    date: '2026-08-03',
+    headline: 'When the aircraft feed turns us away, the panel now says for how long.',
+    changed: [
+      'A rate-limited reply used to read only "rate limited us (HTTP 429)". The service usually says how long to wait and how much allowance is left, and all of that was being thrown away. It is on the gauge and in the report now.',
+    ],
+    broken: [
+      'Being turned away on the very first request of a session is not something this app can pace its way out of. It reaches the feed through Cloudflare, which shares one address across an enormous number of sites, so the allowance can already be spent by traffic that has nothing to do with you.',
+    ],
+  },
+  {
     version: '1.13.2',
     date: '2026-08-03',
     headline: 'The radar fills in immediately, and the report stops calling healthy things broken.',
