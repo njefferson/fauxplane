@@ -6,6 +6,14 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 1.7.1 — ITERATION — 2026-08-03
+
+**The share card got its words.** Same family layout as the other repos — the
+colour mark, the name, the tagline, the value chips, the URL — over the concept
+render, with the panel's own provenance tones (LIVE green, DERIVED cyan, STALE
+amber) as the mark, and the honesty line where it belongs: not a simulator, not
+certified for anything, never for navigation.
+
 ## 1.7.0 — CAPABILITY — 2026-08-03
 
 **Tap an aircraft on the radar to follow it.** The tap fills the follow box and

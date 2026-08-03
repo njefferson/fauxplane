@@ -68,6 +68,26 @@ items.
 
 ---
 
+## 1.7.1 — words on the share card, in the family style
+
+Noah: "I want words on the social preview like my other repos." The hub has a
+card pipeline (`social-card.html` + a Playwright renderer); fauxplane now has
+the same, at `scripts/social-card.html` + `scripts/render-social.mjs`, emitting
+both `docs/social-preview.jpg` (1280x640, the GitHub tile) and
+`public/og-image.jpg` (1200x630, behind og:image).
+
+The family layout — mark bars, name at 84px, gradient rule, tagline, value
+chips, URL — over his concept render behind a left-weighted scrim. The mark and
+chips use the PANEL'S provenance tones (LIVE green, DERIVED cyan, STALE amber)
+rather than the hub's photography palette: same family, this member's colours.
+The honesty line rides under the tagline: not a simulator, not certified for
+anything, never for navigation.
+
+Uploading the GitHub tile stays a UI step the token cannot perform (§10):
+Settings → General → Social preview → upload `docs/social-preview.jpg`.
+
+---
+
 ## 1.7.0 — tap to follow, restart, and obeying the rate limit
 
 Noah's report, following UAL2436: the follow poll was refused with HTTP 429 and
