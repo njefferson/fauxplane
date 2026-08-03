@@ -333,6 +333,18 @@ const PLANTS = [
     expect: /no nested parenthesis|no doubled name prefix|one sentence|not yet initialised/,
   },
   {
+    // Nineteen aircraft, a dozen in one quadrant, labels overprinted into a
+    // smear that reads as corruption rather than density. The gate cannot see
+    // inside a canvas, so the unit suite is the only thing that can catch this.
+    name: 'plan: aircraft labels go back to overprinting each other',
+    check: 'no two labels on the plan view overlap',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: '      if (placed.some((q) => overlaps(q, box))) continue;',
+    replace: '      // collision check removed',
+    expect: /overlap|smear/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

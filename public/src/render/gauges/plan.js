@@ -38,6 +38,62 @@ export function altLabel(a) {
   return ft >= 18000 ? `FL${Math.round(ft / 100)}` : `${Math.round(ft / 100) * 100}`;
 }
 
+/**
+ * Decide where each aircraft label goes, and drop the ones that cannot fit.
+ *
+ * NINETEEN AIRCRAFT IN ONE QUADRANT OVERPRINTED INTO A SMEAR. Every label was
+ * drawn at a fixed offset below its symbol, so a cluster produced several lines
+ * of text in the same pixels — unreadable, and worse than unreadable because it
+ * looks like corruption rather than density.
+ *
+ * Greedy placement against the labels already placed: four candidate positions
+ * per aircraft, first one that is clear wins. **A label that fits nowhere is
+ * DROPPED, and its symbol is still drawn.** That is the honest trade — the
+ * aircraft is still on the plan view at the right bearing and range, which is
+ * what a plan view is for, and its callsign is in the list on the RADAR page as
+ * text. Drawing it anyway would hide a neighbour to no one's benefit.
+ *
+ * Priority decides who keeps their label when they cannot all have one: the
+ * followed aircraft first, then whoever is closest to the middle.
+ *
+ * Pure, and takes its own text measurement, so it can be tested without a
+ * canvas — which is the only way to test it at all, since the accessibility
+ * gate cannot see inside one.
+ */
+export function placeLabels(items, { measure, lineHeight, bounds }) {
+  const placed = [];
+  const out = [];
+  const overlaps = (a, b) =>
+    Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0;
+
+  const ordered = [...items].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+  for (const item of ordered) {
+    const tw = measure(item.text);
+    const pad = item.size + lineHeight * 0.9;
+    // Below, above, right, left. Below first because it is where a reader
+    // already expects it and keeps the cluster shapes familiar.
+    const candidates = [
+      { x: item.x, y: item.y + pad, align: 'center' },
+      { x: item.x, y: item.y - pad, align: 'center' },
+      { x: item.x + item.size + 3, y: item.y + lineHeight * 0.35, align: 'left' },
+      { x: item.x - item.size - 3, y: item.y + lineHeight * 0.35, align: 'right' },
+    ];
+    let chosen = null;
+    for (const c of candidates) {
+      const left = c.align === 'center' ? c.x - tw / 2 : c.align === 'left' ? c.x : c.x - tw;
+      const box = { left, right: left + tw, top: c.y - lineHeight * 0.6, bottom: c.y + lineHeight * 0.6 };
+      if (bounds && (box.left < bounds.left || box.right > bounds.right || box.top < bounds.top || box.bottom > bounds.bottom)) continue;
+      if (placed.some((q) => overlaps(q, box))) continue;
+      chosen = { ...c, box };
+      break;
+    }
+    if (!chosen) continue; // symbol still drawn; label dropped rather than smeared
+    placed.push(chosen.box);
+    out.push({ key: item.key, text: item.text, x: chosen.x, y: chosen.y, align: chosen.align });
+  }
+  return out;
+}
+
 export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
@@ -102,6 +158,7 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
 
   // --- the aircraft --------------------------------------------------------
   const labelSize = Math.max(8, Math.min(12, r * 0.062));
+  const pending = [];
   for (const a of aircraft ?? []) {
     const p = project(a, { centre, pxPerNm, cx, cy });
     if (!p) continue;
@@ -148,11 +205,34 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
       ctx.stroke();
     }
 
-    const label = [a.callsign ?? a.registration ?? a.hex.toUpperCase(), altLabel(a)].filter(Boolean).join(' ');
-    text(ctx, label, p.x, p.y + size + labelSize * 0.9, {
+    // COLLECTED, NOT DRAWN. Placement needs to know about every other label, so
+    // it cannot happen inside the loop that draws the symbols.
+    pending.push({
+      key: a.hex,
+      x: p.x,
+      y: p.y,
+      size,
+      text: [a.callsign ?? a.registration ?? a.hex.toUpperCase(), altLabel(a)].filter(Boolean).join(' '),
+      // The followed aircraft keeps its label at any density; after that,
+      // whoever is nearest the middle.
+      priority: (isFollowed ? 1e6 : 0) - Math.hypot(p.x - cx, p.y - cy),
+      followed: isFollowed,
+    });
+  }
+
+  ctx.font = `500 ${labelSize}px ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace`;
+  const laid = placeLabels(pending, {
+    measure: (t) => ctx.measureText(t).width,
+    lineHeight: labelSize,
+    bounds: { left: x + 2, right: x + w - 2, top: y + 2, bottom: y + h - 2 },
+  });
+  const byKey = new Map(pending.map((i) => [i.key, i]));
+  for (const l of laid) {
+    text(ctx, l.text, l.x, l.y, {
       size: labelSize,
-      weight: isFollowed ? 700 : 500,
-      colour: isFollowed ? tokens.primary : tokens['text-2'],
+      align: l.align,
+      weight: byKey.get(l.key)?.followed ? 700 : 500,
+      colour: byKey.get(l.key)?.followed ? tokens.primary : tokens['text-2'],
     });
   }
 

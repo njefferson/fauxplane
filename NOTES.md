@@ -68,6 +68,59 @@ items.
 
 ---
 
+## 1.3.0 — labels on a busy plan view stop overprinting
+
+Noah's 40 nm screenshot at 1.0.0: nineteen aircraft, about a dozen of them in
+one quadrant, and their labels overprinted into a smear. Worse than unreadable —
+it reads as CORRUPTION rather than as density, which makes the whole instrument
+look broken at the exact moment it is doing the most work.
+
+The cause was that every label was drawn at a fixed offset below its symbol,
+inside the same loop that drew the symbols. Placement that has to account for
+other labels cannot happen in a loop that has not seen them yet.
+
+Labels are now collected first and placed once: four candidate positions per
+aircraft — below, above, right, left — first one clear of every label already
+placed wins. Below is tried first because that is where a reader expects it and
+it keeps sparse clusters looking exactly as they did.
+
+**A label that fits nowhere is DROPPED, and its symbol is still drawn.** That is
+the honest trade and it is worth stating plainly: the aircraft remains on the
+plan view at its true bearing and range, which is what a plan view is FOR, and
+its callsign is in the RADAR page's list as selectable text. Drawing the label
+anyway would hide a neighbour and help nobody.
+
+Who keeps a label when they cannot all have one: **the followed aircraft first**
+— it is the one driving the panel, so it is the one that must stay named — then
+whoever is closest to the centre.
+
+### Why this had to be a pure function
+
+The accessibility gate cannot see inside a canvas. That is the same structural
+blindness that let the radar page ship as a solid magenta rectangle, and it
+means no gate here could ever have caught overprinted labels. So placement takes
+its own text measurement as an argument and is tested without a browser: a dozen
+aircraft crammed into one small area, and the assertion is that no two resulting
+boxes intersect. Planted and watched fail — removing the collision check turns
+the suite red naming the overlap.
+
+### Verified
+
+**187 unit tests, 28/28 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+### Still open
+
+- The VSI resolution floor: GPS altitude at plus or minus 27 m every 5 s cannot
+  resolve a climb under roughly 1,500 fpm, and the panel does not say so.
+- The intermittent PANEL POWER contrast failure, cause unfound.
+- The overlap check from 1.2.1, still UNPROVEN.
+- Android and desktop, never confirmed by a device.
+- Repo metadata: description, website, topics, social preview, all unset.
+
+---
+
 ## 1.2.2 — nested failure reasons, fixed where they are MADE
 
 Flagged twice and deferred twice, so it got its own release rather than being
