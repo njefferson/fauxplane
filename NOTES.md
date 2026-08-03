@@ -2292,6 +2292,20 @@ easily. Because the fix turned a red into a green, which is the exact shape of a
 fix that disables a check rather than repairing it, a bad colour was planted and
 the gate was watched reporting 1.08:1 before the pass was believed.
 
+**The build stamp moved to the footer.** Noah: *"The version number can go to
+the bottom of the display instead of the menu row. There is no reason it has to
+stay there when we are fighting for space."* Correct, and §7b is satisfied
+either way — it asks for always on screen and never behind a tap, not for a
+particular corner. Pressing it still opens diagnostics.
+
+**It also let an earlier compromise be undone.** Adding the (i) button had
+wrapped the header onto two rows on a landscape phone (451px of tabs + 293px of
+controls against 740px), and the fix at the time was to shave tab padding on
+short viewports. With the stamp gone the right-hand group is 216px and the total
+is 667px — 73px of headroom — so the padding went back to full size. Undo a
+compromise when the pressure that forced it is gone, rather than leaving a
+smaller touch target behind as a fossil nobody remembers the reason for.
+
 ## 1.8.0 — the panel says what changed (Doctrine §7d), 2026-08-03
 
 **`public/src/data/releases.js` is the only place release notes are written.**
