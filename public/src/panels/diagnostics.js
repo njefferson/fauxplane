@@ -82,6 +82,22 @@ function formatValue(field) {
  * A pure function of the things handed to it, so it can be called from a test
  * without a browser — the same reason every derivation lives in derive.js.
  */
+/** Wrap a list of short strings to a width, so a long key list stays readable
+ *  in a pasted report rather than becoming one enormous line. */
+function chunkList(items, width) {
+  const out = [];
+  let row = '';
+  for (const item of items) {
+    if (row && row.length + item.length + 2 > width) {
+      out.push(row);
+      row = '';
+    }
+    row = row ? `${row}, ${item}` : item;
+  }
+  if (row) out.push(row);
+  return out;
+}
+
 export function buildReport({ snapshot, fusion, traffic, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
   // FIELD AGES are measured against the snapshot, which is when those values
   // were true. THE FILTER IS NOT A FIELD — it is live, and it keeps accepting
@@ -187,6 +203,30 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
     if (a) line(`             ${a.hex} ${a.registration ?? ''} ${a.type ?? ''}  seen_pos ${a.seenPosS}s ago`);
   }
   line();
+
+  // ---- WHAT THE FEED ACTUALLY SENT -------------------------------------------
+  //
+  // Doctrine §7f: a sandbox cannot reach the provider, so the check is built
+  // into the surface that Noah's device can run. This costs no extra request —
+  // the Function computes it from the raw payload it already fetched, because
+  // that is the only place the raw payload exists. By the time the client sees
+  // an aircraft, a missing field and a misspelt key look identical.
+  //
+  // COVERAGE, NOT VALUES. "nav_altitude_mcp on 0 of 34" is the answer that
+  // settles whether the autopilot readout can ever show anything, and it is not
+  // inferable from a panel showing a crossed-out row.
+  if (tr?.observed) {
+    const o = tr.observed;
+    line('WHAT THE TRAFFIC FEED ACTUALLY SENT');
+    line(`  provider ${tr.source ?? 'unknown'}   sampled ${o.sampled} aircraft of ${tr.count ?? '?'}`);
+    const cov = Object.entries(o.coverage ?? {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    if (!cov.length) line('  no counted field appeared on ANY aircraft in the sample');
+    for (const [k, n] of cov) line(`    ${k.padEnd(22)} ${n} of ${o.sampled}`);
+    // Every key the provider sent, including ones this app does not read — a
+    // field we could be using and are not is invisible any other way.
+    for (const chunk of chunkList(o.keys ?? [], 74)) line(`  keys  ${chunk}`);
+    line();
+  }
 
   // ---- RAW SENSOR AXES -------------------------------------------------------
   //
@@ -295,6 +335,19 @@ export function createDiagnostics({ trigger, build }) {
   const copyBtn = el('button', { class: 'diag-action diag-primary', type: 'button', text: 'Copy report' });
   const shareBtn = el('button', { class: 'diag-action', type: 'button', text: 'Share' });
   const saveBtn = el('button', { class: 'diag-action', type: 'button', text: 'Save as file' });
+  /**
+   * ONE REQUEST, ON DEMAND (Doctrine §7f, §15.6).
+   *
+   * The report already carries what the last response contained, at no cost.
+   * This is for the case where a fresh answer is the question — "is it rate
+   * limiting us RIGHT NOW, and what is it asking us to wait?" — which the
+   * stored result cannot answer.
+   *
+   * It makes exactly one request and reports the status, the timing, and any
+   * Retry-After the service sent, because a 429 is an instruction and the
+   * instruction is in the header nobody can see from a panel.
+   */
+  const probeBtn = el('button', { class: 'diag-action', type: 'button', text: 'Probe the feed once' });
 
   const dialog = el('dialog', { class: 'diag', 'aria-labelledby': 'diag-h' }, [
     el('div', { class: 'diag-head' }, [
@@ -305,7 +358,7 @@ export function createDiagnostics({ trigger, build }) {
       class: 'diag-intro',
       text: 'Everything the panel knows right now, as text. Copy it and paste it instead of taking a screenshot.',
     }),
-    el('div', { class: 'diag-actions' }, [copyBtn, shareBtn, saveBtn]),
+    el('div', { class: 'diag-actions' }, [copyBtn, shareBtn, saveBtn, probeBtn]),
     el('label', { class: 'diag-label', for: 'diag-precise' }, [
       preciseBox,
       el('span', { text: ' Include my exact position (otherwise rounded to about a kilometre)' }),
@@ -315,6 +368,52 @@ export function createDiagnostics({ trigger, build }) {
     closeBottom,
   ]);
   document.body.append(dialog);
+
+  probeBtn.addEventListener('click', async () => {
+    probeBtn.disabled = true;
+    status.textContent = 'Asking the traffic feed once…';
+    const startedAt = Date.now();
+    const lines = ['', 'ONE-SHOT FEED PROBE', `  asked at ${new Date(startedAt).toISOString()}`];
+    try {
+      const res = await fetch('/api/traffic?lat=38.68&lon=-121.00&dist=80', { cache: 'no-store' });
+      const ms = Date.now() - startedAt;
+      lines.push(`  HTTP ${res.status} ${res.statusText || ''} in ${ms} ms`);
+      // A 429 IS AN INSTRUCTION (§15.3). If it says how long, that is the most
+      // useful line in the whole report and it is invisible from the panel.
+      for (const h of ['retry-after', 'cf-ray', 'server', 'age', 'cf-cache-status']) {
+        const v = res.headers.get(h);
+        if (v) lines.push(`  ${h}: ${v}`);
+      }
+      // NOT named `body`: that is the <pre> this report is written into, and
+      // shadowing it here meant the append below would have written the probe
+      // result onto the JSON object instead of onto the screen.
+      let payload = null;
+      try {
+        payload = await res.json();
+      } catch {
+        lines.push('  the body was not JSON');
+      }
+      if (payload) {
+        lines.push(`  ok ${payload.ok}   provider ${payload.source ?? '—'}   aircraft ${payload.count ?? '—'}`);
+        if (payload.reason) lines.push(`  reason: ${payload.reason}`);
+        const o = payload.observed;
+        if (o) {
+          lines.push(`  sampled ${o.sampled}`);
+          const cov = Object.entries(o.coverage ?? {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+          if (!cov.length) lines.push('    no counted field appeared on ANY aircraft');
+          for (const [k, n] of cov) lines.push(`    ${k.padEnd(22)} ${n} of ${o.sampled}`);
+          for (const chunk of chunkList(o.keys ?? [], 74)) lines.push(`  keys  ${chunk}`);
+        }
+      }
+    } catch (err) {
+      lines.push(`  the request threw: ${err.message}`);
+    }
+    // APPENDED, never replacing the report. The rest of the panel state is what
+    // makes a probe result interpretable.
+    body.textContent = `${body.textContent}\n${lines.join('\n')}\n`;
+    status.textContent = 'Probe finished — it is at the end of the report. Copy and paste the whole thing.';
+    probeBtn.disabled = false;
+  });
 
   const refresh = () => {
     body.textContent = build({ precisePosition: precise });

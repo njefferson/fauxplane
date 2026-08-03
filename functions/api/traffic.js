@@ -148,6 +148,59 @@ function parsePayload(payload) {
   return {
     aircraft,
     upstreamTime: nowMs === null ? null : new Date(nowMs > 1e12 ? nowMs : nowMs * 1000).toISOString(),
+    observed: observeShape(rows),
+  };
+}
+
+/**
+ * WHAT THE PROVIDER ACTUALLY SENT, as opposed to what its documentation says.
+ *
+ * THIS IS THE ONLY PLACE THE RAW PAYLOAD IS VISIBLE. The Function normalises
+ * every aircraft before the client sees it, so a browser cannot answer "does
+ * this provider broadcast the autopilot selections at all" — the field is
+ * either a number or null by then, and null could mean "not sent" or "we spelt
+ * the key wrong". A parser written from documentation rather than from an
+ * observed payload fails exactly that way, silently.
+ *
+ * So the shape rides along on every response: no extra request, no probe
+ * needed, and the answer is in the diagnostics report whenever Noah opens it
+ * (Doctrine §7f — prefer reporting what already happened).
+ *
+ * It reports COVERAGE, not values: how many of N aircraft carried each field.
+ * "0 of 34" is the answer that matters, and it is one nobody can infer from a
+ * panel showing a crossed-out readout.
+ */
+function observeShape(rows) {
+  const sample = rows.slice(0, 60);
+  const keys = new Set();
+  const present = {};
+  const bump = (k) => {
+    present[k] = (present[k] ?? 0) + 1;
+  };
+
+  for (const row of sample) {
+    if (!row || typeof row !== 'object') continue;
+    for (const k of Object.keys(row)) keys.add(k);
+    // The fields the panel makes claims about. Counted only when the value is
+    // one we could actually use — a key present with a null is not coverage.
+    if (num(row.nav_altitude_mcp) !== null) bump('nav_altitude_mcp');
+    if (num(row.nav_altitude_fms) !== null) bump('nav_altitude_fms');
+    if (num(row.nav_heading) !== null) bump('nav_heading');
+    if (num(row.nav_qnh) !== null) bump('nav_qnh');
+    if (Array.isArray(row.nav_modes) && row.nav_modes.length) bump('nav_modes');
+    if (typeof row.t === 'string' && row.t.trim()) bump('t (type code)');
+    if (typeof row.desc === 'string' && row.desc.trim()) bump('desc (type name)');
+    if (num(row.true_heading) !== null) bump('true_heading');
+    if (num(row.mag_heading) !== null) bump('mag_heading');
+    if (num(row.geom_rate) !== null) bump('geom_rate');
+    if (num(row.baro_rate) !== null) bump('baro_rate');
+  }
+
+  return {
+    sampled: sample.length,
+    // Sorted so two reports from different moments can be diffed by eye.
+    keys: [...keys].sort(),
+    coverage: present,
   };
 }
 
@@ -278,6 +331,9 @@ async function tryProvider(provider, pathname, meta, cacheSeconds) {
       upstreamTime: parsed.upstreamTime,
       fetchedAt: new Date().toISOString(),
       count: parsed.aircraft.length,
+      /** What the provider actually sent, for the diagnostics report (§7f).
+       *  Rides on every response so the answer costs no extra request. */
+      observed: parsed.observed,
       aircraft: parsed.aircraft,
     },
     { cacheSeconds },

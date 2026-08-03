@@ -29,6 +29,18 @@
  */
 export const RELEASES = [
   {
+    version: '1.13.0',
+    date: '2026-08-03',
+    headline: 'The diagnostics report now says what the aircraft feed actually sent.',
+    changed: [
+      'The report lists which fields the traffic service really provided, and on how many aircraft — so a crossed-out readout can be told apart from a field nobody is broadcasting.',
+      'A "Probe the feed once" button asks the service a single time and reports the answer: the status, how long it took, and — if it is rate limiting us — exactly how long it is asking us to wait.',
+    ],
+    broken: [
+      'Whether real aircraft broadcast the autopilot selections at all is still unknown. That readout was built from the published field names without a single real response ever having been seen; this release is how that finally gets answered.',
+    ],
+  },
+  {
     version: '1.12.0',
     date: '2026-08-03',
     headline: 'A power switch on the panel, instead of a pop-up you had to get past.',

@@ -2206,6 +2206,46 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.13.0 — the probe, because the sandbox cannot reach the provider, 2026-08-03
+
+Noah: *"If you want to test something, put it in the damn debug screen behind
+the version number."* Now Doctrine §7f, and this is the first app to obey it.
+
+**THE THING THAT COULD NOT BE VERIFIED.** 1.11.0 added a readout for what a
+followed aircraft's CREW has dialled in — selected altitude, selected heading,
+crew altimeter setting — built entirely from adsb.lol's published field names.
+No real response had ever been seen. `pages.dev` is refused by this sandbox's
+proxy (`connect_rejected`, gateway 403), so it could not be seen from here
+either. That is precisely the shape §7f now forbids leaving as a caveat.
+
+**The shape rides on every response, at no cost.** `observeShape()` runs in the
+Pages Function, which is THE ONLY PLACE THE RAW PAYLOAD EXISTS — by the time the
+client sees an aircraft the field is a number or a null, and "not broadcast",
+"always null" and "we spelt the key wrong" are indistinguishable. It reports:
+
+- how many of the sampled aircraft carried each field we make claims about
+- every key the provider sent, including ones this app does not read, so a
+  field we could be using and are not is visible rather than invisible
+- COVERAGE, NOT VALUES. "nav_altitude_mcp on 0 of 34" is the answer, and it
+  cannot be inferred from a panel showing a crossed-out row.
+
+**A key present with a null is NOT coverage**, and that is the distinction the
+unit suite protects. Counting key presence would have reported healthy coverage
+for a field that is always empty — the exact false negative that makes a parser
+written from documentation look correct.
+
+**The one-shot probe is separate and deliberate.** The stored result cannot
+answer "is it rate limiting us RIGHT NOW, and what is it asking us to wait" —
+so one button, ONE request (§15.6), reporting status, timing and any
+`Retry-After`. A 429 is an instruction (§15.3) and the instruction lives in a
+header no panel can show. It APPENDS to the report rather than replacing it,
+because a probe result is only interpretable beside the rest of the state.
+
+**A shadowing bug, caught before it shipped.** Inside the probe handler the JSON
+response was named `body` — which is also the `<pre>` the report is written
+into. The append would have written the probe onto the JSON object instead of
+onto the screen, silently doing nothing. Renamed to `payload`.
+
 ## 1.12.0 — the gate becomes a switch, 2026-08-03
 
 Noah: *"Should there just be a 'power' button on the display?"* — after
