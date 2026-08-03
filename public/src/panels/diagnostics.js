@@ -140,7 +140,7 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
   const att = fusion?.read?.(readAt);
   if (att) {
     line('ATTITUDE FILTER');
-    line(`  quality ${att.quality ?? 'none'}   converged ${att.converged}   still ${att.still}   rejecting ${att.rejecting}`);
+    line(`  quality ${att.quality ?? 'none'}   converged ${att.converged}   aligned ${att.aligned}   still ${att.still}   rejecting ${att.rejecting}`);
     // Number.isFinite, never `=== null`. A missing reading is `undefined` as
     // often as it is null, and `undefined.toFixed()` throws — in a report whose
     // entire job is to survive the broken states nothing else survives.

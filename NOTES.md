@@ -68,6 +68,97 @@ items.
 
 ---
 
+## 1.5.1 — leaning is not launching: the accelerometer loses its vote when it disagrees with the gyro
+
+Noah, hand-holding the panel: *"Leaning backward and forward with my phone make
+it look like I'm a fucking rocket and X goes up again."* His diagnostics showed
+the whole defect in two numbers: **1.01 g beside a 26.7° residual**.
+
+### Magnitude was the wrong discriminator, and had been from the start
+
+An accelerometer measures SPECIFIC FORCE — gravity plus every linear
+acceleration of the hand holding it. Lean a phone back and forth and the
+measured vector SWINGS while its length stays near one g: the corruption
+rotates the vector, it does not stretch it. The manoeuvring gate (`accelGateG`)
+checks only the length, so the corrupted direction sailed through and was
+applied to the horizon at the in-motion gain. The rocket.
+
+The fix is a **direction gate** — the innovation gating a Kalman AHRS applies
+to its accelerometer measurements: when the gravity solution departs more than
+`accelGateDeg` (10°) from the gyro-propagated attitude, the sample is rejected
+and the filter coasts on the gyro, saying the measurement on the face of the
+instrument: *"gravity 27° from the gyro — coasting on gyro."* The number, not a
+diagnosis — the gate cannot tell device acceleration from its own divergence,
+and this repo already records a reason string that could not tell two causes
+apart as a defect.
+
+### Adversarially reviewed before ship, and the review earned its keep
+
+Five independent reviewers were set against the first implementation. They
+found, and this release fixes:
+
+- **The stillness bypass leaked at every rate reversal.** Stillness was ONE
+  sample — and rhythmic leaning crosses zero rate at each turnaround, exactly
+  where the translational corruption peaks, so the corrupted sample presented
+  as "still" and bypassed the gate at the settled gain, three times the
+  in-motion one. The bypass now requires stillness HELD for `alignHoldMs`,
+  which is what the comment had claimed all along.
+- **The coast window ran on the wrong clock.** Staleness runs on
+  `lastAccepted`; the window ran on a private latch, so a magnitude-gated
+  coast plus a direction-gated one could STACK past `maxCoastMs` and cross the
+  horizon out — a regression the ungated filter did not have, demonstrated
+  live in review. The window now closes when EITHER clock expires: the gyro's
+  trust is one budget, whichever gate is spending it.
+- **The repair of that grew its own standoff**, caught by the new test: the
+  budget-escape acceptance refreshed `lastAccepted`, which re-armed the
+  rejection at one corrected sample per window — the filter ended 0.6° into a
+  30° correction, exactly one sample's worth. The spent budget is a LATCH,
+  cleared only when the disagreement itself clears.
+- **The accelerometer sign flip kept `aligned`** while discarding the state it
+  vouched for, so the gate defended a single unvalidated re-seed sample —
+  possibly the corrupted one — for a full window, rejecting TRUE gravity. The
+  flip now revokes alignment, as every other state-discarding path already did.
+- **The roll half was untested** (a roll-blind gate passed everything), **the
+  accepting side was unpinned** (a gate 100× too tight passed everything), and
+  the wrap through ±180° was unbound. One test each now: a sideways lean, an
+  honest 5° disagreement accepted while moving, and a 2° step through the wrap
+  that must not read as 358°.
+
+### The clauses, each with a test
+
+`aligned` — before the first static alignment there is no gyro reference to
+disagree with. `!stillHeld` — 400 ms of low rate beside one g leaves no room
+for linear acceleration, so a large residual while HELD still means the STATE
+is wrong and gravity must win: ramp alignment, the recovery path. The budget —
+past `disagreeCoastMs` (4 s, under `maxCoastMs`) the accelerometer is the only
+absolute reference left and wins even while disagreeing.
+
+### Known gap, on purpose
+
+After a forced-acceptance episode the residual backstop revokes `aligned`, and
+the gate stays dark until the next 400 ms of genuine stillness. Until then
+behaviour is exactly pre-1.5.1 — a degradation to old behaviour, never below
+it. Recorded rather than patched, because re-arming on anything weaker than
+real stillness is how the standoffs above got built.
+
+### Verified
+
+**212 unit tests, planted and watched fail (the direction-gate plant red about
+the gated-vs-ungated comparison, then the full sweep), the accessibility gate
+green across 3 viewports x 2 palettes x 5 pages, both palettes clearing every
+hard floor.** Not verified: the fix on Noah's actual hand — the lean gesture
+cannot be produced in this sandbox.
+
+### Also in this release
+
+The changelog had no entries for 0.3.0 through 1.5.0 — eleven releases. The
+gap is now marked in CHANGELOG.md itself rather than backfilled, because a
+backfilled entry would look contemporaneous with its release. The §7d in-app
+patch-notes surface remains OWED for this app and is the natural next
+capability release.
+
+---
+
 ## 1.5.0 — first-time instructions, on the first surface a reader sees
 
 Noah asked for this in 1.4.2 and it was scoped rather than started. Started now.

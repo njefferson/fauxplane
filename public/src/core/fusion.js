@@ -25,6 +25,17 @@ export const DEFAULTS = Object.freeze({
   alpha: 0.98,
   /** Reject accel correction beyond this deviation from g, in g. */
   accelGateG: 0.15,
+  /** Reject accel corrections whose implied attitude departs this far, in
+   *  degrees, from the gyro-propagated one. The magnitude gate above cannot
+   *  see a ROTATED vector — leaning a hand-held phone swings the measured
+   *  direction while its length stays near one g — so this is the direction
+   *  half of the same gate. Kin to biasGateDeg: a residual this large is not
+   *  evidence about attitude either. */
+  accelGateDeg: 10,
+  /** How long direction-rejected samples may keep the filter coasting before
+   *  the accelerometer wins anyway. Deliberately under maxCoastMs, so this
+   *  gate alone can never cross the horizon out. */
+  disagreeCoastMs: 4000,
   /** Residual below which the filter counts as settled, degrees. */
   convergeDeg: 2,
   /** How long the residual must stay settled, ms. */
@@ -497,6 +508,13 @@ export function createFusion(options = {}) {
   let biasSamples = 0;
   let lastRateMag = null;
   let stillSince = null;
+  /** When the standing accel-vs-gyro disagreement began. See the direction gate. */
+  let disagreeSince = null;
+  /** True once the coast budget for the CURRENT disagreement is spent — a
+   *  latch, because acceptance refreshes lastAccepted and a per-sample check
+   *  would re-arm the rejection one corrected sample per window. Cleared only
+   *  when the disagreement itself clears. */
+  let disagreeSpent = false;
   let aligned = false;
   let lastHeadingAt = null;
 
@@ -525,6 +543,8 @@ export function createFusion(options = {}) {
     dRollEma = null;
     rejecting = false;
     stillSince = null;
+    disagreeSince = null;
+    disagreeSpent = false;
     aligned = false;
     lastHeadingAt = null;
     // The bias estimate is NOT cleared. It is a property of the hardware, not
@@ -624,6 +644,15 @@ export function createFusion(options = {}) {
           settledSince = null;
           dPitchEma = null;
           dRollEma = null;
+          // The state being discarded is the state `aligned` vouched for, and
+          // the NEXT sample re-seeds the filter outright — one accelerometer
+          // reading, validated by nothing. Leaving `aligned` set had the
+          // direction gate defending that seed as a gyro reference for a full
+          // window, rejecting TRUE gravity the whole time. Every other path
+          // that nulls the state clears the flag; this one now does too.
+          aligned = false;
+          disagreeSince = null;
+          disagreeSpent = false;
           reason = 'accelerometer sign resolved — reconverging';
         }
       }
@@ -691,6 +720,79 @@ export function createFusion(options = {}) {
 
     const dPitch = solved.pitch - pitch;
     const dRoll = wrap180(solved.roll - roll);
+
+    // THE DIRECTION GATE, and why magnitude alone was the wrong discriminator.
+    //
+    // An accelerometer measures SPECIFIC FORCE: gravity plus every linear
+    // acceleration of the hand holding it. Lean a phone back and forth and the
+    // measured vector SWINGS while its magnitude stays near one g — the
+    // corruption rotates the vector, it does not stretch it. Noah, hand-held:
+    // "leaning backward and forward make it look like I'm a rocket" — his
+    // diagnostics showed 1.01 g beside a 26.7° residual, so the magnitude gate
+    // above never fired while the direction was badly wrong.
+    //
+    // The instrument that CAN see it is the gyro: over seconds it is the more
+    // trustworthy of the two. When the gravity solution departs from the
+    // gyro-propagated attitude by more than accelGateDeg, the sample is
+    // rejected and the filter coasts — the same innovation gating a Kalman
+    // AHRS applies to its accelerometer measurements.
+    //
+    // Three clauses keep this from re-creating the standoffs this filter has
+    // already had (NOTES 0.3.0, 0.4.3), and each has a test:
+    //   aligned — before the first static alignment the gyro state is not a
+    //     reference, so there is nothing to disagree WITH;
+    //   !still — a still device cannot be accelerating: a steady rate under
+    //     the floor AND a steady one g leave no room for linear acceleration,
+    //     so a large residual while STILL means the STATE is wrong and gravity
+    //     must win. That is ramp alignment — the recovery path — and gating it
+    //     away would lock a diverged filter out for ever;
+    //   the window — the gyro's trust is bounded. Past disagreeCoastMs the
+    //     accelerometer is the only absolute reference left, so it wins even
+    //     though it disagrees, which forecloses the permanent standoff.
+    const disagreeDeg = Math.max(Math.abs(dPitch), Math.abs(dRoll));
+    // Stillness the gate can trust is stillness that has LASTED. The
+    // instantaneous flag above is one gyro sample beside one accel sample —
+    // and Noah's exact gesture, rhythmic leaning, crosses zero rate at every
+    // reversal, which is precisely where the translational corruption peaks.
+    // The corrupted sample presents as "still" for that instant and would
+    // bypass the gate at the settled gain, three times the in-motion one.
+    // Held for alignHoldMs it is a different fact: sustained low rate beside a
+    // sustained one g leaves no room for linear acceleration.
+    const stillHeld = stillSince !== null && at - stillSince >= cfg.alignHoldMs;
+    if (aligned && !stillHeld && disagreeDeg > cfg.accelGateDeg) {
+      if (disagreeSince === null) disagreeSince = at;
+      // BOTH clocks, because staleness runs on lastAccepted. Bounding only the
+      // private window let a magnitude-gated coast and a direction-gated one
+      // STACK past maxCoastMs and cross the horizon out — a regression the
+      // ungated filter did not have. The gyro's trust is one budget, whichever
+      // gate is spending it, so the window closes when either clock expires.
+      // SPENT IS A LATCH. The first version checked both clocks per sample —
+      // and the budget-escape ACCEPTANCE refreshes lastAccepted, which re-armed
+      // the rejection at one corrected sample per window: the standoff again,
+      // rebuilt out of its own cure. Caught by the ONE TRUST BUDGET test, whose
+      // filter ended 0.6° into a 30° correction — exactly one sample's worth.
+      if (at - disagreeSince > cfg.disagreeCoastMs || at - lastAccepted > cfg.disagreeCoastMs) {
+        disagreeSpent = true;
+      }
+      if (!disagreeSpent) {
+        rejecting = true;
+        // The MEASUREMENT, not a diagnosis. "Accelerating" was the first
+        // wording, and it asserts a cause the gate cannot verify — a diverged
+        // state during smooth motion produces the same signature with no
+        // acceleration at all. The groundspeed reason that could not tell two
+        // causes apart is already recorded in this repo as a defect; the
+        // number is the honest part.
+        reason = `gravity ${Math.round(disagreeDeg)}° from the gyro — coasting on gyro`;
+        return;
+      }
+      // Window expired: fall through and ACCEPT. disagreeSince stays set on
+      // purpose — acceptance continues until the disagreement itself has been
+      // corrected away. Re-arming per accepted sample would readmit the
+      // standoff at a rate of one corrected sample per window.
+    } else {
+      disagreeSince = null;
+      disagreeSpent = false;
+    }
 
     // A STILL DEVICE IS CORRECTED HARD. The complementary weight exists to stop
     // the accelerometer's every bump reaching the horizon while the aircraft is

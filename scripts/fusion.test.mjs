@@ -1025,3 +1025,299 @@ test('JITTER: settling does NOT stop it aligning quickly in the first place', ()
   assert.ok(r.hasAttitude, 'still no attitude after 800 ms of stillness');
   assert.ok(Math.abs(r.pitch - 20) < 3, `aligned to ${r.pitch?.toFixed(1)}° instead of 20° in 800 ms`);
 });
+
+/* ------------------------------------------------------- the direction gate */
+
+/** Drive a fusion filter through: align level, then a 1 s hand-held lean where
+ *  the gyro reports the TRUE rotation (20°/s pitch) while the accelerometer is
+ *  corrupted by the linear acceleration of the hand — its solved direction
+ *  swings to 60° at a magnitude of exactly one g. Returns the filter and the
+ *  true pitch at the end of the lean. */
+const leanScenario = (cfg = {}) => {
+  const fusion = createFusion(cfg);
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < 100; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  assert.equal(fusion.read(t).converged, true, 'must align before the lean');
+
+  // The lean: 50 samples at 20 ms. Gyro says +20°/s pitch (the truth); the
+  // accelerometer's direction is yanked to 60° by the hand's acceleration
+  // while its magnitude stays exactly 1 g — the case the magnitude gate is
+  // structurally blind to. Noah's report: 1.01 g beside a 26.7° residual.
+  const corrupted = upVectorScreenFrame(60, 0);
+  const corruptedG = { x: corrupted.x * G0, y: corrupted.y * G0, z: corrupted.z * G0 };
+  for (let i = 0; i < 50; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 20, gamma: 0 }, corruptedG, t);
+    fusion.updateAccel(corruptedG, 0, t);
+  }
+  return { fusion, t, truePitch: 20 };
+};
+
+test('ROCKET: a lean with a corrupted accelerometer tracks the GYRO, not the corruption', () => {
+  // Compared against itself, not against a threshold — an absolute bound was
+  // how the first jitter test passed with its fix removed. Two filters, same
+  // samples, differing only in whether the direction gate exists.
+  const gated = leanScenario({});
+  const ungated = leanScenario({ accelGateDeg: 10000 });
+
+  const gatedErr = Math.abs(gated.fusion.read(gated.t).pitch - gated.truePitch);
+  const ungatedErr = Math.abs(ungated.fusion.read(ungated.t).pitch - ungated.truePitch);
+
+  assert.ok(gatedErr < 3, `gated horizon is ${gatedErr.toFixed(1)}° from the true lean`);
+  assert.ok(
+    gatedErr < ungatedErr * 0.3,
+    `the gate made no difference: ${gatedErr.toFixed(1)}° gated vs ${ungatedErr.toFixed(1)}° ungated`,
+  );
+  // And it says so on the face of the instrument, not in a log.
+  const r = gated.fusion.read(gated.t);
+  assert.equal(r.rejecting, true);
+  // The DISTINCTIVE phrase, not the shared suffix — "coasting on gyro" is also
+  // the magnitude gate's ending, so matching only that pins nothing about
+  // WHICH gate fired.
+  assert.match(String(r.reason), /gravity \d+° from the gyro/);
+});
+
+test('ROCKET: when the lean ends and the accelerometer agrees again, corrections resume', () => {
+  const { fusion, t: t0, truePitch } = leanScenario({});
+  const settled = upVectorScreenFrame(truePitch, 0);
+  const settledG = { x: settled.x * G0, y: settled.y * G0, z: settled.z * G0 };
+  let t = t0;
+  for (let i = 0; i < 60; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, settledG, t);
+    fusion.updateAccel(settledG, 0, t);
+  }
+  const r = fusion.read(t);
+  assert.equal(r.rejecting, false, 'agreement must disarm the gate');
+  assert.ok(Math.abs(r.pitch - truePitch) < 2, `did not re-converge: ${r.pitch?.toFixed(1)}°`);
+});
+
+test('STANDOFF: sustained disagreement is bounded — the accelerometer eventually wins', () => {
+  // The clause that forecloses the permanent standoffs this filter has already
+  // had. Rates alternate ±6°/s so the device is never STILL (magnitude of the
+  // rate stays above the floor) while integrating to nothing, and the
+  // accelerometer insists on 40° for eight seconds straight.
+  const fusion = createFusion({});
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < 100; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  const stubborn = upVectorScreenFrame(40, 0);
+  const stubbornG = { x: stubborn.x * G0, y: stubborn.y * G0, z: stubborn.z * G0 };
+  for (let i = 0; i < 400; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: i % 2 ? 6 : -6, gamma: 0 }, stubbornG, t);
+    fusion.updateAccel(stubbornG, 0, t);
+    // The horizon must never cross out from this gate alone: its window is
+    // deliberately shorter than the coast that marks attitude stale.
+    assert.equal(fusion.read(t).hasAttitude, true, `attitude lost at ${(i * 20) / 1000}s`);
+  }
+  const r = fusion.read(t);
+  assert.ok(r.pitch > 20, `after 8 s the filter must have followed gravity: ${r.pitch?.toFixed(1)}°`);
+});
+
+test('STILL RECOVERY: a wrong STATE on a still device is corrected, not gated', () => {
+  // The !still clause. A steady rate under the floor AND a steady one g leave
+  // no room for linear acceleration, so a large residual while still means the
+  // STATE is wrong — ramp alignment must win. Align level, then the device is
+  // found resting at 25°: gravity says 25, the state says 0, and stillness is
+  // what lets gravity through.
+  const fusion = createFusion({});
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < 100; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  const cradle = upVectorScreenFrame(25, 0);
+  const cradleG = { x: cradle.x * G0, y: cradle.y * G0, z: cradle.z * G0 };
+  for (let i = 0; i < 75; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, cradleG, t);
+    fusion.updateAccel(cradleG, 0, t);
+  }
+  const r = fusion.read(t);
+  assert.ok(Math.abs(r.pitch - 25) < 3, `still recovery blocked: ${r.pitch?.toFixed(1)}° after 1.5 s`);
+});
+
+test('UNALIGNED: before any alignment there is nothing to disagree with, so gravity drives', () => {
+  // The aligned clause. A filter that has never been still has no anchored
+  // gyro state; gating on a reference that does not exist would leave it with
+  // no reference at all. Seeded at 30° by a never-still stream, then gravity
+  // moves to level — the filter must follow it, not coast.
+  const fusion = createFusion({});
+  const tilted = upVectorScreenFrame(30, 0);
+  const tiltedG = { x: tilted.x * G0, y: tilted.y * G0, z: tilted.z * G0 };
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < 50; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: i % 2 ? 6 : -6, gamma: 0 }, tiltedG, t);
+    fusion.updateAccel(tiltedG, 0, t);
+  }
+  for (let i = 0; i < 150; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: i % 2 ? 6 : -6, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  const r = fusion.read(t);
+  assert.ok(Math.abs(r.pitch) < 8, `an unaligned filter must follow gravity: stuck at ${r.pitch?.toFixed(1)}°`);
+});
+
+test('ROCKET, SIDEWAYS: the gate sees a corrupted ROLL too', () => {
+  // The review found a roll-blind gate — disagreeDeg computed from dPitch
+  // alone — passed every test, because every corrupted vector in this file had
+  // rollDeg = 0. A sideways lean corrupts dRoll at one g while dPitch stays
+  // clean, and the physics in the gate's own comment applies identically.
+  const scenario = (cfg) => {
+    const fusion = createFusion(cfg);
+    const level = { x: 0, y: G0, z: 0 };
+    let t = 0;
+    for (let i = 0; i < 100; i += 1) {
+      t += 20;
+      fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+      fusion.updateAccel(level, 0, t);
+    }
+    const corrupted = upVectorScreenFrame(0, 50);
+    const g = { x: corrupted.x * G0, y: corrupted.y * G0, z: corrupted.z * G0 };
+    for (let i = 0; i < 50; i += 1) {
+      t += 20;
+      // The true motion is a gentle 10°/s roll; alpha drives roll.
+      fusion.updateGyro({ alpha: -10, beta: 0, gamma: 0 }, g, t);
+      fusion.updateAccel(g, 0, t);
+    }
+    return { err: Math.abs(fusion.read(t).roll - 10), t };
+  };
+  const gated = scenario({});
+  const ungated = scenario({ accelGateDeg: 10000 });
+  assert.ok(gated.err < 4, `gated roll is ${gated.err.toFixed(1)}° from the true lean`);
+  assert.ok(gated.err < ungated.err * 0.4, `roll is invisible to the gate: ${gated.err.toFixed(1)} vs ${ungated.err.toFixed(1)}`);
+});
+
+test('THE ACCEPTING SIDE: an honest small disagreement while MOVING is corrected, not coasted', () => {
+  // The review showed a gate 100x too tight (rejecting at 0.1°) survived the
+  // whole suite, because no test ever drove an aligned, moving device through
+  // a sub-threshold disagreement. This is the everyday hand-held case the
+  // accelerometer's long-term correction depends on.
+  const fusion = createFusion({});
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < 100; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  // Gravity says 5° while the state says 0, and the device is never still —
+  // rates alternate above the floor and integrate to nothing.
+  const five = upVectorScreenFrame(5, 0);
+  const fiveG = { x: five.x * G0, y: five.y * G0, z: five.z * G0 };
+  for (let i = 0; i < 150; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: i % 2 ? 6 : -6, gamma: 0 }, fiveG, t);
+    fusion.updateAccel(fiveG, 0, t);
+    assert.equal(fusion.read(t).rejecting, false, `an honest 5° was rejected at ${(i * 20) / 1000}s`);
+  }
+  const r = fusion.read(t);
+  assert.ok(Math.abs(r.pitch - 5) < 2, `the correction never landed: ${r.pitch?.toFixed(1)}°`);
+});
+
+test('ROLL WRAP: two degrees apart THROUGH ±180 is agreement, not a 358° emergency', () => {
+  // Binds wrap180 on the dRoll term: an unwrapped difference reads 358° and
+  // coasts on a device that is tracking perfectly, screen-down.
+  const fusion = createFusion({});
+  const inverted = upVectorScreenFrame(0, 179);
+  const invertedG = { x: inverted.x * G0, y: inverted.y * G0, z: inverted.z * G0 };
+  let t = 0;
+  for (let i = 0; i < 100; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, invertedG, t);
+    fusion.updateAccel(invertedG, 0, t);
+  }
+  assert.equal(fusion.read(t).converged, true, 'must align screen-down first');
+  const across = upVectorScreenFrame(0, -179);
+  const acrossG = { x: across.x * G0, y: across.y * G0, z: across.z * G0 };
+  for (let i = 0; i < 50; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: i % 2 ? 6 : -6, gamma: 0 }, acrossG, t);
+    fusion.updateAccel(acrossG, 0, t);
+    assert.equal(fusion.read(t).rejecting, false, 'a 2° step through the wrap was treated as 358°');
+  }
+});
+
+test('ONE TRUST BUDGET: a manoeuvre followed by a lean does not cross the horizon out', () => {
+  // The review demonstrated the regression live: the window ran on a private
+  // clock while staleness runs on lastAccepted, so a magnitude-gated coast
+  // plus a direction-gated one stacked past maxCoastMs and the horizon went
+  // down — where the UNGATED filter would have accepted the first clean sample
+  // and stayed up. The gyro's trust is one budget, whichever gate spends it.
+  const fusion = createFusion({});
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  for (let i = 0; i < 100; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  // Three seconds of violent handling: magnitude far from 1 g, rates high and
+  // alternating so the state integrates to roughly level.
+  const violent = { x: 0, y: G0 * 1.5, z: 0 };
+  for (let i = 0; i < 150; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: i % 2 ? 30 : -30, gamma: 0 }, violent, t);
+    fusion.updateAccel(violent, 0, t);
+  }
+  // Then a clean 1 g thirty degrees off the coasted state, still moving.
+  const off = upVectorScreenFrame(30, 0);
+  const offG = { x: off.x * G0, y: off.y * G0, z: off.z * G0 };
+  for (let i = 0; i < 150; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: i % 2 ? 6 : -6, gamma: 0 }, offG, t);
+    fusion.updateAccel(offG, 0, t);
+    assert.equal(fusion.read(t).hasAttitude, true, `horizon crossed out at ${(i * 20) / 1000}s into the lean`);
+  }
+  assert.ok(fusion.read(t).pitch > 15, `gravity must win after the budget: ${fusion.read(t).pitch?.toFixed(1)}°`);
+});
+
+test('SIGN FLIP: resolving the accelerometer sign revokes alignment with the discarded state', () => {
+  // The review caught the flip branch keeping `aligned` while nulling the very
+  // state it vouched for — the next sample re-seeds the filter outright, and
+  // the gate then defended that single unvalidated seed for a full window,
+  // rejecting TRUE gravity. iOS makes the ordering real: alignment needs only
+  // devicemotion, the sign needs a deviceorientation tilt that can arrive late.
+  const fusion = createFusion({});
+  const up = { x: 0, y: G0, z: 0 };
+  const negated = { x: 0, y: -G0, z: 0 }; // iOS convention, tilt not yet seen
+  let t = 0;
+  for (let i = 0; i < 100; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, negated, t);
+    fusion.updateAccel(negated, 0, t);
+  }
+  // The tilt arrives and says the device is level: the sign must flip, and the
+  // sample that triggers it is direction-corrupted at one g.
+  fusion.noteTilt(0, 0);
+  const corrupted = upVectorScreenFrame(40, 0);
+  const corruptedNegated = { x: -corrupted.x * G0, y: -corrupted.y * G0, z: -corrupted.z * G0 };
+  t += 20;
+  fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, corruptedNegated, t);
+  fusion.updateAccel(corruptedNegated, 0, t);
+  // True level gravity, gently moving. A gate still armed on the discarded
+  // alignment would coast on the corrupted seed; a revoked one follows.
+  const levelNegated = { x: 0, y: -G0, z: 0 };
+  for (let i = 0; i < 75; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: i % 2 ? 6 : -6, gamma: 0 }, levelNegated, t);
+    fusion.updateAccel(levelNegated, 0, t);
+  }
+  const r = fusion.read(t);
+  assert.ok(Math.abs(r.pitch) < 8, `the gate defended the corrupted seed: ${r.pitch?.toFixed(1)}° after 1.5 s`);
+});

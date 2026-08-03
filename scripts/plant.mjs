@@ -397,6 +397,19 @@ const PLANTS = [
     expect: /matched nothing: \.gate-pages dt/,
   },
   {
+    // THE ROCKET. Leaning a hand-held phone swings the accelerometer's
+    // direction while its magnitude stays near one g, so the magnitude gate
+    // never fires and the horizon follows the corruption. Only the unit suite
+    // can see this — a headless browser has no accelerometer.
+    name: 'attitude: the direction gate stops rejecting corrupted gravity',
+    check: 'a lean with a corrupted accelerometer tracks the gyro, not the corruption',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '    if (aligned && !stillHeld && disagreeDeg > cfg.accelGateDeg) {',
+    replace: '    if (false) {',
+    expect: /gated horizon is|the gate made no difference/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

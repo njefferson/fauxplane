@@ -6,6 +6,23 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 1.5.1 — ITERATION — 2026-08-03
+
+**Leaning the phone no longer launches the horizon.** The accelerometer
+measures gravity plus every push of the hand holding it; leaning swings that
+measurement far further than the phone actually rotated, while its strength
+stays near one g — so the old "is it about one g" check never noticed. The
+gyro can tell the difference, and now it does: when the two disagree by more
+than ten degrees, the horizon rides the gyro and says so, then hands back to
+gravity the moment they agree again.
+
+## The gap: 0.3.0 through 1.5.0 have no entries here
+
+Found during the 1.5.1 audit, 2026-08-03. Eleven releases shipped without
+their changelog entries; the full record of each lives in NOTES.md. They are
+not backfilled here because a backfilled entry would look contemporaneous with
+its release, and this file does not lie about when it knew things.
+
 ## 0.2.4 — ITERATION — 2026-08-02
 
 **The vertical speed indicator went to 2,000 feet per minute and an airliner
