@@ -84,6 +84,19 @@
       </nav>
 
       <div class="bar-right">
+        <!--
+          The (i) menu. Everything that is not an instrument lives behind it:
+          what the app is, how to install it, what changed, where the numbers
+          come from, the diagnostics report and the accessibility statement.
+          Those were in five different places and none was called information.
+
+          A LETTER, NOT A PICTOGRAM ALONE. The visible "i" is the accessible
+          name's first word, so speaking "Information" matches what is on the
+          control (SC 2.5.3), and it needs no icon font.
+        -->
+        <button type="button" id="info-btn" class="info-btn" aria-label="Information about this panel">
+          <span class="info-glyph" aria-hidden="true">i</span>
+        </button>
         <button type="button" id="dim-toggle" class="dim-btn">
           <span class="dim-label">Brightness</span>
           <span class="dim-note" id="dim-note">Auto</span>
@@ -233,7 +246,10 @@
       -->
       <section class="gate-first" aria-labelledby="gate-first-h">
         <h3 id="gate-first-h" class="gate-first-h">First time here</h3>
-        <p class="gate-body gate-small">These instructions stay on the SETUP page after you switch on.</p>
+        <p class="gate-body gate-small">
+          These instructions stay in the <strong>i</strong> menu at the top of the screen after you switch on, along
+          with what changed in each release and where the numbers come from.
+        </p>
         <p class="gate-body">
           It is a glass cockpit panel for a phone or tablet — the instruments an airliner shows its pilots, driven by
           your device's own sensors and by live aviation data. It is a toy for people who love aeroplanes. It is not a

@@ -652,11 +652,28 @@ async function main() {
           }
 
           // THE FIRST-RUN INSTRUCTIONS OUTLIVE THE GATE. Pressing power took
-          // them away mid-read; they now MOVE to SETUP, and this checks the
-          // destination — this loop runs after the gate was dismissed.
-          if (name === 'setup') {
-            const moved = await page.evaluate(() => !!document.querySelector('#page-setup .gate-first'));
-            if (!moved) fail(where, 'the first-run instructions did not survive the gate — power-on threw them away again');
+          // them away mid-read; the node MOVES rather than being destroyed, and
+          // this checks the destination — this loop runs after the gate was
+          // dismissed. The destination changed from the SETUP page to the (i)
+          // menu, which is why this asserts the node's presence in the dialog
+          // rather than on a page: the invariant is that they survive, not
+          // where they landed.
+          if (name === 'pfd') {
+            const survived = await page.evaluate(() => !!document.querySelector('dialog.info .gate-first'));
+            if (!survived) fail(where, 'the first-run instructions did not survive the gate — power-on threw them away again');
+
+            // The one control that reaches all of it must exist and say what
+            // it is. An icon-only button with no accessible name is the classic
+            // way an information menu becomes unreachable (SC 4.1.2).
+            const infoBtn = await page.evaluate(() => {
+              const b = document.querySelector('#info-btn');
+              if (!b) return null;
+              return { name: b.getAttribute('aria-label') ?? '', text: b.textContent.trim() };
+            });
+            if (!infoBtn) fail(where, 'the (i) menu button is missing');
+            else if (!/information/i.test(infoBtn.name)) {
+              fail(where, `the (i) button's accessible name does not say what it opens: "${infoBtn.name}"`);
+            }
           }
 
           // THE CITATION, CHECKED AS RENDERED rather than grepped for.

@@ -87,6 +87,7 @@ const SHELL = [
   '/src/panels/diagnostics.js',
   '/src/panels/setup.js',
   '/src/panels/whatsnew.js',
+  '/src/panels/info.js',
 ];
 
 /** Precached if present. Absent in this build — see NOTES.md. A missing

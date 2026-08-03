@@ -2215,13 +2215,38 @@ that version. That test failed on its FIRST run — notes for 1.8.0 had been
 written while `version.js` still said 1.7.4 — which is the drift it exists to
 catch, caught before anything shipped.
 
-**The notes sit BELOW the built-in test list, not above it.** BITE's one job is
-answering "what is broken", and a reader who opened it to diagnose a crossed-out
-instrument must not scroll past release notes to get there. Discovery is the
-banner's job instead: it appears once after an update, on the PFD, and records
-the version as seen the moment it is SHOWN rather than when it is dismissed —
-someone who ignores it has still been told, and nagging every launch is worse
-than being missed once.
+**The notes live in the (i) menu, not on BITE.** They were on BITE for one
+release and that was the wrong home: BITE's one job is answering "what is
+broken", and a reader who opened it because an instrument is crossed out should
+not scroll past a changelog to get there.
+
+**The (i) menu is the answer to a question Noah asked: "Where is my (i) menu
+that could carry a lot of things?"** There wasn't one. Six things a reader might
+want were in five places and none was named information — what the app is and
+how to install it had been parked on SETUP under the levelling controls, the
+release notes were under "Built-in test", the diagnostics report hid behind a
+tap on the version stamp, the accessibility statement was a footer link, and the
+traffic credit was at the foot of RADAR.
+
+It MOVES content rather than copying it: the first-run instructions are the same
+node the power gate shows, relocated, so the two cannot drift.
+
+Discovery of the notes is the banner's job: it appears once after an update, on
+the PFD, and records the version as seen the moment it is SHOWN rather than when
+it is dismissed — someone who ignores it has still been told, and nagging every
+launch is worse than being missed once.
+
+**Adding one 44px control to the header cost 51px of header and broke the PFD**,
+which is worth recording because the failure was two steps away from the change.
+The bar is `flex-wrap: wrap`; tabs measured 451px and the right-hand controls
+293px against a 740px landscape phone — over by FOUR pixels, so the bar wrapped
+to two rows. The panel absorbed the loss by overlapping the footer. Two fixes,
+both about the real invariant rather than the symptom: `.readouts` had
+`min-height: 0`, which let a FOCUSABLE SCROLL REGION be crushed to 19px under
+flex pressure (SC 2.5.8 applies to it, so its floor is one target); and tab
+padding gives way on short viewports, reclaiming ~56px while leaving both the
+44px min-width and min-height untouched. The overlap check — previously
+UNPROVEN, never having fired — caught the second half.
 
 **A first-ever run gets no banner.** There is no "before" to report, and it
 would compete with the first-run instructions for the same screen.

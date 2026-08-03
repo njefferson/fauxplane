@@ -41,6 +41,7 @@ import { createRadar } from './panels/radar.js';
 import { buildReport, createDiagnostics, installConsoleCapture } from './panels/diagnostics.js';
 import { createSetup } from './panels/setup.js';
 import { createUpdateBanner } from './panels/whatsnew.js';
+import { createInfo } from './panels/info.js';
 import { DEGRADED, FAILED, PASS } from './core/capability.js';
 
 const $ = (id) => document.getElementById(id);
@@ -117,6 +118,15 @@ async function boot() {
         raw: { accel: motion.lastRaw, orientation: orientation.lastRaw },
       }),
   });
+
+  // The (i) menu. Built here because PANEL POWER hands it the first-run
+  // instructions when the gate is dismissed, so it must already exist.
+  const infoBtn = $('info-btn');
+  const info = createInfo({
+    trigger: infoBtn,
+    onDiagnostics: () => diagnostics.open(),
+  });
+  infoBtn.addEventListener('click', () => info.open());
 
   // ---- sensors (constructed now, started only by PANEL POWER) --------------
   const orientation = createOrientationSensor({ state, fusion, clock: now });
@@ -649,10 +659,7 @@ async function boot() {
   // appears once after an update, on the page the reader already opens, and
   // "See what changed" is the only thing that moves them off it.
   const updateBanner = createUpdateBanner({
-    onOpen: () => {
-      show('bite');
-      pages.bite.querySelector('.wn-card')?.scrollIntoView({ block: 'start' });
-    },
+    onOpen: () => info.open({ scrollTo: '.wn-card' }),
   });
   if (updateBanner) pages.pfd.prepend(updateBanner.root);
 
@@ -763,12 +770,14 @@ async function boot() {
     // THE INSTRUCTIONS OUTLIVE THE GATE. Noah: "turning the panel on closes
     // the initial instructions" — the first-run orientation and install steps
     // lived only on this dialog, so the button a new reader presses first was
-    // the thing that took them away, mid-read. The NODE is moved to the SETUP
-    // page rather than copied there: one copy in the markup, relocated, so the
-    // two cannot drift. SETUP builds its children once at creation and its
-    // render() edits in place, so an appended section survives.
-    const firstRun = gate.querySelector('.gate-first');
-    if (firstRun) $('page-setup').appendChild(firstRun);
+    // the thing that took them away, mid-read. The NODE is moved rather than
+    // copied: one copy in the markup, relocated, so the two cannot drift.
+    //
+    // The destination is now the (i) menu, not the SETUP page. SETUP is for
+    // levelling, and "what this app is" filed under levelling was findable only
+    // by accident. Anything that is information rather than instrumentation
+    // belongs behind the one control named for it.
+    info.adoptFirstRun(gate.querySelector('.gate-first'));
     document.body.dataset.powered = 'true';
     if (why) announcer.say(why);
     surface.measure();

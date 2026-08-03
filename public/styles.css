@@ -392,7 +392,13 @@ body {
 
 .readouts {
   flex: 56 1 0;
-  min-height: 0;
+  /* THE TARGET FLOOR IS THE FLOOR, even under flex pressure. This is a
+     focusable scroll region (SC 2.5.8 applies to it), and `min-height: 0` let
+     the layout crush it to 19px the moment the header grew by one control —
+     which is how adding the (i) button broke the PFD on a landscape phone.
+     A floor of one target still permits shrinking far below content height, so
+     the overflow-scroll this rule exists to enable is unaffected. */
+  min-height: var(--target);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -583,6 +589,15 @@ body {
   .bar {
     padding: 0.2rem 0.5rem;
     gap: 0.5rem;
+  }
+  /* TAB PADDING, because the (i) button pushed the header onto two rows. The
+     measurement was 451px of tabs plus 293px of right-hand controls against a
+     740px landscape phone — over by four pixels, and the wrap cost 51px of
+     header, which the panel paid for by overlapping the footer. Trimming the
+     horizontal padding reclaims ~56px and loses nothing: the 44px min-width and
+     the 44px min-height are both untouched, so no target shrinks. */
+  .tab {
+    padding: 0 0.5rem;
   }
   /* The brightness note is NOT hidden here. It sits inside a button already
      pinned to the 44px target floor, so removing the second line saved no
@@ -1501,4 +1516,138 @@ body[data-powered='true'] .gate {
 .wn-banner-actions button:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* --- the (i) menu ---------------------------------------------------------
+   Same shape as the diagnostics dialog and for the same reasons: layout hangs
+   off [open], because a closed <dialog> is display:none from the user agent and
+   an author `display` on the class would outrank it. */
+
+.info-btn {
+  min-width: var(--target);
+  min-height: var(--target);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  border: 1px solid var(--rail);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+}
+.info-glyph {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+}
+.info-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.info {
+  max-width: min(52rem, 94vw);
+  width: 100%;
+  max-height: 88vh;
+  padding: 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+}
+.info[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem 1rem;
+  overflow-y: auto;
+}
+.info::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+}
+.info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+.info-title {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+}
+.info-close {
+  min-height: var(--target);
+  padding: 0 1rem;
+  background: var(--surface-3);
+  border: 1px solid var(--rail);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.info-close-foot {
+  align-self: flex-start;
+}
+.info-close:focus-visible,
+.info-action:focus-visible,
+.info-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.info-section {
+  border-top: 1px solid var(--hairline);
+  padding-top: 0.7rem;
+}
+.info-h {
+  margin: 0 0 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.info-body {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+.info-small {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+.info-sources {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+.info-sources li + li {
+  margin-top: 0.4rem;
+}
+.info-sources strong {
+  color: var(--text);
+}
+.info-link {
+  color: var(--primary);
+}
+.info-action {
+  min-height: var(--target);
+  padding: 0 1rem;
+  background: var(--surface-3);
+  border: 1px solid var(--rail);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+/* The first-run block was styled for the power gate; inside the dialog it needs
+   no card of its own, only the same rhythm as the sections around it. */
+.info-firstrun .gate-first {
+  border: 0;
+  padding: 0;
+  background: none;
 }

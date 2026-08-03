@@ -21,7 +21,6 @@
 import { DEGRADED, FAILED, PASS, STATUS_MARK, mergeRuntime, probeStatic } from '../core/capability.js';
 import { el } from '../render/dom.js';
 import { formatAge } from '../core/units.js';
-import { createWhatsNew } from './whatsnew.js';
 
 /**
  * Runtime checks, one per static entry. Each answers: given what the store
@@ -126,11 +125,11 @@ export function createBite({ host, announcer }) {
   const listHost = el('div', { class: 'bite-list' });
   const summary = el('p', { class: 'bite-summary', role: 'status' });
 
-  // The patch notes sit BELOW the test list, deliberately. This page's one job
-  // is answering "what is broken", and a reader who opened it to diagnose a
-  // crossed-out instrument must not have to scroll past release notes to reach
-  // that. Discovery of the notes is handled by the post-update banner instead,
-  // which is the moment they are actually worth reading.
+  // THE RELEASE NOTES ARE NOT HERE. They were, for one release, and it was the
+  // wrong home: this page's one job is answering "what is broken", and a reader
+  // who opened it because an instrument is crossed out should not scroll past a
+  // changelog to reach the answer. They now live in the (i) menu with the rest
+  // of the material that is information rather than instrumentation.
   host.replaceChildren(
     el('section', { class: 'card', 'aria-labelledby': 'bite-h' }, [
       el('h2', { id: 'bite-h', text: 'Built-in test' }),
@@ -141,7 +140,6 @@ export function createBite({ host, announcer }) {
       summary,
       listHost,
     ]),
-    createWhatsNew().root,
   );
 
   /** Host-side probes arrive asynchronously and are folded in when they do. */

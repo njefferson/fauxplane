@@ -31,10 +31,12 @@ export const RELEASES = [
   {
     version: '1.8.0',
     date: '2026-08-03',
-    headline: 'The panel tells you what changed, and admits what it still gets wrong.',
+    headline: 'An i menu at the top, holding everything that is not an instrument.',
     changed: [
-      'A "What\'s new" card at the top of Built-in test, so you can always see what a release actually did — including what it did not fix.',
-      'After an update, the panel says so once on the main screen instead of changing under you silently.',
+      'An "i" button in the header. What this app is, how to put it on your home screen, what changed in each release, where every number comes from, and the diagnostics report — all behind one control instead of scattered across five places.',
+      'What\'s new: every release, what it did, and what it still gets wrong.',
+      'After an update the panel says so once, on the main screen, instead of changing under you silently.',
+      'The first-time instructions now live in that menu rather than being parked on the SETUP page under the levelling controls.',
     ],
     broken: [
       'You cannot yet pick an aircraft type and see only those overhead. That is the next release.',
