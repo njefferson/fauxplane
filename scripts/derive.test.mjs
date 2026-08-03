@@ -18,7 +18,7 @@ import { selectStation } from '../public/src/data/metar.js';
 import { interpolateLevels } from '../public/src/data/windsaloft.js';
 import { decimalYear, magneticField, parseCof } from '../public/src/data/wmm.js';
 import { sampleGrid } from '../public/src/data/geoid.js';
-import { createTrafficSource, lastKnownFix, radarCentre, rememberFix, withRangeAndBearing } from '../public/src/data/traffic.js';
+import { createTrafficSource, lastKnownFix, radarCentre, rememberFix, withRangeAndBearing, withinBand } from '../public/src/data/traffic.js';
 import { createStore } from '../public/src/core/state.js';
 import { createGeoSensor } from '../public/src/sensors/geo.js';
 import { brightnessFromLux, brightnessFromSolarElevation, DIM_FLOOR, solarElevationDeg } from '../public/src/sensors/ambient.js';
@@ -842,4 +842,49 @@ test('RADAR: a refused storage is not an error, it is just no memory', () => {
   };
   assert.equal(rememberFix(38.68, -121.0, storage), false);
   assert.equal(lastKnownFix(storage), null);
+});
+
+/**
+ * AN AIRCRAFT ON THE GROUND IS NOT TRAFFIC.
+ *
+ * Noah, 2026-08-03: "The radar says things are below me at ground level." The
+ * arithmetic was right — a desk at 200 ft is above a ramp at 20 ft — and it is
+ * still not what a traffic display is for. Real TCAS suppresses on-ground
+ * traffic, and Sacramento's ramp was filling the BELOW band with parked
+ * aeroplanes.
+ */
+test('RADAR: the real TCAS bands suppress aircraft on the ground', () => {
+  const sky = [
+    { hex: 'a1', altGeomFt: 1000, onGround: false },
+    { hex: 'a2', altGeomFt: 20, onGround: true },
+    { hex: 'a3', altGeomFt: null, onGround: true },
+  ];
+  for (const band of ['NORM', 'ABOVE', 'BELOW']) {
+    const kept = withinBand(sky, 200, band).map((a) => a.hex);
+    assert.ok(!kept.includes('a2'), `${band} kept a parked aircraft`);
+    assert.ok(!kept.includes('a3'), `${band} kept an on-ground aircraft with no altitude`);
+  }
+  // BELOW would otherwise be the band that shows every parked aeroplane, since
+  // a desk is above a ramp.
+  assert.deepEqual(withinBand(sky, 200, 'BELOW').map((a) => a.hex), ['a1']);
+});
+
+test('RADAR: ALL is ours, so it still shows the ground', () => {
+  // It is marked with a star as not a flight-deck setting, and it is the one
+  // someone watching an airport actually wants.
+  const sky = [
+    { hex: 'a1', altGeomFt: 1000, onGround: false },
+    { hex: 'a2', altGeomFt: 20, onGround: true },
+  ];
+  assert.deepEqual(withinBand(sky, 200, 'ALL').map((a) => a.hex), ['a1', 'a2']);
+});
+
+test('RADAR: with no own altitude the ground is still suppressed in a real band', () => {
+  // "Relative to what?" has no answer without own altitude, so the band cannot
+  // judge height — but "is it flying" needs no datum at all.
+  const sky = [
+    { hex: 'a1', altGeomFt: 3000, onGround: false },
+    { hex: 'a2', altGeomFt: 20, onGround: true },
+  ];
+  assert.deepEqual(withinBand(sky, null, 'NORM').map((a) => a.hex), ['a1']);
 });

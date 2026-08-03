@@ -1321,3 +1321,172 @@ test('SIGN FLIP: resolving the accelerometer sign revokes alignment with the dis
   const r = fusion.read(t);
   assert.ok(Math.abs(r.pitch) < 8, `the gate defended the corrupted seed: ${r.pitch?.toFixed(1)}° after 1.5 s`);
 });
+
+/**
+ * NOAH'S SYMPTOM, 2026-08-03: "Gentle rotation errors the horizon."
+ *
+ * His ADI read `gravity 51° from the gyro — coasting on gyro` with the horizon
+ * dozens of degrees over. Two separate delays stacked into the window he
+ * photographed: four seconds of the gate coasting, and then — after the gate
+ * had ALREADY concluded the gyro was the wrong reference — another four of
+ * creeping toward gravity at the in-motion gain of two percent a sample.
+ *
+ * This drives a filter whose propagated state has genuinely walked away, with
+ * the accelerometer reading a steady, correct one g the whole time, and asserts
+ * the horizon comes back. It compares against the same scenario with the
+ * concession removed, so the assertion is about THIS fix rather than about a
+ * threshold that could be met by accident.
+ */
+const divergedScenario = (cfg = {}, recoverSamples = 100) => {
+  const fusion = createFusion(cfg);
+  const level = { x: 0, y: G0, z: 0 };
+  let t = 0;
+  // Align level and converge.
+  for (let i = 0; i < 100; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  assert.equal(fusion.read(t).converged, true, 'must align before diverging');
+
+  // THE DIVERGENCE. The gyro reports a rotation that is not happening: the
+  // device is flat and still, and gravity says so at a steady one g. Whatever
+  // causes this on real hardware — a rate axis that does not belong to the
+  // angle it is integrated into, a bias that outran its estimator — the filter
+  // must not be permanently persuaded by it.
+  for (let i = 0; i < 150; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 20, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  /**
+   * ...and then eight seconds of the truth, IN A HAND.
+   *
+   * The rate alternates so it nets to zero rotation while never being zero.
+   * That matters more than it looks: a device that goes genuinely STILL is
+   * rescued by the static-alignment path, which bypasses this gate entirely —
+   * so a scenario that lets the device settle proves nothing about the gate and
+   * everything about a path Noah's hand-held phone never reaches. This is the
+   * case that has only the coast budget to rescue it.
+   */
+  for (let i = 0; i < recoverSamples; i += 1) {
+    t += 20;
+    const tremor = i % 2 === 0 ? 4 : -4;
+    fusion.updateGyro({ alpha: 0, beta: tremor, gamma: 0 }, level, t);
+    fusion.updateAccel(level, 0, t);
+  }
+  return { fusion, t };
+};
+
+/**
+ * TWO SECONDS, AND THE WINDOW IS THE ASSERTION.
+ *
+ * The first draft of this gave the filter eight seconds to recover, which even
+ * the two-percent creep clears — so removing the fix left it GREEN and the
+ * plant came back UNPROVEN. Measured: from the 53° this scenario diverges to,
+ * conceding at the still gain is back inside 4.3° at two seconds, and creeping
+ * is still 51° out. A test whose window is wide enough to hide the difference
+ * is testing the scenario rather than the fix.
+ */
+test('DIVERGENCE: a horizon the filter knows is wrong comes back within two seconds', () => {
+  const now = divergedScenario({}, 100);
+  const err = Math.abs(now.fusion.read(now.t).pitch);
+  assert.ok(
+    err < 10,
+    `two seconds after the filter conceded, the horizon is still ${err.toFixed(1)}° from level — with the accelerometer reading level throughout`,
+  );
+});
+
+test('DIVERGENCE: the coast budget is what lets gravity back in at all', () => {
+  // A separate property from the gain above: with the budget never expiring the
+  // sample is never ACCEPTED, so no gain can help. Both have to hold.
+  const never = divergedScenario({ disagreeCoastMs: 10 ** 9 }, 200);
+  const normal = divergedScenario({}, 200);
+  const neverErr = Math.abs(never.fusion.read(never.t).pitch);
+  const normalErr = Math.abs(normal.fusion.read(normal.t).pitch);
+  assert.ok(neverErr > 20, `expected a filter that never lets gravity in to stay diverged, got ${neverErr.toFixed(1)}°`);
+  assert.ok(normalErr < 2, `expected recovery, got ${normalErr.toFixed(1)}°`);
+});
+
+/**
+ * THE ROOT CAUSE OF "GENTLE ROTATION ERRORS THE HORIZON" (Noah, 2026-08-03).
+ *
+ * Turning a TILTED device about true vertical changes neither its pitch nor its
+ * roll — it is only turning. The old propagation integrated φ̇ = p, the
+ * small-angle shortcut, and so invented roll in proportion to tan θ: measured,
+ * 10° of false roll at a 10° tilt and 52° at 60°, from three seconds of gentle
+ * turning. Noah's ADI read `gravity 51° from the gyro`.
+ *
+ * Driven through updateGyro ALONE, with no accelerometer corrections, so this
+ * measures the propagation itself rather than how fast the filter recovers from
+ * it. The gate and the complementary blend both exist to paper over exactly
+ * this kind of error, and a test that lets them run would pass with the bug in.
+ */
+const yawWhileTilted = (tiltDeg, yawRateDps, seconds, cfg = {}, rollDeg = 0) => {
+  const fusion = createFusion(cfg);
+  // Align at the tilt, so the filter's state IS the device's attitude.
+  const up = upVectorScreenFrame(tiltDeg, rollDeg);
+  const g = { x: up.x * G0, y: up.y * G0, z: up.z * G0 };
+  let t = 0;
+  for (let i = 0; i < 200; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, g, t);
+    fusion.updateAccel(g, 0, t);
+  }
+  const before = fusion.read(t);
+
+  // The gyro a device reports while being turned about world vertical is the
+  // yaw rate times world-vertical EXPRESSED IN ITS OWN AXES — which is the
+  // earth-up unit vector it is already measuring.
+  const rate = { alpha: yawRateDps * up.z, beta: yawRateDps * up.x, gamma: yawRateDps * up.y };
+  for (let i = 0; i < (seconds * 1000) / 20; i += 1) {
+    t += 20;
+    fusion.updateGyro(rate, g, t);
+  }
+  const after = fusion.read(t);
+  return {
+    before,
+    after,
+    drift: Math.abs(after.roll - before.roll),
+    pitchDrift: Math.abs(after.pitch - before.pitch),
+  };
+};
+
+test('KINEMATICS: turning a tilted device does not roll the horizon', () => {
+  // Every tilt a phone actually sits at: a hand, a cradle, a desk clamp.
+  for (const tilt of [-10, -30, -45, -60]) {
+    const { drift } = yawWhileTilted(tilt, 20, 3);
+    assert.ok(
+      drift < 3,
+      `at a ${tilt}° tilt, three seconds of gentle turning moved the horizon ${drift.toFixed(1)}° in roll — it should not move at all`,
+    );
+  }
+});
+
+test('KINEMATICS: turning a BANKED device does not pitch the horizon', () => {
+  /**
+   * The pitch half of the same relations, θ̇ = q cosφ − r sinφ.
+   *
+   * IT NEEDS A BANK TO BE VISIBLE AT ALL. At φ = 0 the relation reduces to
+   * θ̇ = q exactly, so the wings-level scenario above cannot tell the correct
+   * form from the shortcut — and the plant for it sat GREEN until this existed.
+   * A test that cannot distinguish the fix from its absence is not testing the
+   * fix, whatever it asserts.
+   */
+  for (const roll of [-40, 40]) {
+    const { pitchDrift } = yawWhileTilted(-30, 20, 3, {}, roll);
+    assert.ok(
+      pitchDrift < 3,
+      `banked ${roll}°, three seconds of gentle turning moved the horizon ${pitchDrift.toFixed(1)}° in pitch — it should not move at all`,
+    );
+  }
+});
+
+test('KINEMATICS: the error the small-angle form makes grows with tan of the tilt', () => {
+  // Near upright it is negligible, which is why every healthy diagnostics
+  // capture looked fine and the defect survived eighteen releases.
+  const upright = yawWhileTilted(-2, 20, 3).drift;
+  const tilted = yawWhileTilted(-60, 20, 3).drift;
+  assert.ok(upright < 1, `even upright it drifted ${upright.toFixed(1)}°`);
+  assert.ok(tilted < 3, `tilted it drifted ${tilted.toFixed(1)}°`);
+});

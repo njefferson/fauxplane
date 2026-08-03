@@ -108,15 +108,55 @@ function releaseNode(release, { open }) {
  * The card. Static content — built once, never re-rendered on the 25 Hz frame,
  * because nothing here changes while the app is running.
  */
+/**
+ * How many releases are listed before the rest go behind one more disclosure.
+ *
+ * Noah, 2026-08-03: "Why is there a huge list of version numbers growing
+ * forever?" Every release this app has ever cut was listed, each as its own
+ * collapsed row, and by 1.18.0 that was twenty-odd rows of "Version 1.x.y ·
+ * 2026-08-03" — the same date on every one, because they all shipped in a day.
+ * A reader scrolling that is reading a changelog, not patch notes.
+ *
+ * Doctrine §7d asks for "the current release at minimum". The current release
+ * open, the two before it one press away, and the whole history behind one more
+ * press satisfies it without the panel turning into a version archive. Nothing
+ * is deleted — a release note that disappears is worse than a long list.
+ */
+const RECENT = 3;
+
 export function createWhatsNew() {
+  const recent = RELEASES.slice(0, RECENT);
+  const older = RELEASES.slice(RECENT);
+
   const root = el('section', { class: 'card wn-card', 'aria-labelledby': 'wn-h' }, [
     el('h2', { id: 'wn-h', text: "What's new" }),
     el('p', {
       class: 'wn-intro',
       text: 'What each release of this panel actually did, and what it still gets wrong.',
     }),
-    ...RELEASES.map((release, i) => releaseNode(release, { open: i === 0 })),
+    ...recent.map((release, i) => releaseNode(release, { open: i === 0 })),
   ]);
+
+  if (older.length) {
+    // The count is IN the label. "Earlier releases" alone gives no idea whether
+    // there is one behind it or forty, which is the thing a reader is deciding.
+    root.append(
+      el('details', { class: 'wn-archive' }, [
+        // NOT A HEADING, deliberately. Each release inside carries its own h3
+        // so a screen reader can jump between them; wrapping those in another
+        // h3 would either duplicate the level or push every release down one,
+        // and a <summary> is a disclosure control rather than a heading anyway.
+        el('summary', { class: 'wn-summary wn-archive-summary' }, [
+          el('span', {
+            class: 'wn-version',
+            text: `Every earlier release (${older.length})`,
+          }),
+          el('span', { class: 'wn-date', text: `${older[older.length - 1].version} to ${older[0].version}` }),
+        ]),
+        el('div', { class: 'wn-archive-body' }, older.map((release) => releaseNode(release, { open: false }))),
+      ]),
+    );
+  }
 
   return { root };
 }

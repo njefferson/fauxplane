@@ -14,6 +14,7 @@
  */
 
 import { bundleStatus } from './manifest.js';
+import { greatCircleNm } from '../core/units.js';
 
 export const NAVDATA_URL = '/data/navdata.json';
 
@@ -116,4 +117,49 @@ export function parseLatLon(text) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
   return { lat, lon };
+}
+
+/**
+ * The runways close enough to the scope's centre to be worth drawing.
+ *
+ * Noah, 2026-08-03: "Show the runway at airports." The bundle has carried 407
+ * of them since 1.16.0 and nothing drew any — the airports were only ever a
+ * type-ahead for the centre picker.
+ *
+ * REAL THRESHOLD COORDINATES, both ends, straight out of OurAirports. The line
+ * on the scope is the runway where it actually is and pointing where it
+ * actually points; nothing here is a symbol placed near an airport.
+ *
+ * CLOSED RUNWAYS ARE DROPPED. A closed runway drawn identically to an open one
+ * is the panel asserting something false about a place, and this app's whole
+ * contract is that it does not do that. A runway missing either threshold is
+ * dropped for the same reason rather than being stubbed from the heading.
+ *
+ * Filtered by distance from the CENTRE, and the caller passes the display
+ * range — so this returns what is on the scope, not what is in the region.
+ */
+export function runwaysNear(data, centre, rangeNm, limit = 40) {
+  if (!centre || !Number.isFinite(centre.lat) || !Number.isFinite(centre.lon)) return [];
+  const out = [];
+  for (const r of data?.runways ?? []) {
+    if (r.closed) continue;
+    if (!Number.isFinite(r.le_lat) || !Number.isFinite(r.le_lon)) continue;
+    if (!Number.isFinite(r.he_lat) || !Number.isFinite(r.he_lon)) continue;
+    // The midpoint, so a long runway half inside the ring still counts.
+    const mid = { lat: (r.le_lat + r.he_lat) / 2, lon: (r.le_lon + r.he_lon) / 2 };
+    const d = greatCircleNm(centre, mid);
+    if (!(d <= rangeNm)) continue;
+    out.push({
+      ident: r.airport_ident,
+      le: { lat: r.le_lat, lon: r.le_lon },
+      he: { lat: r.he_lat, lon: r.he_lon },
+      lengthFt: r.length_ft ?? null,
+      distanceNm: d,
+    });
+  }
+  // Nearest first, then capped: a scope centred on the Bay Area can reach a
+  // hundred runways at 80 nm, and past a point they are ink rather than
+  // information. The cap is stated to the caller by being a parameter.
+  out.sort((a, b) => a.distanceNm - b.distanceNm);
+  return out.slice(0, limit);
 }

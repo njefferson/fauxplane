@@ -370,8 +370,14 @@ const PLANTS = [
     check: 'an aligned, still horizon does not wander on accelerometer noise',
     gate: 'tests',
     file: 'public/src/core/fusion.js',
-    find: '    const gain = still ? (aligned ? 1 - cfg.settledAlpha : 1 - cfg.staticAlpha) : 1 - cfg.alpha;',
-    replace: '    const gain = still ? 1 - cfg.staticAlpha : 1 - cfg.alpha;',
+    // RE-ANCHORED 2026-08-03: adding the conceded-gate branch rewrote this
+    // expression into a nested ternary, so the old one-line anchor stopped
+    // matching and this plant silently went STALE — the THIRD time an anchor
+    // has drifted in this file. A plant whose anchor no longer matches proves
+    // nothing while still looking like coverage, which is why the harness
+    // reports STALE loudly rather than skipping it.
+    find: '        ? aligned\n          ? 1 - cfg.settledAlpha\n          : 1 - cfg.staticAlpha',
+    replace: '        ? aligned\n          ? 1 - cfg.staticAlpha\n          : 1 - cfg.staticAlpha',
     expect: /settling made no difference/,
   },
   {
@@ -527,6 +533,44 @@ const PLANTS = [
     find: '[hidden] {\n  display: none !important;\n}',
     replace: '[hidden] {\n  display: revert;\n}',
     expect: /carries the hidden attribute and is painted anyway/,
+  },
+  {
+    // Noah, 2026-08-03: "Gentle rotation errors the horizon", with the ADI
+    // reading `gravity 51° from the gyro — coasting on gyro`. The budget bounds
+    // how long a phone gyro is trusted with no absolute reference, and the
+    // error a reader sees is roughly linear in it — measured, 4 s of budget
+    // reaches 53° and 2 s stops at 32°. Doubling it is the defect.
+    name: 'attitude: the gyro is trusted for twice as long with no reference',
+    check: 'a horizon the filter knows is wrong comes back within two seconds',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '  disagreeCoastMs: 2000,',
+    replace: '  disagreeCoastMs: 8000,',
+    expect: /the horizon is still \d+(\.\d+)?° from level/,
+  },
+  {
+    // THE ROOT CAUSE of "gentle rotation errors the horizon". The propagation
+    // used φ̇ = p, the small-angle shortcut, which is exact only near wings- and
+    // nose-level. Restoring it invents roll in proportion to tan of the tilt:
+    // measured, 52° from three seconds of gentle turning at a 60° tilt.
+    name: 'kinematics: the roll rate goes back to the small-angle shortcut',
+    check: 'turning a tilted device does not roll the horizon',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '    roll += (p + (q * Math.sin(phi) + r * Math.cos(phi)) * tanTheta) * dt;',
+    replace: '    roll += p * dt;',
+    expect: /gentle turning moved the horizon \d+(\.\d+)?° in roll/,
+  },
+  {
+    // The other half of the same relations. Dropping the pitch coupling is
+    // quieter but no more correct.
+    name: 'kinematics: the pitch rate goes back to the small-angle shortcut',
+    check: 'turning a tilted device does not pitch the horizon either',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '    pitch += (q * Math.cos(phi) - r * Math.sin(phi)) * dt;',
+    replace: '    pitch += q * dt;',
+    expect: /moved the horizon|from level|drifted/,
   },
   {
     name: 'BITE: the page stops reading the live store',

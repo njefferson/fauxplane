@@ -98,8 +98,25 @@ export function ownAltitudeFt(fields, followed = null) {
  */
 export function withinBand(aircraft, ownAltFt, bandId) {
   const band = ALTITUDE_BANDS.find((b) => b.id === bandId) ?? ALTITUDE_BANDS[0];
-  if (!Number.isFinite(ownAltFt) || band.id === 'ALL') return aircraft ?? [];
-  return (aircraft ?? []).filter((a) => {
+  if (band.id === 'ALL') return aircraft ?? [];
+
+  /**
+   * AN AIRCRAFT ON THE GROUND IS NOT TRAFFIC, and a real TCAS does not display
+   * one. Noah, 2026-08-03: "The radar says things are below me at ground level."
+   *
+   * It was right arithmetically and wrong as an instrument. This panel sits at
+   * a few hundred feet on a desk; an airliner parked at an airport 700 ft lower
+   * is genuinely "below" by the subtraction, and TCAS still would not draw it,
+   * because the question a traffic display answers is what might come near you
+   * in the air. Sacramento's ramp filled his BELOW band with parked aeroplanes.
+   *
+   * Suppressed in the REAL bands only. ALL is marked as ours rather than a
+   * flight-deck setting, and it is the one that still shows everything the feed
+   * heard — which is what someone watching an airport actually wants.
+   */
+  const flying = (aircraft ?? []).filter((a) => !a.onGround);
+  if (!Number.isFinite(ownAltFt)) return flying;
+  return flying.filter((a) => {
     const ft = Number.isFinite(a.altGeomFt) ? a.altGeomFt : a.altBaroFt;
     // An aircraft broadcasting no altitude is KEPT. It is really there, and the
     // band cannot judge it — dropping it would hide a real aircraft on the

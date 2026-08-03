@@ -156,6 +156,31 @@ export function createInfo({ trigger, onDiagnostics }) {
       diagBtn,
     ]),
 
+    /**
+     * THE LINK BACK TO THE HUB (Noah, 2026-08-03: "Link out to the hub.")
+     *
+     * The hub's own rule: "This hub links OUT to every sibling app, and each
+     * app links back." Only the accessibility statement pointed there, buried
+     * in the small print, which is a link to a POLICY rather than to the place
+     * the other apps live. Somebody who likes this one had no way to find out
+     * there are others.
+     *
+     * Its own section rather than a line in the small print, because it is an
+     * offer and the small print is the disclaimers.
+     */
+    section('More of Noah’s apps', [
+      el('p', { class: 'info-body' }, [
+        el('span', { text: 'This is one of several free apps. They all live in one place: ' }),
+        el('a', {
+          class: 'info-link info-link-target',
+          href: 'https://noahjefferson.pages.dev',
+          rel: 'noopener',
+          target: '_blank',
+          text: 'noahjefferson.pages.dev',
+        }),
+      ]),
+    ]),
+
     section('Accessibility, and the small print', [
       el('p', { class: 'info-body' }, [
         el('a', {

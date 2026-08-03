@@ -11,29 +11,19 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.18.0 is on staging: https://staging.fauxplane.pages.dev**
+**1.19.0 is on staging: https://staging.fauxplane.pages.dev**
 
-Three releases since main, and they answer three things Noah asked on 2026-08-03.
+Answers six things from his 2026-08-03 screenshots. Runways are drawn at
+airports; ground traffic no longer appears as traffic below you; the aircraft
+list says how long it is and how much is below the fold; What's new stops being
+a version archive; the welcome screen leads with the instrument; and there is a
+link back to the hub in the (i) menu and the footer.
 
-**1.16.0 — point the radar at any airport.** A box at the top of the RADAR page
-takes an airport code, a town or a coordinate; press the match and the scope
-moves there and the feed is re-asked about that sky. 702 Northern California
-airports are bundled, so it works offline.
-
-**1.17.0 — the panel can say it has gone out of date.** A strip under the tabs
-when a new version is ready, with "Install it now" and "Not now". It never
-installs itself and never covers an instrument.
-
-**1.18.0 — the instruments get their screen back.** The value column is a strip
-along the bottom and the navigation display is about twice the size. The
-first-run instructions are shown again on a first visit. The panel remembers
-roughly where it was and the footer says what the scope is actually centred on.
-
-**What to check on your device.** Open the PFD and see whether the navigation
-display is now worth looking at. Type an airport you know on RADAR. Then leave
-the panel open — the next staging release should show you the update strip
-rather than the app changing under you. If anything looks wrong, press the
-version stamp and send the report.
+**The one to test carefully is the horizon.** "Gentle rotation errors the
+horizon" is BOUNDED rather than fixed — the root cause is not found and a
+sandbox with no accelerometer cannot reproduce it. If it happens again, press
+the version stamp WHILE IT IS WRONG and send that report; it carries the
+filter's internals and a photograph cannot.
 
 `main` is on 1.15.0 until you say promote. This block is rewritten by whichever
 session stages the next candidate; a staged build nobody can see is the failure
@@ -2223,6 +2213,156 @@ view is checked WITH aircraft on it rather than empty.
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
   airborne and being heard right now.
+
+---
+
+## 1.19.0 — runways, and bounding the horizon error, 2026-08-03
+
+Six items off Noah's screenshots. Five were straightforward; the sixth is the
+attitude filter and is only half done, which is stated rather than glossed.
+
+### The horizon — ROOT CAUSE FOUND, and it was the kinematics
+
+His ADI read `gravity 51° from the gyro — coasting on gyro` with the horizon
+dozens of degrees over, after a gentle rotation. A first pass could only BOUND
+it; the diagnostics report he sent afterwards is what made the cause findable.
+
+**The gyro propagation used the small-angle shortcut.** It integrated
+`pitch += q·dt` and `roll += p·dt` — φ̇ = p, θ̇ = q — which is exact at
+wings-level and nose-level and wrong everywhere else. The real relations are
+
+    φ̇ = p + (q sinφ + r cosφ) tanθ
+    θ̇ = q cosφ − r sinφ
+
+and the missing term is a **tan θ**. Measured, for a device turned about true
+vertical at 20°/s for three seconds — a gesture during which the true pitch and
+roll do not change at all:
+
+- at a −10° tilt the old code integrated **−10.4°** of roll that was not happening
+- at −30°, **−30.0°**
+- at −45°, **−42.4°**
+- at −60°, **−52.0°**
+
+The full relations give 0.0° at every one. Fifty-two degrees against his
+photographed fifty-one, at the tilt a phone sits at in a cradle or a hand.
+Gravity was correct the whole time; the gyro invented the roll, and the
+direction gate then rejected the one instrument telling the truth — which is why
+the symptom presented as a gate problem and the first pass went after the gate.
+
+**Why it survived eighteen releases.** His HEALTHY capture is at pitch −4.2°,
+where tan θ is 0.07 and the missing term is worth a fraction of a degree. Every
+report that looked fine was taken near upright. The failure needed a tilt, and
+nothing recorded the tilt at the moment it went wrong.
+
+**A second defect fell out of the same line.** At screen angle 0 the old form
+used `omega.x` and `omega.z` and never touched `omega.y`, so gamma's zero-offset
+could not be estimated — his report shows `gamma 0.00 deg/s` after 207 samples
+beside two siblings that had both learned one. The yaw rate uses it now.
+
+**Euler, not quaternion, and that is a decision rather than an oversight.** A
+quaternion state has no singularity and is the better answer; swapping the state
+representation of the filter this app's whole horizon depends on, with no
+hardware to test against, is not a change to make in the same release that fixes
+the thing it was hiding. `tanPitchClamp` bounds the term at a pitch of about
+79°, past which Euler roll is undefined rather than merely large.
+
+### The bound, kept as well `disagreeCoastMs` is how long the gyro is trusted
+with no absolute reference, and it was four seconds. The error a reader sees is
+roughly linear in it, because that is exactly what it bounds — measured on a
+filter driven into divergence, four seconds lets the state reach 53° and two
+seconds stops it at 32°, recovering inside half a second instead of four. Both
+ROCKET tests still hold at 2000, because the hand-held lean they encode is about
+a second long.
+
+**Three wrong turns on the way, and every one was caught by a test or a plant
+rather than by thinking harder.**
+
+First: an `accelGateMaxDeg` that stood the gate down above 35°, on the argument
+that rotating measured gravity that far while it still reads 1 g needs most of a
+g sideways. The ROCKET test failed immediately — its corrupted sample is 60° off
+at exactly 1 g, so the threshold readmits the precise defect the gate exists for.
+The physics argument was fine and the discriminator was not: angle alone cannot
+separate "the sample is corrupted" from "the state is wrong".
+
+Second: correcting at the still gain once the budget expires, described in the
+commit draft as the fix. Measured, it moves the two-second error from 5.7° to
+4.3° — a real but marginal improvement, and nothing like the fix. The plant
+written for it stayed GREEN, which is the harness saying so. It is kept, at its
+actual size, and the plant now breaks the budget instead.
+
+Third: the pitch half of the new kinematics shipped with a test that could not
+see it. The wings-level scenario has φ = 0, where θ̇ = q cosφ − r sinφ reduces to
+θ̇ = q exactly — so the correct form and the shortcut are indistinguishable, and
+the plant for it sat GREEN. A banked scenario was needed before the assertion
+meant anything.
+
+**The lesson under all three: a number measured beats a mechanism argued.** Each
+sounded right and was settled in one command by running the filter.
+
+**And the harness caught an anchor drift, for the third time in this file.**
+Adding the conceded-gate branch rewrote the `gain` expression into a nested
+ternary, so the jitter plant's one-line anchor stopped matching and it went
+STALE — proving nothing while still looking like coverage. It is re-anchored,
+and the comment there now says which edit broke it.
+
+### Runways (Noah: "Show the runway at airports.")
+
+The bundle has carried 407 of them since 1.16.0 and nothing drew any — the
+airports were only ever a type-ahead for the centre picker. Real thresholds,
+both ends, so a line is the runway where it is and pointing where it points.
+
+Closed runways are dropped, and so is any runway missing a threshold: drawing a
+closed runway identically to an open one is the panel asserting something false
+about a place. A runway under six pixels long is not drawn, because at 80 nm an
+8,600 ft runway is a speck indistinguishable from a traffic symbol on a scope
+whose job is telling marks apart. It reappears as the reader zooms in, which is
+what a real ND does.
+
+### Ground traffic is not traffic (Noah: "things are below me at ground level")
+
+Right arithmetically, wrong as an instrument. This panel sits at a few hundred
+feet on a desk, so an airliner parked 700 ft lower genuinely IS below by the
+subtraction — and TCAS still would not draw it, because the question a traffic
+display answers is what might come near you in the air. Sacramento's ramp was
+filling his BELOW band with parked aeroplanes. Suppressed in the real bands
+only; ALL is marked as ours and still shows everything the feed heard.
+
+### The list, the archive, the welcome, the hub link
+
+The aircraft list always scrolled — `max-height: 22rem; overflow-y: auto` — but
+iOS hides a scrollbar until something is moving, so fifteen aircraft ended
+mid-row at a hard edge with nothing to say the other eight existed. The count is
+stated above the rows and the number below the fold under them, measured from
+the DOM rather than from a row-height constant that would go stale the first
+time the reader enlarges their text.
+
+What's new listed every release ever cut, each a collapsed row, all stamped the
+same day because they all shipped in a day. Three, then the rest behind one more
+press. Nothing is deleted — a release note that disappears is worse than a long
+list.
+
+The welcome screen opened with housekeeping about where the instructions would
+live afterwards. It opens with the app's own attitude indicator now, in the
+app's own measured tokens.
+
+And the hub link: the hub's rule is that every app links back, and only the
+accessibility statement pointed there — a link to a POLICY, buried in the small
+print, rather than to the place the other apps live.
+
+### Verified
+
+**315 unit tests, 45/45 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor, `pwa-check.mjs` green on all six §7h properties.**
+
+The kinematics are asserted through `updateGyro` ALONE, with no accelerometer
+corrections at all. The gate and the complementary blend both exist to paper
+over exactly this class of error, and a test that let them run would have passed
+with the bug in.
+
+Not verifiable here: the horizon on real hardware. The maths is now right and
+the arithmetic is checked, but this sandbox has no accelerometer and the next
+report from Noah's device is the test that matters.
 
 ---
 

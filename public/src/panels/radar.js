@@ -29,7 +29,7 @@ import { createSurface } from '../render/canvas.js';
 import { drawPlan, altLabel, hitTestAircraft } from '../render/gauges/plan.js';
 import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, filterByAirframe, ownAltitudeFt, withinBand } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
-import { loadNavdata, parseLatLon, searchAirports } from '../data/navdata.js';
+import { loadNavdata, parseLatLon, runwaysNear, searchAirports } from '../data/navdata.js';
 
 const fmt = (v, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '—');
 
@@ -45,7 +45,10 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
   const surface = createSurface(canvas);
 
   const status = el('p', { class: 'radar-status', role: 'status', 'aria-live': 'polite', text: 'Waiting for the first sweep.' });
-  const list = el('div', { class: 'radar-list', role: 'group', 'aria-label': 'Aircraft heard, nearest first' });
+  const list = el('div', { class: 'radar-list', role: 'group', 'aria-label': 'Aircraft heard, nearest first', tabindex: '0' });
+  /** Outside the scroller on purpose: a "scroll for more" that itself scrolls
+   *  out of view is the one place it must not be. */
+  const foot = el('p', { class: 'radar-list-foot', role: 'status', hidden: '' });
   const followNote = el('p', { class: 'radar-follow-note' });
   /**
    * THE AIRFRAME PICKER. Noah: "an airframe picker from all aircraft on the
@@ -82,6 +85,17 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
    * be rate limited, which is what has been breaking the live feed all day.
    */
   let airports = [];
+  /** The whole bundle, kept because the RUNWAYS are drawn from it too. */
+  let navdata = null;
+  /** Recomputed only when the centre or the range actually moves — this runs
+   *  inside a 25 Hz draw and scanning 407 runways every frame is heat. */
+  let runwayCache = { key: '', list: [] };
+  const currentRunways = (centre) => {
+    if (!navdata || !centre) return [];
+    const key = `${centre.lat.toFixed(3)},${centre.lon.toFixed(3)},${rangeNm}`;
+    if (key !== runwayCache.key) runwayCache = { key, list: runwaysNear(navdata, centre, rangeNm) };
+    return runwayCache.list;
+  };
   const centreInput = el('input', {
     class: 'radar-centre-input',
     type: 'search',
@@ -290,7 +304,8 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       centreNote.textContent = `Airport list unavailable — ${d?.reason ?? 'unknown reason'}. You can still type a coordinate.`;
       return;
     }
-    airports = d.data?.airports ?? [];
+    navdata = d.data ?? null;
+    airports = navdata?.airports ?? [];
     if (!airports.length) centreNote.textContent = 'The airport list loaded but is empty; you can still type a coordinate.';
     // Someone who typed while it was still loading got "nothing matches" from
     // an empty array. Re-run against the list that has now arrived.
@@ -305,8 +320,8 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
     const band = ALTITUDE_BANDS.find((b) => b.id === id);
     announcer.say(
       band?.real
-        ? `Traffic band ${band.label}: aircraft within ${band.above} feet above and ${band.below} feet below.`
-        : 'Showing every altitude. A real flight deck has no such setting.',
+        ? `Traffic band ${band.label}: aircraft within ${band.above} feet above and ${band.below} feet below, airborne only.`
+        : 'Showing every altitude, including aircraft on the ground. A real flight deck has no such setting.',
     );
   };
   const bandButtons = ALTITUDE_BANDS.map((b) =>
@@ -316,7 +331,11 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       dataset: { band: b.id },
       // The one that is NOT a real flight-deck setting says so, rather than
       // sitting in the row pretending to be one.
-      title: b.real ? `TCAS ${b.label}: +${b.above} / −${b.below} ft` : 'Not a real flight-deck setting — ours',
+      // A FILTER THAT REMOVES SOMETHING SAYS SO. The real bands drop aircraft on
+      // the ground, which is what TCAS does and is invisible unless stated.
+      title: b.real
+        ? `TCAS ${b.label}: +${b.above} / −${b.below} ft, airborne traffic only`
+        : 'Not a real flight-deck setting — ours. Every altitude, including aircraft on the ground.',
       text: b.real ? b.label : 'ALL*',
       'aria-pressed': b.id === bandId ? 'true' : 'false',
       onclick: () => setBand(b.id),
@@ -352,7 +371,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       attribution,
     ]),
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Follow a flight' }), form, followNote]),
-    el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Heard right now' }), picker, list]),
+    el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Heard right now' }), picker, list, foot]),
   );
 
   function renderFollowNote() {
@@ -455,8 +474,34 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       return;
     }
 
+    /**
+     * THE LIST SAYS IT IS A LIST, AND SAYS WHAT IS BELOW THE FOLD.
+     *
+     * Noah, 2026-08-03: "The list of aircraft shows no indication that it's a
+     * list and it looks like it's not scrollable." It always scrolled —
+     * `max-height: 22rem; overflow-y: auto` — but iOS hides a scrollbar until
+     * something is actually scrolling, so a list of fifteen ended mid-row at
+     * the container edge with nothing to suggest there was more. The filter
+     * chip said "All (15)" and seven were on screen; there was no way to know
+     * whether the other eight were hidden or simply not there.
+     *
+     * So the count is stated in words above the rows, and the number still
+     * below the fold is stated under them. Both are plain text a screen reader
+     * reads too, rather than a scrollbar nobody can see and a gradient nobody
+     * can interpret.
+     */
+    const shown = aircraft.slice(0, 24);
+    const head = el('p', {
+      class: 'radar-list-head',
+      text:
+        shown.length === all.length
+          ? `${all.length} aircraft, nearest first. Press one to follow it.`
+          : `${shown.length} of ${all.length} aircraft, nearest first. Press one to follow it.`,
+    });
+
     list.replaceChildren(
-      ...aircraft.slice(0, 24).map((a) => {
+      head,
+      ...shown.map((a) => {
         const name = a.callsign ?? a.registration ?? a.hex.toUpperCase();
         const row = el(
           'button',
@@ -474,6 +519,16 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         return row;
       }),
     );
+    // How many rows are off the bottom of the scroller, measured AFTER they are
+    // in the DOM rather than guessed from a row-height constant that would go
+    // stale the first time the reader enlarges their text.
+    requestAnimationFrame(() => {
+      const hidden = [...list.querySelectorAll('.radar-row')].filter(
+        (r) => r.offsetTop + r.offsetHeight > list.scrollTop + list.clientHeight + 2,
+      ).length;
+      foot.textContent = hidden > 0 ? `${hidden} more below — scroll the list` : '';
+      foot.hidden = hidden === 0;
+    });
   }
 
   function rowDetail(a) {
@@ -490,6 +545,11 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
   return {
     get rangeNm() {
       return rangeNm;
+    },
+    /** The runways currently on the scope, so the PFD's navigation display
+     *  draws the same ones rather than computing its own set. */
+    get runways() {
+      return runwayCache.list;
     },
     setRange,
     /** Hear about every range change, whichever surface made it. */
@@ -572,6 +632,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         fromFix: !!result?.centre?.fromFix,
         // No centreLabel: the centre carries its own short name now, so this
         // scope and the PFD's cannot disagree about what the crosshair is.
+        runways: currentRunways(result?.centre),
         ownAltFt,
         trail: traffic.trail,
       });

@@ -32,10 +32,31 @@ export const DEFAULTS = Object.freeze({
    *  half of the same gate. Kin to biasGateDeg: a residual this large is not
    *  evidence about attitude either. */
   accelGateDeg: 10,
-  /** How long direction-rejected samples may keep the filter coasting before
-   *  the accelerometer wins anyway. Deliberately under maxCoastMs, so this
-   *  gate alone can never cross the horizon out. */
-  disagreeCoastMs: 4000,
+  /**
+   * How long direction-rejected samples may keep the filter coasting before the
+   * accelerometer wins anyway. Deliberately under maxCoastMs, so this gate
+   * alone can never cross the horizon out.
+   *
+   * HALVED FROM 4000 ON 2026-08-03. Noah: "Gentle rotation errors the horizon",
+   * photographed at `gravity 51° from the gyro — coasting on gyro`. The budget
+   * is a bound on how far a phone gyro is trusted with no absolute reference,
+   * and four seconds was too generous for one: measured on a filter driven into
+   * divergence, four seconds lets the state reach 53° and two seconds stops it
+   * at 32°, which then recovers inside half a second instead of four. The error
+   * a reader sees is roughly linear in this number, because that is exactly
+   * what it bounds.
+   *
+   * It still comfortably covers the case it exists for. The hand-held lean that
+   * produced it is about a second long, and both ROCKET tests hold at 2000.
+   */
+  disagreeCoastMs: 2000,
+  /**
+   * Ceiling on tan θ in the roll kinematics — 5 is a pitch of about 79°.
+   * Beyond it Euler roll is undefined rather than merely large, so the term is
+   * clamped instead of allowed to run away. See the propagation for why this
+   * filter is Euler rather than quaternion.
+   */
+  tanPitchClamp: 5,
   /** Residual below which the filter counts as settled, degrees. */
   convergeDeg: 2,
   /** How long the residual must stay settled, ms. */
@@ -610,11 +631,64 @@ export function createFusion(options = {}) {
     // them afterwards would be rotating scalars, which is not a thing.
     let omega = { x: cb * c - cg * sn, y: cb * sn + cg * c, z: ca };
     if (mount) omega = applyMatrix3(mount, omega);
-    const pitchRate = omega.x;
-    const rollRate = omega.z; // about the screen normal; unaffected by screen angle
 
-    pitch += pitchRate * dt;
-    roll -= rollRate * dt;
+    /**
+     * THE FULL EULER KINEMATICS, AND THIS IS THE ROOT CAUSE OF "GENTLE ROTATION
+     * ERRORS THE HORIZON" (Noah, 2026-08-03).
+     *
+     * This used to be `pitch += omega.x·dt` and `roll -= omega.z·dt`: the
+     * textbook small-angle shortcut, φ̇ = p and θ̇ = q. It is exact at wings-level
+     * and nose-level and WRONG EVERYWHERE ELSE, and the error is not subtle —
+     * it is a tan θ.
+     *
+     *   φ̇ = p + (q sinφ + r cosφ) tanθ
+     *   θ̇ = q cosφ − r sinφ
+     *
+     * MEASURED, for a device turned gently about TRUE VERTICAL at 20°/s for
+     * three seconds — a gesture during which the true pitch and roll do not
+     * change at all:
+     *
+     *   tilt   −10°  →  the old code integrated −10.4° of roll that was not
+     *   tilt   −30°  →  −30.0°           happening; the full relations give
+     *   tilt   −45°  →  −42.4°           0.0° at every one of them.
+     *   tilt   −60°  →  −52.0°
+     *
+     * Noah's ADI read `gravity 51° from the gyro`. That is this, at about sixty
+     * degrees of tilt — a phone in a cradle, on a desk, or in a hand. Gravity
+     * was correct throughout; the gyro invented the roll, and the direction
+     * gate then rejected the only instrument telling the truth.
+     *
+     * WHY IT HID FOR SO LONG. His diagnostics capture of a HEALTHY panel has
+     * pitch −4.2°, where tanθ is 0.07 and the missing term is worth a fraction
+     * of a degree. Every report that looked fine was taken near upright, and
+     * the failure needed a tilt nobody thought to record.
+     *
+     * IT ALSO UNBLOCKS A BIAS. At screen angle 0 the old form used omega.x and
+     * omega.z and never touched omega.y, so gamma's zero-offset could not be
+     * estimated — his report shows `gamma 0.00 deg/s` after 207 samples beside
+     * two siblings that had both learned one. `r` uses it now.
+     */
+    const p = -omega.z; // roll rate, about the nose
+    const q = omega.x; //  pitch rate, about the right wing
+    const r = -omega.y; // yaw rate, about the belly
+
+    const phi = degToRad(roll);
+    const theta = degToRad(pitch);
+    /**
+     * tan θ is unbounded at ±90°, where Euler roll is not merely large but
+     * UNDEFINED — a nose-vertical attitude has no roll angle to speak of. Every
+     * Euler-based AHRS clamps here; the alternative is a quaternion state, which
+     * is the right answer and is not a change to make on a filter this app's
+     * whole horizon depends on without hardware to test it against.
+     *
+     * At the clamp the propagation stops being trustworthy, which is exactly
+     * when the accelerometer should be believed instead — and it is, because a
+     * device held nose-up is not accelerating and the static path takes over.
+     */
+    const tanTheta = Math.max(-cfg.tanPitchClamp, Math.min(cfg.tanPitchClamp, Math.tan(theta)));
+
+    pitch += (q * Math.cos(phi) - r * Math.sin(phi)) * dt;
+    roll += (p + (q * Math.sin(phi) + r * Math.cos(phi)) * tanTheta) * dt;
     const yawRate = turnRateFromRates(rotationRate, gravity);
     if (heading !== null && yawRate !== null) heading = wrap360(heading + yawRate * dt);
 
@@ -793,6 +867,27 @@ export function createFusion(options = {}) {
       disagreeSince = null;
       disagreeSpent = false;
     }
+    /**
+     * ONCE THE GATE HAS CONCEDED, IT CONCEDES PROPERLY.
+     *
+     * Noah, 2026-08-03: "Gentle rotation errors the horizon", with the ADI
+     * reading `gravity 51° from the gyro — coasting on gyro` and the horizon
+     * dozens of degrees over.
+     *
+     * `disagreeSpent` is the filter CONCLUDING that its own propagated state is
+     * the wrong one — the gyro's trust is bounded and has run out. Having
+     * concluded that, it went on correcting at the in-motion gain of two
+     * percent a sample, which from fifty degrees is another four seconds of a
+     * horizon that is visibly wrong and that the filter already knows is wrong.
+     * Four seconds of coasting plus four of creeping is the eight-second window
+     * he photographed.
+     *
+     * A DELIBERATE ASYMMETRY, not a general speed-up. Inside the window nothing
+     * changes: a hand-held lean still tracks the gyro, which is the whole point
+     * of the gate and is what the ROCKET tests hold. This only applies after
+     * the filter has stopped believing itself.
+     */
+    const conceded = disagreeSpent;
 
     // A STILL DEVICE IS CORRECTED HARD. The complementary weight exists to stop
     // the accelerometer's every bump reaching the horizon while the aircraft is
@@ -800,7 +895,13 @@ export function createFusion(options = {}) {
     // gyro to contribute, so creeping toward the answer at two percent a sample
     // is just a slow horizon for no benefit.
     // Fast to ALIGN, gentle once aligned, slow while moving. See settledAlpha.
-    const gain = still ? (aligned ? 1 - cfg.settledAlpha : 1 - cfg.staticAlpha) : 1 - cfg.alpha;
+    const gain = conceded
+      ? 1 - cfg.staticAlpha
+      : still
+        ? aligned
+          ? 1 - cfg.settledAlpha
+          : 1 - cfg.staticAlpha
+        : 1 - cfg.alpha;
     pitch += gain * dPitch;
     roll = wrap180(roll + gain * dRoll);
 

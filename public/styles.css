@@ -1300,6 +1300,63 @@ body[data-powered='true'] .gate {
   gap: 0.4rem;
   max-height: 22rem;
   overflow-y: auto;
+  /* THE EDGE SAYS THERE IS MORE. iOS hides a scrollbar until something is
+     actually moving, so a scrolling list ends mid-row at a hard container edge
+     and reads as a truncated list rather than a scrollable one. A rule here is
+     not enough on its own — the count above the rows and the "N more below"
+     under them are what a screen reader gets — but it is what a sighted reader
+     notices without being told. */
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 0.2rem;
+}
+.wn-archive {
+  margin-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+  padding-top: 0.6rem;
+}
+.wn-archive-body {
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--hairline);
+}
+
+/*
+ * THE WELCOME (Noah: "The welcome screen is fucking sterile.")
+ *
+ * The app's own attitude indicator beside the title, in the app's own tokens —
+ * so the first thing on screen is an instrument, and the sky/ground colours are
+ * the measured ones rather than a second set invented for a splash. The mark
+ * shrinks on a narrow phone rather than wrapping the heading under it.
+ */
+.gate-hello {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  margin-bottom: 0.9rem;
+}
+.gate-mark {
+  flex: 0 0 auto;
+  width: clamp(3.5rem, 18vw, 5.5rem);
+  height: clamp(3.5rem, 18vw, 5.5rem);
+}
+.gate-hello-words {
+  min-width: 0;
+}
+.gate-tagline {
+  margin: 0.25rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--text-2);
+}
+
+.radar-list-head {
+  margin: 0 0 0.15rem;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.radar-list-foot {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-2);
 }
 .radar-row {
   display: flex;

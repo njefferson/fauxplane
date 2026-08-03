@@ -243,7 +243,11 @@
            The label is neutral now and the value says which of the four it is. -->
       <span class="foot-item">Centred on <span id="home-note">—</span></span>
       <span class="foot-item">Not a simulator · not certified for anything · never for navigation</span>
+      <!-- Both hub links, and they are different destinations: the statement is
+           a policy, the hub is where the other apps are. Each app linking back
+           is the hub's own rule, and only the policy link existed. -->
       <a class="foot-link" href="https://noahjefferson.pages.dev/accessibility">Accessibility</a>
+      <a class="foot-link" href="https://noahjefferson.pages.dev">More apps by Noah</a>
       <!--
         The build stamp. Always on screen in the normal working view, never
         behind a tap, written at boot from the one constant the release
@@ -293,15 +297,38 @@
     -->
     <div id="first-run-store" hidden>
     <section class="gate-first" aria-labelledby="gate-first-h">
-      <h3 id="gate-first-h" class="gate-first-h">First time here</h3>
-      <p class="gate-body gate-small">
-        These instructions stay in the <strong>i</strong> menu at the top of the screen after you switch on, along
-        with what changed in each release and where the numbers come from.
-      </p>
-      <p class="gate-body">
-        It is a glass cockpit panel for a phone or tablet — the instruments an airliner shows its pilots, driven by
-        your device's own sensors and by live aviation data. It is a toy for people who love aeroplanes.
-      </p>
+      <!--
+        THE HELLO, and it is the app's own artwork rather than a heading on grey.
+        Noah, 2026-08-03: "The welcome screen is fucking sterile."
+
+        It was: a wall of body text opening with housekeeping about where the
+        instructions would live afterwards. The first thing a reader met was
+        filing instructions. This app is built for someone printing a 747
+        cockpit in his house — the first thing he should meet is the instrument.
+
+        The mark is the SAME attitude indicator the app icon is, inlined so it
+        needs no network and renders at any size. `aria-hidden` because the
+        heading beside it already says what this is; a screen reader announcing
+        the icon's own description here would be the same sentence twice.
+      -->
+      <div class="gate-hello">
+        <svg class="gate-mark" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+          <circle cx="256" cy="256" r="238" fill="var(--sky)" />
+          <path d="M18 256a238 238 0 0 0 476 0z" fill="var(--ground)" />
+          <path d="M18 256h476" stroke="#f2f2f2" stroke-width="14" />
+          <path d="M150 256h56v34" stroke="var(--symbol)" stroke-width="22" fill="none" stroke-linecap="square" />
+          <path d="M362 256h-56v34" stroke="var(--symbol)" stroke-width="22" fill="none" stroke-linecap="square" />
+          <circle cx="256" cy="256" r="13" fill="var(--symbol)" />
+          <circle cx="256" cy="256" r="238" fill="none" stroke="var(--rail)" stroke-width="12" />
+        </svg>
+        <div class="gate-hello-words">
+          <h3 id="gate-first-h" class="gate-first-h">A glass cockpit for your desk</h3>
+          <p class="gate-tagline">
+            The instruments an airliner shows its pilots — driven by your device's own sensors and by live aviation
+            data. It is a toy for people who love aeroplanes.
+          </p>
+        </div>
+      </div>
       <!--
         THE THREE USES ARE NOAH'S OWN WORDS, from how he explains the app to
         his friends: "You can follow a flight, or use it on a flight to see
@@ -351,7 +378,11 @@
         everybody and cannot go stale in the way a capability sniff can.
       -->
       <div class="gate-install">
-        <h3 class="gate-first-h">Add it to your home screen</h3>
+        <p class="gate-body gate-small">
+        These instructions stay in the <strong>i</strong> menu at the top of the screen, along with what changed in
+        each release and where the numbers come from.
+      </p>
+      <h3 class="gate-first-h">Add it to your home screen</h3>
         <p class="gate-body">
           It then opens full screen with no browser bars, and works with no signal — the instruments that run on the
           device's own sensors need nothing from the network.

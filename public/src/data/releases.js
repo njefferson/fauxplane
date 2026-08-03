@@ -29,6 +29,27 @@
  */
 export const RELEASES = [
   {
+    version: '1.19.0',
+    date: '2026-08-03',
+    headline: 'Runways on the scope, and the horizon recovers twice as fast.',
+    changed: [
+      'Airports now show their RUNWAYS on the radar — the real thresholds, where they actually are and pointing where they actually point. Centre the scope on an airport and drop to 10 nm to see the layout with real traffic moving over it.',
+      'GENTLE ROTATION NO LONGER ERRORS THE HORIZON, and this one is a real fix rather than a workaround. Turning the panel while it is tilted — in a cradle, on a desk, in your hand — used to invent roll that was not happening: about ten degrees of it at a ten-degree tilt, and fifty at sixty, from three seconds of slow turning. Your report is what found it. The maths that carries the gyro forward was using a shortcut that is only exact when the panel is bolt upright, and it now uses the full relations.',
+      'The filter also trusts the gyro for half as long before the accelerometer wins, so if anything does knock it off it comes back in well under a second instead of four.',
+      'Aircraft on the ground no longer appear as traffic below you. A real flight deck does not show parked aeroplanes, and an airport ramp was filling the BELOW band. ALL still shows them, because that one is marked as ours rather than a real setting.',
+      'The aircraft list says how many there are and how many are still below the fold. It always scrolled; nothing on screen said so.',
+      "What's new shows the last three releases and puts the rest behind one press, instead of every version ever, forever.",
+      'The welcome screen leads with the instrument instead of a wall of grey text.',
+      "A link to the rest of Noah's apps, in the (i) menu and in the footer.",
+    ],
+    broken: [
+      'The horizon fix is verified against the maths, not against hardware — this sandbox has no accelerometer. If it still misbehaves, press the version stamp WHILE it is wrong and send that report; the last one is what made the cause findable.',
+      'Held in a hand the panel never goes properly still, so it stays at COARSE quality and never declares itself converged. That is honest rather than broken, but it means a hand-held panel has neither of the two things that normally rescue a drifting horizon.',
+      'Runways are drawn without their identifiers. Adding labels risks the overprinting smear the aircraft labels already had to be rescued from.',
+      'The runway data is Northern California only, like the airports.',
+    ],
+  },
+  {
     version: '1.18.0',
     date: '2026-08-03',
     headline: 'The instruments get their screen back, and the panel knows where you are.',

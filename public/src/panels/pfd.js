@@ -317,6 +317,9 @@ export function createPfd({
       followedHex: view.followedHex ?? null,
       fromFix: view.fromFix ?? false,
       trail: view.trail ?? [],
+      // The same runways the RADAR page draws, from the same source. Two
+      // scopes showing one truth is the rule this file's own comment set.
+      runways: view.runways ?? [],
     });
     if (planCanvas) {
       const n = (view.aircraft ?? []).length;

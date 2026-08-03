@@ -158,7 +158,7 @@ export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slo
   return best;
 }
 
-export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [] }) {
+export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [] }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
   const r = Math.min(w, h) / 2 - 4;
@@ -192,6 +192,38 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
       align: 'left',
     });
   }
+
+  /**
+   * --- RUNWAYS (Noah, 2026-08-03: "Show the runway at airports.") -----------
+   *
+   * Drawn UNDER everything else, because they are the ground and the aircraft
+   * are above it. Real threshold coordinates from OurAirports, both ends, so a
+   * line is the runway where it is and pointing where it points — not a symbol
+   * placed near an airport.
+   *
+   * A RUNWAY TOO SHORT TO BE A LINE IS NOT DRAWN. At 80 nm an 8,600 ft runway
+   * is under three pixels, which is a speck indistinguishable from a traffic
+   * symbol on a scope whose whole job is telling marks apart. It reappears as
+   * the reader zooms in, which is what a real ND does.
+   */
+  ctx.save();
+  ctx.strokeStyle = tokens['text-3'];
+  ctx.lineCap = 'butt';
+  for (const rw of runways) {
+    const a = project(rw.le, { centre, pxPerNm, cx, cy });
+    const b = project(rw.he, { centre, pxPerNm, cx, cy });
+    if (!a || !b) continue;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 6) continue;
+    // Wide enough to read as a strip rather than a hairline, and never so wide
+    // that two parallels merge into one at close range.
+    ctx.lineWidth = Math.max(1.5, Math.min(5, len * 0.06));
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+  ctx.restore();
 
   // --- compass rose, fixed: NORTH IS UP ------------------------------------
   for (const [deg, label] of [
