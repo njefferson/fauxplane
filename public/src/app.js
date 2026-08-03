@@ -206,11 +206,11 @@ async function boot() {
     // does, at the same range, rather than keeping its own copy — two pictures
     // of one truth is exactly how they come to disagree.
     traffic: () => ({
-      centre: radarCentre(state.snapshot.fields),
+      centre: radarCentre(state.snapshot.fields, traffic.followed),
       aircraft: traffic.nearby,
       rangeNm: radar.rangeNm,
       followedHex: traffic.followed?.hex ?? null,
-      fromFix: !!radarCentre(state.snapshot.fields)?.fromFix,
+      fromFix: !!radarCentre(state.snapshot.fields, traffic.followed)?.fromFix,
       trail: traffic.trail,
     }),
     readoutHost: $('pfd-readouts'),
@@ -892,6 +892,8 @@ async function boot() {
     powerState.textContent = started ? 'ON' : 'OFF';
     powerBtn.setAttribute('aria-checked', started ? 'true' : 'false');
   };
+  // Reads `started`, which startSensors sets SYNCHRONOUSLY on entry — before
+  // its first await — so the cap can be redrawn the moment the press lands.
   syncPower();
 
   powerBtn.addEventListener('click', async () => {
@@ -901,9 +903,20 @@ async function boot() {
       announcer.say('Panel off. Every instrument driven by this device now shows its failure flag.');
       return;
     }
-    await startSensors();
+    // THE SWITCH MOVES FIRST, before any awaiting. `startSensors` waits on a
+    // permission prompt and then on the first weather fetch, so flipping the
+    // cap afterwards left the control reading OFF for as long as the network
+    // took — a switch that does not respond to being pressed. The accessibility
+    // gate caught it: one press, and aria-checked had not moved when it looked.
+    //
+    // `started` is set inside startSensors and guards re-entry, so reading it
+    // here for the label is not enough; syncPower is called again after, which
+    // is what corrects the cap if starting actually failed.
+    const starting = startSensors();
     syncPower();
     announcer.say('Panel on.');
+    await starting;
+    syncPower();
   });
 
   /** Everything about the device the report needs. Gathered here because it is

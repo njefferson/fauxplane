@@ -121,7 +121,7 @@ export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slo
   return best;
 }
 
-export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, trail = [] }) {
+export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, trail = [] }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
   const r = Math.min(w, h) / 2 - 4;
@@ -181,7 +181,15 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   ctx.moveTo(cx, cy - s);
   ctx.lineTo(cx, cy + s);
   ctx.stroke();
-  text(ctx, fromFix ? 'YOU' : 'HOME', cx, cy + s * 2.6, { size: ringLabel * 0.9, weight: 700, colour: tokens['text-3'] });
+  // THE CENTRE SAYS WHAT IT IS. Three states, not two: this device, the home
+  // reference before a fix, and — while following — the aircraft the whole panel
+  // has become. Labelling a followed aircraft "YOU" was the scope agreeing with
+  // the rest of the panel by accident rather than saying so.
+  text(ctx, centreLabel ?? (fromFix ? 'YOU' : 'HOME'), cx, cy + s * 2.6, {
+    size: ringLabel * 0.9,
+    weight: 700,
+    colour: tokens['text-3'],
+  });
 
   // --- the aircraft --------------------------------------------------------
   // THE OBSERVED PATH of the followed aircraft, drawn before the symbols so it

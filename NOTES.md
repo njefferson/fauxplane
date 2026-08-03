@@ -2206,6 +2206,62 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.14.0 — the scope follows the aircraft, 2026-08-03
+
+**ANSWERED AT LAST: the crew readouts are real.** Noah's report, following
+UAL1902 (N17254, a 737 MAX 8):
+
+    nav.selectedAltitude   LIVE   32992  ft
+    nav.selectedHeading    LIVE   35.16  deg
+    nav.crewQnh            LIVE   1014   hPa
+
+The autopilot readout added in 1.11.0 was written entirely from adsb.lol's
+published field names, with no real response ever observed, and was carried as
+an explicit "might be zeroes across the board, and if so I pull it". It is not.
+A real aircraft broadcast its MCP altitude, its selected heading and the
+altimeter setting its crew was flying to. §7f's diagnostic-as-test is what
+settled it, on his device, in one paste.
+
+**And the bug he found in the same breath.** *"Following a flight doesn't center
+it in the radar like I imagine it should?"* — with a screenshot of the scope
+centred on Cameron Park, the followed 737 circled near the rim, captioned "56
+aircraft within 40 nm of this device".
+
+He is right, and the inconsistency is total: the horizon, the tapes, the
+altitude and the speed had ALL switched to that aircraft. The scope was the only
+instrument still showing the desk, which is the panel showing two aircraft at
+once — the exact failure FOLLOW exists to avoid, and which its own comments say
+it avoids.
+
+**It used to reach the right answer by ACCIDENT.** FOLLOW overwrites
+`position.lat`/`position.lon`, and `radarCentre` read those fields — so the
+centre drifted onto the aircraft on the next successful nearby fetch. Emergent,
+never decided. And it failed exactly when the feed was rate limited, because the
+centre is only recomputed on a fetch that SUCCEEDS. `radarCentre(fields,
+followed)` now takes the aircraft explicitly, so the decision holds when no
+request has landed for a minute.
+
+**The centre NAMES itself now**, in three states rather than two: this device,
+the home reference before a fix, and the followed aircraft. "Within 40 nm of
+this device" was a false sentence being printed while the scope pointed at a 737
+over the Sierra, and the label under the centre mark said YOU.
+
+**A followed aircraft with no position must not hijack the centre** — a follow
+that has not been heard yet has null lat/lon, and centring on that would put the
+scope at the equator with every aircraft off the edge. Tested.
+
+**The accessibility gate caught a real one in the same pass.** `startSensors`
+awaits a permission prompt and then the first weather fetch, and the switch was
+being redrawn AFTER all of it — so PWR read OFF for as long as the network took.
+A switch that does not respond to being pressed. It flips synchronously now and
+re-syncs afterwards in case starting actually failed.
+
+**What the rate limiting is now costing, stated plainly:** with the feed
+refusing us, a followed aircraft stops updating and its instruments age to
+crossed-out. The panel keeps its last real position rather than inventing one,
+which is correct — but being turned away breaks FOLLOW as well as the radar, and
+that raises the priority of the source work in the inventory above.
+
 ## Data sources — the standing inventory, 2026-08-03
 
 Noah: *"If there are other sources, I always want to know about them to know if

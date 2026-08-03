@@ -691,3 +691,53 @@ test('an ordinary climb is nowhere near the absurd threshold', () => {
   // own 6000 fpm full scale are both far inside it.
   assert.ok(VSI_ABSURD_FPM > 6000 * 3, `the bound is ${VSI_ABSURD_FPM}, too close to the instrument's own full scale`);
 });
+
+/**
+ * FOLLOWING AN AIRCRAFT MOVES THE SCOPE CENTRE TO IT.
+ *
+ * Noah: "Following a flight doesn't center it in the radar like I imagine it
+ * should?" — with a screenshot showing the scope centred on his desk, the
+ * followed 737 circled near the edge, and the caption "56 aircraft within 40 nm
+ * of this device". Every other instrument had already switched to that
+ * aircraft; the scope was the last thing still showing Cameron Park.
+ *
+ * It used to arrive at the right answer by ACCIDENT — FOLLOW overwrites
+ * position.lat/lon, so a centre read from those fields drifted to the aircraft
+ * on the next successful fetch. Emergent, not decided, and it failed exactly
+ * when the feed was rate limited, because the centre is only recomputed on a
+ * fetch that succeeds.
+ */
+test('RADAR: the centre follows the aircraft, and says so', () => {
+  const followed = { hex: 'a123bf', callsign: 'UAL1902', lat: 38.23, lon: -121.55 };
+  const deviceFields = {
+    'position.lat': R(38.68, 'deg'),
+    'position.lon': R(-121.0, 'deg'),
+  };
+
+  const onDevice = radarCentre(deviceFields);
+  assert.equal(onDevice.followed, false);
+  assert.equal(onDevice.centredOn, 'this device');
+
+  const onAircraft = radarCentre(deviceFields, followed);
+  assert.equal(onAircraft.lat, 38.23, 'the centre did not move to the followed aircraft');
+  assert.equal(onAircraft.lon, -121.55);
+  assert.equal(onAircraft.followed, true);
+  assert.equal(onAircraft.centredOn, 'UAL1902', 'the scope must name what it is centred on');
+  // "within 40 nm of this device" is a FALSE sentence when centred on a 737.
+  assert.notEqual(onAircraft.centredOn, 'this device');
+});
+
+test('RADAR: a followed aircraft with no position does NOT hijack the centre', () => {
+  // A follow that has not yet been heard has no lat/lon. Centring on undefined
+  // would put the scope at the equator and draw every aircraft off the edge.
+  const deviceFields = { 'position.lat': R(38.68, 'deg'), 'position.lon': R(-121.0, 'deg') };
+  const c = radarCentre(deviceFields, { hex: 'a123bf', callsign: 'UAL1902', lat: null, lon: null });
+  assert.equal(c.lat, 38.68, 'the centre moved to an aircraft that has no position');
+  assert.equal(c.followed, false);
+});
+
+test('RADAR: with no fix and no follow, the centre is the home reference and says so', () => {
+  const c = radarCentre({});
+  assert.equal(c.fromFix, false);
+  assert.equal(c.centredOn, 'the home reference');
+});

@@ -29,6 +29,19 @@
  */
 export const RELEASES = [
   {
+    version: '1.14.0',
+    date: '2026-08-03',
+    headline: 'Following a flight now centres the radar on it — and the crew readouts are real.',
+    changed: [
+      'Follow an aircraft and the scope centres on THAT aircraft, not on your desk. Every other instrument had already switched to it; the radar was the last thing still showing where you are standing. The caption names what the centre is, so it no longer says "within 40 nm of this device" while pointing at a 737 over the Sierra.',
+      'Confirmed working from your own device: a 737 MAX broadcast its selected altitude (32,992 ft), its selected heading and the altimeter setting its crew was flying to. Those three readouts are real — they were built from published field names without a single real response ever having been seen, and now they have been.',
+      'The PWR switch responds the instant it is pressed instead of waiting for the first weather fetch to finish.',
+    ],
+    broken: [
+      'While the feed is rate limiting us, a followed aircraft stops updating and its instruments age out to crossed-out — the panel keeps its last real position rather than inventing a new one, which is right, but it means being turned away breaks following as well as the radar.',
+    ],
+  },
+  {
     version: '1.13.3',
     date: '2026-08-03',
     headline: 'When the aircraft feed turns us away, the panel now says for how long.',

@@ -206,13 +206,49 @@ export function appendTrail(trail, point, { maxPoints = 240, maxAgeMs = 45 * 60_
   return next.length > maxPoints ? next.slice(next.length - maxPoints) : next;
 }
 
-export function radarCentre(fields) {
+/**
+ * What the scope is centred on.
+ *
+ * FOLLOWING AN AIRCRAFT MOVES THE CENTRE TO IT, EXPLICITLY. Noah: "Following a
+ * flight doesn't center it in the radar like I imagine it should?" — and he is
+ * right, because by then every other instrument has already switched: the
+ * horizon, the tapes, the altitude and the speed are all that aircraft's. The
+ * scope was the last thing still showing the desk, which made the panel show
+ * two aircraft at once — the exact failure FOLLOW was designed to avoid.
+ *
+ * It USED to arrive at the right answer by accident: FOLLOW overwrites
+ * `position.lat`/`position.lon`, so a centre read from those fields drifted to
+ * the aircraft on the next successful fetch. That is emergent, not stated —
+ * and it broke exactly when the traffic feed was rate limited, because the
+ * centre is only recomputed on a fetch. Passing the followed aircraft in makes
+ * it a decision instead of a side effect, and one that holds even when no
+ * request has succeeded for a minute.
+ *
+ * `centredOn` NAMES it, because "56 aircraft within 40 nm of this device" is a
+ * false sentence when the scope is centred on a 737 over the Sierra.
+ */
+export function radarCentre(fields, followed = null) {
+  if (followed && Number.isFinite(followed.lat) && Number.isFinite(followed.lon)) {
+    return {
+      lat: followed.lat,
+      lon: followed.lon,
+      fromFix: false,
+      followed: true,
+      centredOn: followed.callsign ?? followed.hex?.toUpperCase() ?? 'the followed aircraft',
+    };
+  }
   const lat = fields?.['position.lat'];
   const lon = fields?.['position.lon'];
   if (lat && lon && lat.provenance !== 'FAIL' && lon.provenance !== 'FAIL') {
-    return { lat: lat.value, lon: lon.value, fromFix: true };
+    return { lat: lat.value, lon: lon.value, fromFix: true, followed: false, centredOn: 'this device' };
   }
-  return { lat: REGION.home.lat, lon: REGION.home.lon, fromFix: false };
+  return {
+    lat: REGION.home.lat,
+    lon: REGION.home.lon,
+    fromFix: false,
+    followed: false,
+    centredOn: 'the home reference',
+  };
 }
 
 /**
@@ -335,7 +371,10 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
 
     /** The plan view: everything within `rangeNm` of the centre. */
     async refreshNearby(fields, rangeNm) {
-      const centre = radarCentre(fields);
+      // The followed aircraft, if any, decides the centre — so the scope keeps
+      // pointing at it even while the feed is refusing us and no new fix has
+      // arrived for either.
+      const centre = radarCentre(fields, followed);
       // The DISPLAY range, which is what the scope and every count describe.
       const display = clampRange(rangeNm);
       // The FETCH range, always the widest, so all four buttons share one cache

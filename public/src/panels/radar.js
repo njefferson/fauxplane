@@ -330,9 +330,13 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       else {
         // The age of the AIRCRAFT, not of the last attempt. See nearbyAt.
         const age = formatAge(snapshot.t - (result.nearbyAt ?? result.at));
+        // NAME WHAT THE SCOPE IS CENTRED ON. "within 40 nm of this device" is a
+        // false sentence when the centre is a 737 over the Sierra, and it was
+        // being printed in exactly that case.
         status.textContent =
           `${aircraft.length} aircraft within ${result.rangeNm} nm of ` +
-          `${result.centre.fromFix ? 'this device' : 'the home reference'} · updated ${age} ago`;
+          `${result.centre.centredOn ?? (result.centre.fromFix ? 'this device' : 'the home reference')}` +
+          ` · updated ${age} ago`;
       }
 
       // CREDIT WHOEVER ACTUALLY ANSWERED. The href used to be hardcoded to
@@ -376,6 +380,8 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         rangeNm,
         followedHex: traffic.followed?.hex ?? null,
         fromFix: !!result?.centre?.fromFix,
+        // While following, the centre IS the aircraft — say so on the scope.
+        centreLabel: result?.centre?.followed ? (result.centre.centredOn ?? 'FOLLOWED').slice(0, 10) : null,
         trail: traffic.trail,
       });
 
