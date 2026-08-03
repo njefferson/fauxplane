@@ -213,7 +213,8 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       if (!result) status.textContent = 'Waiting for the first sweep.';
       else if (!result.ok) status.textContent = `No traffic: ${result.reason}`;
       else {
-        const age = formatAge(snapshot.t - result.at);
+        // The age of the AIRCRAFT, not of the last attempt. See nearbyAt.
+        const age = formatAge(snapshot.t - (result.nearbyAt ?? result.at));
         status.textContent =
           `${aircraft.length} aircraft within ${result.rangeNm} nm of ` +
           `${result.centre.fromFix ? 'this device' : 'the home reference'} · updated ${age} ago`;

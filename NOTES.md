@@ -68,6 +68,57 @@ items.
 
 ---
 
+## 1.4.3 — a failed refresh is not an empty sky
+
+Noah: *"The radar loses everything when you change range."*
+
+One line: `nearby = result.ok ? withRangeAndBearing(...) : []`. **Any** failed
+refresh wiped every aircraft off the plan view.
+
+Changing range is the reliable way to trigger it, which is why it showed up
+there rather than at random. Each range is a DIFFERENT cache key upstream, so
+tapping through them issues real requests rather than being served by the 8 s
+edge cache — and the providers publish a 1 req/s limit. One rate-limited reply
+emptied the display.
+
+**And the reader believes it.** A blank plan view does not read as "the refresh
+failed", it reads as "there is nothing up there" — which is the one lie a radar
+page must never tell. `sw.js` has a comment refusing to invent an empty sky for
+exactly this reason, and this path was doing it anyway, three files away.
+
+The aircraft already on the display are real observations that did not stop
+being true because the NEXT request failed. They stay, and the failure is
+reported beside them, which is the contract every other field in this app
+already keeps.
+
+### The second half, which would have been a worse bug
+
+`lastResult.at` is stamped on every attempt including a failed one, and the
+display age was reading it. Keeping the aircraft without fixing that would have
+had them claim to be **freshly updated** the moment a refresh failed — stale
+data wearing a new timestamp, which is worse than blanking them, because
+blanking is at least visibly wrong. The age now comes from `nearbyAt`, stamped
+only when the aircraft actually changed.
+
+### The test drove a seam that does not exist
+
+The first version stubbed a `fetchJson` option the source has never had, so it
+fell through to the real `fetch`, returned nothing, and failed — for a correct
+reason and for none of the reasons it was about. It drives `fetchImpl` now, the
+same seam the browser uses.
+
+**Third time this session a test has been caught testing something other than
+its claim.** The pattern is always the same: the test was written from what the
+code ought to look like rather than from what it is.
+
+### Verified
+
+**202 unit tests, 31/31 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+---
+
 ## 1.4.2 — the phone header stops eating the panel
 
 On a 402 px iPhone the five tabs wrapped to TWO rows and the brightness control

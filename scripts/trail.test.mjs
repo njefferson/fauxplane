@@ -68,3 +68,76 @@ test('TRAIL: nothing is interpolated between observations', () => {
   t = appendTrail(t, p(39.0, -121.0, 600_000)); // ten minutes later, 60 nm on
   assert.equal(t.length, 2, 'exactly what was heard, and nothing in between');
 });
+
+/* ------------------------------------------------- a failed refresh is not an empty sky */
+
+import { createTrafficSource } from '../public/src/data/traffic.js';
+
+/**
+ * A source whose /api/traffic answers are scripted.
+ *
+ * Driven through `fetchImpl` — the SAME seam the browser uses — rather than
+ * through a private hook. The first version of this stubbed a `fetchJson`
+ * option that does not exist, so the source fell through to the real `fetch`
+ * and returned nothing; the test failed for the right reason and for none of
+ * the reasons it was about.
+ */
+const sourceWith = (replies) => {
+  let i = 0;
+  let t = 1000;
+  return createTrafficSource({
+    state: { write() {}, fail() {} },
+    clock: () => (t += 1000),
+    fetchImpl: async () => {
+      const body = replies[Math.min(i++, replies.length - 1)];
+      return {
+        ok: body.ok !== false,
+        status: body.ok === false ? 502 : 200,
+        json: async () => body,
+      };
+    },
+  });
+};
+
+const FIELDS = {
+  'position.lat': { provenance: 'LIVE', value: 38.69, at: 0 },
+  'position.lon': { provenance: 'LIVE', value: -120.97, at: 0 },
+};
+const TWO = { ok: true, aircraft: [
+  { hex: 'a1', lat: 38.8, lon: -121.0, callsign: 'UAL1' },
+  { hex: 'b2', lat: 38.6, lon: -120.9, callsign: 'DAL2' },
+] };
+
+test('RADAR: a FAILED refresh keeps the aircraft already on the plan view', () => {
+  // Noah: "The radar loses everything when you change range." Each range is a
+  // different cache key upstream, so tapping through them issues real requests
+  // — and one rate-limited reply used to wipe every aircraft off the screen.
+  // The reader sees "no traffic" and believes it, which is the one lie a radar
+  // page must never tell.
+  const traffic = sourceWith([TWO, { ok: false, reason: 'rate limited' }]);
+  return traffic
+    .refreshNearby(FIELDS, 40)
+    .then(() => {
+      assert.equal(traffic.nearby.length, 2, 'the first fetch must land');
+      return traffic.refreshNearby(FIELDS, 80);
+    })
+    .then(() => {
+      assert.equal(traffic.nearby.length, 2, 'a failed refresh emptied the sky');
+    });
+});
+
+test('RADAR: kept aircraft do NOT claim to be freshly updated', () => {
+  // Stale data wearing a new timestamp is a worse lie than blanking it. The
+  // display age comes from when the aircraft last CHANGED, not from the last
+  // attempt to change them.
+  const traffic = sourceWith([TWO, { ok: false, reason: 'rate limited' }]);
+  return traffic
+    .refreshNearby(FIELDS, 40)
+    .then(() => traffic.last.nearbyAt)
+    .then((first) =>
+      traffic.refreshNearby(FIELDS, 80).then((after) => {
+        assert.equal(after.nearbyAt, first, 'the age was reset by a failed fetch');
+        assert.ok(after.at > first, 'while the ATTEMPT time did move on');
+      }),
+    );
+});

@@ -369,6 +369,18 @@ const PLANTS = [
     expect: /settling made no difference/,
   },
   {
+    // Blanking the plan view on a failed refresh tells the reader the sky is
+    // empty. sw.js refuses to invent an empty sky for exactly this reason and
+    // this path was doing it anyway.
+    name: 'radar: a failed refresh empties the plan view again',
+    check: 'a failed refresh keeps the aircraft already on the plan view',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: '      if (result.ok) {\n        nearby = withRangeAndBearing(result.aircraft ?? [], centre);',
+    replace: '      nearby = result.ok ? withRangeAndBearing(result.aircraft ?? [], centre) : [];\n      if (result.ok) {',
+    expect: /failed refresh emptied the sky/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

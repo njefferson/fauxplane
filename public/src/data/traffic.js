@@ -130,6 +130,8 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
   const doFetch = (...args) => (fetchImpl ?? fetch)(...args);
 
   let nearby = [];
+  /** When `nearby` last actually CHANGED — a successful fetch. Null until one. */
+  let nearbyAt = null;
   let lastResult = null;
   let followKey = null; // { by: 'callsign' | 'hex', value }
   let followed = null; // the last aircraft object seen for followKey
@@ -208,7 +210,27 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       const dist = clampRange(rangeNm);
       const result = await query(`lat=${centre.lat.toFixed(4)}&lon=${centre.lon.toFixed(4)}&dist=${dist}`);
       lastResult = { ...result, centre, rangeNm: dist, at: clock() };
-      nearby = result.ok ? withRangeAndBearing(result.aircraft ?? [], centre) : [];
+      // A FAILED REFRESH IS NOT AN EMPTY SKY, and this cleared the plan view on
+      // any failure at all. Changing range is the way to hit it: each range is a
+      // different cache key upstream, so tapping through them issues real
+      // requests, and one rate-limited reply wiped every aircraft off the
+      // screen. The reader sees "no traffic" and believes it.
+      //
+      // The aircraft already on the display are real observations that did not
+      // stop being true because the NEXT request failed. They stay, they carry
+      // their own age, and the failure is reported beside them — the same
+      // contract every other field in this app keeps. `sw.js` refuses to invent
+      // an empty sky for exactly this reason and this path was doing it anyway.
+      if (result.ok) {
+        nearby = withRangeAndBearing(result.aircraft ?? [], centre);
+        // STAMPED WHEN THE DATA ARRIVED, not when the attempt was made. `at`
+        // above marks the attempt; using it for the display age would let kept
+        // aircraft claim to be fresh the moment a refresh failed, which is a
+        // worse lie than blanking them — it is stale data wearing a new
+        // timestamp.
+        nearbyAt = clock();
+      }
+      lastResult.nearbyAt = nearbyAt;
       return lastResult;
     },
 
