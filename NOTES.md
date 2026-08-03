@@ -68,6 +68,67 @@ items.
 
 ---
 
+## 1.4.1 — the horizon settles, and the G-meter says what it is
+
+Two things off one photograph.
+
+### "What is the white gauge in the upper left?"
+
+The load-factor meter, reading 1.04 g. **The question is the defect.** It was
+labelled `G` — one letter, at the smallest size the palette has, in `text-3`,
+the dimmest token available. That is a label only to somebody who already knows
+what it says, and the reader this app is built for is explicitly NOT a pilot.
+It reads **LOAD G** now, a size up, in `text-2`.
+
+An instrument nobody can name is not an instrument, it is decoration.
+
+### "Settle the horizon jitter"
+
+The static gain applies **a quarter of every accelerometer sample**, sixty times
+a second, for as long as the panel is on. That gain is right for ALIGNING — a
+device set down levels in a fraction of a second, which is what it was added for
+— and wrong for HOLDING, because the accelerometer is exact at rest and noisy at
+rest, and both of those are true at once.
+
+Alignment is a transient. Once it is done there is only slow drift left to
+track, so the gain now drops to a tenth once `aligned` — about a 280 ms time
+constant instead of 67 ms, still four times quicker than the in-motion gain, and
+quick enough that a shifted mount is followed within a second. The fast gain
+still applies on the way there, which a test pins separately.
+
+### The test that looked like evidence and was not
+
+The first version asserted an ABSOLUTE bound: the horizon must wander less than
+0.35° on synthetic noise. It passed. **It also passed with the fix removed** —
+the synthetic noise never crossed that bound either way, so the number was real
+and the test was worthless. The plant caught it, which is the entire reason the
+plant exists.
+
+Rewritten to compare the filter AGAINST ITSELF: two filters differing only in
+`settledAlpha`, fed identical samples, asserting the settled one wanders less.
+That isolates exactly the thing that changed and cannot pass when the change is
+reverted. Planted and watched fail.
+
+**Two tests in two releases have now been caught measuring something adjacent to
+their claim.** A threshold nobody has seen crossed is the same failure as a gate
+nobody has seen go red.
+
+### And the harness fix earned itself back immediately
+
+The plant's first failure said `red, but not about this: not ok 146 — JITTER:
+an ALIGNED, still filter...` — which named the real failing test, in the same
+run where the old code would have quoted a passing one. The `expect` pattern was
+simply stale after the rewrite. That is a five-second diagnosis instead of a
+wrong turn.
+
+### Verified
+
+**200 unit tests, 30/30 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+---
+
 ## The plant harness named an innocent check, twice — fixed (scripts only)
 
 Flagged in 1.3.1 as the most valuable thing outstanding, because it weakened

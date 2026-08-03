@@ -115,8 +115,15 @@ export function drawGMeter(ctx, { x, y, w, h, tokens, field, peak }) {
   roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 6);
   ctx.stroke();
 
-  const labelSize = Math.max(9, Math.min(12, w * 0.13));
-  text(ctx, 'G', x + w / 2, y + labelSize, { size: labelSize, weight: 700, colour: tokens['text-3'] });
+  // "LOAD G", not "G", and not in the dimmest token available.
+  //
+  // Noah, looking at this gauge on his own panel: "What is the white gauge in
+  // the upper left?" A single letter at the smallest size the palette has, in
+  // `text-3`, is a label only to somebody who already knows what it says. An
+  // instrument nobody can name is not an instrument, it is decoration — and the
+  // reader this app is built for is explicitly NOT a pilot.
+  const labelSize = Math.max(10, Math.min(13, w * 0.15));
+  text(ctx, 'LOAD G', x + w / 2, y + labelSize, { size: labelSize, weight: 700, colour: tokens['text-2'] });
 
   // -1 g to +4 g across a half circle.
   const lo = -1;

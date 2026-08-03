@@ -964,3 +964,64 @@ test('LEVELLING: a device that has never been still offers no reference to fake'
   }
   assert.equal(fusion.lastStillAttitude, null);
 });
+
+test('JITTER: an ALIGNED, still filter applies far less of each noisy sample', () => {
+  // Noah: "Settle the horizon jitter." The static gain is a deliberately fast
+  // pull toward gravity so a device set down levels in a fraction of a second —
+  // but keeping it afterwards applies a quarter of EVERY accelerometer sample,
+  // sixty times a second, which is a horizon that visibly trembles on a desk.
+  // The accelerometer is exact at rest and noisy at rest; both are true.
+  //
+  // COMPARED AGAINST ITSELF, not against a threshold. An absolute bound was the
+  // first version of this test and it passed with the fix REMOVED — the
+  // synthetic noise simply never crossed it either way, so the test looked like
+  // evidence and was not. Two filters differing only in `settledAlpha`, fed
+  // identical samples, isolate exactly the thing that changed.
+  const wander = (cfg) => {
+    const fusion = createFusion(cfg);
+    const level = { x: 0, y: G0, z: 0 };
+    let t = 0;
+    for (let i = 0; i < 200; i += 1) {
+      t += 20;
+      fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+      fusion.updateAccel(level, 0, t);
+    }
+    assert.equal(fusion.read(t).converged, true, 'must be aligned before the comparison means anything');
+    let worst = 0;
+    for (let i = 0; i < 400; i += 1) {
+      t += 20;
+      const n = Math.sin(i * 2.3) * 0.12;
+      const m = Math.cos(i * 1.7) * 0.12;
+      fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, level, t);
+      fusion.updateAccel({ x: n, y: G0, z: m }, 0, t);
+      const r = fusion.read(t);
+      worst = Math.max(worst, Math.abs(r.pitch ?? 0), Math.abs(r.roll ?? 0));
+    }
+    return worst;
+  };
+
+  const settled = wander({});
+  const alignmentGain = wander({ settledAlpha: DEFAULTS.staticAlpha });
+  assert.ok(
+    settled < alignmentGain * 0.7,
+    `settling made no difference: ${settled.toFixed(3)}° with it, ${alignmentGain.toFixed(3)}° on the alignment gain`,
+  );
+});
+
+test('JITTER: settling does NOT stop it aligning quickly in the first place', () => {
+  // The gentle gain must apply only AFTER alignment. If it applied before, a
+  // device set down would take seconds to level, which is the defect the fast
+  // static gain was added to fix in the first place.
+  const fusion = createFusion();
+  const tilted = upVectorScreenFrame(20, 0);
+  const g = { x: tilted.x * G0, y: tilted.y * G0, z: tilted.z * G0 };
+  let t = 0;
+  for (let i = 0; i < 40; i += 1) {
+    t += 20;
+    fusion.updateGyro({ alpha: 0, beta: 0, gamma: 0 }, g, t);
+    fusion.updateAccel(g, 0, t);
+  }
+  const r = fusion.read(t);
+  assert.ok(r.hasAttitude, 'still no attitude after 800 ms of stillness');
+  assert.ok(Math.abs(r.pitch - 20) < 3, `aligned to ${r.pitch?.toFixed(1)}° instead of 20° in 800 ms`);
+});

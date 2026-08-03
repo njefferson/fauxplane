@@ -357,6 +357,18 @@ const PLANTS = [
     expect: /resolves no better than/,
   },
   {
+    // A horizon that trembles on a desk reads as an instrument that is not
+    // working, whatever the numbers say. The static gain is right for ALIGNING
+    // and wrong for holding.
+    name: 'jitter: the aligned filter goes back to the alignment gain',
+    check: 'an aligned, still horizon does not wander on accelerometer noise',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: '    const gain = still ? (aligned ? 1 - cfg.settledAlpha : 1 - cfg.staticAlpha) : 1 - cfg.alpha;',
+    replace: '    const gain = still ? 1 - cfg.staticAlpha : 1 - cfg.alpha;',
+    expect: /settling made no difference/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

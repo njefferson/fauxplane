@@ -55,6 +55,23 @@ export const DEFAULTS = Object.freeze({
    *  filter is pulled onto it rather than creeping toward it at 2% a sample. */
   staticAlpha: 0.75,
   /**
+   * The gain once the filter is ALIGNED and still, as distinct from the gain it
+   * uses getting there.
+   *
+   * `staticAlpha` is a deliberately fast pull toward gravity so a device set
+   * down levels in a fraction of a second. Keeping that gain afterwards applies
+   * a QUARTER of every accelerometer sample, at sixty samples a second, for as
+   * long as the panel is on — which is a horizon that visibly trembles while
+   * sitting on a desk. The accelerometer is exact at rest and NOISY at rest;
+   * those are not in conflict.
+   *
+   * Alignment is a transient. Once it is done there is only slow drift left to
+   * track, so the gain drops to a tenth: about a 280 ms time constant instead of
+   * 67 ms, still four times quicker than the in-motion gain, and quick enough
+   * that a mount which shifts is followed within a second.
+   */
+  settledAlpha: 0.94,
+  /**
    * INTEGRAL GAIN ON THE GYRO ZERO-OFFSET, per accepted sample.
    *
    * This is the I of a PI complementary filter (Mahony). The accelerometer
@@ -680,7 +697,8 @@ export function createFusion(options = {}) {
     // moving; with nothing moving there is no bump to reject and nothing for the
     // gyro to contribute, so creeping toward the answer at two percent a sample
     // is just a slow horizon for no benefit.
-    const gain = still ? 1 - cfg.staticAlpha : 1 - cfg.alpha;
+    // Fast to ALIGN, gentle once aligned, slow while moving. See settledAlpha.
+    const gain = still ? (aligned ? 1 - cfg.settledAlpha : 1 - cfg.staticAlpha) : 1 - cfg.alpha;
     pitch += gain * dPitch;
     roll = wrap180(roll + gain * dRoll);
 
