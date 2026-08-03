@@ -395,6 +395,52 @@ body {
  *     top of the horizon. Both are `flex: 0 0 auto` now, so each is as tall as
  *     its own content and the column simply scrolls.
  */
+.gate-first {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.gate-first-h {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+.gate-pages {
+  margin: 0 0 0.7rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.7rem;
+  align-items: baseline;
+}
+
+.gate-pages dt {
+  font-weight: 700;
+  color: var(--text-2);
+  letter-spacing: 0.06em;
+}
+
+.gate-pages dd {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+
+.gate-install {
+  margin-top: 0.9rem;
+}
+
+/* Already installed: the instructions are noise, and a media query knows it
+   without asking the browser anything. */
+@media (display-mode: standalone) {
+  .gate-install {
+    display: none;
+  }
+}
+
 /*
  * A PHONE HEADER THAT DOES NOT EAT THE PANEL.
  *

@@ -13,7 +13,7 @@
  * it.
  */
 
-export const VERSION = '1.4.3';
+export const VERSION = '1.5.0';
 
 /** Cache name for the service worker. Bumping VERSION invalidates the shell. */
 export const CACHE_NAME = `fauxplane-${VERSION}`;

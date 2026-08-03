@@ -381,6 +381,22 @@ const PLANTS = [
     expect: /failed refresh emptied the sky/,
   },
   {
+    // The first surface a new reader sees. If the orientation is dropped, the
+    // gate still asks for sensor permissions from somebody who has not been
+    // told what the thing is.
+    name: 'first run: the new-reader orientation is dropped from the gate',
+    check: 'the power gate tells a first-time reader what this is and how to install it',
+    file: 'public/index.html',
+    // Anchored on the page LIST, not on a heading: two headings share
+    // `.gate-first-h`, so removing one leaves the selector matching the other
+    // and the gate stays green. A registry row guards a class only while that
+    // class has one reason to exist — which is worth knowing about every row
+    // in there, not just this one.
+    find: '<dl class="gate-pages">',
+    replace: '<dl class="gate-pages-gone">',
+    expect: /matched nothing: \.gate-pages dt/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

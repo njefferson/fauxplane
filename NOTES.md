@@ -68,6 +68,55 @@ items.
 
 ---
 
+## 1.5.0 — first-time instructions, on the first surface a reader sees
+
+Noah asked for this in 1.4.2 and it was scoped rather than started. Started now.
+
+It goes on the PANEL POWER gate, which is already the first thing a new reader
+meets and already explains why it wants sensors — rather than behind a sixth tab
+nobody would open before using the thing. It says what the panel is (a glass
+cockpit for people who love aeroplanes, not a simulator, never for navigation),
+what each of the five pages does in one line, and what to do first: clamp it,
+level the horizon, open RADAR.
+
+### The install problem was smaller than I made it
+
+1.4.2 scoped this as needing per-platform capability detection, because iOS
+fires no `beforeinstallprompt` and Android does. **That was over-thinking it.**
+Naming both platforms — Share then Add to Home Screen; the browser menu then
+Install app — is correct for every reader, cannot go stale the way a capability
+sniff can, and needs no script at all on a page whose CSP forbids inline script
+anyway.
+
+The one piece of cleverness earns its place: `@media (display-mode: standalone)`
+hides the install section once the app HAS been installed. That media query is
+true exactly when the page was launched from a home screen, which is the only
+condition that matters, and it asks the browser nothing.
+
+**A scoping note that was wrong in the direction of doing less work.** Worth
+recording because the usual failure is the opposite.
+
+### The plant found something about the registry itself
+
+The first anchor replaced the "First time here" heading and the gate stayed
+GREEN — because `.gate-first-h` is also the class on the install heading, so the
+selector still matched something. **A contrast registry row guards a class only
+while that class has ONE reason to exist**, and that is true of every row in
+there, not only this one. Re-anchored on the page list, which is unique, and
+caught.
+
+The registry rows also had to move from `REGISTRY` to `GATE_REGISTRY`: the
+per-page loop runs AFTER the gate is dismissed, so a gate selector checked there
+matches nothing and fails — correctly, and loudly, which is how it was found.
+
+### Verified
+
+**202 unit tests, 32/32 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+---
+
 ## 1.4.3 — a failed refresh is not an empty sky
 
 Noah: *"The radar loses everything when you change range."*

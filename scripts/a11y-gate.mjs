@@ -201,6 +201,9 @@ const REGISTRY = [
 
 /** Registry for the PANEL POWER surface, which is only present before dismissal. */
 const GATE_REGISTRY = [
+  { selector: '.gate-first-h', label: 'first-run heading', min: 4.6 },
+  { selector: '.gate-pages dt', label: 'first-run page name', min: 4.6 },
+  { selector: '.gate-pages dd', label: 'first-run page description', min: 4.6 },
   { selector: '.gate-title', label: 'gate title', min: 4.6 },
   { selector: '.gate-body', label: 'gate body', min: 4.6 },
   { selector: '.gate-small', label: 'gate small print', min: 4.6 },
