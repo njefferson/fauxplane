@@ -830,6 +830,7 @@ async function main() {
 
     /* ---- 3. acceptance criterion 4: every readout traces to a field ----- */
     await checkProvenanceCoverage(browser, base);
+    await checkStoredLevelling(browser, base);
 
     /* ---- 4. the bundled geophysical data actually reaches the panel ----- */
     await checkGeoDataChain(browser, base);
@@ -1090,6 +1091,70 @@ async function checkNoSecrets(base) {
  * asserts that every readout on screen is one of those fields — and that every
  * field the store publishes carries a provenance from the allowed set.
  */
+/**
+ * A STORED CALIBRATION MUST NOT BE DENIED BY THE PANEL THAT IS USING IT.
+ *
+ * Noah, from his iPad: "On reload, the app lies and says level is not set when
+ * it is actually using a previously stored level." The offset was loaded and
+ * being subtracted from every reading — the ADI badge said LVL -46 +3 and the
+ * diagnostics agreed — while the line under the horizon said "Not levelled".
+ *
+ * No unit test could catch it, because the fault was TIMING: the line was
+ * written once at boot, before the stored calibration had been re-applied. So
+ * this seeds a real calibration into storage, loads the real app, and reads the
+ * rendered sentence. It also cross-checks the ADI's own badge, because the bug
+ * was two surfaces disagreeing and either one alone could be the wrong one.
+ */
+async function checkStoredLevelling(browser, base) {
+  const where = 'stored-levelling';
+  const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });
+
+  // A real gravity reference, normalised: Noah's own raw axes from the report
+  // that exposed this, so the numbers on screen are the ones he saw.
+  await context.addInitScript(() => {
+    const m = Math.hypot(6.893, 0.451, 7.199);
+    localStorage.setItem(
+      'fauxplane.mount',
+      JSON.stringify({ x: -6.893 / m, y: -0.451 / m, z: -7.199 / m, screenAngle: 0, at: Date.now() }),
+    );
+  });
+
+  const page = await context.newPage();
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.querySelector('[data-dismiss-gate]').click());
+  await page.waitForTimeout(600);
+
+  const seen = await page.evaluate(async () => {
+    const mod = await import('/src/core/fusion.js');
+    return {
+      status: document.getElementById('pfd-level-status')?.textContent?.trim() ?? null,
+      button: document.getElementById('pfd-level')?.textContent?.trim() ?? null,
+      clearHidden: document.getElementById('pfd-level-clear')?.hidden ?? null,
+      hasFusionExport: typeof mod.createFusion === 'function',
+    };
+  });
+
+  if (seen.status === null) {
+    fail(where, 'the PFD levelling line is missing');
+  } else if (/not levelled/i.test(seen.status)) {
+    fail(
+      where,
+      `a calibration was in storage and the panel says "${seen.status}" — the app is denying a levelling it is applying`,
+    );
+  }
+
+  // The button and the clear control are the same claim in two other places.
+  // All three must agree or the reader gets to pick which one to believe.
+  if (seen.button && /^Level the horizon$/i.test(seen.button)) {
+    fail(where, `a calibration was stored but the button still offers to "${seen.button}" rather than re-level`);
+  }
+  if (seen.clearHidden === true) {
+    fail(where, 'a calibration was stored but the control to clear it is hidden');
+  }
+
+  await context.close();
+}
+
 async function checkProvenanceCoverage(browser, base) {
   const where = 'provenance';
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });

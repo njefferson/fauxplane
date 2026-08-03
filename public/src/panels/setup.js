@@ -239,26 +239,42 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, onCha
     ]),
   );
 
-  function render() {
+  /**
+   * THE ONE DESCRIPTION OF THE LEVELLING STATE, computed from the live offset.
+   *
+   * Exported because the PFD needs the same sentence and wrote its own instead
+   * — a second implementation that only ran at boot and only handled the
+   * not-levelled case, so a stored calibration loaded after that moment left
+   * the PFD saying "Not levelled" while the ADI badge, the SETUP page and the
+   * diagnostics all correctly reported it as applied. The panel contradicted
+   * itself on its most-read surface. One computation, three readers.
+   */
+  function describeLevelling() {
     const offset = fusion.mountOffset;
     if (!offset) {
-      current.textContent = 'Not levelled — the horizon is showing the device’s own attitude.';
-      current.dataset.state = 'off';
-      clearBtn.disabled = true;
-      return;
+      return { text: 'Not levelled — the horizon is showing the device’s own attitude.', state: 'off' };
     }
-    clearBtn.disabled = false;
     const stale = offset.capturedAtScreenAngle !== screenAngle();
-    current.dataset.state = stale ? 'stale' : 'on';
-    current.textContent = stale
-      ? `Levelled at ${fmt(offset.pitchDeg)} pitch, ${fmt(offset.rollDeg)} roll — but the screen has rotated since, so it no longer applies. Rotate back, or level it again here.`
-      : `Levelled: cradle ${fmt(offset.pitchDeg)} pitch, ${fmt(offset.rollDeg)} roll.`;
+    return stale
+      ? {
+          text: `Levelled at ${fmt(offset.pitchDeg)} pitch, ${fmt(offset.rollDeg)} roll — but the screen has rotated since, so it no longer applies. Rotate back, or level it again here.`,
+          state: 'stale',
+        }
+      : { text: `Levelled: cradle ${fmt(offset.pitchDeg)} pitch, ${fmt(offset.rollDeg)} roll.`, state: 'on' };
+  }
+
+  function render() {
+    const d = describeLevelling();
+    current.textContent = d.text;
+    current.dataset.state = d.state;
+    clearBtn.disabled = d.state === 'off';
   }
 
   render();
 
   return {
     render,
+    describeLevelling,
     /**
      * The two actions, exposed so the PFD can carry them.
      *

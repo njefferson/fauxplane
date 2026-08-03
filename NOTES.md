@@ -2206,6 +2206,78 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.11.0 — the panel denied a levelling it was applying, 2026-08-03
+
+Noah: *"On reload, the app lies and says level is not set when it is actually
+using a previously stored level."* His diagnostics and the ADI badge both said
+`cradle -46.0 deg pitch, 3.2 deg roll — being subtracted from every reading`
+and `LVL -46 +3`. The line under the horizon said *"Not levelled — the horizon
+shows the device's own angle."* Three surfaces, one truth, one of them wrong.
+
+**TWO FAULTS, and the second is the one worth carrying forward.**
+
+The first is timing: a stored calibration is re-applied AFTER boot, and the PFD
+wrote its line once, at boot, before the offset existed. Nothing ever looked
+again. It is re-derived on every publish now, which also means rotating the
+device updates the sentence — a calibration captured at another screen angle no
+longer applies, and that is a third state the old code could not express.
+
+The second is the shape of the writer. It wrote text ONLY in the not-levelled
+branch:
+
+    if (!applied && !levelStatus.dataset.tone) { levelStatus.textContent = '...' }
+
+**A branch that produces nothing in one state leaves the previous state's
+sentence on screen.** That is how a panel ends up asserting something it knows
+to be false — not by computing a wrong answer, but by declining to compute one
+and inheriting an old one. Every state writes its own sentence now, and a test
+asserts all three are distinct and non-empty.
+
+**One description, three readers.** SETUP already computed this correctly and
+recomputed it every render; the PFD had a second implementation that handled one
+case. `describeLevelling()` is exported from setup.js and both use it. The
+comment on the PFD version literally said *"Mirror setup's own wording rather
+than inventing a second vocabulary"* — mirroring by hand is what drifted.
+
+**Why no unit test caught it, and what does now.** The fault was DOM timing, so
+`levelling-report.test.mjs` covers what is testable — every state produces its
+own sentence, an applied offset never reads as "not levelled", the numbers are
+in the text so it can be reconciled with the badge — and a new accessibility
+check seeds a real calibration into storage, loads the real app, and reads the
+rendered line. It also cross-checks the button label and the clear control,
+because the bug was surfaces disagreeing and any one of them could be the liar.
+
+### What the crew has dialled in
+
+FOLLOW now writes `nav.selectedAltitude`, `nav.selectedHeading` and
+`nav.crewQnh` from Mode S BDS 4,0 — the altitude and heading selected on the
+mode control panel, and the altimeter setting the crew is flying to. Intent
+rather than state, and the closest this panel gets to sitting behind them.
+
+`nav_altitude_fms` is DELIBERATELY NOT a fallback for `nav_altitude_mcp`. They
+are different quantities from different boxes, and substituting one for the
+other is the same error as filling a geometric altitude with a barometric one.
+
+The rows are HIDDEN unless following, because this device has no autopilot to
+read and three permanently-crossed-out rows on the normal panel would be noise
+dressed as instrumentation.
+
+**A false citation found in the same block.** Every followed field's reason
+string said `via adsb.fi`, hardcoded, so a field served by adsb.lol credited the
+wrong provider — the same bug the radar link had, surviving in a reason string
+where no gate looked. Worse, a test PINNED it: it asserted the reason matched
+`/adsb\.fi/` against a string that said adsb.fi unconditionally, and the rig's
+stub never declared a source at all. The rig declares one now, and a second test
+proves the citation follows the response rather than any constant.
+
+**Still unexplained: the power-gate contrast flake, fourth occurrence.** Two
+GATE_REGISTRY rows failed mid-session at 1.13:1 and 1.87:1 and were green on the
+next run with no change to any colour. Earlier occurrences were 1.46:1 and
+1.21:1. Every occurrence is a power-gate surface row, which is the one surface
+whose sampling depends on a modal dialog's geometry — see the top-layer entry
+above. The mechanism is plausible and NOT proven, and it is not being called
+fixed.
+
 ## 1.10.0 — the airframe picker, 2026-08-03
 
 Noah, choosing it over a hardcoded 747 callout: *"instead of heavy-inbound, an

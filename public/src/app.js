@@ -247,29 +247,63 @@ async function boot() {
   const levelClearBtn = $('pfd-level-clear');
   const levelStatus = $('pfd-level-status');
 
-  /** Mirror setup's own wording rather than inventing a second vocabulary. */
+  /**
+   * THE PFD'S LEVELLING LINE, from setup's single description.
+   *
+   * THIS LIED. It wrote the status only in the NOT-levelled branch and ran once
+   * at boot — before a stored calibration had been re-applied. So a reader who
+   * reloaded saw "Not levelled — the horizon shows the device's own angle"
+   * while the offset was being subtracted from every reading, the ADI badge
+   * said LVL −46° +3°, and the diagnostics agreed with the badge. Noah caught
+   * it: "on reload, the app lies and says level is not set when it is actually
+   * using a previously stored level."
+   *
+   * Two faults, and the second is the one that matters. One: a state that
+   * arrives after boot needs the UI to look again, so this is called from the
+   * render loop now rather than once. Two: a branch that only writes text in
+   * ONE state leaves the other state showing whatever was there before — which
+   * is how a panel ends up asserting something it knows to be false. Every
+   * state writes its own sentence.
+   */
+  let levelRefusal = null;
+  let lastLevelKey = null;
   const syncLevelUi = () => {
     const applied = fusion.mountOffset;
     levelClearBtn.hidden = !applied;
     levelBtn.textContent = applied ? 'Re-level the horizon' : 'Level the horizon';
-    if (!applied && !levelStatus.dataset.tone) {
-      levelStatus.textContent = 'Not levelled — the horizon shows the device’s own angle.';
+
+    // Includes the CURRENT screen angle, because rotating the device changes
+    // whether a stored calibration still applies — and therefore the sentence.
+    const key = applied
+      ? `${applied.pitchDeg.toFixed(2)}/${applied.rollDeg.toFixed(2)}/${applied.capturedAtScreenAngle}/${orientation.screenAngle()}`
+      : 'none';
+    if (key !== lastLevelKey) {
+      lastLevelKey = key;
+      // The levelling state moved on, so a refusal from an earlier attempt is
+      // no longer about anything on screen.
+      levelRefusal = null;
     }
+
+    const show = levelRefusal ?? setup.describeLevelling();
+    if (levelStatus.textContent !== show.text) levelStatus.textContent = show.text;
+    levelStatus.dataset.tone = show.tone ?? '';
   };
 
   levelBtn.addEventListener('click', () => {
     const said = setup.capture();
-    // capture() writes its own status onto the SETUP page; repeat the outcome
-    // here so a reader who never opens that page still learns what happened.
-    levelStatus.textContent = setup.lastStatus?.text ?? '';
-    levelStatus.dataset.tone = setup.lastStatus?.tone ?? '';
+    // A REFUSAL is repeated here, so a reader who never opens SETUP still learns
+    // why nothing happened — "hold still", "there is no attitude to level yet".
+    // A SUCCESS needs no message of its own: the standing description becomes
+    // "Levelled: cradle −46° pitch, +3° roll", which says it better and cannot
+    // go stale.
+    const status = setup.lastStatus;
+    levelRefusal = status && status.tone === 'bad' ? { text: status.text, tone: 'bad' } : null;
     syncLevelUi();
     return said;
   });
   levelClearBtn.addEventListener('click', () => {
     setup.clearLevelling();
-    levelStatus.textContent = 'Levelling cleared — the horizon shows the device’s own angle again.';
-    levelStatus.dataset.tone = '';
+    levelRefusal = null;
     syncLevelUi();
   });
   syncLevelUi();
@@ -681,6 +715,12 @@ async function boot() {
 
   // ---- render loop ---------------------------------------------------------
   state.subscribe((snapshot) => {
+    // The levelling line is re-derived every publish. A stored calibration is
+    // re-applied AFTER boot, and the screen can rotate at any time; both change
+    // what the sentence should say, and neither fires an event this file was
+    // listening for. It is cheap — the DOM is only touched when the text
+    // actually differs.
+    if (active === 'pfd') syncLevelUi();
     if (active === 'pfd') pfd.render(snapshot);
     else if (active === 'atis') atis.render(snapshot, metar.last);
     else if (active === 'radar') radar.render(snapshot);

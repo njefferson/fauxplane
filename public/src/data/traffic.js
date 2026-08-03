@@ -45,6 +45,9 @@ export const RADAR_RANGE_NM = [10, 25, 40, 80];
 /** Fields FOLLOW takes ownership of. Listed once, so releasing them on unfollow
  *  cannot drift from claiming them. */
 export const FOLLOW_WRITES = [
+  'nav.selectedAltitude',
+  'nav.selectedHeading',
+  'nav.crewQnh',
   'position.lat',
   'position.lon',
   'position.groundspeed',
@@ -241,6 +244,9 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
   let lastResult = null;
   let followKey = null; // { by: 'callsign' | 'hex', value }
   let followed = null; // the last aircraft object seen for followKey
+  /** The provider that answered the last followed query, for the reason strings.
+   *  Null until one has. */
+  let followedSource = null;
   /** Observed positions of the followed aircraft, oldest first. Cleared with
    *  the follow itself — a trail belonging to a different aircraft is worse
    *  than no trail. */
@@ -423,6 +429,10 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       }
       followed = list[0];
       followError = null;
+      // Which provider answered THIS query. The followed aircraft is fetched
+      // separately from the nearby sweep, so the two can legitimately come from
+      // different providers and the reason strings must name the right one.
+      followedSource = result.source ?? null;
       // The observed path. Appended here, where a fresh broadcast arrives, so
       // it records what was HEARD rather than what was rendered.
       trail = appendTrail(trail, {
@@ -453,7 +463,13 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       }
 
       const at = reportAt;
-      const from = `broadcast by ${a.callsign ?? a.hex} via adsb.fi`;
+      // CREDIT WHOEVER ANSWERED. This said "via adsb.fi" unconditionally, so
+      // every followed field's provenance named a provider that may not have
+      // supplied it — the same false-citation bug the radar page's link had,
+      // surviving in a reason string where no gate was looking. The source
+      // comes from the response now.
+      const via = followedSource ?? lastResult?.source ?? 'the traffic service';
+      const from = `broadcast by ${a.callsign ?? a.hex} via ${via}`;
       const put = (path, value) => {
         if (value === null || value === undefined) return false;
         state.write(path, value, { at, reason: from });
@@ -482,6 +498,20 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       }
       if (!put('vsi.rate', a.verticalRateFpm)) {
         state.fail('vsi.rate', `${a.callsign ?? a.hex} is not broadcasting a vertical rate`);
+      }
+
+      // --- what the CREW has selected ---------------------------------------
+      // Intent rather than state, and the closest thing to sitting behind them.
+      // Most aircraft broadcast none of it; each absence says so by name.
+      const who = a.callsign ?? a.hex;
+      if (!put('nav.selectedAltitude', a.navSelectedAltitudeFt)) {
+        state.fail('nav.selectedAltitude', `${who} is not broadcasting the altitude selected on the autopilot`);
+      }
+      if (!put('nav.selectedHeading', a.navSelectedHeadingDeg)) {
+        state.fail('nav.selectedHeading', `${who} is not broadcasting a selected heading`);
+      }
+      if (!put('nav.crewQnh', a.navQnhHpa)) {
+        state.fail('nav.crewQnh', `${who} is not broadcasting the altimeter setting its crew is using`);
       }
 
       // --- the two derivations ADS-B honestly supports ------------------------

@@ -471,7 +471,7 @@ const AIRCRAFT = (over = {}) => ({
 });
 
 /** A store plus a traffic source whose fetch returns whatever is queued. */
-const followRig = (bodies) => {
+const followRig = (bodies, source = 'adsb.lol') => {
   const store = createStore({ clock: () => rigNow });
   const queue = [...bodies];
   const traffic = createTrafficSource({
@@ -480,7 +480,14 @@ const followRig = (bodies) => {
     fetchImpl: async () => ({
       ok: true,
       headers: { get: () => '0' },
-      json: async () => ({ ok: true, aircraft: queue.length > 1 ? [queue.shift()] : [queue[0]] }),
+      // THE RESPONSE DECLARES ITS SOURCE, as the real one does. The rig used to
+      // omit it, which is precisely why a hardcoded "via adsb.fi" in the reason
+      // strings passed this suite for weeks while two providers could answer.
+      json: async () => ({
+        ok: true,
+        source,
+        aircraft: queue.length > 1 ? [queue.shift()] : [queue[0]],
+      }),
     }),
   });
   return { store, traffic };
@@ -497,13 +504,31 @@ test('FOLLOW writes the broadcast, stamped with when it was HEARD', async () => 
 
   assert.equal(f['position.groundspeed'].value, 452);
   assert.equal(f['position.groundspeed'].provenance, 'LIVE');
-  assert.match(f['position.groundspeed'].reason, /adsb\.fi/);
+  // NAMES WHOEVER ANSWERED. This used to assert /adsb\.fi/ against a string
+  // that said "adsb.fi" unconditionally — a test pinning the bug in place.
+  assert.match(f['position.groundspeed'].reason, /adsb\.lol/);
+  assert.doesNotMatch(f['position.groundspeed'].reason, /adsb\.fi/);
   assert.equal(f['position.altitudeGeometric'].value, 34350, 'geometric altitude, not barometric');
   assert.equal(f['vsi.rate'].value, -1216);
 
   // seen_pos was 2 seconds, so the reading is stamped two seconds ago — which
   // is what lets the store age a receiver gap into STALE on its own.
   assert.ok(f['position.groundspeed'].ageMs >= 2000, `ageMs ${f['position.groundspeed'].ageMs}`);
+});
+
+test('FOLLOW credits whichever provider actually answered, not a constant', async () => {
+  // Two providers can serve this app and either may answer. A citation that is
+  // present, checked, and naming the wrong service is worse than none — the
+  // radar page's link had exactly this bug, and it survived here in a reason
+  // string where no gate was looking.
+  rigNow = 1_000_000;
+  const { store, traffic } = followRig([AIRCRAFT()], 'adsb.fi');
+  traffic.follow({ callsign: 'UAL328' });
+  await traffic.refreshFollowed();
+  traffic.apply();
+  const reason = store.publishNow().fields['position.groundspeed'].reason;
+  assert.match(reason, /adsb\.fi/);
+  assert.doesNotMatch(reason, /adsb\.lol/);
 });
 
 test('FOLLOW crosses out everything ADS-B cannot answer, each with its reason', async () => {

@@ -72,6 +72,19 @@ export const FIELDS = {
   'aoa.angle': { unit: 'deg', kind: 'derived', freshMs: 2000, staleMs: 10000, label: 'Angle of attack' },
   'nav.declination': { unit: 'deg', kind: 'derived', freshMs: 3600000, staleMs: 86400000, label: 'Magnetic declination' },
 
+  /**
+   * WHAT THE CREW HAS DIALLED IN, from a followed aircraft's Mode S broadcast.
+   * Intent rather than state — the altitude and heading selected on the mode
+   * control panel, and the altimeter setting the crew is flying to.
+   *
+   * Only FOLLOW can fill these; this device has no autopilot to read. They age
+   * on the same schedule as the rest of the broadcast, so a followed aircraft
+   * that stops being heard takes them STALE and then FAIL like everything else.
+   */
+  'nav.selectedAltitude': { unit: 'ft', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Selected altitude' },
+  'nav.selectedHeading': { unit: 'deg', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Selected heading' },
+  'nav.crewQnh': { unit: 'hPa', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Crew altimeter setting' },
+
   // --- feeds ----------------------------------------------------------------
   'metar.station': { unit: null, kind: 'feed', freshMs: 3900000, staleMs: 10800000, label: 'METAR station' },
   'metar.distanceNm': { unit: 'nm', kind: 'feed', freshMs: 3900000, staleMs: 10800000, label: 'METAR station distance' },

@@ -21,7 +21,7 @@ import { drawAdi } from '../render/gauges/adi.js';
 import { drawPlan } from '../render/gauges/plan.js';
 import { drawGMeter, drawVsi } from '../render/gauges/vsi.js';
 import { drawHeadingTape, drawVerticalTape } from '../render/gauges/tape.js';
-import { createReadout, describeField } from '../render/dom.js';
+import { createReadout, describeField, el } from '../render/dom.js';
 
 const withAge = (field) => (field ? { ...field, ageText: formatAge(field.ageMs) } : field);
 
@@ -54,7 +54,42 @@ export function createPfd({
     cas: createReadout({ label: 'Calibrated airspeed', unit: 'kt' }),
     aoa: createReadout({ label: 'Angle of attack', unit: '°', format: (v) => v.toFixed(1) }),
   };
-  readoutHost.replaceChildren(...Object.values(readouts).map((r) => r.root));
+
+  /**
+   * WHAT THE CREW HAS DIALLED IN — only while following an aircraft.
+   *
+   * Kept in its own group and HIDDEN otherwise, because this device has no
+   * autopilot to read: three permanently-crossed-out rows on the normal panel
+   * would be noise dressed as instrumentation, and the panel is already
+   * carefully honest about the difference. When following, an aircraft that
+   * does not broadcast them crosses them out WITH ITS NAME in the reason, which
+   * is a fact about that aircraft and worth showing.
+   */
+  const navReadouts = {
+    selectedAltitude: createReadout({
+      label: 'Selected altitude',
+      unit: 'ft',
+      format: (v) => Math.round(v).toLocaleString(),
+      hint: 'What the crew has set on the autopilot',
+    }),
+    selectedHeading: createReadout({
+      label: 'Selected heading',
+      unit: '°',
+      format: (v) => String(Math.round(v) % 360).padStart(3, '0'),
+    }),
+    crewQnh: createReadout({
+      label: 'Crew altimeter setting',
+      unit: 'hPa',
+      format: (v) => Math.round(v).toString(),
+    }),
+  };
+  const navGroup = el('div', { class: 'ro-group', role: 'group', 'aria-label': 'What the followed aircraft’s crew has selected' }, [
+    el('h3', { class: 'ro-group-h', text: 'On the followed aircraft’s autopilot' }),
+    ...Object.values(navReadouts).map((r) => r.root),
+  ]);
+  navGroup.hidden = true;
+
+  readoutHost.replaceChildren(...Object.values(readouts).map((r) => r.root), navGroup);
 
   /** Throttle the canvas text alternative: it must stay current, but rewriting
    *  it 25 times a second is a live-region flood in everything but name. */
@@ -227,6 +262,14 @@ export function createPfd({
     readouts.tas.update(fields['speed.tas']);
     readouts.cas.update(fields['speed.cas']);
     readouts.aoa.update(fields['aoa.angle']);
+
+    // WHAT THE CREW HAS SELECTED — only meaningful, and only shown, while an
+    // aircraft is being followed. Updated before the group is hidden so the
+    // rows are never left holding a previous aircraft's numbers underneath.
+    navReadouts.selectedAltitude.update(fields['nav.selectedAltitude']);
+    navReadouts.selectedHeading.update(fields['nav.selectedHeading']);
+    navReadouts.crewQnh.update(fields['nav.crewQnh']);
+    navGroup.hidden = !(traffic() ?? {}).followedHex;
   };
 
   /** The canvas text alternative. It describes WHAT IS ON IT and is kept

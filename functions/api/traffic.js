@@ -98,6 +98,29 @@ function parseAircraft(a) {
     verticalRateFpm: num(a.baro_rate) ?? num(a.geom_rate),
     squawk: typeof a.squawk === 'string' ? a.squawk : null,
     category: typeof a.category === 'string' ? a.category : null,
+
+    /**
+     * WHAT THE CREW HAS DIALLED IN. These come from Mode S BDS 4,0 and are the
+     * closest a broadcast gets to intent rather than state: the altitude
+     * selected on the mode control panel, the heading selected, the altimeter
+     * setting the crew is flying to, and which autopilot modes are engaged.
+     *
+     * `nav_altitude_fms` is DELIBERATELY NOT a fallback for `nav_altitude_mcp`.
+     * They are different quantities from different boxes — the panel selection
+     * versus the flight plan's — and substituting one for the other is the same
+     * error as filling a geometric altitude with a barometric one. Only the MCP
+     * value is taken; an aircraft sending only the FMS one reads as not
+     * broadcasting a selected altitude, which is true.
+     *
+     * Most aircraft send none of this. That is a FAIL with a reason, not a gap
+     * to fill.
+     */
+    navSelectedAltitudeFt: num(a.nav_altitude_mcp),
+    navSelectedHeadingDeg: num(a.nav_heading),
+    navQnhHpa: num(a.nav_qnh),
+    navModes: Array.isArray(a.nav_modes)
+      ? a.nav_modes.filter((m) => typeof m === 'string' && m.trim()).map((m) => m.trim())
+      : null,
     /** Seconds since this aircraft's position was last heard. The client ages
      *  its own display from this, so a receiver gap shows as STALE rather than
      *  as an aircraft frozen in place. */

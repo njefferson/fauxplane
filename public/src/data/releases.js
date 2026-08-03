@@ -29,6 +29,19 @@
  */
 export const RELEASES = [
   {
+    version: '1.11.0',
+    date: '2026-08-03',
+    headline: 'The panel stops denying a levelling it is actually using.',
+    changed: [
+      'Fixed: after a reload the panel said "Not levelled" while it was applying your stored levelling to every reading — the horizon badge and the diagnostics were right and the line under the horizon was wrong. It now says what is really being applied, and updates if you rotate the device.',
+      'Following an aircraft now shows what its CREW has dialled in, where they broadcast it: the altitude and heading selected on the autopilot, and the altimeter setting they are flying to. It is the closest this panel gets to sitting behind them.',
+    ],
+    broken: [
+      'Most aircraft do not broadcast the autopilot selections at all. Those read as crossed out with the aircraft named, because the panel will not guess at what a crew has set.',
+      'The first-run pop-up still buries what the app is behind a big "Switch the panel on" button, so almost nobody reads it. Being fixed next.',
+    ],
+  },
+  {
     version: '1.10.0',
     date: '2026-08-03',
     headline: 'Pick an airframe and see what is actually up there.',
