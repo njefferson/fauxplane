@@ -379,7 +379,23 @@ body {
    honest response is to let the page grow and be scrolled, not to shrink the
    instruments until they are unreadable. The gate caught this as a 390x48
    panel box, which is exactly what it looked like. */
-@media (max-width: 46rem) {
+/*
+ * STACKED WHENEVER THE VIEWPORT IS TALLER THAN IT IS WIDE, not only when it is
+ * narrow. Two things were wrong and both were measured rather than reasoned:
+ *
+ *   - A portrait iPad is 820px, which is 51rem — ABOVE the width breakpoint. It
+ *     kept the side-by-side layout, so the horizon and the navigation display
+ *     shared the short axis and neither had room. Orientation is the thing that
+ *     actually decides this, so orientation is what asks.
+ *
+ *   - `.pfd-main` and `.pfd-side` were added for the ND without being given
+ *     column behaviour here, so they kept their ROW flex shares (62 and 38) in a
+ *     column and collapsed. Measured on a 390x844 phone: the horizon spanned
+ *     y 179-685 and the plan view y 506-650 — the radar drawn straight over the
+ *     top of the horizon. Both are `flex: 0 0 auto` now, so each is as tall as
+ *     its own content and the column simply scrolls.
+ */
+@media (max-width: 46rem), (orientation: portrait) {
   html,
   body {
     height: auto;
@@ -395,10 +411,23 @@ body {
   .page-pfd {
     overflow-y: auto;
   }
+  /* Intrinsic height, never a share of a column that has none to give. */
+  .pfd-main,
+  .pfd-side {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+  }
   .pfd-canvas {
     flex: 0 0 auto;
     height: 60vh;
     min-height: 10rem;
+  }
+  .pfd-plan {
+    flex: 0 0 auto;
+    /* Square-ish, because a plan view is a circle and a letterbox wastes it. */
+    height: 45vh;
+    min-height: 12rem;
   }
   .readouts {
     flex: 0 0 auto;

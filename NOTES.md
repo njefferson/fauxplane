@@ -68,6 +68,63 @@ items.
 
 ---
 
+## 1.2.1 — portrait was broken, and asking was the only reason anyone found out
+
+Noah: *"Will the radar move under the pfd in portrait mode?"*
+
+The honest answer was "the DOM order says yes and I have not looked", so I
+measured it. **Both portrait cases were wrong.**
+
+- **Phone, 390x844.** The horizon spanned y 179-685 and the navigation display
+  y 506-650 — the radar drawn straight over the top of the horizon. The
+  stacking media query was written before `.pfd-main` and `.pfd-side` existed,
+  so those wrappers kept their ROW flex shares (62 and 38) in a column and
+  collapsed under their own content.
+- **iPad, 820x1180.** 820px is 51rem, ABOVE the 46rem breakpoint, so a portrait
+  iPad never stacked at all — the horizon and the plan view shared the short
+  axis and neither had room.
+
+Fixed by stacking on `(orientation: portrait)` as well as on width — orientation
+is the thing that actually decides this — and by giving both wrappers
+`flex: 0 0 auto` so each is as tall as its own content. Measured again after:
+phone 179/692/785/1176, iPad 70/784/840/1383, no overlap in either.
+
+**A question was the entire detection mechanism.** Nothing else would have
+caught it: 172 unit tests, the full accessibility gate over three viewports —
+one of which, `small-phone-200pct` at 390x640, IS PORTRAIT — and two preview
+renders, all green, all through a layout where one instrument was painted over
+another.
+
+### The overlap check, and why it is UNPROVEN
+
+The reason the gate missed it is that every check looks at ONE ELEMENT AT A
+TIME. Contrast, target size, accessible name and axe all pass happily on two
+elements occupying the same pixels. **The gate had no opinion about geometry.**
+
+So there is now a check asserting that the horizon, the plan view, the readouts
+and the levelling control do not overlap each other. **It has never been watched
+fail, and it is recorded here as unproven rather than counted as evidence.**
+
+Planting the original fault left the gate GREEN. Twice: `--quick` runs one
+LANDSCAPE viewport, where the portrait media query never applies; giving it a
+portrait viewport as well did not reproduce the overlap either, at 390x640 with
+double text. The defect is real and was measured — the conditions that produce
+it are simply not the conditions the harness runs.
+
+The plant was REMOVED rather than left reporting UNPROVEN for ever, and the
+quick-mode change was reverted rather than kept on a rationale that turned out to
+be wrong. What remains is an honest state: a check that exists, has not been
+demonstrated, and is written down as such. A check counted as evidence before
+anyone has seen it go red is the one thing this file exists to prevent.
+
+### Verified
+
+**172 unit tests, the accessibility gate green across 3 viewports x 2 palettes x
+5 pages, both palettes clearing every hard floor, and the portrait layout
+measured directly at two sizes.**
+
+---
+
 ## 1.2.0 — levelling moved to where the crooked horizon is
 
 Noah: *"Please move the level function out of setup so it's intuitive."*

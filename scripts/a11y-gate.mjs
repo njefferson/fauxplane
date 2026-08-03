@@ -628,6 +628,41 @@ async function main() {
           // present, checked, and wrong. Now that a second source exists and
           // either may answer, the only meaningful assertion is that the link
           // on the page points at the source the response actually named.
+          // NOTHING ON THE PANEL MAY SIT ON TOP OF ANYTHING ELSE.
+          //
+          // Every check here passed while the navigation display was drawn
+          // straight over the horizon on a portrait phone — measured at
+          // y 506-650 inside a canvas spanning 179-685. Contrast, targets,
+          // names and axe all look at elements one at a time, so a layout that
+          // stacks two of them in the same pixels is invisible to all of it.
+          // The cause was a media query written before those wrappers existed;
+          // the class of bug is "the gate has no opinion about geometry".
+          if (name === 'pfd') {
+            const overlaps = await page.evaluate(() => {
+              const rect = (sel) => {
+                const el = document.querySelector(sel);
+                if (!el) return null;
+                const r = el.getBoundingClientRect();
+                return r.width > 1 && r.height > 1 ? { sel, ...r.toJSON() } : null;
+              };
+              const boxes = ['.pfd-canvas', '.pfd-plan', '.readouts', '.pfd-level'].map(rect).filter(Boolean);
+              const bad = [];
+              for (let i = 0; i < boxes.length; i += 1) {
+                for (let j = i + 1; j < boxes.length; j += 1) {
+                  const a = boxes[i];
+                  const b = boxes[j];
+                  const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+                  const oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+                  // A couple of pixels is a rounding artefact; a real overlap is
+                  // one instrument painted over another.
+                  if (ox > 2 && oy > 2) bad.push(`${a.sel} and ${b.sel} overlap by ${Math.round(ox)}x${Math.round(oy)}px`);
+                }
+              }
+              return bad;
+            });
+            for (const o of overlaps) fail(where, o);
+          }
+
           if (name === 'radar') {
             const credit = await page.evaluate(() => {
               const a = document.querySelector('.radar-credit-link');
