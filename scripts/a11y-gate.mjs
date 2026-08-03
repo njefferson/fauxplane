@@ -183,6 +183,9 @@ const REGISTRY = [
   // The airframe picker (Doctrine §4: a new fg/bg pair joins the gate in the
   // same commit as the code that renders it). Both states, because a pressed
   // button changes BOTH its fill and its text colour.
+  // The TCAS altitude band, both states (§4).
+  { selector: ".radar-band-btn[aria-pressed='true']", label: 'altitude band (selected)', min: 4.6, page: 'radar' },
+  { selector: ".radar-band-btn[aria-pressed='false']", label: 'altitude band (unselected)', min: 4.6, page: 'radar' },
   { selector: ".radar-pick[aria-pressed='true']", label: 'airframe picker (selected)', min: 4.6, page: 'radar' },
   { selector: ".radar-pick[aria-pressed='false']", label: 'airframe picker (unselected)', min: 4.6, page: 'radar' },
   // The power annunciator, both states (§4: a new fg/bg pair joins the gate in
@@ -722,17 +725,26 @@ async function main() {
           // typed it.
           if (name === 'pfd') {
             const sync = await page.evaluate(() => {
-              const pfd25 = [...document.querySelectorAll('.pfd-range-btn')].find((b) => b.textContent === '25');
-              if (!pfd25) return { missing: true };
-              pfd25.click();
-              const radar25 = [...document.querySelectorAll('.radar-range-btn')].find((b) => b.textContent === '25 nm');
+              // NO HARDCODED RANGE. This asked for the "25" button, which
+              // stopped existing when the steps became the real Boeing ones
+              // (10/20/40/80) — and the check then reported a sync failure for
+              // a control that was working. Both sides are read from the DOM,
+              // so the check follows the app instead of a copy of it.
+              const pfdBtns = [...document.querySelectorAll('.pfd-range-btn')];
+              if (pfdBtns.length < 2) return { missing: true };
+              const pick = pfdBtns[1];
+              const nm = pick.textContent.trim();
+              pick.click();
+              const radarPeer = [...document.querySelectorAll('.radar-range-btn')].find(
+                (b) => b.textContent.trim() === `${nm} nm`,
+              );
               const out = {
                 missing: false,
-                pfdPressed: pfd25.getAttribute('aria-pressed'),
-                radarPressed: radar25?.getAttribute('aria-pressed') ?? 'absent',
+                nm,
+                pfdPressed: pick.getAttribute('aria-pressed'),
+                radarPressed: radarPeer?.getAttribute('aria-pressed') ?? 'absent',
               };
-              const pfd40 = [...document.querySelectorAll('.pfd-range-btn')].find((b) => b.textContent === '40');
-              pfd40?.click();
+              pfdBtns[2]?.click();
               return out;
             });
             if (sync.missing) fail(where, 'the PFD range control is missing');

@@ -40,7 +40,75 @@ import { bearingDeg, greatCircleNm } from '../core/units.js';
 
 /** How far the plan view looks. The Function caps this; asking for more is a
  *  400 that would count against adsb.fi's rate limit, so it is clamped here. */
-export const RADAR_RANGE_NM = [10, 25, 40, 80];
+/**
+ * REAL BOEING RANGE STEPS. An EFIS control panel offers 10, 20, 40, 80, 160,
+ * 320 and 640 nm — never 25, which is what this had. Noah: "What are the real
+ * life ranges? My desired fix is ALWAYS more like a regular aircraft."
+ *
+ * It stops at 80 because the Function caps a query at 120 nm (§15.5 — a plan
+ * view of half a state is not a panel instrument), and one fetch covers every
+ * step. The larger real steps exist for a route display, which this is not.
+ */
+export const RADAR_RANGE_NM = [10, 20, 40, 80];
+
+/**
+ * TCAS ALTITUDE BANDS, in feet relative to own altitude.
+ *
+ * THE REAL DE-CLUTTER, and the thing this scope was missing entirely. A flight
+ * deck does not show every aircraft it can hear: the crew select a band, and
+ * everything outside it is simply not displayed. Noah's screenshot had 56
+ * aircraft on one scope; most of them would not be on a real ND at all.
+ *
+ * The names and the numbers are the real ones. NORM is what a crew fly with,
+ * ABOVE is selected before a climb, BELOW before a descent.
+ *
+ * ALL IS NOT A REAL TCAS SETTING and is marked as ours. It exists because this
+ * panel spends most of its life on a desk at a few hundred feet, where NORM
+ * would correctly hide every airliner overhead — realistic, and useless for
+ * someone who wants to see what is up there. The honest thing is to offer the
+ * real bands, default to the one that serves the reader, and say which is which.
+ */
+export const ALTITUDE_BANDS = [
+  { id: 'NORM', label: 'NORM', above: 2700, below: 2700, real: true },
+  { id: 'ABOVE', label: 'ABOVE', above: 9900, below: 2700, real: true },
+  { id: 'BELOW', label: 'BELOW', above: 2700, below: 9900, real: true },
+  { id: 'ALL', label: 'ALL', above: Infinity, below: Infinity, real: false },
+];
+
+/**
+ * Own altitude, for the relative readouts and the band filter.
+ *
+ * Geometric altitude, matching what the aircraft themselves broadcast — mixing
+ * a barometric own-altitude with geometric traffic would put a real error into
+ * every relative number on the scope.
+ */
+export function ownAltitudeFt(fields, followed = null) {
+  if (followed && Number.isFinite(followed.altGeomFt)) return followed.altGeomFt;
+  if (followed && Number.isFinite(followed.altBaroFt)) return followed.altBaroFt;
+  const f = fields?.['position.altitudeGeometric'];
+  return f && f.provenance !== 'FAIL' && Number.isFinite(f.value) ? f.value : null;
+}
+
+/**
+ * Aircraft inside the selected altitude band.
+ *
+ * WITH NO OWN ALTITUDE THERE IS NO BAND. "Relative to what?" has no answer, and
+ * filtering against an assumed zero would silently hide aircraft using a number
+ * nobody measured. Everything is shown, and the caller says why.
+ */
+export function withinBand(aircraft, ownAltFt, bandId) {
+  const band = ALTITUDE_BANDS.find((b) => b.id === bandId) ?? ALTITUDE_BANDS[0];
+  if (!Number.isFinite(ownAltFt) || band.id === 'ALL') return aircraft ?? [];
+  return (aircraft ?? []).filter((a) => {
+    const ft = Number.isFinite(a.altGeomFt) ? a.altGeomFt : a.altBaroFt;
+    // An aircraft broadcasting no altitude is KEPT. It is really there, and the
+    // band cannot judge it — dropping it would hide a real aircraft on the
+    // strength of a measurement that does not exist.
+    if (!Number.isFinite(ft)) return true;
+    const delta = ft - ownAltFt;
+    return delta >= 0 ? delta <= band.above : -delta <= band.below;
+  });
+}
 
 /** Fields FOLLOW takes ownership of. Listed once, so releasing them on unfollow
  *  cannot drift from claiming them. */

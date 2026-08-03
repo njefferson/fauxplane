@@ -31,6 +31,43 @@ export function project({ lat, lon }, { centre, pxPerNm, cx, cy }) {
 }
 
 /** Flight level or altitude, in the compact form a plan view wants. */
+/**
+ * THE TCAS LABEL: relative altitude in hundreds of feet, signed, plus a trend.
+ *
+ * This is what a real ND shows beside a traffic symbol and it is ALL it shows —
+ * no callsign, no registration, no type. `+03` is three hundred feet above you.
+ * Noah: "What info is shown for each object? ... My desired fix is ALWAYS more
+ * like a regular aircraft."
+ *
+ * Two digits, because TCAS uses two: anything beyond ±99 hundred feet is far
+ * outside any band a crew would select, and a third digit is a number nobody
+ * reads at a glance.
+ *
+ * WITH NO OWN ALTITUDE there is no relative anything, so it falls back to the
+ * absolute label rather than inventing a datum. That is the honest degradation
+ * and it is what happens on a desk before the first GPS fix.
+ *
+ * The arrow is TCAS's own threshold: climbing or descending more than about
+ * 500 fpm. Below that an aircraft is level as far as the display is concerned.
+ */
+export function tcasLabel(a, ownAltFt) {
+  if (a.onGround) return 'GND';
+  const ft = Number.isFinite(a.altGeomFt) ? a.altGeomFt : a.altBaroFt;
+  if (!Number.isFinite(ft)) return '';
+  if (!Number.isFinite(ownAltFt)) return altLabel(a);
+
+  const hundreds = Math.round((ft - ownAltFt) / 100);
+  const clamped = Math.max(-99, Math.min(99, hundreds));
+  // A MINUS SIGN, not a hyphen — it lines up in a monospaced column and reads
+  // as arithmetic rather than as punctuation.
+  const sign = clamped < 0 ? '\u2212' : '+';
+  const digits = String(Math.abs(clamped)).padStart(2, '0');
+
+  const rate = a.verticalRateFpm;
+  const trend = !Number.isFinite(rate) || Math.abs(rate) < 500 ? '' : rate > 0 ? '\u2191' : '\u2193';
+  return `${sign}${digits}${trend}`;
+}
+
 export function altLabel(a) {
   if (a.onGround) return 'GND';
   const ft = a.altBaroFt ?? a.altGeomFt;
@@ -121,7 +158,7 @@ export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slo
   return best;
 }
 
-export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, trail = [] }) {
+export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [] }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
   const r = Math.min(w, h) / 2 - 4;
@@ -277,7 +314,12 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
       x: p.x,
       y: p.y,
       size,
-      text: [a.callsign ?? a.registration ?? a.hex.toUpperCase(), altLabel(a)].filter(Boolean).join(' '),
+      // THE SCOPE CARRIES NO IDENTITY. A real ND shows a symbol and a relative
+      // altitude, nothing else — the callsign was ours, and it is what made
+      // fifty-six aircraft unreadable. Identity is one tap away and is on the
+      // "Heard right now" list in full: the scope gets austere, the list stays
+      // rich, and nothing is lost.
+      text: tcasLabel(a, ownAltFt),
       // The followed aircraft keeps its label at any density; after that,
       // whoever is nearest the middle.
       priority: (isFollowed ? 1e6 : 0) - Math.hypot(p.x - cx, p.y - cy),

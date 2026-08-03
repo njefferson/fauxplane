@@ -27,7 +27,7 @@
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
 import { drawPlan, altLabel, hitTestAircraft } from '../render/gauges/plan.js';
-import { RADAR_RANGE_NM, airframeGroups, filterByAirframe } from '../data/traffic.js';
+import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, filterByAirframe, ownAltitudeFt, withinBand } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
 
 const fmt = (v, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '—');
@@ -56,6 +56,22 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
    * aircraft, because a plan view that hides traffic is a plan view that lies
    * about the sky.
    */
+  /**
+   * THE ALTITUDE BAND — the real de-clutter a flight deck uses.
+   *
+   * Defaults to ALL, which is NOT a real TCAS setting and is labelled as ours.
+   * The panel spends most of its life on a desk at a few hundred feet, where
+   * NORM would correctly hide every airliner overhead: realistic, and useless
+   * for someone who wants to see what is up there. Offer the real bands, marked
+   * as real, and default to the one that serves the reader.
+   */
+  let bandId = 'ALL';
+  /** Own altitude as of the last render. The click handler has no snapshot of
+   *  its own, and recomputing from a stale one would filter the tap against a
+   *  different set than the one on screen. */
+  let lastOwnAltFt = null;
+  const bandHost = el('div', { class: 'radar-band', role: 'group', 'aria-label': 'Traffic altitude band' });
+
   const picker = el('div', { class: 'radar-picker', role: 'group', 'aria-label': 'Filter the list by airframe' });
   /** null = every aircraft. Otherwise an id from airframeGroups. */
   let airframe = null;
@@ -114,8 +130,11 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
     const result = traffic.last;
     if (!result?.centre) return;
     const rect = canvas.getBoundingClientRect();
+    // THE SAME SET THE SCOPE IS DRAWING. Hit-testing the unfiltered list would
+    // follow an aircraft the band is hiding — a tap on empty space picking
+    // something invisible.
     const hit = hitTestAircraft(
-      traffic.nearby,
+      withinBand(traffic.nearby, lastOwnAltFt, bandId),
       { centre: result.centre, rangeNm, w: rect.width, h: rect.height },
       e.clientX - rect.left,
       e.clientY - rect.top,
@@ -149,6 +168,33 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
     for (const fn of rangeListeners) fn(nm);
     announcer.say(`Radar range ${nm} nautical miles`);
   };
+  const setBand = (id) => {
+    bandId = id;
+    for (const b of bandButtons) b.setAttribute('aria-pressed', b.dataset.band === id ? 'true' : 'false');
+    lastKeys = '';
+    lastPickerKey = '';
+    const band = ALTITUDE_BANDS.find((b) => b.id === id);
+    announcer.say(
+      band?.real
+        ? `Traffic band ${band.label}: aircraft within ${band.above} feet above and ${band.below} feet below.`
+        : 'Showing every altitude. A real flight deck has no such setting.',
+    );
+  };
+  const bandButtons = ALTITUDE_BANDS.map((b) =>
+    el('button', {
+      class: 'radar-band-btn',
+      type: 'button',
+      dataset: { band: b.id },
+      // The one that is NOT a real flight-deck setting says so, rather than
+      // sitting in the row pretending to be one.
+      title: b.real ? `TCAS ${b.label}: +${b.above} / −${b.below} ft` : 'Not a real flight-deck setting — ours',
+      text: b.real ? b.label : 'ALL*',
+      'aria-pressed': b.id === bandId ? 'true' : 'false',
+      onclick: () => setBand(b.id),
+    }),
+  );
+  bandHost.replaceChildren(...bandButtons);
+
   const rangeButtons = RADAR_RANGE_NM.map((nm) =>
     el('button', {
       class: 'radar-range-btn',
@@ -165,6 +211,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
     el('section', { class: 'card radar-card' }, [
       el('h2', { class: 'card-title', text: 'Traffic' }),
       el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),
+      bandHost,
       canvas,
       status,
       attribution,
@@ -323,7 +370,11 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
 
     render(snapshot) {
       const result = traffic.last;
-      const aircraft = traffic.nearby;
+      // OWN ALTITUDE FIRST — every relative number and the band depend on it,
+      // and while following an aircraft "own" is that aircraft.
+      const ownAltFt = ownAltitudeFt(snapshot.fields, traffic.followed);
+      lastOwnAltFt = ownAltFt;
+      const aircraft = withinBand(traffic.nearby, ownAltFt, bandId);
 
       if (!result) status.textContent = 'Waiting for the first sweep.';
       else if (!result.ok) status.textContent = `No traffic: ${result.reason}`;
@@ -333,10 +384,14 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         // NAME WHAT THE SCOPE IS CENTRED ON. "within 40 nm of this device" is a
         // false sentence when the centre is a 737 over the Sierra, and it was
         // being printed in exactly that case.
+        // SAY WHEN THE BAND IS HIDING SOMETHING. A count that silently excludes
+        // aircraft is the scope lying about the sky by omission.
+        const hidden = traffic.nearby.length - aircraft.length;
+        const bandNote = hidden > 0 ? ` · ${hidden} outside the ${bandId} band` : '';
         status.textContent =
           `${aircraft.length} aircraft within ${result.rangeNm} nm of ` +
           `${result.centre.centredOn ?? (result.centre.fromFix ? 'this device' : 'the home reference')}` +
-          ` · updated ${age} ago`;
+          ` · updated ${age} ago${bandNote}`;
       }
 
       // CREDIT WHOEVER ACTUALLY ANSWERED. The href used to be hardcoded to
@@ -382,6 +437,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         fromFix: !!result?.centre?.fromFix,
         // While following, the centre IS the aircraft — say so on the scope.
         centreLabel: result?.centre?.followed ? (result.centre.centredOn ?? 'FOLLOWED').slice(0, 10) : null,
+        ownAltFt,
         trail: traffic.trail,
       });
 

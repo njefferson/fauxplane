@@ -1846,3 +1846,34 @@ body[data-powered='true'] .gate {
   min-height: var(--target);
   background: var(--hairline);
 }
+
+/* The TCAS altitude band — the real de-clutter, in the real names. */
+.radar-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}
+.radar-band-btn {
+  min-height: var(--target);
+  min-width: 4rem;
+  padding: 0 0.7rem;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.radar-band-btn[aria-pressed='true'] {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--rail);
+}
+.radar-band-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

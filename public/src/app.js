@@ -26,7 +26,7 @@ import { probeNetwork, watchNetwork } from './sensors/network.js';
 import { probeMagnetometer } from './sensors/magnetometer.js';
 
 import { createMetarSource } from './data/metar.js';
-import { createTrafficSource, radarCentre } from './data/traffic.js';
+import { RADAR_RANGE_NM, createTrafficSource, radarCentre } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
@@ -337,7 +337,12 @@ async function boot() {
   // copies of the value is how they disagree. onRange keeps both surfaces'
   // pressed states true whichever one was tapped.
   const pfdRangeHost = $('pfd-range');
-  const pfdRangeButtons = [10, 25, 40, 80].map((nm) => {
+  // FROM THE ONE LIST, not a copy of it. This was a hardcoded [10, 25, 40, 80]
+  // beside RADAR_RANGE_NM's own copy — two sources of truth for the same
+  // control, which is how the PFD ended up offering a range the radar page had
+  // stopped having. The accessibility gate caught it the moment the real list
+  // changed to the Boeing steps.
+  const pfdRangeButtons = RADAR_RANGE_NM.map((nm) => {
     const b = el('button', {
       class: 'pfd-range-btn',
       type: 'button',

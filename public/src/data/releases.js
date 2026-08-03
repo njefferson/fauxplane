@@ -29,6 +29,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.15.0',
+    date: '2026-08-03',
+    headline: 'The radar reads like a real one now.',
+    changed: [
+      'Each aircraft shows its height RELATIVE to you, in hundreds of feet, with an arrow if it is climbing or descending — "+24↑" is two thousand four hundred feet above you and going up. That is exactly what a flight deck shows beside a traffic symbol, and it is all it shows.',
+      'The callsign is gone from the scope, because a real one carries no callsigns. It is one tap away instead, and the "Heard right now" list still has every detail — the scope got austere, the list stayed rich.',
+      'NORM, ABOVE and BELOW altitude filters, with the real numbers a flight deck uses. This is what stops fifty-six aircraft from being on one screen: a crew only ever sees a slice. ALL is marked with a star because it is ours, not theirs.',
+      'The ranges are the real Boeing steps — 10, 20, 40 and 80. The old 25 was not a range any aircraft offers.',
+    ],
+    broken: [
+      'On a desk you are at a few hundred feet, so NORM correctly hides every airliner overhead. That is what a real one would do, and why ALL is the default here.',
+      'The symbol is the same shape whatever the traffic is. A real display uses a diamond, a filled diamond, an amber circle and a red square to say how close it is to being a problem — that needs closing speed, which is not in the broadcast.',
+    ],
+  },
+  {
     version: '1.14.1',
     date: '2026-08-03',
     headline: 'Tapping an aircraft on the radar works. It never has before.',

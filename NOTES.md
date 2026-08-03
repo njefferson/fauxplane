@@ -2206,6 +2206,63 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.15.0 — the scope becomes a TCAS display, 2026-08-03
+
+Noah: *"What does the radar look like in a real jet? This crowded? What info is
+shown for each object? Is it static or toggle-able? What are the real life
+ranges? ... My desired fix is ALWAYS more like a regular aircraft."*
+
+**The honest answer was that ours was a plane-spotting display.** A real ND's
+traffic layer is TCAS and it is austere: a symbol, a RELATIVE altitude in
+hundreds of feet, and a vertical trend arrow. No callsign, no registration, no
+type code. Fifty-six labelled aircraft on one scope is not a thing a flight deck
+has ever shown anyone.
+
+**What landed:**
+
+- `tcasLabel` — signed hundreds of feet relative to own altitude, two digits
+  clamped (TCAS never shows a third), with an arrow past the real 500 fpm
+  threshold. A MINUS SIGN rather than a hyphen, so the column aligns and reads
+  as arithmetic.
+- **With no own altitude it falls back to the absolute label** rather than
+  inventing a datum. That is the desk case before a fix, and "+340 relative to
+  nothing" would be a number computed from an assumption nobody measured.
+- **The altitude band**, in the real names and the real numbers: NORM ±2700,
+  ABOVE +9900/−2700, BELOW +2700/−9900. This is the de-clutter, and the thing
+  the scope was missing entirely.
+- **ALL is marked with a star and `real: false`.** It is not a TCAS setting. It
+  exists because this panel lives on a desk at a few hundred feet, where NORM
+  would correctly hide every airliner overhead — realistic and useless. Offer
+  the real bands, default to the one that serves the reader, and say which is
+  which rather than quietly inventing a fourth position on a real switch.
+- **Real Boeing range steps**: 10, 20, 40, 80. The old 25 is not a range any
+  EFIS control panel offers.
+
+**Two decisions that keep it honest.** An aircraft broadcasting NO altitude is
+kept by every band — it is really there, the band cannot judge it, and dropping
+it would hide a real aircraft on the strength of a measurement that does not
+exist. And the status line says how many the band is hiding, because a count
+that silently excludes traffic is the scope lying by omission.
+
+**The tap hit-tests the same set the scope draws.** Filtering the display but
+not the hit test would let a tap on empty space follow an invisible aircraft.
+
+### Two things the gate caught that were nothing to do with TCAS
+
+**A second source of truth for the ranges.** `app.js` built the PFD range
+buttons from a hardcoded `[10, 25, 40, 80]` sitting beside `RADAR_RANGE_NM`'s
+own copy — so the moment the real list changed, the PFD offered a range the
+radar page no longer had. It builds from the one list now.
+
+**And the check itself hardcoded "25".** It asked for a button that had stopped
+existing and reported a sync failure for a control that was working. Both sides
+are read from the DOM now, so the check follows the app instead of a copy of it.
+
+**A test that was wrong rather than the code.** The first band tests asserted
+31000 ft was inside NORM from an own altitude of 34000 — 3000 ft, outside 2700.
+Expectations written without doing the arithmetic. Corrected, and edge cases at
+exactly ±2700 added, because a boundary nobody tested is a boundary nobody knows.
+
 ## 1.14.1 — the tap that never worked, 2026-08-03
 
 Noah: *"I cannot tap the radar to add planes to the follow dialogue box like I
