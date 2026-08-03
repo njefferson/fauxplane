@@ -51,7 +51,12 @@ export const FIELDS = {
   'position.lat': { unit: 'deg', kind: 'sensor', freshMs: 10000, staleMs: 120000, label: 'Latitude' },
   'position.lon': { unit: 'deg', kind: 'sensor', freshMs: 10000, staleMs: 120000, label: 'Longitude' },
   'position.accuracy': { unit: 'm', kind: 'sensor', freshMs: 10000, staleMs: 120000, label: 'Position accuracy' },
-  'position.groundspeed': { unit: 'kt', kind: 'sensor', freshMs: 5000, staleMs: 30000, label: 'Groundspeed' },
+  // FRESHNESS MATCHES THE FIX IT COMES FROM. This was 5 s while position.lat
+  // and position.lon were 10 s — and since 0.4.6 the speed is DIFFERENCED from
+  // those very fixes, so an indoor receiver reporting every eight seconds
+  // showed groundspeed amber and STALE beside the LIVE position it was computed
+  // from. One fix cannot be two ages at once.
+  'position.groundspeed': { unit: 'kt', kind: 'sensor', freshMs: 10000, staleMs: 30000, label: 'Groundspeed' },
   'position.track': { unit: 'degT', kind: 'sensor', freshMs: 5000, staleMs: 30000, label: 'Track (true)' },
   'position.altitudeGeometric': { unit: 'ft', kind: 'sensor', freshMs: 10000, staleMs: 60000, label: 'GPS geometric altitude' },
   'position.altitudeAccuracy': { unit: 'm', kind: 'sensor', freshMs: 10000, staleMs: 60000, label: 'Altitude accuracy' },

@@ -309,6 +309,18 @@ const PLANTS = [
     expect: /still attitude|pre-touch reference/,
   },
   {
+    // A CDN block page is HTML. Pasting its head onto a gauge says
+    // "<!DOCTYPE html> <!--[if lt IE 7]>" and truncates before the error code,
+    // which is the only part that decides what to do next.
+    name: 'upstream: the raw block page is pasted onto the gauge again',
+    check: 'a refused upstream names the CDN, the reason and the code',
+    gate: 'tests',
+    file: 'functions/api/traffic.js',
+    find: '    const title = /<title[^>]*>([^<]{1,160})<\\/title>/i.exec(body);',
+    replace: '    const title = null && body;',
+    expect: /restrict access|no markup at all|no doctype/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

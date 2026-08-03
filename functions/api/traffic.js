@@ -124,6 +124,55 @@ function parsePayload(payload) {
   };
 }
 
+/**
+ * Turn a failed upstream response into one readable sentence.
+ *
+ * WHEN A CDN REFUSES YOU, THE CDN IS THE ONE ANSWERING — not the API. That
+ * distinction is the whole diagnosis, and it is carried by three things: the
+ * `server` header, the block page's `<title>`, and Cloudflare's numeric error
+ * code. Those three fit on a gauge; the HTML they arrive wrapped in does not.
+ *
+ * Exported so it can be tested against real captured block pages without a
+ * network, which is the only way this path can be exercised from a sandbox
+ * whose proxy refuses to reach adsb.fi at all.
+ */
+export async function describeUpstreamFailure(res) {
+  const bits = [];
+  const server = res.headers?.get?.('server');
+  if (server) bits.push(`server: ${server}`);
+  // Cloudflare sets these on its own challenge and block responses; they are
+  // absent when the origin itself answered, which is exactly the thing worth
+  // telling apart.
+  const mitigated = res.headers?.get?.('cf-mitigated');
+  if (mitigated) bits.push(`cf-mitigated: ${mitigated}`);
+  const ray = res.headers?.get?.('cf-ray');
+  if (ray) bits.push(`ray ${ray}`);
+
+  let body = '';
+  try {
+    body = await res.text();
+  } catch {
+    /* no readable body; the headers are all there is */
+  }
+  if (body) {
+    // The title of a Cloudflare block page names both the site and the reason:
+    // "Access denied | opendata.adsb.fi used Cloudflare to restrict access".
+    const title = /<title[^>]*>([^<]{1,160})<\/title>/i.exec(body);
+    if (title) bits.push(title[1].replace(/\s+/g, ' ').trim());
+    // "Error 1020" is a firewall RULE; 1015 is rate limiting; 1010 is a blocked
+    // client signature. Which number it is decides what to do about it.
+    const code = /error\s*(?:code:?\s*)?(\d{4})/i.exec(body);
+    if (code) bits.push(`Cloudflare error ${code[1]}`);
+    if (!title && !code) {
+      // Not a page we recognise. Fall back to a flattened, bounded excerpt
+      // rather than saying nothing at all.
+      const flat = body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (flat) bits.push(flat.slice(0, 120));
+    }
+  }
+  return bits.length ? ` — ${bits.join('; ')}` : '';
+}
+
 /** Shared tail of both query shapes: call upstream, normalise, wrap. */
 async function relay(upstreamUrl, meta, cacheSeconds) {
   let res;
@@ -159,16 +208,15 @@ async function relay(upstreamUrl, meta, cacheSeconds) {
     // Bounded and stripped of newlines because it goes on the face of a gauge,
     // and read defensively: an error path that throws is an error path that
     // hides the error.
-    let detail = '';
-    try {
-      const body = (await res.text()).replace(/\s+/g, ' ').trim();
-      if (body) detail = ` — ${body.slice(0, 160)}`;
-    } catch {
-      /* no readable body; the status is all there is */
-    }
-    const server = res.headers.get('server');
-    const via = server ? ` [server: ${server}]` : '';
-    return problem(`adsb.fi returned HTTP ${res.status}${via}${detail}`, { status: 502 });
+    // EXTRACT THE SIGNAL, do not paste the page.
+    //
+    // The first version of this dumped the first 160 characters of the body,
+    // which for a Cloudflare block page is `<!DOCTYPE html> <!--[if lt IE 7]>`
+    // — a paragraph of conditional comments on the face of a gauge, truncated
+    // just before the only part that means anything. Relaying MORE was not the
+    // answer; relaying the RIGHT part was.
+    const detail = await describeUpstreamFailure(res);
+    return problem(`adsb.fi returned HTTP ${res.status}${detail}`, { status: 502 });
   }
 
   let payload;

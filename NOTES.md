@@ -68,6 +68,83 @@ items.
 
 ---
 
+## 0.4.9 — the 403 named itself, and it is adsb.fi's FIREWALL, not their API
+
+0.4.7 made the traffic failure carry its own evidence. One tap on RADAR and it
+answered:
+
+```
+adsb.fi returned HTTP 403 [server: cloudflare] — <!DOCTYPE html> <!--[if lt IE 7]>...
+```
+
+**`server: cloudflare` plus a Cloudflare block page.** So the endpoint is right,
+the request is well-formed, and adsb.fi's *edge* is refusing it before their API
+ever sees it. That is a different problem from a wrong URL and needs a different
+answer.
+
+### The reporting was still wrong, in a smaller way
+
+Relaying the first 160 characters of the body put `<!DOCTYPE html> <!--[if lt IE
+7]>` on the face of a gauge and truncated just before the only part that
+matters. **The fix was not to relay MORE — it was to relay the RIGHT part.** The
+Function now extracts the block page's `<title>` (which names the site and the
+reason), Cloudflare's four-digit error code, and the `cf-ray` / `cf-mitigated`
+headers, and never lets markup through at all.
+
+The code is the actionable bit: **1015 is rate limiting, 1020 is a firewall rule,
+1010 is a blocked client signature.** They call for opposite responses.
+
+Tested against the captured block page from Noah's own report rather than a live
+call, because the sandbox proxy refuses CONNECT to adsb.fi entirely. That is
+better evidence than a live call would have been: it is the failing case.
+
+### NOT going to disguise the client, and this is a decision, not an oversight
+
+The obvious "fix" is to send browser-shaped headers until the bot rule stops
+matching. **That is circumventing an access control the operator deliberately
+put there**, and it is not something this app is going to do to a service whose
+data it is asking for as a favour. It would also be dishonest in exactly the way
+the whole panel exists not to be.
+
+The legitimate routes, in order:
+1. **Ask adsb.fi.** Their terms permit personal, non-commercial use; a Worker
+   being caught by a bot rule is plausibly unintended. They have a public repo
+   and a Discord.
+2. **Use a provider whose terms and edge both permit it** — adsb.lol publishes
+   under ODbL and is explicitly open to this. Switching is a real option and is
+   NOISE.md-level, not a session's call to make silently.
+3. Accept that RADAR does not work from a Cloudflare Worker and say so on the
+   page, which it already does.
+
+Awaiting Noah's decision. Nothing about this is blocked on more diagnosis.
+
+### One fix off the same report
+
+**Groundspeed showed STALE at 8 s while the position it is computed FROM showed
+LIVE at the same 8 s.** `position.groundspeed` carried `freshMs: 5000` from when
+it came straight off `coords.speed`; since 0.4.6 it is differenced from the very
+fixes beside it, which are fresh for 10 s. One fix cannot be two ages at once,
+so the freshness now matches its source.
+
+### What is confirmed WORKING on Noah's device
+
+- **Levelling.** `cradle -82.5 deg pitch, 2.7 deg roll` captured and subtracted;
+  the horizon reads pitch -0.04, roll -0.06. The retroactive capture works, and
+  it worked on a hand-held tablet, which is what it was built for.
+- **The radar page renders** — rings, compass, range buttons, no magenta.
+- **Groundspeed reads 0.00 kt** instead of a red X.
+- **VSI reads 0.00 fpm** instead of crossing itself out. ZUPT works.
+- **AoA now fails with its OWN reason** ("groundspeed below 20 kt — flight path
+  angle is undefined") rather than a cascade from three fields up.
+
+### Verified
+
+**168 unit tests, 26/26 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+---
+
 ## 0.4.8 — the press is the disturbance, so stop measuring at the press
 
 Noah, on the levelling button: *"When I tap the button, it wiggles too much to
