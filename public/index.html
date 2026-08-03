@@ -185,11 +185,23 @@
             </div>
           </div>
           <!--
-            THE RIGHT-HAND COLUMN IS A NAVIGATION DISPLAY OVER THE VALUES, which
-            is how an airliner is actually laid out: PFD on the left, ND beside
-            it. Noah asked for the radar here instead of the readouts; the
-            readouts STAY underneath it because a canvas is not text, and they
-            are the only screen-reader-accessible copy of these numbers.
+            THE RIGHT-HAND COLUMN IS THE NAVIGATION DISPLAY, and now only that,
+            which is how an airliner is actually laid out: PFD on the left, ND
+            beside it, both as big as the glass allows.
+
+            THE READOUTS USED TO BE STACKED UNDER IT and took the larger share —
+            `flex: 56` against the plan view's 44. Noah, with an iPad full of
+            it: "All the voice-over data does NOT need to fill MY screen. That
+            space has MUCH more important stuff to hold." He is right, and the
+            reason given for the stacking was wrong on its own terms: a canvas
+            IS non-text content, so these numbers must exist as text — but
+            nothing about SC 1.1.1 says the text must be the biggest thing on
+            the page, or that it must sit beside the picture it describes.
+
+            Most of it was duplication anyway. Groundspeed is the GS tape,
+            indicated altitude is the ALT tape, vertical speed is the VS tape,
+            heading is the compass rose, pitch is the horizon — five of the
+            eight rows repeating what is drawn a few inches to their left.
           -->
           <div class="pfd-side">
             <div class="pfd-plan-row">
@@ -198,11 +210,22 @@
                    value through the same setter. -->
               <div id="pfd-range" class="pfd-range" role="group" aria-label="Navigation display range"></div>
             </div>
-            <!-- A scrollable region must be reachable and scrollable from the
-                 keyboard, so it is focusable and named. -->
-            <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
           </div>
         </div>
+        <!--
+          THE VALUES AS TEXT, along the bottom, full width. Noah: "You can push
+          the stuff to the very bottom if needed."
+
+          Still real, selectable, screen-reader-readable text carrying every
+          value, its units, its provenance and its failure reason — that part
+          was never optional. What changed is that it is a dense strip under the
+          instruments instead of a column beside them, so it costs the panel a
+          band rather than a third of the glass.
+
+          A scrollable region must be reachable and scrollable from the
+          keyboard, so it is focusable and named.
+        -->
+        <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
       </section>
 
       <section id="page-atis" class="page page-cards" role="tabpanel" aria-labelledby="tab-atis" tabindex="0" hidden></section>
@@ -215,7 +238,10 @@
     </main>
 
     <footer class="foot">
-      <span class="foot-item">Home reference <span id="home-note">—</span></span>
+      <!-- "Home reference" was the label whatever the centre actually was, so
+           it read "Home reference Cameron Park, CA" beside a live GPS altitude.
+           The label is neutral now and the value says which of the four it is. -->
+      <span class="foot-item">Centred on <span id="home-note">—</span></span>
       <span class="foot-item">Not a simulator · not certified for anything · never for navigation</span>
       <a class="foot-link" href="https://noahjefferson.pages.dev/accessibility">Accessibility</a>
       <!--

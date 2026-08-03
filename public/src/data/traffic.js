@@ -333,6 +333,34 @@ export function radarCentre(fields, followed = null, chosen = null) {
   if (lat && lon && lat.provenance !== 'FAIL' && lon.provenance !== 'FAIL') {
     return { lat: lat.value, lon: lon.value, fromFix: true, followed: false, centredOn: 'this device', short: 'YOU' };
   }
+  /**
+   * THE LAST PLACE THIS DEVICE ACTUALLY WAS, ahead of the built-in constant.
+   *
+   * Noah: "Why is home reference hard coded and not matched to user location
+   * and requesting it??" The constant is Cameron Park because that is where the
+   * app was written, and it exists for a real reason — the panel must come up
+   * and be useful with every permission denied, so SOMETHING has to be the
+   * centre before a fix exists. What was wrong is that it never learned. A
+   * reader in Denver was anchored to a town in California for ever, on every
+   * cold start, no matter how many fixes their device had given us.
+   *
+   * A remembered fix is a MEASUREMENT this device made, so it outranks a
+   * constant nobody measured. It is stored coarsely — see `rememberFix` — and
+   * it is still not a fix: `fromFix` stays false and the label says it is the
+   * last known position, because a panel that calls a stale position a live one
+   * is the lie this app is built around not telling.
+   */
+  const last = lastKnownFix();
+  if (last) {
+    return {
+      lat: last.lat,
+      lon: last.lon,
+      fromFix: false,
+      followed: false,
+      centredOn: 'the last position this device reported',
+      short: 'LAST',
+    };
+  }
   return {
     lat: REGION.home.lat,
     lon: REGION.home.lon,
@@ -341,6 +369,44 @@ export function radarCentre(fields, followed = null, chosen = null) {
     centredOn: 'the home reference',
     short: 'HOME',
   };
+}
+
+/** Where the coarse last-known fix is kept. */
+const LAST_FIX_KEY = 'fauxplane:last-fix';
+
+/**
+ * Remember roughly where this device was, for the next cold start.
+ *
+ * ROUNDED TO TWO DECIMALS, about 1 km, and that is a privacy decision rather
+ * than a storage one. Nothing here needs a doorstep: this is a map centre and a
+ * feed query box tens of miles across. The diagnostics report already coarsens
+ * position for the same reason, and storing a precise home address in
+ * localStorage so a scope can be centred is a trade nobody asked for.
+ */
+export function rememberFix(lat, lon, storage = globalThis.localStorage) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+  try {
+    storage?.setItem(LAST_FIX_KEY, JSON.stringify({ lat: Number(lat.toFixed(2)), lon: Number(lon.toFixed(2)) }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function lastKnownFix(storage = globalThis.localStorage) {
+  try {
+    const raw = storage?.getItem(LAST_FIX_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    // A stored value that is not a usable coordinate is DISCARDED rather than
+    // clamped. Centring the scope on a corrupted entry would put it somewhere
+    // real and wrong, which is worse than falling back to the constant.
+    if (!Number.isFinite(v?.lat) || !Number.isFinite(v?.lon)) return null;
+    if (Math.abs(v.lat) > 90 || Math.abs(v.lon) > 180) return null;
+    return { lat: v.lat, lon: v.lon };
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -67,6 +67,29 @@
   box-sizing: border-box;
 }
 
+/**
+ * `hidden` MEANS HIDDEN. THE THIRD TIME, SO IT IS A RULE NOW.
+ *
+ * The user agent hides `[hidden]` with `display: none`, and ANY author rule
+ * setting `display` outranks it — so an element that is `hidden` in the DOM and
+ * `display: flex` in here is painted, at full size, while `el.hidden` reads
+ * true. Every check that asks the DOM agrees it is hidden. It is on screen.
+ *
+ * It has now happened to `.page`, to `.follow-banner`, and to `.update` — where
+ * it meant a first-time visitor was shown "A new version of the panel is ready"
+ * about the version they had just that second installed, which is exactly what
+ * Doctrine §7h.3 exists to prevent. Each was patched with its own
+ * `.thing[hidden] { display: none }` and the next new element repeated it.
+ *
+ * `!important` is deliberate and is the only way this can win against a
+ * component rule that has not been written yet. The per-class patches below are
+ * left in place: they are now redundant rather than wrong, and deleting them
+ * would remove the comments explaining what each one cost.
+ */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -405,9 +428,9 @@ body {
   color: var(--fail);
 }
 
-/* The ND stacked over the values. The COLUMN owns the 38 share and the width
-   floor; its children divide the height between them, so the readouts can still
-   scroll without the plan view collapsing to nothing. */
+/* The navigation display, and now nothing else — the values moved to a strip
+   along the bottom of the page. The column keeps its 38 share and its width
+   floor; with one child, all of the height goes to the plan view. */
 .pfd-side {
   flex: 38 1 0;
   min-width: 14rem;
@@ -418,7 +441,7 @@ body {
 }
 
 .pfd-plan-row {
-  flex: 44 1 0;
+  flex: 1 1 auto;
   min-height: 9rem;
   display: flex;
   gap: 0.35rem;
@@ -462,8 +485,22 @@ body {
   border-radius: var(--radius);
 }
 
+/*
+ * THE VALUE STRIP, along the bottom and full width.
+ *
+ * It used to be `flex: 56` in the right-hand column — a bigger share than the
+ * navigation display it sat under, on the axis where the ND had least to spare.
+ * Noah, looking at an iPad of it: "All the voice-over data does NOT need to
+ * fill MY screen. That space has MUCH more important stuff to hold."
+ *
+ * WRAPPING, NOT STACKING, is what makes it affordable. Eight one-per-line rows
+ * are eight lines high whatever the screen; the same eight as auto-fitting
+ * cells are two lines on a landscape iPad and still one per line on a phone,
+ * with no breakpoint deciding which. The instruments get the height back
+ * without the text getting smaller or going away.
+ */
 .readouts {
-  flex: 56 1 0;
+  flex: 0 0 auto;
   /* THE TARGET FLOOR IS THE FLOOR, even under flex pressure. This is a
      focusable scroll region (SC 2.5.8 applies to it), and `min-height: 0` let
      the layout crush it to 19px the moment the header grew by one control —
@@ -471,11 +508,15 @@ body {
      A floor of one target still permits shrinking far below content height, so
      the overflow-scroll this rule exists to enable is unaffected. */
   min-height: var(--target);
+  /* A THIRD OF THE PANEL, AT MOST. Every value stays reachable because the
+     region scrolls; what it can no longer do is grow until the horizon is a
+     letterbox, which is the failure this whole rule is a response to. */
+  max-height: 34%;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: 0.3rem;
-  padding-right: 0.25rem;
+  align-content: start;
 }
 
 /* NARROW: stack rather than squeeze. Checked at the small-phone-at-200%-text
@@ -635,8 +676,12 @@ body {
     min-height: 0;
     height: auto;
   }
+  /* STACKED: the page scrolls, so the strip is allowed its full height and does
+     not need its own scroller. The percentage cap belongs to the side-by-side
+     case, where the panel owns the height and the readouts were taking it. */
   .readouts {
     flex: 0 0 auto;
+    max-height: none;
     overflow: visible;
   }
 }
@@ -683,6 +728,26 @@ body {
      below its floor to fake a fit. */
   .page-pfd {
     overflow-y: auto;
+  }
+
+  /* AND THE INSTRUMENT ROW KEEPS ITS CONTENT'S HEIGHT. `min-height: 0` on
+     `.pfd-row` is right when the row is the only thing competing for the
+     panel's height — it is what lets the horizon shrink instead of overflowing.
+     It became wrong the moment the value strip moved out of the row and started
+     taking a share of the same column: the row was handed 95px on a landscape
+     phone while its own children hold 12rem floors, so the canvas and the plan
+     view hung 50px out of their parent and straight through the strip below.
+     Measured, not reasoned — the gate reported the two overlaps by name.
+
+     Here the page already scrolls, which the block above calls the honest
+     answer, so the row is allowed to be as tall as it needs and the reader
+     scrolls to the values. */
+  .pfd-row {
+    min-height: auto;
+  }
+  /* The percentage cap is a share of a height the panel no longer owns here. */
+  .readouts {
+    max-height: none;
   }
 
   /* The historical note, kept because the reasoning outlived the rule. Adding the

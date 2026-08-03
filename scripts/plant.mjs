@@ -494,6 +494,41 @@ const PLANTS = [
     expect: /panel says nothing about it/,
   },
   {
+    // Noah, 2026-08-03: "Why am I not seeing my first-time-run pop-up
+    // anymore?" It was moved into the (i) menu at boot and nothing ever opened
+    // it — the text survived, which the plant below already proves, and was
+    // never presented, which nothing checked. Passing one half while failing
+    // the other is exactly what shipped for five releases.
+    name: 'first run: the orientation is never shown to a first-time reader',
+    check: 'a first-time reader is shown the orientation, once',
+    file: 'public/src/app.js',
+    find: '  if (!introSeen) info.open({ scrollTo: \'.gate-first\' });',
+    replace: '  if (false && !introSeen) info.open({ scrollTo: \'.gate-first\' });',
+    expect: /was shown no orientation at all/,
+  },
+  {
+    // The other direction, and the one that makes it unusable rather than
+    // merely quiet: explaining itself on every single load.
+    name: 'first run: the orientation is shown again on every visit',
+    check: 'the orientation is shown ONCE',
+    file: 'public/src/app.js',
+    find: '    introSeen = localStorage.getItem(INTRO_KEY) === \'yes\';',
+    replace: '    introSeen = false;',
+    expect: /opened again on the second visit/,
+  },
+  {
+    // `hidden` means hidden. An author `display:` rule outranks the user
+    // agent's `[hidden] { display: none }`, and this app has been bitten three
+    // times — most recently showing a first-time visitor an update offer for
+    // the build they had just installed.
+    name: 'hidden: an author display rule outranks the hidden attribute again',
+    check: 'nothing carrying the hidden attribute is painted',
+    file: 'public/styles.css',
+    find: '[hidden] {\n  display: none !important;\n}',
+    replace: '[hidden] {\n  display: revert;\n}',
+    expect: /carries the hidden attribute and is painted anyway/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

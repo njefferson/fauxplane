@@ -36,7 +36,7 @@ import { probeNetwork, watchNetwork } from './sensors/network.js';
 import { probeMagnetometer } from './sensors/magnetometer.js';
 
 import { createMetarSource } from './data/metar.js';
-import { RADAR_RANGE_NM, createTrafficSource, radarCentre } from './data/traffic.js';
+import { RADAR_RANGE_NM, createTrafficSource, lastKnownFix, radarCentre, rememberFix } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
@@ -175,7 +175,11 @@ async function boot() {
     vsi,
     owns: deviceOwnsFields,
     clock: now,
-    onFix: () => {
+    onFix: ({ lat, lon }) => {
+      // Remember roughly where this device is, so the NEXT cold start centres
+      // near here instead of on a constant in a file. Coarsened to ~1 km inside
+      // rememberFix; see the note there on why that is a privacy decision.
+      rememberFix(lat, lon);
       if (!sawFirstFix) {
         sawFirstFix = true;
         // PUBLISH FIRST. This runs inside the geolocation callback, before the
@@ -855,10 +859,43 @@ async function boot() {
   const powerBtn = $('power-btn');
   const powerState = $('power-state');
 
-  // The first-run text is adopted at BOOT now, not on dismissal — there is no
+  // The first-run text is adopted at BOOT, not on dismissal — there is no
   // dismissal any more. One node, moved, never copied.
   info.adoptFirstRun($('first-run-store')?.querySelector('.gate-first'));
   document.body.dataset.powered = 'true';
+
+  /**
+   * AND IT IS SHOWN TO SOMEONE WHO HAS NOT SEEN IT (Doctrine §7e).
+   *
+   * Noah, 2026-08-03: "Why am I not seeing my first-time-run pop-up anymore?"
+   * Because 1.12.0 moved it into the (i) menu at boot and nothing ever opened
+   * it — the orientation SURVIVED, which is the half §7e gates, and was never
+   * PRESENTED, which is the half that makes it orientation rather than
+   * reference material. A newcomer got a cockpit full of crossed-out
+   * instruments and no explanation.
+   *
+   * IT OPENS THE (i) MENU RATHER THAN A SURFACE OF ITS OWN, and that is what
+   * keeps it from becoming the thing he rejected before: "'Switch the panel on'
+   * still takes all attention on the initial pop-up and reads like 'accept the
+   * terms'". This one gates nothing. The panel is already live behind it, every
+   * control still works, and closing it is the only thing it asks for — it is
+   * the same dialog the (i) button opens, so a reader who closes it has already
+   * learned where to find it again.
+   *
+   * A FAILED WRITE MUST NOT MEAN A DIALOG EVERY TIME. Private browsing throws
+   * on localStorage; showing it once and failing to record that is better than
+   * showing it forever, so the flag is written BEFORE the dialog opens.
+   */
+  const INTRO_KEY = 'fauxplane:intro-seen';
+  let introSeen = true;
+  try {
+    introSeen = localStorage.getItem(INTRO_KEY) === 'yes';
+    localStorage.setItem(INTRO_KEY, 'yes');
+  } catch {
+    // No storage: treat it as seen. A panel that explains itself on every
+    // single load is worse than one that never does.
+  }
+  if (!introSeen) info.open({ scrollTo: '.gate-first' });
 
   let started = false;
   const startSensors = async () => {
@@ -1120,9 +1157,32 @@ async function boot() {
   // not be the one that waits.
   refreshTraffic();
 
-  // The home reference is shown so nobody reads a pre-fix distance as a
-  // distance from the aircraft.
-  $('home-note').textContent = `${REGION.home.name} ${REGION.home.lat.toFixed(2)}, ${REGION.home.lon.toFixed(2)}`;
+  /**
+   * THE FOOTER NAMES WHAT IS ACTUALLY IN FORCE, and it used to name the
+   * constant unconditionally.
+   *
+   * Noah's screenshot: "Home reference Cameron Park, CA 38.68, -121.00" along
+   * the bottom, while GPS altitude read 88 ft from a live fix a few inches
+   * above it. Both sentences were on screen and only one was true of the panel
+   * he was looking at. The line exists so nobody reads a pre-fix distance as a
+   * distance from where they are — which means it has to STOP saying it the
+   * moment there is a fix, or it is doing the opposite of its job.
+   */
+  const homeNote = $('home-note');
+  const describeCentre = () => {
+    const c = radarCentre(state.snapshot.fields, traffic.followed, traffic.chosenPlace);
+    if (c.followed) return `following ${c.centredOn}`;
+    if (c.chosen) return `${c.centredOn} (chosen)`;
+    if (c.fromFix) return 'your position';
+    if (lastKnownFix()) return `last known position ${c.lat.toFixed(2)}, ${c.lon.toFixed(2)} — no fix yet`;
+    return `${REGION.home.name} ${REGION.home.lat.toFixed(2)}, ${REGION.home.lon.toFixed(2)} — no fix yet`;
+  };
+  const paintHomeNote = () => {
+    const text = describeCentre();
+    if (homeNote.textContent !== text) homeNote.textContent = text;
+  };
+  paintHomeNote();
+  setInterval(paintHomeNote, 2000);
 }
 
 boot().catch((err) => {

@@ -18,7 +18,7 @@ import { selectStation } from '../public/src/data/metar.js';
 import { interpolateLevels } from '../public/src/data/windsaloft.js';
 import { decimalYear, magneticField, parseCof } from '../public/src/data/wmm.js';
 import { sampleGrid } from '../public/src/data/geoid.js';
-import { createTrafficSource, radarCentre, withRangeAndBearing } from '../public/src/data/traffic.js';
+import { createTrafficSource, lastKnownFix, radarCentre, rememberFix, withRangeAndBearing } from '../public/src/data/traffic.js';
 import { createStore } from '../public/src/core/state.js';
 import { createGeoSensor } from '../public/src/sensors/geo.js';
 import { brightnessFromLux, brightnessFromSolarElevation, DIM_FLOOR, solarElevationDeg } from '../public/src/sensors/ambient.js';
@@ -778,4 +778,68 @@ test('RADAR: a chosen place outranks the fix but yields to a followed aircraft',
   const followed = radarCentre(fields, { hex: 'a1', callsign: 'UAL328', lat: 38.9, lon: -121.1 }, ksmf);
   assert.equal(followed.lat, 38.9, 'a chosen airport must not outrank the aircraft being followed');
   assert.equal(followed.followed, true);
+});
+
+/**
+ * THE HOME REFERENCE STOPS BEING A CONSTANT NOBODY MEASURED.
+ *
+ * Noah: "Why is home reference hard coded and not matched to user location and
+ * requesting it??" The constant exists for a real reason — the panel must come
+ * up with every permission denied, so something has to be the centre before a
+ * fix — but it never learned, so a reader anywhere else was anchored to a town
+ * in California for ever.
+ */
+test('RADAR: a remembered fix outranks the built-in home reference', () => {
+  const store = new Map();
+  const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+
+  assert.equal(lastKnownFix(storage), null, 'nothing remembered before any fix');
+  assert.equal(radarCentre({}).centredOn, 'the home reference');
+
+  assert.equal(rememberFix(39.7392, -104.9903, storage), true);
+  const back = lastKnownFix(storage);
+  // ~1 km, deliberately: this is a map centre, not a doorstep.
+  assert.equal(back.lat, 39.74);
+  assert.equal(back.lon, -104.99);
+});
+
+test('RADAR: a remembered fix is NOT reported as a live one', () => {
+  // The whole hazard of remembering a position is that it becomes indistinct
+  // from a current one. It must centre the scope and still read as stale.
+  const store = new Map([['fauxplane:last-fix', JSON.stringify({ lat: 39.74, lon: -104.99 })]]);
+  const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  const original = globalThis.localStorage;
+  globalThis.localStorage = storage;
+  try {
+    const c = radarCentre({});
+    assert.equal(c.lat, 39.74);
+    assert.equal(c.fromFix, false, 'a remembered position must never claim to be a fix');
+    assert.match(c.centredOn, /last position/);
+    assert.equal(c.short, 'LAST');
+  } finally {
+    globalThis.localStorage = original;
+  }
+});
+
+test('RADAR: a corrupted stored fix is discarded, not clamped', () => {
+  // Centring on a clamped coordinate would put the scope somewhere real and
+  // wrong, which is worse than falling back to the constant.
+  for (const bad of ['not json', '{}', '{"lat":91,"lon":0}', '{"lat":0,"lon":181}', '{"lat":null,"lon":null}']) {
+    const storage = { getItem: () => bad, setItem: () => {} };
+    assert.equal(lastKnownFix(storage), null, `"${bad}" should be discarded`);
+  }
+});
+
+test('RADAR: a refused storage is not an error, it is just no memory', () => {
+  // Private browsing throws on write. The panel must still come up.
+  const storage = {
+    getItem: () => {
+      throw new Error('denied');
+    },
+    setItem: () => {
+      throw new Error('denied');
+    },
+  };
+  assert.equal(rememberFix(38.68, -121.0, storage), false);
+  assert.equal(lastKnownFix(storage), null);
 });

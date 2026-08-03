@@ -518,6 +518,31 @@ async function checkContrast(page, registry, where) {
   });
 }
 
+/**
+ * EVERY CHECK BUT ONE IS A RETURNING READER.
+ *
+ * The first-run orientation opens the (i) dialog on a profile that has never
+ * seen it (Doctrine §7e) — which is a MODAL, so in a fresh Playwright context
+ * it sits over the panel and every other check measures the dialog instead of
+ * the page. It presented as ten contrast failures at 1.0:1, a radar tap that
+ * did nothing, and a picker that found no airports: the symptoms of a surface
+ * nobody knew was there, which is exactly how a modal fails a test suite.
+ *
+ * So each context declares which it is. `seenIntro` is the returning reader and
+ * is the default everywhere; `checkFirstRunIntro` is the one context that does
+ * NOT call it, and is therefore the only place the dialog can appear.
+ */
+async function seenIntro(context) {
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem('fauxplane:intro-seen', 'yes');
+    } catch {
+      /* private mode: the app treats a refused store as already seen */
+    }
+  });
+  return context;
+}
+
 /** Touch targets, with the inline-in-a-sentence exemption applied and NAMED. */
 async function checkTargets(page, where) {
   const results = await page.evaluate(() => {
@@ -695,6 +720,7 @@ async function main() {
           // because a sensor happened to be available.
           permissions: [],
         });
+        await seenIntro(context);
         const page = await context.newPage();
         const consoleErrors = [];
         page.on('console', (m) => {
@@ -748,6 +774,34 @@ async function main() {
             return { w: Math.round(r.width), h: Math.round(r.height), text: el.textContent.trim().length };
           }, name);
           if (painted.w < 100 || painted.h < 60) fail(where, `panel box is ${painted.w}x${painted.h} — effectively invisible`);
+
+          /**
+           * EVERY `hidden` ELEMENT IS ACTUALLY HIDDEN, measured rather than
+           * believed.
+           *
+           * An author `display:` rule outranks the user agent's
+           * `[hidden] { display: none }`, so an element can carry the attribute
+           * and be painted at full size. It has happened three times in this
+           * app — `.page`, `.follow-banner`, and `.update`, where a first-time
+           * visitor was shown an update offer for the build they had just
+           * installed. Each was fixed for that one class, and the next new
+           * element repeated it, because nothing was LOOKING.
+           *
+           * This is the check that makes the global `[hidden]` rule hold: any
+           * future component that sets `display` and forgets is caught on the
+           * release that introduces it rather than three releases later.
+           */
+          const painted_hidden = await page.evaluate(() =>
+            [...document.querySelectorAll('[hidden]')]
+              .filter((el) => {
+                const r = el.getBoundingClientRect();
+                return r.width > 0 && r.height > 0;
+              })
+              .map((el) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${el.className ? `.${String(el.className).split(' ')[0]}` : ''}`),
+          );
+          for (const el of painted_hidden) {
+            fail(where, `<${el}> carries the hidden attribute and is painted anyway — an author display: rule is outranking [hidden]`);
+          }
           if (name !== 'pfd' && painted.text < 40) fail(where, `panel rendered only ${painted.text} characters — blank screen`);
 
           // THE MISSING-TOKEN SENTINEL, and this is the check that should have
@@ -955,6 +1009,7 @@ async function main() {
     await checkRadarTap(browser, base);
     await checkCentrePicker(browser, base);
     await checkUpdateStrip(browser);
+    await checkFirstRunIntro(browser, base);
 
     /* ---- 4. the bundled geophysical data actually reaches the panel ----- */
     await checkGeoDataChain(browser, base);
@@ -1303,6 +1358,7 @@ async function checkNoSecrets(base) {
 async function checkRadarTap(browser, base) {
   const where = 'radar-tap';
   const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+  await seenIntro(context);
   await context.route('**/api/traffic**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) }),
   );
@@ -1379,6 +1435,7 @@ async function checkRadarTap(browser, base) {
 async function checkCentrePicker(browser, base) {
   const where = 'centre-picker';
   const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+  await seenIntro(context);
   const queries = [];
   await context.route('**/api/traffic**', (route) => {
     queries.push(new URL(route.request().url()));
@@ -1506,6 +1563,7 @@ async function checkUpdateStrip(browser) {
   const swBase = `http://127.0.0.1:${server.address().port}`;
 
   const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+  await seenIntro(context);
   /**
    * A TAKEOVER HAS TO BE OBSERVED AS AN EVENT, because it cannot be observed as
    * a difference.
@@ -1526,6 +1584,22 @@ async function checkUpdateStrip(browser) {
     navigator.serviceWorker?.addEventListener('controllerchange', () => {
       sessionStorage.setItem('gate:controllerchange', 'yes');
     });
+    /**
+     * ASK THE PIXELS, NOT THE ATTRIBUTE.
+     *
+     * `el.hidden` is what the DOM was TOLD. Whether the reader can see it is a
+     * different question, and the two came apart here: `.update { display: flex }`
+     * outranks the user agent's `[hidden] { display: none }`, so the strip was
+     * painted at full size while `hidden` read true. Every assertion in this
+     * check agreed nothing was shown, and a first-time visitor was looking at
+     * "A new version of the panel is ready" about the version they had just
+     * installed — the §7h.3 failure this check is named after, passing.
+     */
+    window.onScreen = (el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+    };
   });
   const page = await context.newPage();
   const errors = [];
@@ -1561,7 +1635,7 @@ async function checkUpdateStrip(browser) {
     await page.goto(`${swBase}/`, { waitUntil: 'networkidle' });
     await page.evaluate(() => navigator.serviceWorker.ready);
     await page.waitForTimeout(600);
-    if (await settle(() => page.evaluate(() => !document.getElementById('update-strip')?.hidden))) {
+    if (await settle(() => page.evaluate(() => onScreen(document.getElementById('update-strip'))))) {
       fail(where, 'a first-ever visitor was told a new version is ready — they arrived seconds ago (§7h.3)');
     }
 
@@ -1619,7 +1693,7 @@ async function checkUpdateStrip(browser) {
     /* ---- §7h.2: the reader is told, legibly, with two ways out ---------- */
     const strip = await settle(() => page.evaluate(() => {
       const s = document.getElementById('update-strip');
-      if (!s || s.hidden) return null;
+      if (!onScreen(s)) return null;
       return {
         text: document.getElementById('update-text')?.textContent?.trim() ?? '',
         acts: [...s.querySelectorAll('button')].map((b) => b.textContent.trim()),
@@ -1647,7 +1721,7 @@ async function checkUpdateStrip(browser) {
     await page.waitForTimeout(900);
     const after = {
       waiting: await settle(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting)),
-      stripShown: await settle(() => page.evaluate(() => !document.getElementById('update-strip')?.hidden)),
+      stripShown: await settle(() => page.evaluate(() => onScreen(document.getElementById('update-strip')))),
       seized: await seized(),
     };
     if (!after.seized) fail(where, 'pressing "Install it now" never handed the page over to the waiting worker');
@@ -1661,9 +1735,79 @@ async function checkUpdateStrip(browser) {
   }
 }
 
+/**
+ * THE FIRST-RUN ORIENTATION IS SHOWN, ONCE (Doctrine §7e).
+ *
+ * Noah, 2026-08-03: "Why am I not seeing my first-time-run pop-up anymore?"
+ * Because 1.12.0 moved it into the (i) menu at boot and nothing opened it. The
+ * text SURVIVED — which is the half `plant.mjs` already proves — and was never
+ * PRESENTED, which is the half that makes it orientation instead of reference
+ * material. Both halves are asserted now, because passing one while failing the
+ * other is precisely what shipped.
+ *
+ * THIS IS THE ONE CONTEXT THAT DOES NOT CALL `seenIntro`.
+ */
+async function checkFirstRunIntro(browser, base) {
+  const where = 'first-run';
+  const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(700);
+
+  const first = await page.evaluate(() => {
+    const dialog = document.querySelector('dialog.info');
+    const intro = document.querySelector('.gate-first');
+    const introBox = intro?.getBoundingClientRect();
+    const panel = document.getElementById('panel')?.getBoundingClientRect();
+    return {
+      open: !!dialog?.open,
+      // The orientation must be the thing on screen, not merely present in a
+      // dialog scrolled to somewhere else.
+      introVisible: !!introBox && introBox.width > 0 && introBox.height > 0,
+      introInDialog: !!intro && !!intro.closest('dialog.info'),
+      // §7e: the panel is live BEHIND it. This is not a gate and not a consent
+      // screen — Noah rejected one that read "like accept the terms".
+      panelPainted: !!panel && panel.width > 100 && panel.height > 60,
+      closes: !!document.querySelector('dialog.info .info-close'),
+    };
+  });
+
+  if (!first.open) fail(where, 'a first-time reader was shown no orientation at all — the text is in the (i) menu and nothing opens it (§7e)');
+  if (!first.introInDialog) fail(where, 'the first-run text is not inside the (i) dialog, so it does not live where §7e says it must live afterwards');
+  if (first.open && !first.introVisible) fail(where, 'the (i) dialog opened but the first-run orientation is not the part on screen');
+  if (!first.panelPainted) fail(where, 'the panel is not behind the orientation — this must not be a gate the reader has to get through');
+  if (!first.closes) fail(where, 'the orientation has no way out');
+
+  // ...and it is ONCE. A panel that explains itself on every load is a panel
+  // nobody can use.
+  if (first.open) await page.evaluate(() => document.querySelector('dialog.info .info-close').click());
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(700);
+  const second = await page.evaluate(() => !!document.querySelector('dialog.info')?.open);
+  if (second) fail(where, 'the orientation opened again on the second visit — it is meant to be first-RUN');
+
+  // And it is still findable, which is the whole reason it moved rather than
+  // being destroyed.
+  await page.evaluate(() => document.getElementById('info-btn').click());
+  await page.waitForTimeout(300);
+  const findable = await page.evaluate(() => {
+    const intro = document.querySelector('dialog.info .gate-first');
+    const b = intro?.getBoundingClientRect();
+    return !!b && b.width > 0 && b.height > 0;
+  });
+  if (!findable) fail(where, 'the orientation is not in the (i) menu on a later visit — it was shown once and lost');
+
+  for (const e of errors) fail(where, `the first-run path threw: ${e}`);
+  await context.close();
+}
+
 async function checkStoredLevelling(browser, base) {
   const where = 'stored-levelling';
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });
+  await seenIntro(context);
 
   // A real gravity reference, normalised: Noah's own raw axes from the report
   // that exposed this, so the numbers on screen are the ones he saw.
@@ -1714,6 +1858,7 @@ async function checkStoredLevelling(browser, base) {
 async function checkProvenanceCoverage(browser, base) {
   const where = 'provenance';
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });
+  await seenIntro(context);
   const page = await context.newPage();
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
   // No gate to dismiss: the panel is the first surface (PWR is a switch on it).
@@ -1765,6 +1910,7 @@ async function checkGeoDataChain(browser, base) {
     // The home reference, which is inside both the geoid grid and the METAR box.
     geolocation: { latitude: 38.68, longitude: -121.0, accuracy: 8 },
   });
+  await seenIntro(context);
   const page = await context.newPage();
   const consoleErrors = [];
   page.on('console', (m) => {

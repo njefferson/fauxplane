@@ -11,25 +11,29 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.17.0 is on staging: https://staging.fauxplane.pages.dev**
+**1.18.0 is on staging: https://staging.fauxplane.pages.dev**
 
-Two releases in it, and the second is the one to test carefully.
+Three releases since main, and they answer three things Noah asked on 2026-08-03.
 
 **1.16.0 — point the radar at any airport.** A box at the top of the RADAR page
 takes an airport code, a town or a coordinate; press the match and the scope
 moves there and the feed is re-asked about that sky. 702 Northern California
-airports are bundled with the app, so it works offline.
+airports are bundled, so it works offline.
 
-**1.17.0 — the panel can say it has gone out of date.** When a new version is
-ready a strip appears under the tabs, with "Install it now" and "Not now". It
-never installs itself and never covers an instrument.
+**1.17.0 — the panel can say it has gone out of date.** A strip under the tabs
+when a new version is ready, with "Install it now" and "Not now". It never
+installs itself and never covers an instrument.
 
-**What to check on your device.** Open RADAR, type an airport you know, press
-it, and see whether the aircraft are plausibly over that airport. Then leave the
-panel open — the next time a release lands on staging you should see the update
-strip appear rather than the app changing under you. If anything looks wrong,
-press the version stamp and send the report; it now says which copies of the app
-your device is holding.
+**1.18.0 — the instruments get their screen back.** The value column is a strip
+along the bottom and the navigation display is about twice the size. The
+first-run instructions are shown again on a first visit. The panel remembers
+roughly where it was and the footer says what the scope is actually centred on.
+
+**What to check on your device.** Open the PFD and see whether the navigation
+display is now worth looking at. Type an airport you know on RADAR. Then leave
+the panel open — the next staging release should show you the update strip
+rather than the app changing under you. If anything looks wrong, press the
+version stamp and send the report.
 
 `main` is on 1.15.0 until you say promote. This block is rewritten by whichever
 session stages the next candidate; a staged build nobody can see is the failure
@@ -2219,6 +2223,119 @@ view is checked WITH aircraft on it rather than empty.
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
   airborne and being heard right now.
+
+---
+
+## 1.18.0 — the instruments get their screen back, 2026-08-03
+
+Three things Noah asked in one message, and all three were defects rather than
+preferences.
+
+### "All the voice-over data does NOT need to fill MY screen"
+
+He was looking at an iPad where the right-hand column of value cards took a
+third of the display and the navigation display was a small box above it. The
+CSS said it outright: `.readouts` had `flex: 56` against the plan view's 44, so
+the text had a BIGGER share than the instrument, on the axis where the
+instrument had least to spare.
+
+**The reason given for the stacking was wrong on its own terms.** A canvas is
+non-text content, so these numbers must exist as text somewhere — that part is
+real and is not negotiable. Nothing about SC 1.1.1 says the text must be the
+largest thing on the page or must sit beside the picture it describes. It is a
+strip along the bottom now, auto-fitting into as many columns as the width
+allows: two lines on a landscape iPad, one per line on a phone, no breakpoint
+deciding which.
+
+**Most of it was duplication.** Groundspeed is the GS tape, indicated altitude
+is the ALT tape, vertical speed is the VS tape, heading is the compass rose,
+pitch is the horizon — five of eight rows repeating what is drawn a few inches
+to their left.
+
+**What it broke on the way, and how it was found.** `.pfd-row` carries
+`min-height: 0` so the horizon can shrink rather than overflow. That is correct
+while the row is the only thing competing for the panel's height, and became
+wrong the moment the value strip left the row and started taking a share of the
+same column: on a landscape phone the row was handed 95px while its children
+hold 12rem floors, so the canvas and the plan view hung 50px out of their parent
+and straight through the strip below. The gate named both overlaps and the
+measured boxes are in the fix's comment.
+
+### "Why am I not seeing my first-time-run pop-up anymore?"
+
+Because 1.12.0 moved it into the (i) menu at boot and nothing ever opened it.
+The orientation SURVIVED — which `plant.mjs` has been proving for six releases —
+and was never PRESENTED, which nothing checked. **Passing one half of a rule
+while failing the other is exactly what shipped.**
+
+It opens the (i) dialog on a profile that has not seen it, which is what keeps
+it from becoming the thing he rejected before ("'Switch the panel on' still
+takes all attention on the initial pop-up and reads like 'accept the terms'").
+It gates nothing: the panel is live behind it, every control works, and closing
+it is the only thing it asks. Being the same dialog the (i) button opens means a
+reader who closes it has already learned where to find it again.
+
+### "Why is home reference hard coded and not matched to user location?"
+
+The constant exists for a real reason — acceptance criterion 1 is that the panel
+comes up and is useful with every permission denied, so something has to be the
+centre before a fix exists. What was wrong is that it never LEARNED. A reader in
+Denver was anchored to a town in California for ever, on every cold start, no
+matter how many fixes their device had given us.
+
+A fix is now remembered, coarsened to two decimals — about a kilometre, which is
+a privacy decision and not a storage one. This is a map centre and a query box
+tens of miles across; storing a doorstep to centre a scope is a trade nobody
+asked for. It outranks the constant and is beaten by a live fix, and it is
+**never reported as a fix**: `fromFix` stays false and the label says it is the
+last known position.
+
+**And the footer stopped lying.** His screenshot has "Home reference Cameron
+Park, CA 38.68, -121.00" along the bottom while GPS altitude read 88 ft from a
+live fix a few inches above. Both sentences were on screen and only one was true
+of the panel he was looking at. The line exists so nobody reads a pre-fix
+distance as a distance from where they are, which means it has to stop saying it
+the moment there is a fix. It names the centre in force now: your position, a
+chosen airport, a followed flight, the last known position, or the constant.
+
+### The defect underneath all of this: `hidden` did not mean hidden
+
+The screenshot taken to check the new layout showed the UPDATE STRIP on a
+first-ever visit — an offer to install the version that had just been installed,
+which is the §7h.3 failure the gate had been asserting against for a whole
+release. The probe said `hidden: true` while the element was painted at full
+size.
+
+**The user agent hides `[hidden]` with `display: none`, and any author rule
+setting `display` outranks it.** `.update { display: flex }` did. Every check
+that asks the DOM agreed nothing was shown.
+
+It has now happened to `.page`, to `.follow-banner` and to `.update`. The first
+two were each patched with their own `.thing[hidden] { display: none }` and the
+next new element repeated it, because nothing was LOOKING. There is one global
+`[hidden] { display: none !important }` now, and a check on every page and
+viewport that fails on any element carrying the attribute with a non-zero box —
+so the next component that sets `display` and forgets is caught on the release
+that introduces it.
+
+The gate's own §7h.3 assertion read `el.hidden` — the attribute — and passed
+while the strip was on screen. It measures the box now. **A check that asks the
+DOM what it was told is not checking what the reader sees.**
+
+### Verified
+
+**303 unit tests, 42/42 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor, and `pwa-check.mjs` green on all six §7h properties.**
+
+Three new plants, each watched going red about its own thing: the orientation
+never shown, the orientation shown every time, and an author `display` rule
+outranking `[hidden]`.
+
+Not verifiable here: whether the strip along the bottom is the right size on
+Noah's actual iPad. It is capped at a third of the panel in the side-by-side
+layout and scrolls beyond that; the failure state is the worst case, because
+every crossed-out value carries a reason paragraph.
 
 ---
 
