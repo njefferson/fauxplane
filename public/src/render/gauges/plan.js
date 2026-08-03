@@ -94,6 +94,33 @@ export function placeLabels(items, { measure, lineHeight, bounds }) {
   return out;
 }
 
+/**
+ * Which aircraft is under a tap, if any.
+ *
+ * The SAME geometry drawPlan draws with — centre, ring radius, px-per-nm —
+ * so a symbol is hit exactly where it is painted. Pure, so the finger-sized
+ * tolerance is testable without a canvas: a tap is a ~44 px event, not a
+ * pixel, and the nearest symbol inside that circle wins.
+ */
+export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slopPx = 24) {
+  const cx = w / 2;
+  const cy = h / 2;
+  const r = Math.min(w, h) / 2 - 4;
+  const pxPerNm = r / rangeNm;
+  let best = null;
+  let bestD = slopPx;
+  for (const a of aircraft ?? []) {
+    const q = project(a, { centre, pxPerNm, cx, cy });
+    if (!q || Math.hypot(q.x - cx, q.y - cy) > r) continue;
+    const d = Math.hypot(q.x - px, q.y - py);
+    if (d <= bestD) {
+      bestD = d;
+      best = a;
+    }
+  }
+  return best;
+}
+
 export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, trail = [] }) {
   const cx = x + w / 2;
   const cy = y + h / 2;

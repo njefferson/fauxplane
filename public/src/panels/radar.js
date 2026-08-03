@@ -92,6 +92,27 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
     renderFollowNote();
   };
 
+  // TAP AN AIRCRAFT TO FOLLOW IT (Noah: "map tapping the flight add it to the
+  // tracking dialogue box"). The tap fills the follow box AND follows, through
+  // the same startFollowing the form uses — and the "Heard right now" list
+  // remains the accessible route to exactly the same action, so the canvas tap
+  // is an enhancement rather than the only way.
+  canvas.addEventListener('click', (e) => {
+    const result = traffic.last;
+    if (!result?.centre) return;
+    const rect = canvas.getBoundingClientRect();
+    const hit = hitTestAircraft(
+      traffic.nearby,
+      { centre: result.centre, rangeNm, w: rect.width, h: rect.height },
+      e.clientX - rect.left,
+      e.clientY - rect.top,
+    );
+    if (!hit) return;
+    const key = hit.callsign ?? hit.registration ?? hit.hex.toUpperCase();
+    input.value = key;
+    startFollowing(hit.callsign ? { callsign: hit.callsign } : { hex: hit.hex });
+  });
+
   stopBtn.addEventListener('click', () => {
     traffic.unfollow();
     stopBtn.hidden = true;

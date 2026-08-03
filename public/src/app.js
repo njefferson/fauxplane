@@ -562,7 +562,26 @@ async function boot() {
   async function refreshWinds() {
     await winds.refresh(state.snapshot.fields);
   }
+  // A 429 IS AN INSTRUCTION, NOT AN OBSTACLE (Doctrine §15.3). Noah's report
+  // showed the follow poll asking every five seconds THROUGH a rate limit for
+  // over a minute: adsb.lol said slow down and the panel did not. Each
+  // rate-limited round now doubles the wait before traffic is asked again —
+  // any traffic, nearby or followed, because the limit is theirs, not
+  // per-endpoint — and one success clears it.
+  let trafficPenalty = 0;
+  let trafficAllowedAt = 0;
+  const noteTrafficResult = (result) => {
+    if (result && result.ok === false && /rate limited/.test(String(result.reason ?? ''))) {
+      trafficPenalty = Math.min(trafficPenalty + 1, 5);
+      trafficAllowedAt = now() + Math.min(FOLLOW_INTERVAL_MS * 2 ** trafficPenalty, 120_000);
+    } else if (result && result.ok !== false) {
+      trafficPenalty = 0;
+      trafficAllowedAt = 0;
+    }
+  };
+
   async function refreshTraffic() {
+    if (now() < trafficAllowedAt) return;
     // The plan view is only fetched while it is the page being LOOKED AT.
     // Polling a volunteer network to draw a canvas nobody has open is exactly
     // the shape §15.6 forbids — and it is free to avoid, because the page
@@ -572,12 +591,13 @@ async function boot() {
     // for a page somebody has open — and the edge cache means two pages open in
     // turn cost one upstream request, not two.
     if (active === 'radar' || active === 'pfd') {
-      await traffic.refreshNearby(state.snapshot.fields, radar.rangeNm);
+      noteTrafficResult(await traffic.refreshNearby(state.snapshot.fields, radar.rangeNm));
       trafficBite();
     }
   }
   async function refreshFollowed() {
-    if (traffic.isFollowing) await traffic.refreshFollowed();
+    if (now() < trafficAllowedAt) return;
+    if (traffic.isFollowing) noteTrafficResult(await traffic.refreshFollowed());
   }
 
   // ---- page switching ------------------------------------------------------

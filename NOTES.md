@@ -68,6 +68,42 @@ items.
 
 ---
 
+## 1.7.0 — tap to follow, restart, and obeying the rate limit
+
+Noah's report, following UAL2436: the follow poll was refused with HTTP 429 and
+the panel KEPT ASKING every five seconds through the refusal — while the nearby
+poll (a different cache key) worked. Doctrine §15.3 calls a 429 an instruction;
+the panel was treating it as an obstacle.
+
+**Backoff now.** Any rate-limited traffic round doubles the wait before traffic
+is asked again — nearby and follow both, because the limit belongs to the
+provider, not to an endpoint — up to two minutes; one success clears it. The
+failure string on the follow row was already honest; the BEHAVIOUR now is too.
+
+**Tap an aircraft to follow it.** A tap within a finger (~24 px) of a symbol
+fills the follow box and follows, through the same `startFollowing` the form
+uses. The hit test is a pure function using the exact geometry `drawPlan`
+paints with, tested for the miss, the empty sky, and the two-close-symbols case
+where the NEAREST must win regardless of list order. The "Heard right now"
+list remains the accessible route to the same action, so the canvas tap is an
+enhancement, never the only way.
+
+**Restart the panel**, on SETUP. A reload is this app's power cycle: the worker
+serves the shell offline, boot starts clean, the PANEL POWER gate re-asks for
+sensors. Noah asked for exactly this mid-wedge, and one honest control beats a
+panel that can only be unwedged from the browser chrome.
+
+### Verified
+
+**215 unit tests, 35/35 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.** Not verifiable here: a live 429 from adsb.lol (the sandbox cannot
+reach them), so the backoff is covered by tests of nothing — it is three lines
+reviewed, not proven, and the next rate-limited follow on a real device is the
+test.
+
+---
+
 ## 1.6.0 — four answers off two screenshots, and a social tile
 
 **"Why is the g-gauge always left of center?"** Because the scale runs −1 to

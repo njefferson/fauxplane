@@ -193,6 +193,17 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, onCha
   };
 
   levelBtn.addEventListener('click', capture);
+  // POWER OFF AND ON. Noah, mid-wedged-follow: "It needs a reset/reload, or
+  // power off/on." A reload IS the power cycle for this app: the worker serves
+  // the shell offline, boot starts clean, and the PANEL POWER gate re-asks for
+  // the sensors. One honest control beats a panel that can only be unwedged
+  // from the browser chrome.
+  const restartBtn = el('button', { class: 'setup-btn', type: 'button', text: 'Restart the panel' });
+  restartBtn.addEventListener('click', () => {
+    announcer.say('Restarting the panel.');
+    globalThis.location?.reload();
+  });
+
   clearBtn.addEventListener('click', clear);
 
   host.replaceChildren(
@@ -208,7 +219,7 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, onCha
         text:
           'Put the device in its mount, park somewhere level, and let it sit still for a second before pressing. It will refuse if it is moving: a reference captured in motion is baked into every reading afterwards and looks perfectly fine.',
       }),
-      el('div', { class: 'setup-actions' }, [levelBtn, clearBtn]),
+      el('div', { class: 'setup-actions' }, [levelBtn, clearBtn, restartBtn]),
       status,
       current,
     ]),

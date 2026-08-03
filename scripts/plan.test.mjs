@@ -86,3 +86,33 @@ test('PLAN: no label is placed outside the plan view', () => {
 test('PLAN: an empty sky places nothing and does not throw', () => {
   assert.deepEqual(placeLabels([], opts), []);
 });
+
+/* ------------------------------------------------------------- tap to follow */
+
+import { hitTestAircraft } from '../public/src/render/gauges/plan.js';
+
+const VIEW = { centre: { lat: 38.7, lon: -121.0 }, rangeNm: 40, w: 400, h: 400 };
+
+test('TAP: a touch near a symbol picks that aircraft', () => {
+  // ~20 nm north of centre: at 400x400 and 40 nm, that is ~98px above centre.
+  const a = { hex: 'a1', callsign: 'UAL1', lat: 39.033, lon: -121.0 };
+  const hit = hitTestAircraft([a], VIEW, 200, 102, 24);
+  assert.equal(hit?.hex, 'a1');
+});
+
+test('TAP: empty sky, or a tap far from anything, follows nothing', () => {
+  assert.equal(hitTestAircraft([], VIEW, 200, 200), null);
+  const a = { hex: 'a1', callsign: 'UAL1', lat: 39.033, lon: -121.0 };
+  assert.equal(hitTestAircraft([a], VIEW, 200, 300, 24), null, 'a 200px miss is not a tap on it');
+});
+
+test('TAP: the NEAREST of two close symbols wins — a tap is not a lottery', () => {
+  // Two aircraft on the same bearing: 39.02° is 19.2 nm out (~94 px above
+  // centre at 4.9 px/nm), 39.05° is 21 nm (~103 px). A tap on the nearer one
+  // is within a finger of both; the nearer must win, and list order must not
+  // decide it.
+  const near = { hex: 'n1', lat: 39.02, lon: -121.0 };
+  const far = { hex: 'f1', lat: 39.05, lon: -121.0 };
+  assert.equal(hitTestAircraft([far, near], VIEW, 200, 106, 44)?.hex, 'n1');
+  assert.equal(hitTestAircraft([near, far], VIEW, 200, 106, 44)?.hex, 'n1');
+});

@@ -6,6 +6,15 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 1.7.0 — CAPABILITY — 2026-08-03
+
+**Tap an aircraft on the radar to follow it.** The tap fills the follow box and
+starts following, same as typing the callsign; the list below remains the
+accessible route to the same action. Also: a **Restart the panel** button on
+SETUP — a clean power cycle for a wedged panel — and the panel now OBEYS a
+rate limit instead of asking through it: each refused round doubles the wait,
+up to two minutes, and one success clears it.
+
 ## 1.6.0 — CAPABILITY — 2026-08-03
 
 **Radar range from the main screen.** The navigation display beside the horizon
