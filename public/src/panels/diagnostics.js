@@ -295,6 +295,24 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
   line(`  root font ${env.rootFontPx}px${env.rootFontPx && env.rootFontPx !== 16 ? '  (text size is enlarged)' : ''}`);
   line(`  palette ${env.dim}   standalone ${env.standalone}   service worker ${env.swState}`);
   if (env.wakeLock !== undefined) line(`  wake lock ${env.wakeLock}`);
+  // Doctrine §7h.4. THE VERSION STAMP ABOVE CANNOT ANSWER "IS THIS CURRENT?" —
+  // it reports what the cache served, and a stale app reports its stale version
+  // perfectly honestly. These lines are what make the answer readable from the
+  // other end of a message.
+  if (env.caches) {
+    const held = env.caches.length ? env.caches.join(', ') : 'none';
+    line(`  shells held ${held}`);
+    line(
+      `  a newer version is ${env.swWaiting ? 'WAITING to be installed — the update strip is offering it' : 'not waiting'}`
+        + `${env.cacheReadAt ? `   (read ${env.cacheReadAt})` : '   (never read)'}`,
+    );
+    // MORE THAN ONE SHELL IS NOT NORMAL. `activate` deletes every cache but its
+    // own, so two means an activate did not finish — which is the shape of the
+    // defect that stranded the iPad on 0.4.1.
+    if (env.caches.length > 1) {
+      line('  MORE THAN ONE SHELL IS HELD — an activate did not finish; the panel may be serving a mix');
+    }
+  }
   line();
 
   // ---- every field -----------------------------------------------------------

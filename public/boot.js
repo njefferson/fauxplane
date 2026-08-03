@@ -82,24 +82,75 @@ async function liveVersion() {
   return parseVersion(await res.text());
 }
 
+/**
+ * Drop the stuck worker and its caches, then reload onto the live release.
+ *
+ * This is what the whole file used to do BY ITSELF, silently, the moment it
+ * found a stale shell. Doctrine §7h.2 moved it behind the reader's own press:
+ * a panel that reloads under someone's hands is worse than one that is a
+ * release behind, and the reader could not previously tell either had happened.
+ */
+async function applyUpdate(stale) {
+  const regs = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(regs.map((r) => r.unregister()));
+  await Promise.all(stale.map((n) => caches.delete(n)));
+  // Uncontrolled now, so the reload fetches index.html, boot.js and app.js from
+  // the network. The new app.js registers the new worker on its own.
+  location.reload();
+}
+
+/**
+ * Raise the update strip, which is markup in index.html rather than anything
+ * this file builds — see the comment there for why that distinction is
+ * load-bearing on a stuck device.
+ *
+ * `claimed` stops the two paths fighting over one element: whichever of boot.js
+ * and app.js gets here first owns it. Both are correct answers, and showing it
+ * twice would re-announce it to a screen reader for no new reason.
+ */
+function showUpdateStrip(text, onAccept) {
+  const strip = document.getElementById('update-strip');
+  if (!strip || strip.dataset.claimed === 'yes') return false;
+  strip.dataset.claimed = 'yes';
+
+  const label = document.getElementById('update-text');
+  if (label && text) label.textContent = text;
+
+  document.getElementById('update-go')?.addEventListener('click', () => {
+    // Say it is working. Dropping caches and reloading takes long enough on a
+    // phone that a button which does nothing visible reads as broken.
+    if (label) label.textContent = 'Installing — the panel will reload itself.';
+    onAccept();
+  });
+  document.getElementById('update-later')?.addEventListener('click', () => {
+    strip.hidden = true;
+  });
+
+  strip.hidden = false;
+  return true;
+}
+
 async function unstick() {
   const live = await liveVersion();
   const stale = staleShell(await caches.keys(), live);
   if (!stale.length) return;
 
-  // Once per released version. If the reset does not take, the reader is left
-  // on a working older panel rather than in a reload loop.
+  // Once per released version, and it now bounds how often the reader is ASKED
+  // rather than how often the page reloads itself. Session-scoped on purpose: a
+  // genuinely new release should get a fresh offer.
   if (sessionStorage.getItem(RESET_KEY) === live) return;
   sessionStorage.setItem(RESET_KEY, live);
 
-  const regs = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(regs.map((r) => r.unregister()));
-  await Promise.all(stale.map((n) => caches.delete(n)));
-
-  // Uncontrolled now, so the reload fetches index.html, boot.js and app.js from
-  // the network. The new app.js registers the new worker on its own.
-  location.reload();
+  showUpdateStrip(
+    // NAMES BOTH VERSIONS. "An update is available" is true of every app on the
+    // device; "you are on 1.15.0 and 1.16.0 is out" is the sentence that lets
+    // Noah tell a stuck panel from a current one without opening anything.
+    `This panel is running an older release. Version ${live} is available.`,
+    () => applyUpdate(stale),
+  );
 }
+
+export { showUpdateStrip };
 
 // Guarded so importing this module in Node (the unit tests) is inert. Node has
 // a `navigator`, but not one with serviceWorker on it, and no CacheStorage.

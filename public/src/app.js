@@ -11,6 +11,16 @@
  */
 
 import { CACHE_NAME, VERSION } from './core/version.js';
+/**
+ * IMPORTED FROM boot.js RATHER THAN REIMPLEMENTED, and the import is the point.
+ *
+ * Both files can be the one that raises the update strip — boot.js on a device
+ * stuck across releases, this one on an ordinary update — and two copies of
+ * "show the strip" would eventually disagree about which element or which
+ * wording. `index.html` has already evaluated this module by the time app.js
+ * loads, so importing it is free and runs nothing twice.
+ */
+import { showUpdateStrip } from '../boot.js';
 import { state } from './core/state.js';
 import { createFusion } from './core/fusion.js';
 import { createVsi, angleOfAttack, calibratedAirspeed, indicatedAltitude, mslAltitude, pressureAltitude, trueAirspeed } from './core/derive.js';
@@ -953,8 +963,38 @@ async function boot() {
       dim: `${document.documentElement.dataset.dim} (${$('dim-note').textContent})`,
       standalone: window.matchMedia?.('(display-mode: standalone)')?.matches ?? false,
       swState: navigator.serviceWorker?.controller ? `controlled (${CACHE_NAME})` : 'not controlled',
+      // Doctrine §7h.4. The version stamp above cannot answer "is this the
+      // current build?" — it reports whatever the cache served, accurately, and
+      // a stale app reports its own stale version with complete honesty. These
+      // three can answer it: which shells the device is holding, whether a
+      // worker is in charge, and whether a newer one is waiting to be let in.
+      caches: cacheState.names,
+      cacheReadAt: cacheState.at,
+      swWaiting: cacheState.waiting,
       wakeLock: wakeLock ? 'held' : 'not held',
     };
+  }
+
+  /**
+   * The cache picture, refreshed at the moments it can actually change.
+   *
+   * `caches.keys()` is async and the report is built synchronously, so this is
+   * read ahead rather than during. Not polled: the only things that add or
+   * remove a shell are an install and an activate, and the page hears about
+   * both. The report prints when the reading was taken rather than implying it
+   * is live.
+   */
+  const cacheState = { names: [], waiting: false, at: null };
+  async function readCacheState() {
+    try {
+      cacheState.names = typeof caches !== 'undefined' ? await caches.keys() : [];
+      const reg = await navigator.serviceWorker?.getRegistration();
+      cacheState.waiting = !!reg?.waiting;
+      cacheState.at = new Date().toISOString();
+    } catch {
+      // A browser that refuses CacheStorage (private mode on some platforms)
+      // leaves the previous reading and its timestamp, which is the truth.
+    }
   }
 
   // ---- PWA plumbing --------------------------------------------------------
@@ -996,27 +1036,71 @@ async function boot() {
   }
 
   if ('serviceWorker' in navigator) {
-    // TAKE EFFECT ON THE RELOAD THE USER ALREADY DID.
-    //
-    // A new worker calls skipWaiting and claims the page, but by then this page
-    // has already been built from the previous release's cache. Without this,
-    // seeing a new version takes TWO reloads — which reads exactly like the
-    // deploy not having happened, and is what Noah hit.
+    /**
+     * WAS THERE A WORKER IN CHARGE WHEN THIS PAGE LOADED?
+     *
+     * Read BEFORE registering, because registering is what changes the answer.
+     * Everything below turns on it, and it is Doctrine §7h.3 in one boolean: a
+     * brand-new visitor has no controller, so their first worker taking charge
+     * is not an update and must neither reload them nor announce anything.
+     * They arrived thirty seconds ago; there is nothing they are behind on.
+     */
+    const hadController = !!navigator.serviceWorker.controller;
+
+    // A CONTROLLER CHANGE IS NOW THE READER'S DOING, so reloading on it is
+    // finishing what they pressed rather than acting on its own. It used to
+    // fire by itself, because the worker called skipWaiting on install.
     //
     // Guarded so it can only fire once: a reload loop on a cockpit panel would
-    // be considerably worse than a stale one.
+    // be considerably worse than a stale one. And gated on `hadController`,
+    // which removes the reload a first-ever visitor used to get for nothing —
+    // the worker claims the page, the page reloads, and the panel they were
+    // already looking at flickers away and comes back identical.
     let reloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloading) return;
+      readCacheState();
+      if (!hadController || reloading) return;
       reloading = true;
       window.location.reload();
     });
+    readCacheState();
 
     // The version travels in the URL so the worker has ONE source for it
     // without needing to be a module worker — see the note at the top of sw.js.
-    navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(VERSION)}`).catch(() => {
-      announcer.say('Offline shell unavailable — the panel needs a connection to reload.');
-    });
+    navigator.serviceWorker
+      .register(`/sw.js?v=${encodeURIComponent(VERSION)}`)
+      .then((reg) => {
+        /**
+         * THE OFFER, and it is only ever made about a worker that is genuinely
+         * waiting (§7h.1, §7h.2). Pressing it posts the one message sw.js acts
+         * on; the reload comes from the controllerchange above, so the page is
+         * rebuilt by the release that is now in charge rather than half of it.
+         */
+        const offer = (worker) => {
+          if (!worker || !hadController) return;
+          readCacheState();
+          showUpdateStrip(`A new version of the panel is ready. You are on ${VERSION}.`, () =>
+            worker.postMessage({ type: 'SKIP_WAITING' }),
+          );
+        };
+
+        // Already waiting when this page opened — the reader updated the app in
+        // another tab, or declined last session and came back.
+        offer(reg.waiting);
+
+        // Or one arrives while they are looking at it. `installed` with a
+        // controller present means waiting; `installed` WITHOUT one is the
+        // first-ever install, which `offer` refuses.
+        reg.addEventListener('updatefound', () => {
+          const installing = reg.installing;
+          installing?.addEventListener('statechange', () => {
+            if (installing.state === 'installed') offer(reg.waiting ?? installing);
+          });
+        });
+      })
+      .catch(() => {
+        announcer.say('Offline shell unavailable — the panel needs a connection to reload.');
+      });
   }
 
   state.start();

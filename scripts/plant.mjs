@@ -471,6 +471,29 @@ const PLANTS = [
     expect: /must show its identifier, not the word HOME/,
   },
   {
+    // Doctrine §7h.1, and the default advice everywhere is the fault. A worker
+    // that skips waiting claims a page built from the PREVIOUS release, then
+    // activate deletes that release's cache, so the page is served new modules
+    // into old markup. Nothing errors and nothing is said.
+    name: 'update: the new worker seizes the page instead of waiting',
+    check: 'the new worker waits until the reader lets it in',
+    file: 'public/sw.js',
+    find: '      // NO skipWaiting() HERE, and that is Doctrine §7h.1.',
+    replace: '      await self.skipWaiting();\n      // NO skipWaiting() HERE, and that is Doctrine §7h.1.',
+    expect: /took over on its own/,
+  },
+  {
+    // The other half: waiting SILENTLY is not better than seizing. An app that
+    // caches itself cannot notice it is stale, so if nothing raises the strip
+    // the reader has no way to find out at all.
+    name: 'update: a waiting version is never mentioned to the reader',
+    check: 'the panel says a new version is ready',
+    file: 'public/src/app.js',
+    find: '          readCacheState();\n          showUpdateStrip(',
+    replace: '          readCacheState();\n          if (true) return;\n          showUpdateStrip(',
+    expect: /panel says nothing about it/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

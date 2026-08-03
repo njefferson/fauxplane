@@ -235,6 +235,69 @@ body {
   border-bottom: 2px solid var(--fail);
 }
 
+/*
+ * THE UPDATE STRIP (Doctrine §7h.2). A standing indicator between the tabs and
+ * the panel — it pushes the instruments down rather than covering one, which is
+ * the difference between an indicator and a toast.
+ *
+ * DELIBERATELY NOT AMBER OR RED. The flight-deck convention reserves amber for
+ * a condition the crew must be aware of and red for one needing action, and a
+ * newer version being available is neither: nothing is wrong, and the panel in
+ * front of the reader is working. It gets the primary accent, the same tone as
+ * any other offer the app makes.
+ */
+.update {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap);
+  margin: 0;
+  padding: 0.6rem 1rem;
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--primary);
+}
+.update-text {
+  flex: 1 1 14rem;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.update-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+.update-go,
+.update-later {
+  min-height: var(--target);
+  padding: 0 0.9rem;
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+/* Emphasis is a PRIMARY BORDER on a normal fill, which is this app's existing
+ * idiom (`.diag-primary`) — not a filled button. A filled one would need an
+ * on-primary text token that this palette does not define, and inventing a
+ * colour outside PALETTES.md to make one button louder is how a palette starts
+ * drifting. */
+.update-go {
+  background: var(--surface-3);
+  color: var(--text);
+  border: 2px solid var(--primary);
+}
+.update-later {
+  background: var(--surface-3);
+  color: var(--text);
+  border: 2px solid var(--rail);
+}
+.update-go:focus-visible,
+.update-later:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* --- panel --------------------------------------------------------------- */
 
 .panel {

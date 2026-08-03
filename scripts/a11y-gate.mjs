@@ -235,6 +235,17 @@ const REGISTRY = [
  * this. That is the same relocation as INFO_REGISTRY: the coverage moves to
  * where the pixels are rather than being dropped for being awkward to reach.
  */
+/**
+ * The update strip (Doctrine §7h.2). Hidden until a worker is waiting, so it is
+ * measured by checkUpdateStrip after that state is forced — the same reason
+ * INFO_REGISTRY and CENTRE_REGISTRY exist rather than sitting in the page sweep.
+ */
+const UPDATE_REGISTRY = [
+  { selector: '.update-text', label: 'update strip text', min: 4.6 },
+  { selector: '.update-go', label: 'update strip accept', min: 4.6 },
+  { selector: '.update-later', label: 'update strip dismiss', min: 4.6 },
+];
+
 const CENTRE_REGISTRY = [
   { selector: '.radar-centre-input', label: 'centre picker field', min: 4.6 },
   { selector: '.radar-centre-hit', label: 'centre picker match', min: 4.6 },
@@ -943,6 +954,7 @@ async function main() {
     await checkStoredLevelling(browser, base);
     await checkRadarTap(browser, base);
     await checkCentrePicker(browser, base);
+    await checkUpdateStrip(browser);
 
     /* ---- 4. the bundled geophysical data actually reaches the panel ----- */
     await checkGeoDataChain(browser, base);
@@ -1458,6 +1470,195 @@ async function checkCentrePicker(browser, base) {
 
   for (const e of errors) fail(where, `the centre picker threw: ${e}`);
   await context.close();
+}
+
+/**
+ * DOCTRINE §7h, WITH A REAL SECOND WORKER.
+ *
+ * "Serve a genuinely different sw.js and let the browser's own update machinery
+ * run; a mock proves the mock works." So this runs its own server with a
+ * `transform` hook that appends a comment to `sw.js` once armed — different
+ * bytes, which is the only thing that makes a browser install a second worker.
+ *
+ * The four properties, in the order they can fail:
+ *
+ *   3. A BRAND-NEW VISITOR IS NOT TOLD. The first worker on a first visit is
+ *      not an update, and offering one thirty seconds after arriving is
+ *      nonsense.
+ *   1. THE NEW WORKER WAITS. The old one is still the controller after it
+ *      installs — that is what keeps the open page's markup and modules from
+ *      the same release.
+ *   2. THE READER IS TOLD, in a standing element with two ways out, and the
+ *      text is legible in both palettes.
+ *   1. THE READER'S PRESS RELEASES IT, and only theirs.
+ */
+async function checkUpdateStrip(browser) {
+  const where = 'update-strip';
+  let armed = false;
+  const server = await createStaticServer({
+    apiStubs: { '/api/traffic': TRAFFIC_FIXTURE, '/api/metar': { ok: false, reason: 'not deployed here' }, '/api/winds': { ok: false, reason: 'not deployed here' } },
+    // Byte-different but still a WORKING worker: a comment cannot change what
+    // it does, which is what lets step 4 assert it actually took over.
+    transform: (pathname, raw) =>
+      armed && pathname === '/sw.js' ? Buffer.concat([raw, Buffer.from('\n// second worker, served by the a11y gate\n')]) : raw,
+  });
+  await new Promise((r) => server.listen(0, r));
+  const swBase = `http://127.0.0.1:${server.address().port}`;
+
+  const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+  /**
+   * A TAKEOVER HAS TO BE OBSERVED AS AN EVENT, because it cannot be observed as
+   * a difference.
+   *
+   * The first attempt compared `controller.scriptURL` before and after. That
+   * can never work here: this app's worker takes its version from its
+   * registration URL, so BOTH workers are registered at `/sw.js?v=1.16.0` and
+   * the string is identical whichever one is in charge. And when a takeover
+   * does happen the app reloads the page, so anything held in a JS variable is
+   * gone before it can be read.
+   *
+   * `sessionStorage` survives the reload; an init script gets the listener in
+   * before any page code. This is what makes the skipWaiting plant detectable
+   * at all — without it the gate went red about "the browser did not see it as
+   * an update", which was the opposite of what had happened.
+   */
+  await context.addInitScript(() => {
+    navigator.serviceWorker?.addEventListener('controllerchange', () => {
+      sessionStorage.setItem('gate:controllerchange', 'yes');
+    });
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  /**
+   * EVERY READ HERE HAPPENS WHILE A RELOAD MAY BE IN FLIGHT, and a `page.evaluate`
+   * whose execution context is destroyed mid-call THROWS — which took the whole
+   * gate down with an uncaught exception instead of reporting a failure. The
+   * plant harness then said "the gate went red, but not about this: (no failing
+   * line found)", because a crash produces no FAIL line to quote.
+   *
+   * Worse, it was a RACE: the same planted fault was diagnosed correctly on one
+   * run and crashed on the next. A check that reports different things about
+   * the same defect is not evidence of anything.
+   */
+  const settle = async (fn) => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (!/context was destroyed|Execution context|navigating/i.test(String(err.message))) throw err;
+        await page.waitForLoadState('networkidle').catch(() => {});
+        await page.waitForTimeout(300);
+      }
+    }
+    return null;
+  };
+  const seized = () => settle(() => page.evaluate(() => sessionStorage.getItem('gate:controllerchange') === 'yes'));
+  const clearSeized = () => settle(() => page.evaluate(() => sessionStorage.removeItem('gate:controllerchange')));
+
+  try {
+    /* ---- §7h.3: a first visit is never told anything -------------------- */
+    await page.goto(`${swBase}/`, { waitUntil: 'networkidle' });
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.waitForTimeout(600);
+    if (await settle(() => page.evaluate(() => !document.getElementById('update-strip')?.hidden))) {
+      fail(where, 'a first-ever visitor was told a new version is ready — they arrived seconds ago (§7h.3)');
+    }
+
+    // Now they have a controller, which is what makes the NEXT one an update.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(400);
+    const controlled = await settle(() => page.evaluate(() => !!navigator.serviceWorker.controller));
+    if (!controlled) {
+      fail(where, 'the worker never took control, so the update path cannot be exercised at all');
+      return;
+    }
+    // The first worker claiming this page is not the takeover under test.
+    await clearSeized();
+
+    /* ---- a genuinely different sw.js, and the browser's own update ------- */
+    armed = true;
+    await page.evaluate(async () => {
+      const reg = await navigator.serviceWorker.getRegistration();
+      await reg.update();
+    });
+    await page.waitForTimeout(1200);
+
+    /* ---- §7h.1: it WAITS ------------------------------------------------ */
+    const state = {
+      waiting: await settle(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting)),
+      seized: await seized(),
+    };
+    /**
+     * TWO WAYS FOR `waiting` TO BE FALSE, AND THEY ARE OPPOSITE FAULTS. The
+     * first draft of this check reported both as "the browser did not see it as
+     * an update" — which is the correct diagnosis for one of them and a
+     * completely misleading one for the other. Planting `skipWaiting()` proved
+     * it: the gate went red, and about the wrong thing, so the plant read as
+     * UNPROVEN rather than as the defect it is.
+     *
+     *   · a controllerchange FIRED — a new worker did arrive and seized the
+     *     page. That is §7h.1 exactly, and the failure this check exists for.
+     *   · no controllerchange and nothing waiting — no second worker was ever
+     *     installed, so everything below tests nothing and saying so is the
+     *     only honest outcome.
+     */
+    if (state.seized) {
+      fail(
+        where,
+        'the new worker took over on its own. The open page is still the OLD release’s markup and modules, '
+          + 'so it is now serving a mix (§7h.1) — and the reader was never asked',
+      );
+      return;
+    }
+    if (!state.waiting) {
+      fail(where, 'a second worker was served, none is waiting, and no controllerchange fired — the browser did not see it as an update, so nothing below is being tested');
+      return;
+    }
+
+    /* ---- §7h.2: the reader is told, legibly, with two ways out ---------- */
+    const strip = await settle(() => page.evaluate(() => {
+      const s = document.getElementById('update-strip');
+      if (!s || s.hidden) return null;
+      return {
+        text: document.getElementById('update-text')?.textContent?.trim() ?? '',
+        acts: [...s.querySelectorAll('button')].map((b) => b.textContent.trim()),
+        role: s.getAttribute('role'),
+        // A MODAL WOULD BE WRONG HERE. If it covers the panel, it is a dialog
+        // wearing a strip's clothes.
+        modal: !!s.closest('dialog') || getComputedStyle(s).position === 'fixed',
+      };
+    }));
+    if (!strip) {
+      fail(where, 'a worker is waiting and the panel says nothing about it — the reader cannot know they are behind (§7h.2)');
+    } else {
+      if (strip.acts.length < 2) fail(where, `the update strip offers ${strip.acts.length} control(s); it needs both a way in and a way out (§3)`);
+      if (strip.modal) fail(where, 'the update strip is modal or fixed — §7h.2 says a standing indicator, never something over what the reader is using');
+      if (strip.role !== 'status') fail(where, `the update strip has role="${strip.role}" — it must be announced without stealing focus`);
+      await checkContrast(page, UPDATE_REGISTRY, where);
+    }
+
+    /* ---- §7h.1 again: only the reader's press releases it ---------------- */
+    await clearSeized();
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'networkidle', timeout: 15000 }).catch(() => null),
+      page.evaluate(() => document.getElementById('update-go').click()),
+    ]);
+    await page.waitForTimeout(900);
+    const after = {
+      waiting: await settle(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting)),
+      stripShown: await settle(() => page.evaluate(() => !document.getElementById('update-strip')?.hidden)),
+      seized: await seized(),
+    };
+    if (!after.seized) fail(where, 'pressing "Install it now" never handed the page over to the waiting worker');
+    if (after.waiting) fail(where, 'pressing "Install it now" left the new worker still waiting — the control does not do what it says');
+    if (after.stripShown) fail(where, 'the update strip is still offering an update that has been installed');
+
+    for (const e of errors) fail(where, `the update path threw: ${e}`);
+  } finally {
+    await context.close();
+    server.close();
+  }
 }
 
 async function checkStoredLevelling(browser, base) {

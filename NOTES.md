@@ -11,21 +11,25 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.16.0 is on staging: https://staging.fauxplane.pages.dev**
+**1.17.0 is on staging: https://staging.fauxplane.pages.dev**
 
-Point the radar at any airport. There is a box at the top of the RADAR page —
-type SFO, or Sacramento, or a coordinate — and the scope moves there and the
-feed is re-asked about that sky. 702 Northern California airports are bundled
-with the app, so it works offline and cannot be rate limited.
+Two releases in it, and the second is the one to test carefully.
 
-Also in it: the crosshair in the middle of the scope now says what it is
-centred on rather than always saying HOME, on both the RADAR page and the
-PFD's navigation display.
+**1.16.0 — point the radar at any airport.** A box at the top of the RADAR page
+takes an airport code, a town or a coordinate; press the match and the scope
+moves there and the feed is re-asked about that sky. 702 Northern California
+airports are bundled with the app, so it works offline.
 
-**What to check on your device:** open RADAR, type an airport you know, press
-it, and see whether the aircraft that appear are plausibly over that airport.
-If anything looks wrong, press the version stamp and send the report — not a
-photograph, which cannot show the reasons.
+**1.17.0 — the panel can say it has gone out of date.** When a new version is
+ready a strip appears under the tabs, with "Install it now" and "Not now". It
+never installs itself and never covers an instrument.
+
+**What to check on your device.** Open RADAR, type an airport you know, press
+it, and see whether the aircraft are plausibly over that airport. Then leave the
+panel open — the next time a release lands on staging you should see the update
+strip appear rather than the app changing under you. If anything looks wrong,
+press the version stamp and send the report; it now says which copies of the app
+your device is holding.
 
 `main` is on 1.15.0 until you say promote. This block is rewritten by whichever
 session stages the next candidate; a staged build nobody can see is the failure
@@ -2215,6 +2219,91 @@ view is checked WITH aircraft on it rather than empty.
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
   airborne and being heard right now.
+
+---
+
+## 1.17.0 — the panel can say it has gone out of date, 2026-08-03
+
+Doctrine §7h, which landed in the hub while 1.16.0 was being built and which
+this repo failed on three counts the moment `pwa-check.mjs` was pointed at it.
+
+**The defect is invisible by construction.** Caching is the business of not
+asking the network, so a stale app looks perfectly fine. Nothing errors, nothing
+is missing, and the version stamp reports the old version with complete honesty.
+There is no symptom.
+
+**`skipWaiting()` on install made it actively worse**, and it is the default
+advice everywhere. The new worker claimed the OPEN page — a page already built
+from the previous release's HTML and modules — and `activate` then deleted that
+release's cache, so everything the page asked for afterwards came from the new
+one. On this app that means 1.17.0's renderer drawing into 1.16.0's canvas
+element. It is gone; the worker waits, and a `message` handler promotes it on
+`SKIP_WAITING` and on nothing else.
+
+**The strip lives in `index.html`, not in a module, and that is load-bearing.**
+On a device stuck across releases the old worker serves the old `app.js` from
+its own cache — so any code added to a module is precisely the code a stuck
+device cannot run. `index.html` is fetched network-first, which makes it and
+`boot.js` the only two things a stuck device is guaranteed to receive, and
+therefore the only two things that can tell it it is stuck.
+
+**`boot.js` stops reloading behind the reader's back.** It used to detect a
+stale shell and silently drop the worker, delete the caches and reload. That is
+the same class of thing §7h.2 forbids: the reader could not tell the fix from
+the app blinking. It now raises the strip naming both versions, and the reload
+happens on their press. It keeps its once-per-release guard, which now bounds
+how often the reader is ASKED rather than how often the page reloads itself.
+
+**A first-ever visitor is told nothing** (§7h.3), gated on `hadController` read
+BEFORE registering — because registering is what changes the answer. The same
+flag removed a reload first-time visitors used to get for nothing: the worker
+claimed the page, the page reloaded, and the panel they were already looking at
+flickered away and came back identical.
+
+### Two gate defects the plants found, and neither was in the app
+
+**The check misdiagnosed the exact failure it exists for.** With `skipWaiting()`
+planted, `reg.waiting` is false — and the first draft reported that as "the
+browser did not see it as an update", which is the correct reading of one cause
+and a completely misleading reading of the other. The plant came back UNPROVEN
+rather than caught, which is the harness working: a check that names the wrong
+thing is worse than one that says only "it went red".
+
+**And it could not tell the two workers apart.** It compared
+`controller.scriptURL` before and after, which can never work here — both
+workers are registered at `/sw.js?v=<version>`, so the string is identical
+whichever is in charge, and a takeover reloads the page and wipes any variable
+holding the answer. A takeover has to be observed as an EVENT: a
+`controllerchange` listener installed before page code, writing to
+`sessionStorage`, which survives the reload.
+
+**Then it crashed intermittently.** Every read happens while a reload may be in
+flight, and a `page.evaluate` whose context is destroyed throws — taking the
+gate down with an uncaught exception instead of a failure line. The same planted
+fault was diagnosed correctly on one run and crashed on the next.
+
+**`pwa-check.mjs` failed this repo for a COMMENT.** Its install-block rule
+greps for `skipWaiting`, and the comment left where the call used to be says
+"NO skipWaiting() HERE, and that is Doctrine §7h.1" — the comment that should be
+there, because the next reader will wonder why the line everyone else has is
+missing. Fixed in the hub by stripping comments before the test: the only ways
+to go green otherwise were to delete a useful comment or reword around a
+substring, and both teach an author to write for the grep.
+
+### Verified
+
+**299 unit tests, 39/39 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor, and `pwa-check.mjs` green on all six §7h properties.**
+
+The update path is tested with a REAL SECOND WORKER, which §7h asks for in those
+words — the harness serves a byte-different `sw.js` on the second fetch and lets
+the browser's own update machinery run. A mocked registration proves the mock
+works.
+
+Not verifiable here: what it looks like when Noah actually has 1.16.0 installed
+and 1.17.0 lands on staging. That is the first real run of this path, and it is
+the thing to watch for on his device.
 
 ---
 

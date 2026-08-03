@@ -29,6 +29,23 @@
  */
 export const RELEASES = [
   {
+    version: '1.17.0',
+    date: '2026-08-03',
+    headline: 'The panel can now tell you it has gone out of date.',
+    changed: [
+      'When a new version is ready, a strip appears under the tabs saying so, with "Install it now" and "Not now". It never covers an instrument and it never installs itself — you decide when.',
+      'Until you press it, you keep the panel you already had, working exactly as it was. That is deliberate: the old behaviour swapped new code in underneath a page that was still drawing the old screen, which is how you get an instrument that half-works with nothing on screen to explain it.',
+      'A brand-new visitor is never shown any of this. Nothing to be behind on thirty seconds after arriving.',
+      'If the panel ever gets properly stuck on an old release, the strip now says which one is available instead of silently reloading you. That silent reload is what used to happen, and you could not tell it apart from the app just blinking.',
+      'The diagnostics report says which copies of the app the device is holding and whether a newer one is waiting. The version stamp alone cannot tell you that — a stale app reports its own old version perfectly honestly.',
+      'A first-ever visit no longer reloads itself once for no reason.',
+    ],
+    broken: [
+      'If you press "Not now", you are not asked again until the next time you open the panel. There is no way to bring the strip back on purpose in this release.',
+      'The panel cannot tell you a new version exists while you are offline. It has to reach the network to find out, which is the honest limit of an app that works without one.',
+    ],
+  },
+  {
     version: '1.16.0',
     date: '2026-08-03',
     headline: 'Point the radar at any airport you like.',

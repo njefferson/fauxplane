@@ -84,7 +84,19 @@ const matches = (pattern, pathname) => {
  * documented response shape. It verifies NOTHING about the live service, and no
  * result from it should ever be reported as though it did.
  */
-export async function createStaticServer({ root = ROOT, extraRoutes = {}, apiStubs = {} } = {}) {
+/**
+ * `transform` exists so a harness can serve a GENUINELY DIFFERENT file on a
+ * later request without writing to the repo.
+ *
+ * Doctrine §7h says to test the update path with a REAL second worker rather
+ * than a mocked registration — "a mock proves the mock works". The browser
+ * decides whether a worker has changed by re-fetching the script and comparing
+ * BYTES, so the only way to make its own update machinery run is to answer the
+ * second fetch with different bytes. A hook here does that for the length of
+ * one check; the file on disk is never touched, so nothing can be left behind
+ * the way a planted fault can.
+ */
+export async function createStaticServer({ root = ROOT, extraRoutes = {}, apiStubs = {}, transform = null } = {}) {
   const rules = await loadHeaderRules(path.join(root, '_headers'));
 
   return createServer(async (req, res) => {
@@ -132,7 +144,8 @@ export async function createStaticServer({ root = ROOT, extraRoutes = {}, apiStu
     try {
       const info = await stat(file);
       if (info.isDirectory()) throw new Error('directory');
-      const body = await readFile(file);
+      const raw = await readFile(file);
+      const body = transform ? (transform(pathname, raw) ?? raw) : raw;
       res.writeHead(200, { ...headers, 'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream' });
       res.end(body);
     } catch {

@@ -117,9 +117,32 @@ self.addEventListener('install', (event) => {
           }),
         ),
       );
-      await self.skipWaiting();
+      // NO skipWaiting() HERE, and that is Doctrine §7h.1.
+      //
+      // It used to be the last line of this block, which is the default advice
+      // everywhere and is wrong. A worker that takes over on install claims the
+      // OPEN page — a page already built from the PREVIOUS release's HTML and
+      // modules. `activate` then deletes that release's cache, so every module
+      // that page asks for afterwards is served from the NEW one. Old markup,
+      // new code, no reload, nothing said. On a panel that means an instrument
+      // drawn by 1.16.0's renderer into 1.15.0's canvas element.
+      //
+      // Waiting instead gives the reader a CONSISTENT OLD APP until they say
+      // otherwise, which is a smaller problem than an inconsistent new one.
     })(),
   );
+});
+
+/**
+ * The reader's decision, and the ONLY thing that promotes a waiting worker.
+ *
+ * Nothing else may call skipWaiting — not a timer, not the install, not a
+ * heuristic about how long the page has been open. The page posts this after
+ * the reader presses the control in the update strip, and the reload follows
+ * from `controllerchange` on the page side.
+ */
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

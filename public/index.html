@@ -106,6 +106,30 @@
 
     <p class="boot-error" id="boot-error" role="alert" hidden></p>
 
+    <!--
+      THE UPDATE STRIP (Doctrine §7h.2). A standing indicator, never a modal and
+      never a timed toast: it sits under the tabs, above the panel, and does not
+      cover an instrument.
+
+      IT LIVES IN THE MARKUP RATHER THAN IN A MODULE, and that is the whole
+      reason it works. On a device stuck across releases the old worker serves
+      the old `app.js` from its own cache, so any code added to a module is
+      exactly the code a stuck device cannot run. `index.html` is fetched
+      network-first, so this element and `boot.js` are the only two things a
+      stuck device is guaranteed to receive — which makes them the only two
+      things that can tell it it is stuck.
+
+      TWO WAYS OUT (§3): install it, or dismiss it for the session. Nothing here
+      is destructive, so neither needs a confirmation.
+    -->
+    <div class="update" id="update-strip" role="status" hidden>
+      <p class="update-text" id="update-text">A new version of the panel is ready.</p>
+      <div class="update-acts">
+        <button type="button" class="update-go" id="update-go">Install it now</button>
+        <button type="button" class="update-later" id="update-later">Not now</button>
+      </div>
+    </div>
+
     <main id="panel" class="panel">
       <section id="page-pfd" class="page page-pfd" role="tabpanel" aria-labelledby="tab-pfd" tabindex="0">
         <!--
