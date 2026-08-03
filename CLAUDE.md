@@ -195,9 +195,6 @@ so a phone twisted in its cradle keeps twisted axes. Say so; do not invent one.
 Description / website / topics / social-preview are GitHub-UI steps the session
 token cannot perform. **The values live in the hub's
 [`METADATA.md`](https://github.com/njefferson/noahjefferson/blob/main/METADATA.md)** —
-propose there, never fresh in chat where they evaporate. All four were applied
-by Noah and verified against GitHub on 2026-08-03.
-
-**Still outstanding there: the default branch is a `claude/*` harness branch,
-not `main`.** So the repo's landing page, the default clone and every new PR
-base point at stale code. Only Noah can change it (Settings → General).
+propose there, never fresh in chat where they evaporate. All five rows —
+description, website, topics, social preview and default branch — were applied
+by Noah and verified against GitHub on 2026-08-03. Nothing is outstanding.
