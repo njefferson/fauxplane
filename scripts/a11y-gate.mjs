@@ -207,15 +207,26 @@ const REGISTRY = [
 ];
 
 /** Registry for the PANEL POWER surface, which is only present before dismissal. */
-const GATE_REGISTRY = [
+/**
+ * The (i) menu's text, measured WHERE IT NOW LIVES.
+ *
+ * These rows used to be the power gate's, because the first-run text was on a
+ * modal. The modal is gone — Noah: "'Switch the panel on' still takes all
+ * attention on the initial pop-up and reads like 'accept the terms'" — and the
+ * text moved into the (i) dialog. The rows moved with it rather than being
+ * deleted, which is the difference between relocating coverage and losing it.
+ */
+const INFO_REGISTRY = [
   { selector: '.gate-first-h', label: 'first-run heading', min: 4.6 },
   { selector: '.gate-pages dt', label: 'first-run page name', min: 4.6 },
   { selector: '.gate-pages dd', label: 'first-run page description', min: 4.6 },
-  { selector: '.gate-title', label: 'gate title', min: 4.6 },
-  { selector: '.gate-body', label: 'gate body', min: 4.6 },
-  { selector: '.gate-small', label: 'gate small print', min: 4.6 },
-  { selector: '.gate-power', label: 'PANEL POWER button', min: 4.6 },
-  { selector: '.gate-close', label: 'gate close button', min: 4.6 },
+  { selector: '.gate-body', label: 'first-run body', min: 4.6 },
+  { selector: '.gate-uses li', label: 'the three uses', min: 4.6 },
+  { selector: '.info-title', label: 'info dialog title', min: 4.6 },
+  { selector: '.info-h', label: 'info section heading', min: 4.6 },
+  { selector: '.info-body', label: 'info body', min: 4.6 },
+  { selector: '.info-sources li', label: 'data source', min: 4.6 },
+  { selector: '.info-close', label: 'info close button', min: 4.6 },
 ];
 
 /* ------------------------------------------------------- colour arithmetic */
@@ -293,7 +304,7 @@ async function sampleBackdrops(page, boxes) {
  * rather than of the instrument — which is the trap PALETTES §7 is a list of.
  * Expanding costs nothing here because only colours are being read.
  */
-const EXPAND = '.page-cards, .readouts, .page-pfd, .gate, .panel, body, html';
+const EXPAND = '.page-cards, .readouts, .page-pfd, .gate, .info, .diag, .panel, body, html';
 
 async function checkContrast(page, registry, where) {
   const restore = await page.evaluate((sel) => {
@@ -567,7 +578,26 @@ async function checkNames(page, where) {
 async function main() {
   const server = await createStaticServer({
     extraRoutes: { '/__gate__/axe.js': AXE },
-    apiStubs: { '/api/traffic': TRAFFIC_FIXTURE },
+    apiStubs: {
+      '/api/traffic': TRAFFIC_FIXTURE,
+      /**
+       * METAR AND WINDS ARE STUBBED AS HONEST FAILURES, not as fake weather.
+       *
+       * They are Pages Functions and are not running in the harness, so the
+       * server's default is a 503 — which the browser logs, and "no console
+       * errors" is acceptance criterion 1. Nothing noticed until the power
+       * switch replaced the gate: the old gate check pressed DISMISS, so the
+       * feeds never started and never 503'd. Pressing a real PWR switch starts
+       * them, which is the point of it.
+       *
+       * A refusal is the truthful answer here — the endpoint genuinely is not
+       * deployed — and it exercises the panel's failure path, which is the one
+       * worth checking anyway. Inventing an observation would put a synthetic
+       * altimeter setting into a panel whose entire contract forbids it.
+       */
+      '/api/metar': { ok: false, reason: 'the weather service is not deployed in this harness' },
+      '/api/winds': { ok: false, reason: 'the winds service is not deployed in this harness' },
+    },
   });
   await new Promise((r) => server.listen(0, r));
   const port = server.address().port;
@@ -609,9 +639,12 @@ async function main() {
         }, dim);
 
         /* ---- the PANEL POWER surface, checked before it is dismissed ---- */
-        if (vp === VIEWPORTS[0] && dim === 'day') await checkPowerGate(page, base);
+        if (vp === VIEWPORTS[0] && dim === 'day') {
+          await checkPanelPower(page, base);
+          await checkInfoMenu(page, base);
+        }
 
-        await page.evaluate(() => document.querySelector('[data-dismiss-gate]').click());
+        // No gate to dismiss: the panel is the first surface (PWR is a switch on it).
         await page.waitForTimeout(250);
 
         for (const name of PAGES) {
@@ -855,65 +888,124 @@ async function main() {
  * The interrupting surface. Doctrine §4 lists six requirements for a dismiss
  * and says to gate all of it rather than eyeball it.
  */
-async function checkPowerGate(page, base) {
-  const where = 'power-gate';
+/**
+ * PANEL POWER, now a switch on the panel rather than a dialog in front of it.
+ *
+ * The old check tested a modal: two dismiss controls, one visible in the first
+ * frame, one still reachable at the very bottom, a hit test proving nothing sat
+ * on top, and that activating it actually removed the surface. Every one of
+ * those existed because a gate you cannot leave is the worst failure a gate
+ * has. There is no gate now, so there is nothing to leave — and the property
+ * they were all protecting, that a reader can use the panel without granting
+ * anything, is the DEFAULT state and is asserted by checkDeniedState.
+ *
+ * What replaces them is narrower and truer to what now exists: the panel is
+ * visible and usable from the first frame, the switch says which state it is in
+ * IN WORDS, and the reading material is reachable and legible in the (i) menu
+ * where it moved to.
+ */
+async function checkPanelPower(page, base) {
+  const where = 'panel-power';
 
   const first = await page.evaluate(() => {
-    const gate = document.getElementById('power-gate');
-    const close = gate.querySelector('[data-dismiss-gate]');
-    const r = close.getBoundingClientRect();
+    const btn = document.getElementById('power-btn');
+    const panel = document.getElementById('panel');
+    const pr = panel?.getBoundingClientRect();
     return {
-      gateHeight: Math.round(gate.getBoundingClientRect().height),
-      viewportHeight: window.innerHeight,
-      closeVisibleFirstFrame: r.top >= 0 && r.bottom <= window.innerHeight && r.width > 0,
-      closeCount: gate.querySelectorAll('[data-dismiss-gate]').length,
-      scrollHeight: gate.scrollHeight,
+      exists: !!btn,
+      role: btn?.getAttribute('role') ?? null,
+      checked: btn?.getAttribute('aria-checked') ?? null,
+      text: btn?.textContent.replace(/\s+/g, ' ').trim() ?? null,
+      // NOTHING COVERS THE PANEL. The whole point of removing the modal is that
+      // the instruments are the first thing on screen.
+      panelVisible: !!pr && pr.width > 0 && pr.height > 0,
+      panelTopHit: pr ? document.elementFromPoint(pr.x + pr.width / 2, pr.y + 10)?.closest('#panel') !== null : false,
+      anyModal: !!document.querySelector('dialog:modal'),
     };
   });
 
-  await checkContrast(page, GATE_REGISTRY, where);
+  if (!first.exists) {
+    fail(where, 'there is no power switch on the panel');
+    return;
+  }
+  if (first.role !== 'switch') fail(where, `the power control has role "${first.role}" — a two-state control is a switch`);
+  if (first.checked !== 'false') fail(where, `the panel claims aria-checked="${first.checked}" before anything was pressed`);
+  // THE STATE IS A WORD, not a colour (§4). Grayscale and colour-blind readers
+  // get the same answer as anyone else.
+  if (!/\bOFF\b/i.test(first.text ?? '')) {
+    fail(where, `the switch does not say its state in words: "${first.text}"`);
+  }
+  if (!first.panelVisible) fail(where, 'the panel is not rendered on load');
+  if (!first.panelTopHit) fail(where, 'something is covering the panel on load — the modal was removed for exactly this');
+  if (first.anyModal) fail(where, 'a modal dialog is open on load');
+
+  // The switch reports its own state honestly after being pressed. Sensors will
+  // not actually start in a headless browser with every permission denied, and
+  // that is fine — this asserts the CONTROL, not the hardware.
+  await page.evaluate(() => document.getElementById('power-btn').click());
+  await page.waitForTimeout(250);
+  const after = await page.evaluate(() => {
+    const btn = document.getElementById('power-btn');
+    return { checked: btn.getAttribute('aria-checked'), text: btn.textContent.replace(/\s+/g, ' ').trim() };
+  });
+  if (after.checked !== 'true') fail(where, 'pressing the switch did not change aria-checked');
+  if (!/\bON\b/i.test(after.text)) fail(where, `the switch still reads "${after.text}" after being switched on`);
+
+  // And back off again. A switch that only goes one way is a button wearing a
+  // switch's clothes.
+  await page.evaluate(() => document.getElementById('power-btn').click());
+  await page.waitForTimeout(250);
+  const back = await page.evaluate(() => {
+    const btn = document.getElementById('power-btn');
+    return { checked: btn.getAttribute('aria-checked'), text: btn.textContent.replace(/\s+/g, ' ').trim() };
+  });
+  if (back.checked !== 'false' || !/\bOFF\b/i.test(back.text)) {
+    fail(where, `the switch will not go back off: aria-checked=${back.checked}, text "${back.text}"`);
+  }
+
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+}
+
+/**
+ * The (i) menu — reachable, and its text legible where it now lives.
+ *
+ * The first-run copy used to be measured on the power gate. It moved here, and
+ * the contrast rows moved with it rather than being deleted, because deleting
+ * them would have quietly removed coverage at the same moment the content
+ * became harder to find.
+ */
+async function checkInfoMenu(page, base) {
+  const where = 'info-menu';
+
+  const opened = await page.evaluate(() => {
+    const btn = document.getElementById('info-btn');
+    if (!btn) return { missing: true };
+    btn.click();
+    const dlg = document.querySelector('dialog.info');
+    return {
+      missing: false,
+      open: !!dlg && !dlg.hidden,
+      // §7e: the first-run text MOVED here rather than being destroyed.
+      hasFirstRun: !!dlg?.querySelector('.gate-first'),
+      hasWhatsNew: !!dlg?.querySelector('.wn-card'),
+      hasSources: !!dlg?.querySelector('.info-sources'),
+    };
+  });
+
+  if (opened.missing) {
+    fail(where, 'the (i) button is missing');
+    return;
+  }
+  await page.waitForTimeout(200);
+  if (!opened.open) fail(where, 'pressing (i) did not open the information dialog');
+  if (!opened.hasFirstRun) fail(where, 'the first-run instructions did not survive into the (i) menu');
+  if (!opened.hasWhatsNew) fail(where, 'the (i) menu carries no release notes (Doctrine §7d)');
+  if (!opened.hasSources) fail(where, 'the (i) menu does not say where the numbers come from (Doctrine §7e)');
+
+  await checkContrast(page, INFO_REGISTRY, where);
   await checkTargets(page, where);
   await checkNames(page, where);
 
-  if (!first.closeVisibleFirstFrame) fail(where, 'the dismiss is not visible in the first frame without scrolling');
-  if (first.closeCount < 2) fail(where, `only ${first.closeCount} dismiss control(s) — one must also be present at the bottom`);
-  // Bounded in length: measure it, do not assume.
-  if (first.scrollHeight > first.viewportHeight * 2) {
-    fail(where, `the panel is ${first.scrollHeight}px tall against a ${first.viewportHeight}px viewport — fold or paginate it`);
-  }
-
-  // Reachable from ANYWHERE in it: scroll to the very end and check again, and
-  // hit-test the centre so nothing is sitting on top of it.
-  const atEnd = await page.evaluate(() => {
-    const gate = document.getElementById('power-gate');
-    gate.scrollTop = gate.scrollHeight;
-    const closes = [...gate.querySelectorAll('[data-dismiss-gate]')];
-    return closes.map((close) => {
-      const r = close.getBoundingClientRect();
-      const onScreen = r.top >= 0 && r.bottom <= window.innerHeight;
-      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-      return { onScreen, hitIsSelf: close.contains(hit) };
-    });
-  });
-  if (!atEnd.some((c) => c.onScreen)) fail(where, 'no dismiss is on screen after scrolling to the very end');
-  if (!atEnd.some((c) => c.hitIsSelf)) fail(where, 'hit-testing the dismiss centre returns something else — it is covered');
-
-  // It must actually REMOVE the surface, not merely flag it closed, and focus
-  // must land somewhere real.
-  await page.evaluate(() => document.querySelector('[data-dismiss-gate]').click());
-  await page.waitForTimeout(150);
-  const after = await page.evaluate(() => {
-    const gate = document.getElementById('power-gate');
-    const r = gate.getBoundingClientRect();
-    return {
-      gone: gate.hidden || getComputedStyle(gate).display === 'none' || r.width === 0,
-      focusReal: document.activeElement !== null && document.activeElement !== document.body ? true : document.body.contains(document.activeElement),
-    };
-  });
-  if (!after.gone) fail(where, 'the surface is still rendered after its dismiss was activated');
-  if (!after.focusReal) fail(where, 'focus did not land anywhere real after dismissal');
-
-  // The dismiss must work with NOTHING granted — it is never conditional.
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
 }
 
@@ -1121,7 +1213,7 @@ async function checkStoredLevelling(browser, base) {
 
   const page = await context.newPage();
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-  await page.evaluate(() => document.querySelector('[data-dismiss-gate]').click());
+  // No gate to dismiss: the panel is the first surface (PWR is a switch on it).
   await page.waitForTimeout(600);
 
   const seen = await page.evaluate(async () => {
@@ -1160,7 +1252,7 @@ async function checkProvenanceCoverage(browser, base) {
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });
   const page = await context.newPage();
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-  await page.evaluate(() => document.querySelector('[data-dismiss-gate]').click());
+  // No gate to dismiss: the panel is the first surface (PWR is a switch on it).
   await page.waitForTimeout(400);
 
   const result = await page.evaluate(async () => {

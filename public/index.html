@@ -141,6 +141,37 @@
               notice the horizon is wrong. The behaviour still has exactly one
               implementation, in setup.js; these call it.
             -->
+            <!--
+              PANEL POWER LIVES ON THE PANEL, which is what Noah asked for:
+              "Should there just be a 'power' button on the display?" It was
+              briefly in the header and did not belong there — measured, the
+              right-hand group went from 216px to 341px and wrapped the bar onto
+              two rows on a landscape phone, which the panel paid for by
+              overlapping its own footer. The header is full; the display is not,
+              and a switch beside the crossed-out instruments is where a cockpit
+              would put it anyway.
+            -->
+            <div class="pfd-power" role="group" aria-label="Panel power">
+              <!--
+              PANEL POWER, as a switch on the panel rather than a modal in front of
+              it. Noah: "Should there just be a 'power' button on the display?"
+
+              IT MUST BE A PRESS, and that is not a design choice: iOS grants motion
+              and orientation permission only from inside a user gesture, so
+              something has to be pressed before any sensor can start. What was a
+              choice — and was wrong — was making that press a full-screen dialog
+              with two paragraphs above it. The panel opens as ITSELF now, every
+              sensor-driven instrument honestly crossed out, and this wakes it.
+
+              A real switch, both ways: role="switch" with aria-checked, and the
+              state as a WORD rather than a colour (§4). The visible text is the
+              accessible name, so voice control matches what is written (SC 2.5.3).
+            -->
+            <button type="button" role="switch" aria-checked="false" id="power-btn" class="power-btn">
+              <span class="power-word">PWR</span>
+              <span class="power-state" id="power-state">OFF</span>
+            </button>
+            </div>
             <div class="pfd-level" role="group" aria-label="Levelling">
               <button type="button" id="pfd-level" class="pfd-level-btn">Level the horizon</button>
               <button type="button" id="pfd-level-clear" class="pfd-level-btn pfd-level-clear" hidden>Clear levelling</button>
@@ -216,107 +247,90 @@
       never conditional on granting anything, and the panel is short enough that
       nothing can push it off screen.
     -->
-    <dialog id="power-gate" class="gate" aria-labelledby="gate-h" open>
-      <div class="gate-head">
-        <h2 id="gate-h" class="gate-title">PANEL POWER</h2>
-        <button type="button" class="gate-close" data-dismiss-gate aria-label="Close panel power and continue without sensors">
-          Close
-        </button>
-      </div>
+    <!--
+      THE FIRST-RUN TEXT LIVES HERE ONLY UNTIL BOOT, when the (i) menu adopts
+      the node. It is not a copy — there is one in the markup and it is moved.
 
-      <p class="gate-body">
-        This panel runs on your device's own sensors and on live aviation feeds. Nothing is simulated: if a reading is
-        missing, the instrument shows a failure flag and the BITE page explains why.
-      </p>
-      <p class="gate-body">
-        Switching on asks for motion, orientation and location access. Everything stays on the device — no account, no
-        analytics, nothing sent anywhere but the weather and traffic requests the panel makes on your behalf.
-      </p>
-
-      <button type="button" id="power-btn" class="gate-power">Switch the panel on</button>
-
+      IT IS NO LONGER A GATE. Noah: "'Switch the panel on' still takes all
+      attention on the initial pop-up and reads like 'accept the terms' and
+      even *I* don't read the panel then." He was right, and the fix is not
+      shorter copy — it is not putting a wall of text behind a big primary
+      button in the first place. The panel now opens as itself, honestly
+      crossed out, with a PWR switch in the chrome; the reading is in the (i)
+      for whoever wants it.
+    -->
+    <div id="first-run-store" hidden>
+    <section class="gate-first" aria-labelledby="gate-first-h">
+      <h3 id="gate-first-h" class="gate-first-h">First time here</h3>
       <p class="gate-body gate-small">
-        You can decline and still use the panel. Every instrument will show its failure flag, which is exactly what it
-        is supposed to do.
+        These instructions stay in the <strong>i</strong> menu at the top of the screen after you switch on, along
+        with what changed in each release and where the numbers come from.
+      </p>
+      <p class="gate-body">
+        It is a glass cockpit panel for a phone or tablet — the instruments an airliner shows its pilots, driven by
+        your device's own sensors and by live aviation data. It is a toy for people who love aeroplanes.
       </p>
       <!--
-        FIRST TIME HERE. The gate is already the first surface a new reader
-        sees, so the orientation belongs on it rather than behind a sixth tab
-        nobody would open before using the thing.
+        THE THREE USES ARE NOAH'S OWN WORDS, from how he explains the app to
+        his friends: "You can follow a flight, or use it on a flight to see
+        like the pilot, or use it in a car while you drive!" Every previous
+        version of this copy described only the desk, which is the case ONE
+        reader has — and it quietly excluded the two that make the panel come
+        alive. An app whose own description is narrower than the app is
+        undersold by the only text anybody reads.
       -->
-      <section class="gate-first" aria-labelledby="gate-first-h">
-        <h3 id="gate-first-h" class="gate-first-h">First time here</h3>
-        <p class="gate-body gate-small">
-          These instructions stay in the <strong>i</strong> menu at the top of the screen after you switch on, along
-          with what changed in each release and where the numbers come from.
-        </p>
-        <p class="gate-body">
-          It is a glass cockpit panel for a phone or tablet — the instruments an airliner shows its pilots, driven by
-          your device's own sensors and by live aviation data. It is a toy for people who love aeroplanes.
-        </p>
-        <!--
-          THE THREE USES ARE NOAH'S OWN WORDS, from how he explains the app to
-          his friends: "You can follow a flight, or use it on a flight to see
-          like the pilot, or use it in a car while you drive!" Every previous
-          version of this copy described only the desk, which is the case ONE
-          reader has — and it quietly excluded the two that make the panel come
-          alive. An app whose own description is narrower than the app is
-          undersold by the only text anybody reads.
-        -->
-        <p class="gate-body">There are three ways people use it:</p>
-        <ul class="gate-uses">
-          <li><strong>Follow a real flight.</strong> Pick an aircraft overhead and the panel flies as that aircraft.</li>
-          <li><strong>Take it on a flight</strong> and see roughly what the pilots see, from your own seat.</li>
-          <li><strong>Clamp it in the car.</strong> Level it to the cradle once and the horizon, speed and turn rate
-            are all yours, live.</li>
-        </ul>
-        <p class="gate-body">
-          It is not a simulator, it is not certified for anything, and it is never for navigation.
-        </p>
-        <dl class="gate-pages">
-          <dt>PFD</dt>
-          <dd>The horizon, altitude, heading and G, with a plan view of real aircraft beside it.</dd>
-          <dt>ATIS</dt>
-          <dd>The weather at the nearest reporting airport, as the report actually reads.</dd>
-          <dt>RADAR</dt>
-          <dd>Real aircraft overhead. Tap one and the panel flies as that aircraft.</dd>
-          <dt>BITE</dt>
-          <dd>Built-in test: every sensor and feed, working or not, and why.</dd>
-          <dt>SETUP</dt>
-          <dd>Level the horizon to whatever the device is clamped in.</dd>
-        </dl>
-        <p class="gate-body">
-          Clamp it somewhere, press <strong>Level the horizon</strong> on the PFD, and open RADAR to see what is flying
-          near you.
-        </p>
-        <!--
-          HIDDEN ONCE INSTALLED, by a media query rather than by feature
-          detection. `display-mode: standalone` is true exactly when the app was
-          launched from a home screen, which is the only condition that matters
-          here — and it needs no script, which suits a page whose CSP forbids
-          inline script anyway.
+      <p class="gate-body">There are three ways people use it:</p>
+      <ul class="gate-uses">
+        <li><strong>Follow a real flight.</strong> Pick an aircraft overhead and the panel flies as that aircraft.</li>
+        <li><strong>Take it on a flight</strong> and see roughly what the pilots see, from your own seat.</li>
+        <li><strong>Clamp it in the car.</strong> Level it to the cradle once and the horizon, speed and turn rate
+          are all yours, live.</li>
+      </ul>
+      <p class="gate-body">
+        It is not a simulator, it is not certified for anything, and it is never for navigation.
+      </p>
+      <dl class="gate-pages">
+        <dt>PFD</dt>
+        <dd>The horizon, altitude, heading and G, with a plan view of real aircraft beside it.</dd>
+        <dt>ATIS</dt>
+        <dd>The weather at the nearest reporting airport, as the report actually reads.</dd>
+        <dt>RADAR</dt>
+        <dd>Real aircraft overhead. Tap one and the panel flies as that aircraft.</dd>
+        <dt>BITE</dt>
+        <dd>Built-in test: every sensor and feed, working or not, and why.</dd>
+        <dt>SETUP</dt>
+        <dd>Level the horizon to whatever the device is clamped in.</dd>
+      </dl>
+      <p class="gate-body">
+        Clamp it somewhere, press <strong>Level the horizon</strong> on the PFD, and open RADAR to see what is flying
+        near you.
+      </p>
+      <!--
+        HIDDEN ONCE INSTALLED, by a media query rather than by feature
+        detection. `display-mode: standalone` is true exactly when the app was
+        launched from a home screen, which is the only condition that matters
+        here — and it needs no script, which suits a page whose CSP forbids
+        inline script anyway.
 
-          BOTH PLATFORMS ARE NAMED rather than guessed at. iOS fires no
-          `beforeinstallprompt` and has no install button to point at, so a
-          detected "install" affordance would be a button that does not exist
-          for half the readers. Saying which menu each one uses is correct for
-          everybody and cannot go stale in the way a capability sniff can.
-        -->
-        <div class="gate-install">
-          <h3 class="gate-first-h">Add it to your home screen</h3>
-          <p class="gate-body">
-            It then opens full screen with no browser bars, and works with no signal — the instruments that run on the
-            device's own sensors need nothing from the network.
-          </p>
-          <p class="gate-body">
-            <strong>iPhone or iPad:</strong> the Share button, then <em>Add to Home Screen</em>.<br />
-            <strong>Android:</strong> the browser's menu, then <em>Install app</em> or <em>Add to Home screen</em>.
-          </p>
-        </div>
-      </section>
-
-      <button type="button" class="gate-close gate-close-foot" data-dismiss-gate>Continue without sensors</button>
-    </dialog>
+        BOTH PLATFORMS ARE NAMED rather than guessed at. iOS fires no
+        `beforeinstallprompt` and has no install button to point at, so a
+        detected "install" affordance would be a button that does not exist
+        for half the readers. Saying which menu each one uses is correct for
+        everybody and cannot go stale in the way a capability sniff can.
+      -->
+      <div class="gate-install">
+        <h3 class="gate-first-h">Add it to your home screen</h3>
+        <p class="gate-body">
+          It then opens full screen with no browser bars, and works with no signal — the instruments that run on the
+          device's own sensors need nothing from the network.
+        </p>
+        <p class="gate-body">
+          <strong>iPhone or iPad:</strong> the Share button, then <em>Add to Home Screen</em>.<br />
+          <strong>Android:</strong> the browser's menu, then <em>Install app</em> or <em>Add to Home screen</em>.
+        </p>
+      </div>
+    </section>
+    </div>
 
     <!--
       Status messages reach assistive technology without stealing focus

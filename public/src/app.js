@@ -813,56 +813,29 @@ async function boot() {
   });
 
   // ---- PANEL POWER ---------------------------------------------------------
-  const gate = $('power-gate');
-  const powerBtn = $('power-btn');
-
-  // THE WAY OUT IS WIRED FIRST (Doctrine §14). Before the permission plumbing,
-  // before anything that can throw. A gate you cannot leave is the worst
-  // failure a gate has — and leaving it must work even if every sensor refuses,
-  // because that is acceptance criterion 1.
-  const dismiss = (why) => {
-    gate.close?.();
-    gate.hidden = true;
-    // THE INSTRUCTIONS OUTLIVE THE GATE. Noah: "turning the panel on closes
-    // the initial instructions" — the first-run orientation and install steps
-    // lived only on this dialog, so the button a new reader presses first was
-    // the thing that took them away, mid-read. The NODE is moved rather than
-    // copied: one copy in the markup, relocated, so the two cannot drift.
-    //
-    // The destination is now the (i) menu, not the SETUP page. SETUP is for
-    // levelling, and "what this app is" filed under levelling was findable only
-    // by accident. Anything that is information rather than instrumentation
-    // belongs behind the one control named for it.
-    info.adoptFirstRun(gate.querySelector('.gate-first'));
-    document.body.dataset.powered = 'true';
-    if (why) announcer.say(why);
-    surface.measure();
-  };
-  for (const btn of document.querySelectorAll('[data-dismiss-gate]')) {
-    btn.addEventListener('click', () => dismiss('Continuing without sensors. Instruments will show their failure flags.'));
-  }
-  gate.addEventListener('cancel', (e) => {
-    e.preventDefault();
-    dismiss('Continuing without sensors.');
-  });
-
-  // Only NOW, with both ways out already attached, is the gate upgraded from
-  // the markup's non-modal `open` to a real modal.
   //
-  // The `open` attribute is in the HTML so the surface appears even if this
-  // module never runs — but a non-modal dialog leaves everything behind it
-  // focusable, so a keyboard user could Tab straight into a panel the gate is
-  // supposed to be covering. The accessibility gate caught exactly that. A
-  // browser without showModal keeps the non-modal surface, which is the
-  // outcome it would have had anyway.
-  try {
-    if (typeof gate.showModal === 'function' && !gate.matches(':modal')) {
-      gate.close();
-      gate.showModal();
-    }
-  } catch {
-    gate.setAttribute('open', '');
-  }
+  // A SWITCH ON THE PANEL, NOT A DIALOG IN FRONT OF IT. Noah: "Should there
+  // just be a 'power' button on the display?" — after reporting that the modal
+  // "takes all attention... and reads like 'accept the terms' and even *I*
+  // don't read the panel then."
+  //
+  // He was right, and the fix was not shorter copy. A wall of text above a big
+  // primary button is a consent form; nobody reads a consent form. The panel
+  // now opens AS ITSELF, with every sensor-driven instrument honestly crossed
+  // out and each one saying why — which is acceptance criterion 1 as the
+  // DEFAULT state rather than as an escape hatch someone has to find.
+  //
+  // A press is still required and always will be: iOS grants motion and
+  // orientation permission only from inside a user gesture. That is the one
+  // constraint the old dialog existed to satisfy, and a switch satisfies it
+  // just as well.
+  const powerBtn = $('power-btn');
+  const powerState = $('power-state');
+
+  // The first-run text is adopted at BOOT now, not on dismissal — there is no
+  // dismissal any more. One node, moved, never copied.
+  info.adoptFirstRun($('first-run-store')?.querySelector('.gate-first'));
+  document.body.dataset.powered = 'true';
 
   let started = false;
   const startSensors = async () => {
@@ -883,19 +856,54 @@ async function boot() {
       if (verdict !== 'granted') announcer.say(`${what} permission ${verdict}; those instruments will show FAIL`);
     }
 
-    await refreshMetar();
-    await refreshWinds();
-    setInterval(refreshMetar, METAR_INTERVAL_MS);
-    setInterval(refreshWinds, WINDS_INTERVAL_MS);
+    if (!feedsStarted) {
+      feedsStarted = true;
+      await refreshMetar();
+      await refreshWinds();
+      setInterval(refreshMetar, METAR_INTERVAL_MS);
+      setInterval(refreshWinds, WINDS_INTERVAL_MS);
+    }
 
     requestWakeLock();
     lockLandscape();
   };
+  let feedsStarted = false;
+
+  /**
+   * Switch the panel off — genuinely off, not a cosmetic state.
+   *
+   * Every sensor is stopped, so no events arrive and the store ages each field
+   * out to FAIL carrying its own reason. Nothing has to be faked: "no motion
+   * events" becomes true because it IS true. The feeds keep their intervals —
+   * METAR and traffic need no permission and no sensor, and killing them would
+   * make a power cycle cost a volunteer network another round of requests.
+   */
+  const stopSensors = () => {
+    if (!started) return;
+    started = false;
+    orientation.stop?.();
+    motion.stop?.();
+    geo.stop?.();
+    ambient.stop?.();
+    releaseWakeLock();
+  };
+
+  const syncPower = () => {
+    powerState.textContent = started ? 'ON' : 'OFF';
+    powerBtn.setAttribute('aria-checked', started ? 'true' : 'false');
+  };
+  syncPower();
 
   powerBtn.addEventListener('click', async () => {
-    dismiss(null);
+    if (started) {
+      stopSensors();
+      syncPower();
+      announcer.say('Panel off. Every instrument driven by this device now shows its failure flag.');
+      return;
+    }
     await startSensors();
-    announcer.say('Panel powered.');
+    syncPower();
+    announcer.say('Panel on.');
   });
 
   /** Everything about the device the report needs. Gathered here because it is
@@ -937,6 +945,17 @@ async function boot() {
       // reports from the static probe. Not worth interrupting anyone over.
     }
   }
+  /** Let the screen sleep again when the panel is switched off. Holding a wake
+   *  lock for a panel showing nothing but failure flags is rude to a battery. */
+  function releaseWakeLock() {
+    try {
+      wakeLock?.release?.();
+    } catch {
+      // Already released, or the platform never granted one.
+    }
+    wakeLock = null;
+  }
+
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && started && !wakeLock) requestWakeLock();
   });

@@ -189,7 +189,7 @@ try {
     const context = await browser.newContext({ viewport: { width: 1100, height: 720 }, permissions: [] });
     const page = await context.newPage();
     await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => document.querySelector('[data-dismiss-gate]').click());
+    // No gate to dismiss: the panel is the first surface (PWR is a switch on it).
     await page.waitForTimeout(200);
 
     // THE LAYOUT IS SETTLED FIRST, BEFORE ANY STATE IS WRITTEN.

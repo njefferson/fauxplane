@@ -2206,6 +2206,71 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.12.0 — the gate becomes a switch, 2026-08-03
+
+Noah: *"Should there just be a 'power' button on the display?"* — after
+reporting that *"'Switch the panel on' still takes all attention on the initial
+pop-up and reads like 'accept the terms' and even *I* don't read the panel
+then."*
+
+**He was right, and the fix was not shorter copy.** A wall of text above a big
+primary button is a consent form, and nobody reads a consent form. The panel now
+opens AS ITSELF — every sensor-driven instrument crossed out, each saying why —
+which makes acceptance criterion 1 the DEFAULT state rather than an escape hatch
+someone has to find behind a dialog.
+
+**A press is still required and always will be.** iOS grants motion and
+orientation permission only from inside a user gesture. That is the one thing
+the dialog existed to satisfy, and a switch satisfies it just as well.
+
+**It is a real two-way switch**, because all four sensors already had `stop()`.
+PWR OFF genuinely stops them and the store ages each field to FAIL carrying its
+own reason — nothing is faked, "no motion events" becomes true because it IS
+true. The state is a WORD, ON or OFF (§4), not a colour.
+
+**It ended up ON THE DISPLAY rather than in the header, and the measurement is
+why.** Put in the header first, the right-hand group went 216px to 341px and
+wrapped the bar onto two rows on a 740px landscape phone; the panel paid for the
+extra row by overlapping its own footer, and the gate caught two targets
+overlapping. The header has now been one control away from wrapping three times
+— the (i) menu pushed it over, moving the build stamp out bought it back, PWR
+pushed it over again, moving PWR onto the display bought it back again. The
+short-viewport tab-padding trim is kept as deliberate headroom rather than
+removed a second time.
+
+### What replacing a gate cost, and what it found
+
+**The whole `checkPowerGate` suite went.** It tested a modal: two dismiss
+controls, one visible in the first frame, one reachable at the very bottom, a
+hit test proving nothing sat on top, and that activating it removed the surface.
+Every one existed because a gate you cannot leave is the worst failure a gate
+has. There is no gate, so there is nothing to leave — and the property they were
+all protecting is asserted by `checkDeniedState` already.
+
+**The (i) menu had never been measured, and failed four ways the first time it
+was.** Its scroll container was not in the EXPAND list so backdrops could not be
+determined at all; the accessibility-statement link was 163x16 against a 44px
+floor; two buttons both answered to "Close"; and four source links all answered
+to "Terms". The contrast rows MOVED from the gate registry to an info registry
+rather than being deleted — deleting them would have quietly removed coverage at
+the same moment the content moved somewhere harder to reach.
+
+**A 503 storm appeared, and it was a real consequence.** Pressing a real PWR
+switch starts the METAR and winds feeds; the old check pressed DISMISS, so those
+feeds never started and never failed. They are stubbed as honest refusals — the
+endpoints genuinely are not deployed in the harness — rather than as invented
+weather, which would put a synthetic altimeter setting into a panel whose whole
+contract forbids one.
+
+**Two plants went stale and had to be re-anchored — the second time in one
+session.** `radar: a failed refresh empties the plan view` lost its anchor to the
+single-radius change, and `first run: power-on throws the instructions away` was
+anchored to a gate that no longer exists. Both reported UNPROVEN rather than
+failing, which is the harness working: **a plant whose anchor has drifted proves
+nothing while still looking like coverage.** Re-anchored and each watched going
+red individually, along with the new power-switch plant. 33/35 on the full run,
+35/35 after.
+
 ## 1.11.0 — the panel denied a levelling it was applying, 2026-08-03
 
 Noah: *"On reload, the app lies and says level is not set when it is actually

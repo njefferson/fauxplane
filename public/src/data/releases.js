@@ -29,6 +29,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.12.0',
+    date: '2026-08-03',
+    headline: 'A power switch on the panel, instead of a pop-up you had to get past.',
+    changed: [
+      'The app opens straight to the instruments. No dialog, nothing to accept — every instrument is honestly crossed out until you switch the panel on, which is what it should have looked like all along.',
+      'PWR sits under the horizon beside the levelling controls, and it works both ways: switching off really does stop the sensors, and every instrument goes back to showing why it has nothing.',
+      'What the app is, how to install it, and everything else moved into the i menu, where you can read it when you want to rather than being handed it in front of a button.',
+    ],
+    broken: [
+      'Switching the panel off does not stop the weather or aircraft feeds. Those need no permission and no sensor, and stopping them would only cost a volunteer network another round of requests when you switch back on.',
+      'The power switch is on the main screen only. From another page you would go back to PFD to reach it.',
+    ],
+  },
+  {
     version: '1.11.0',
     date: '2026-08-03',
     headline: 'The panel stops denying a levelling it is actually using.',

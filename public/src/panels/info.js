@@ -73,8 +73,16 @@ function section(title, children) {
  * @param {() => void} opts.onDiagnostics opens the diagnostics report
  */
 export function createInfo({ trigger, onDiagnostics }) {
-  const closeTop = el('button', { class: 'info-close', type: 'button', text: 'Close' });
-  const closeBottom = el('button', { class: 'info-close info-close-foot', type: 'button', text: 'Close' });
+  const closeTop = el('button', { class: 'info-close', type: 'button', text: 'Close', 'aria-label': 'Close information' });
+  // A SECOND name, not a second "Close". Two controls answering to one name is
+  // ambiguous to voice control — "tap close" has no single answer — and the
+  // gate caught it the moment this dialog was first measured.
+  const closeBottom = el('button', {
+    class: 'info-close info-close-foot',
+    type: 'button',
+    text: 'Close',
+    'aria-label': 'Close information and return to the panel',
+  });
 
   // The first-run instructions land here. Empty until the gate hands them over,
   // which is why this is a container and not the content itself.
@@ -89,7 +97,15 @@ export function createInfo({ trigger, onDiagnostics }) {
       el('li', {}, [
         el('strong', { text: s.name }),
         el('span', { text: ` — ${s.detail} ` }),
-        el('a', { class: 'info-link', href: s.href, rel: 'noopener', target: '_blank', text: 'Terms' }),
+        el('a', {
+          class: 'info-link info-link-target',
+          href: s.href,
+          rel: 'noopener',
+          target: '_blank',
+          // NAMED, because four links all reading "Terms" are four controls
+          // with one name — unusable by voice and meaningless read aloud.
+          text: `Terms — ${s.name}`,
+        }),
       ]),
     ),
   );

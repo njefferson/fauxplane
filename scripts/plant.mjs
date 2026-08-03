@@ -120,12 +120,18 @@ const PLANTS = [
     expect: /references aviationweather\.gov directly/,
   },
   {
-    name: 'interrupting surface: the bottom dismiss is removed',
-    check: 'a way out at the bottom as well, not only at the top',
+    // The old plant here removed the power gate's second dismiss control. There
+    // is no gate any more — the panel opens as itself with a PWR switch on it —
+    // so the property worth breaking changed with it. A two-state control that
+    // does not declare itself a switch is the new failure: a screen reader
+    // announces a button, the reader is never told whether the panel is on, and
+    // the state word alone cannot be queried.
+    name: 'panel power: the switch stops declaring that it is a switch',
+    check: 'the power control is a real two-state switch, and says which state it is in',
     file: 'public/index.html',
-    find: '<button type="button" class="gate-close gate-close-foot" data-dismiss-gate>Continue without sensors</button>',
-    replace: '<span class="gate-small">Continue without sensors</span>',
-    expect: /only 1 dismiss control|no dismiss is on screen after scrolling/,
+    find: '<button type="button" role="switch" aria-checked="false" id="power-btn" class="power-btn">',
+    replace: '<button type="button" id="power-btn" class="power-btn">',
+    expect: /role "null" — a two-state control is a switch|aria-checked/,
   },
   {
     // adsb.fi's terms REQUIRE the citation. A licence condition nobody watches
@@ -376,8 +382,12 @@ const PLANTS = [
     check: 'a failed refresh keeps the aircraft already on the plan view',
     gate: 'tests',
     file: 'public/src/data/traffic.js',
-    find: '      if (result.ok) {\n        nearby = withRangeAndBearing(result.aircraft ?? [], centre);',
-    replace: '      nearby = result.ok ? withRangeAndBearing(result.aircraft ?? [], centre) : [];\n      if (result.ok) {',
+    // RE-ANCHORED 2026-08-03: the single-radius fetch introduced `allNearby`,
+    // so the old two-line anchor stopped matching and this plant silently went
+    // UNPROVEN. A plant whose anchor has drifted proves nothing while still
+    // looking like coverage — the second time that has happened in this file.
+    find: '      if (result.ok) {\n        // Everything the fetch returned, kept whole so a range change can be',
+    replace: '      allNearby = result.ok ? withRangeAndBearing(result.aircraft ?? [], centre) : [];\n      nearby = withinRange(allNearby, display);\n      if (result.ok) {\n        // Everything the fetch returned, kept whole so a range change can be',
     expect: /failed refresh emptied the sky/,
   },
   {
@@ -421,14 +431,18 @@ const PLANTS = [
     expect: /did not reach the radar page/,
   },
   {
-    // Power-on used to throw the first-run instructions away mid-read. The
-    // node moves to SETUP; deleting the move brings the defect back exactly.
-    name: 'first run: power-on throws the instructions away again',
-    check: 'the first-run instructions survive the gate onto SETUP',
+    // Power-on used to throw the first-run instructions away mid-read, so the
+    // node was moved rather than destroyed. RE-ANCHORED 2026-08-03: there is no
+    // gate any more — the panel opens as itself with a PWR switch on it — and
+    // the destination changed from the SETUP page to the (i) menu, at boot
+    // rather than on dismissal. The INVARIANT is unchanged: the instructions
+    // survive and are findable. Only the place they survive INTO moved.
+    name: 'first run: the orientation never reaches the (i) menu',
+    check: 'the first-run instructions survive into the (i) menu',
     file: 'public/src/app.js',
-    find: "    if (firstRun) $('page-setup').appendChild(firstRun);",
-    replace: "    if (firstRun) firstRun.remove();",
-    expect: /did not survive the gate/,
+    find: "  info.adoptFirstRun($('first-run-store')?.querySelector('.gate-first'));",
+    replace: "  $('first-run-store')?.querySelector('.gate-first')?.remove();",
+    expect: /did not survive into the \(i\) menu|first-run instructions/,
   },
   {
     name: 'BITE: the page stops reading the live store',
