@@ -68,6 +68,62 @@ items.
 
 ---
 
+## 1.2.2 — nested failure reasons, fixed where they are MADE
+
+Flagged twice and deferred twice, so it got its own release rather than being
+folded into a layout change.
+
+`worstOf` quotes its first failing input's reason — and that reason is often
+itself a `worstOf` composition, so the quoting nests. On the panel:
+
+> MSL altitude, altimeter setting, station altimeter unavailable (MSL altitude:
+> GPS altitude, geoid separation unavailable (GPS altitude: not yet initialised))
+
+Three levels, every one of them true, and the single fact underneath is the part
+hardest to find. 1.0.1 fixed one instance of this by hand in `motion.js`. **The
+shape repeats wherever derived values chain**, which is everywhere, so the fix
+belongs in the composition and not at each site.
+
+Now:
+
+> MSL altitude, altimeter setting, station altimeter unavailable (GPS altitude:
+> not yet initialised)
+
+`rootCause()` unwraps a composed reason to the fact underneath it. The
+INTERMEDIATE names are dropped on purpose: a reader needs the names of what is
+missing HERE, and the one cause at the bottom — the middle of the chain is noise.
+
+Two things the first attempt got wrong, both caught by writing the test first:
+- Unwrapping alone produced `(MSL altitude: GPS altitude: not yet initialised)`
+  — two colons, and a name that is not the cause. An unwrapped root already
+  carries its own field name, so the prefix is only added when nothing was
+  unwrapped.
+- The termination cap was 8, which left a deep chain PARTLY stripped. A
+  half-unwrapped reason is worse than the original because it looks deliberate.
+  It is 32 now — far above any real chain, so the bound only ever guarantees
+  termination and never truncates a genuine one.
+
+Planted and watched fail: restoring the raw quoting turns the suite red naming
+the nested parenthesis.
+
+### Verified
+
+**181 unit tests, 27/27 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+### The open list, unchanged
+
+- Label collision on a busy plan view.
+- The VSI resolution floor — GPS altitude at plus or minus 27 m every 5 s cannot
+  resolve a climb under roughly 1,500 fpm, and the panel does not say so.
+- The intermittent PANEL POWER contrast failure, cause unfound.
+- The overlap check added in 1.2.1, still UNPROVEN.
+- Android and desktop, never confirmed by a device.
+- Repo metadata: description, website, topics, social preview, all unset.
+
+---
+
 ## 1.2.1 — portrait was broken, and asking was the only reason anyone found out
 
 Noah: *"Will the radar move under the pfd in portrait mode?"*

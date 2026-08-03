@@ -321,6 +321,18 @@ const PLANTS = [
     expect: /restrict access|no markup at all|no doctype/,
   },
   {
+    // Chained derived values compose their reasons, so the quoting nests. Three
+    // levels deep it was a paragraph of parentheses on the face of a gauge, and
+    // the one fact underneath was the part hardest to find.
+    name: 'reasons: a failure reason goes back to nesting its parentheses',
+    check: 'a chained failure reads as one sentence naming the root cause',
+    gate: 'tests',
+    file: 'public/src/core/provenance.js',
+    find: '    const root = rootCause(raw) || \'missing\';',
+    replace: '    const root = raw;',
+    expect: /no nested parenthesis|no doubled name prefix|one sentence|not yet initialised/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

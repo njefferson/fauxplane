@@ -143,6 +143,39 @@ export function age(field, { now, freshMs, staleMs, kind }) {
  * output FAIL (naming which one), any STALE input makes it STALE. This is what
  * stops a derived readout looking healthier than the readings underneath it.
  */
+/**
+ * Unwrap a composed failure reason down to its ROOT cause.
+ *
+ * `worstOf` quotes its first failing input's reason — and that reason is often
+ * itself a `worstOf` composition, so the quoting nests. Three levels deep, on
+ * the face of a gauge, it read:
+ *
+ *   MSL altitude, altimeter setting, station altimeter unavailable (MSL
+ *   altitude: GPS altitude, geoid separation unavailable (GPS altitude: not yet
+ *   initialised))
+ *
+ * Every layer of that is individually correct and the whole is unreadable. The
+ * INTERMEDIATE names are noise: what a reader needs is the names of what is
+ * missing here, and the one fact underneath the entire chain. So the quoted
+ * detail is unwrapped to the deepest cause and the middle layers are dropped.
+ *
+ * Bounded, because a cycle in the field graph would otherwise spin here — and
+ * an error path that hangs is worse than the error.
+ */
+export function rootCause(reason) {
+  let out = String(reason ?? '').trim();
+  // 32 is not a guess about how deep reasons go — real chains are two to four.
+  // The loop shrinks the string every pass and so always terminates on its own;
+  // this cap only guarantees that a malformed reason cannot spin, and is set far
+  // above any real chain so the bound never truncates a genuine one.
+  for (let depth = 0; depth < 32; depth += 1) {
+    const nested = /^.*? unavailable \((.*)\)$/s.exec(out);
+    if (!nested) break;
+    out = nested[1].trim();
+  }
+  return out;
+}
+
 export function worstOf(inputs) {
   const entries = Object.entries(inputs);
   const failed = entries.filter(([, f]) => !f || f.provenance === FAIL);
@@ -154,10 +187,16 @@ export function worstOf(inputs) {
     // BITE page is where the full explanation of each one lives.
     const [firstName, firstField] = failed[0];
     const names = failed.map(([n]) => n);
-    const detail = firstField?.reason ?? 'missing';
+    // The ROOT cause, not the intermediate one. See rootCause().
+    const raw = firstField?.reason ?? 'missing';
+    const root = rootCause(raw) || 'missing';
+    // An unwrapped root already carries the name of the field it came from, so
+    // prefixing it again produced "MSL altitude: GPS altitude: not yet
+    // initialised" — two colons and a name that is not the cause.
+    const detail = root === raw ? `${firstName}: ${root}` : root;
     return {
       provenance: FAIL,
-      reason: failed.length === 1 ? `${firstName}: ${detail}` : `${names.join(', ')} unavailable (${firstName}: ${detail})`,
+      reason: failed.length === 1 ? detail : `${names.join(', ')} unavailable (${detail})`,
       at: null,
     };
   }
