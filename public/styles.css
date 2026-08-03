@@ -395,6 +395,40 @@ body {
  *     top of the horizon. Both are `flex: 0 0 auto` now, so each is as tall as
  *     its own content and the column simply scrolls.
  */
+/*
+ * A PHONE HEADER THAT DOES NOT EAT THE PANEL.
+ *
+ * On a 402 px iPhone the five tabs wrapped to two rows and the brightness
+ * control took a third, so about 150 CSS px of chrome sat above the horizon
+ * before anything useful was drawn. The tabs are sized by their TEXT, not by a
+ * fixed width, so trimming the padding, the gap and the letter-spacing is
+ * enough to bring all five onto one row — and none of it touches the height,
+ * which is the dimension SC 2.5.8 is actually about. The 44 px target floor is
+ * unchanged.
+ */
+@media (max-width: 34rem) {
+  .bar {
+    padding: 0.3rem 0.45rem;
+    gap: 0.4rem;
+  }
+  .tabs {
+    gap: 0.35rem;
+  }
+  .tab {
+    padding: 0 0.5rem;
+    letter-spacing: 0.02em;
+  }
+  .dim-btn {
+    padding: 0 0.55rem;
+  }
+  /* The long parenthetical — "(computed solar elevation)" — is the one piece
+     here that is explanation rather than state. It stays in the BITE page and
+     in the diagnostics report, where there is room to read it. */
+  .dim-note {
+    font-size: 0.7rem;
+  }
+}
+
 @media (max-width: 46rem), (orientation: portrait) {
   html,
   body {

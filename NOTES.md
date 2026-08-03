@@ -68,6 +68,51 @@ items.
 
 ---
 
+## 1.4.2 — the phone header stops eating the panel
+
+On a 402 px iPhone the five tabs wrapped to TWO rows and the brightness control
+took a third, so about 150 CSS px of chrome sat above the horizon before
+anything useful was drawn.
+
+The tabs are sized by their TEXT rather than by a fixed width, so trimming the
+padding, the gap and the letter-spacing under 34rem brings all five onto one
+row. **None of it touches the height**, which is the dimension SC 2.5.8 is
+actually about — the 44 px target floor is unchanged and the gate confirms it.
+
+Measured rather than eyeballed, at 402x874: header **105 px, tabs on 1 row**,
+canvas top at 117 px. The bar still wraps to two lines because the tab row plus
+the brightness control genuinely will not fit across a phone, and shrinking
+further would start costing target size, which is not a trade this app makes.
+
+### NOT done: first-run instructions
+
+Noah also asked for first-time instructions — what the app is, and how to
+install it. **That is not started**, and it is a real piece of work rather than
+a paragraph:
+
+- The natural home is the PANEL POWER gate, which is already the first surface a
+  new reader sees and already explains why it wants sensors. Adding "what this
+  is" and "add to home screen" there needs no new page and no new navigation.
+- **Install instructions are per-platform and cannot be faked.** iOS is Share →
+  Add to Home Screen and has no `beforeinstallprompt`; Android fires that event
+  and can offer a real button. Telling an iPhone reader to press a button that
+  does not exist would be exactly the kind of confident wrong answer this panel
+  is built not to give, so the copy has to branch on what the browser actually
+  supports and say so.
+- It needs the accessibility gate treatment like every other surface: contrast
+  registry rows, target sizes, and a planted fault.
+
+Scoped here so the next session starts from the decision rather than the blank
+page.
+
+### Verified
+
+**200 unit tests, the accessibility gate green across 3 viewports x 2 palettes x
+5 pages, both palettes clearing every hard floor, and the phone header measured
+directly.**
+
+---
+
 ## 1.4.1 — the horizon settles, and the G-meter says what it is
 
 Two things off one photograph.
