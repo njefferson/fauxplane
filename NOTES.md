@@ -2206,6 +2206,70 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## Data sources — the standing inventory, 2026-08-03
+
+Noah: *"If there are other sources, I always want to know about them to know if
+they add any other value."* So this is kept as an inventory rather than being
+rediscovered each time a provider refuses us, and it is organised by WHAT EACH
+ADDS — not by whether it works.
+
+**THE STRATEGIC POINT, which the rate limiting made obvious.** Live positions
+have to come from an API: they change every second. **Almost nothing else does.**
+Routes, operators, aircraft types and airports are all essentially static, all
+published as open DATASETS, and a dataset committed to this repo is immune to
+the shared-address rate limiting that no amount of pacing can fix. The feed
+problem and the feature backlog are less entangled than they look.
+
+### Same data, another door — adds no capability
+
+- **airplanes.live** — free community ADS-B aggregator, an ADSBexchange-shaped
+  API. Its only value here would be that it may not blanket-block Cloudflare
+  origins the way adsb.fi does. TERMS UNREAD; §15.1 blocks until they are.
+- **adsbexchange** — moved to commercial licensing via RapidAPI. Paid.
+- **OpenSky** — already rejected and the reasons stand (no callsign lookup, and
+  a useful rate limit needs OAuth). It does have one thing the others lack: a
+  historical track API. Only worth revisiting if past tracks become a feature.
+
+### Genuinely new capability
+
+- **Route data — origin and destination.** Two routes to it: adsb.lol publish a
+  routes API (their own words: "plausible aircraft routes", a phrasing the panel
+  must respect when labelling it), and the open `vrs-standing-data` dataset maps
+  callsign to route without any API at all. The dataset is the better shape —
+  bundled, no rate limit, no provider to be refused by. UNLOCKS the flight-plan
+  page. Terms unread for both.
+- **Aircraft and operator database.** hex to registration, operator and full
+  type name, as a bundled dataset. UNLOCKS "United Airlines Boeing 737-800"
+  where the panel currently says B738, and the airframe picker would read in
+  real names without depending on the feed's `desc` field arriving. Terms unread.
+- **OurAirports** — TERMS READ, public domain (CC0), blocker CLEARED. Mirrored
+  as plain CSV. UNLOCKS the airport picker Noah asked for, an arbitrary map
+  centre, and named airports for any route feature. This is the one item on this
+  list with nothing blocking it.
+- **Aircraft photos (planespotters.net)** — UNLOCKS a photograph of the actual
+  airframe being followed, which for a plane lover is probably the highest
+  joy-per-line on this entire list. Terms unread.
+- **ACARS / VDL2 text (airframes.io)** — real datalink messages, verbatim.
+  UNLOCKS the "written transcript of aircraft communications" Noah asked about,
+  WITHOUT the speech-to-text guessing that made the ATC-audio version
+  unacceptable. Terms unread.
+- **TAF, SIGMET, AIRMET, PIREP** — the same aviationweather.gov service already
+  in use and already trusted, different endpoints. UNLOCKS forecast weather and
+  significant-weather areas rather than only the current observation. Gated on
+  knowing where the friend actually lives.
+
+### Rejected, recorded so nobody re-litigates
+
+- **FlightRadar24** — their terms, not the technology (recorded 2026-08-02).
+- **LiveATC** — restricts redistribution; an app embedding the stream is not
+  personal listening.
+- **Speech-to-text over ATC audio** — a machine guessing at clipped VHF, with
+  per-word error nobody can show. Refused on this app's own honesty rule.
+
+**Nothing on this list has been verified from a session.** The sandbox proxy
+refuses almost all of it, including `pages.dev`. Every "terms unread" above is a
+real blocker under §15.1 and none of it gets built until someone reads them.
+
 ## 1.13.3 — a 429 on the FIRST request, 2026-08-03
 
 Noah's report, panel up 36 s, one traffic request made:
