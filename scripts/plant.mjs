@@ -410,6 +410,27 @@ const PLANTS = [
     expect: /gated horizon is|the gate made no difference/,
   },
   {
+    // Two range controls, one value. Break the PFD side's wiring and the two
+    // surfaces show two different ranges — checked as rendered, by clicking
+    // one and reading the other.
+    name: 'range: the PFD control stops driving the shared range',
+    check: 'range set on the PFD reaches the radar page',
+    file: 'public/src/app.js',
+    find: "    b.addEventListener('click', () => radar.setRange(nm));",
+    replace: "    b.addEventListener('click', () => b.setAttribute('aria-pressed', 'true'));",
+    expect: /did not reach the radar page/,
+  },
+  {
+    // Power-on used to throw the first-run instructions away mid-read. The
+    // node moves to SETUP; deleting the move brings the defect back exactly.
+    name: 'first run: power-on throws the instructions away again',
+    check: 'the first-run instructions survive the gate onto SETUP',
+    file: 'public/src/app.js',
+    find: "    if (firstRun) $('page-setup').appendChild(firstRun);",
+    replace: "    if (firstRun) firstRun.remove();",
+    expect: /did not survive the gate/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

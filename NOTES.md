@@ -68,6 +68,50 @@ items.
 
 ---
 
+## 1.6.0 — four answers off two screenshots, and a social tile
+
+**"Why is the g-gauge always left of center?"** Because the scale runs −1 to
++4 g — what a load factor actually does — so normal rest sits at forty percent
+of the arc. The scale is right and the question was fair: what was missing is
+the reference mark a real G-meter carries at 1 g, which now says the resting
+spot IS normal.
+
+**"The horizon degrees stop at 30?"** They did, for fifteen releases — a device
+pitched past thirty showed featureless sky with no scale at all. Rungs now run
+to ±90: 5° spacing to thirty where a pilot flies, 10° beyond, matching a real
+PFD. Fusion clamps pitch at ±90, so the ladder now covers everything the filter
+can report.
+
+**"Put range options on the side of the radar on the main screen."** Done — a
+vertical 10/25/40/80 stack beside the navigation display, driving the SAME
+value as the RADAR page through one setter with listeners, because two controls
+are fine and two copies of a value is how they disagree. The gate checks it AS
+RENDERED: click the PFD button, read the RADAR page's pressed state. Planted
+both ways. The baseline of the first plant run caught a real crash — the wiring
+referenced `radar` before it was created — which is the console-error check
+earning its keep before anything shipped.
+
+**"Turning the panel on closes the initial instructions."** It did: the
+first-run orientation lived only on the power gate, so the button a new reader
+presses first took the instructions away mid-read. The NODE now moves to the
+SETUP page on dismissal — moved, not copied, so the two cannot drift — and the
+gate says so up front. Checked on the SETUP page after dismissal; planted.
+
+**Social preview.** Noah supplied a concept render (a stylised tablet cockpit —
+not a screenshot, and clearly so). Committed as `docs/social-preview.jpg` at
+GitHub's 1280×640, and as `public/og-image.jpg` (1200×630) behind og:/twitter:
+meta tags so shared links to fauxplane.pages.dev carry it. Uploading the GitHub
+tile is a UI step the session token cannot perform (Doctrine §10) — steps in
+the handoff, awaiting Noah's confirm.
+
+### Verified
+
+**212 unit tests, 35/35 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor, and the new PFD layout rendered and looked at.**
+
+---
+
 ## 1.5.1 — leaning is not launching: the accelerometer loses its vote when it disagrees with the gyro
 
 Noah, hand-holding the panel: *"Leaning backward and forward with my phone make

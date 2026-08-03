@@ -274,6 +274,28 @@ async function boot() {
       refreshFollowed();
     },
   });
+
+  // RANGE, BESIDE THE NAVIGATION DISPLAY. Same four ranges as the RADAR page,
+  // driving the same value through radar.setRange — two controls are fine, two
+  // copies of the value is how they disagree. onRange keeps both surfaces'
+  // pressed states true whichever one was tapped.
+  const pfdRangeHost = $('pfd-range');
+  const pfdRangeButtons = [10, 25, 40, 80].map((nm) => {
+    const b = el('button', {
+      class: 'pfd-range-btn',
+      type: 'button',
+      text: `${nm}`,
+      'aria-label': `Range ${nm} nautical miles`,
+      'aria-pressed': radar.rangeNm === nm ? 'true' : 'false',
+    });
+    b.addEventListener('click', () => radar.setRange(nm));
+    return b;
+  });
+  pfdRangeHost.replaceChildren(...pfdRangeButtons);
+  radar.onRange((nm) => {
+    for (const b of pfdRangeButtons) b.setAttribute('aria-pressed', b.textContent === String(nm) ? 'true' : 'false');
+  });
+
   $('follow-exit').addEventListener('click', () => {
     traffic.unfollow();
     syncFollowBanner();
@@ -706,6 +728,15 @@ async function boot() {
   const dismiss = (why) => {
     gate.close?.();
     gate.hidden = true;
+    // THE INSTRUCTIONS OUTLIVE THE GATE. Noah: "turning the panel on closes
+    // the initial instructions" — the first-run orientation and install steps
+    // lived only on this dialog, so the button a new reader presses first was
+    // the thing that took them away, mid-read. The NODE is moved to the SETUP
+    // page rather than copied there: one copy in the markup, relocated, so the
+    // two cannot drift. SETUP builds its children once at creation and its
+    // render() edits in place, so an appended section survives.
+    const firstRun = gate.querySelector('.gate-first');
+    if (firstRun) $('page-setup').appendChild(firstRun);
     document.body.dataset.powered = 'true';
     if (why) announcer.say(why);
     surface.measure();

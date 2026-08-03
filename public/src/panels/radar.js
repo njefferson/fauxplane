@@ -102,17 +102,26 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
   });
 
   // --- range ---------------------------------------------------------------
+  // ONE implementation, notified everywhere. The PFD's navigation display now
+  // carries its own range buttons (Noah: "put range options on the side of the
+  // radar on the main screen"), and two controls for one value is fine — two
+  // copies of the value is how they disagree. Every surface calls setRange and
+  // every surface hears about it.
+  const rangeListeners = [];
+  const setRange = (nm) => {
+    if (!RADAR_RANGE_NM.includes(nm)) return;
+    rangeNm = nm;
+    for (const b of rangeButtons) b.setAttribute('aria-pressed', b.textContent === `${nm} nm` ? 'true' : 'false');
+    for (const fn of rangeListeners) fn(nm);
+    announcer.say(`Radar range ${nm} nautical miles`);
+  };
   const rangeButtons = RADAR_RANGE_NM.map((nm) =>
     el('button', {
       class: 'radar-range-btn',
       type: 'button',
       text: `${nm} nm`,
       'aria-pressed': nm === rangeNm ? 'true' : 'false',
-      onclick: () => {
-        rangeNm = nm;
-        for (const b of rangeButtons) b.setAttribute('aria-pressed', b.textContent === `${nm} nm` ? 'true' : 'false');
-        announcer.say(`Radar range ${nm} nautical miles`);
-      },
+      onclick: () => setRange(nm),
     }),
   );
 
@@ -198,6 +207,11 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
   return {
     get rangeNm() {
       return rangeNm;
+    },
+    setRange,
+    /** Hear about every range change, whichever surface made it. */
+    onRange(fn) {
+      rangeListeners.push(fn);
     },
     measure() {
       surface.measure();

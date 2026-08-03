@@ -6,6 +6,15 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 1.6.0 — CAPABILITY — 2026-08-03
+
+**Radar range from the main screen.** The navigation display beside the horizon
+now has its own 10/25/40/80 nm buttons — the same setting as the RADAR page's,
+one value behind both. Also: the pitch ladder now runs to ±90° instead of
+stopping at 30, the G-meter carries a mark at 1 g so its resting spot reads as
+normal, and the first-time instructions move to the SETUP page when you switch
+on instead of vanishing.
+
 ## 1.5.1 — ITERATION — 2026-08-03
 
 **Leaning the phone no longer launches the horizon.** The accelerometer

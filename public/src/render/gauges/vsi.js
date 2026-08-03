@@ -145,6 +145,22 @@ export function drawGMeter(ctx, { x, y, w, h, tokens, field, peak }) {
   ctx.arc(cx, cy, r * 0.92, Math.PI, Math.PI * 2);
   ctx.stroke();
 
+  // THE 1 g MARK. The scale runs −1 to +4 because that is what a load factor
+  // does — nothing sustained lives below −1, and a hard pull reads +3 — so
+  // normal rest sits at forty percent of the arc, left of the top. Noah: "Why
+  // is the g-gauge always left of center?" The scale is right and the question
+  // is fair; what was missing is the mark that says the resting spot IS
+  // normal. A real G-meter carries exactly this reference at 1 g.
+  {
+    const a = angle(1);
+    ctx.strokeStyle = tokens.primary;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r * 0.66, cy + Math.sin(a) * r * 0.66);
+    ctx.lineTo(cx + Math.cos(a) * r * 0.95, cy + Math.sin(a) * r * 0.95);
+    ctx.stroke();
+  }
+
   if (!field || field.provenance === 'FAIL') {
     ctx.strokeStyle = tokens.fail;
     ctx.lineWidth = 2.5;

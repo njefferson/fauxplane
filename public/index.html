@@ -16,6 +16,20 @@
       content="A glass-cockpit instrument panel for a phone or tablet, driven by the device's own sensors and live aviation data."
     />
     <title>fauxplane — glass panel</title>
+    <!--
+      Link previews. The image is Noah's own concept render (a stylised tablet
+      cockpit, not a screenshot) — his choice, 2026-08-03. Absolute URL because
+      scrapers resolve nothing.
+    -->
+    <meta property="og:title" content="fauxplane — a glass cockpit for your desk" />
+    <meta
+      property="og:description"
+      content="Airliner instruments driven by your device's own sensors and live aviation data. Not a simulator, not certified for anything, never for navigation."
+    />
+    <meta property="og:image" content="https://fauxplane.pages.dev/og-image.jpg" />
+    <meta property="og:url" content="https://fauxplane.pages.dev/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -144,7 +158,12 @@
             are the only screen-reader-accessible copy of these numbers.
           -->
           <div class="pfd-side">
-            <canvas id="pfd-plan" class="pfd-plan" role="img" aria-label="Navigation display. Starting up."></canvas>
+            <div class="pfd-plan-row">
+              <canvas id="pfd-plan" class="pfd-plan" role="img" aria-label="Navigation display. Starting up."></canvas>
+              <!-- The same four ranges as the RADAR page, driving the same
+                   value through the same setter. -->
+              <div id="pfd-range" class="pfd-range" role="group" aria-label="Navigation display range"></div>
+            </div>
             <!-- A scrollable region must be reachable and scrollable from the
                  keyboard, so it is focusable and named. -->
             <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
@@ -208,6 +227,7 @@
       -->
       <section class="gate-first" aria-labelledby="gate-first-h">
         <h3 id="gate-first-h" class="gate-first-h">First time here</h3>
+        <p class="gate-body gate-small">These instructions stay on the SETUP page after you switch on.</p>
         <p class="gate-body">
           It is a glass cockpit panel for a phone or tablet — the instruments an airliner shows its pilots, driven by
           your device's own sensors and by live aviation data. It is a toy for people who love aeroplanes. It is not a

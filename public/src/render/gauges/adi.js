@@ -124,8 +124,19 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate, mou
 
   // Pitch ladder. Solid above, dashed below — the convention that carries the
   // up/down meaning without colour.
+  //
+  // TO ±90, NOT ±30. The ladder stopped at thirty for its first fifteen
+  // releases, so a device pitched past it showed featureless sky with no scale
+  // at all — Noah, holding one at −32°: "The horizon degrees stop at 30?" A
+  // real PFD keeps drawing rungs all the way to vertical, spaced 5° near level
+  // where a pilot flies and 10° beyond thirty where nobody holds an aeroplane
+  // for long; same here. The clamp in fusion caps pitch at ±90, so ±90 rungs
+  // cover everything the filter can ever report.
   const labelSize = Math.max(9, r * 0.075);
-  for (let deg = -30; deg <= 30; deg += 5) {
+  const rungs = [];
+  for (let deg = -30; deg <= 30; deg += 5) rungs.push(deg);
+  for (let deg = 40; deg <= 90; deg += 10) rungs.push(deg, -deg);
+  for (const deg of rungs) {
     if (deg === 0) continue;
     const major = deg % 10 === 0;
     const halfWidth = major ? r * 0.28 : r * 0.15;

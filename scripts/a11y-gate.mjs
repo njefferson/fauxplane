@@ -182,6 +182,8 @@ const REGISTRY = [
   { selector: '.chip-fail', label: 'FAIL chip', min: 4.6, page: 'pfd' },
   { selector: '.setup-body', label: 'setup body text', min: 4.6, page: 'setup' },
   { selector: '.setup-caution', label: 'setup caution (amber)', min: 4.6, page: 'setup' },
+  { selector: ".pfd-range-btn[aria-pressed='true']", label: 'PFD range (selected)', min: 4.6, page: 'pfd' },
+  { selector: ".pfd-range-btn[aria-pressed='false']", label: 'PFD range (unselected)', min: 4.6, page: 'pfd' },
   { selector: '#pfd-level', label: 'PFD levelling button', min: 4.6, page: 'pfd' },
   { selector: '.pfd-level-status', label: 'PFD levelling state', min: 4.6, page: 'pfd' },
   { selector: '.setup-current', label: 'setup levelling state', min: 4.6, page: 'setup' },
@@ -622,6 +624,40 @@ async function main() {
             return bad;
           });
           for (const s of sentinel) fail(where, s);
+
+          // ONE RANGE, TWO SURFACES, CHECKED AS RENDERED. The PFD's range
+          // buttons and the RADAR page's drive one value through one setter;
+          // this clicks on one surface and reads the OTHER, because the sync
+          // is the claim and a grep for setRange would only prove somebody
+          // typed it.
+          if (name === 'pfd') {
+            const sync = await page.evaluate(() => {
+              const pfd25 = [...document.querySelectorAll('.pfd-range-btn')].find((b) => b.textContent === '25');
+              if (!pfd25) return { missing: true };
+              pfd25.click();
+              const radar25 = [...document.querySelectorAll('.radar-range-btn')].find((b) => b.textContent === '25 nm');
+              const out = {
+                missing: false,
+                pfdPressed: pfd25.getAttribute('aria-pressed'),
+                radarPressed: radar25?.getAttribute('aria-pressed') ?? 'absent',
+              };
+              const pfd40 = [...document.querySelectorAll('.pfd-range-btn')].find((b) => b.textContent === '40');
+              pfd40?.click();
+              return out;
+            });
+            if (sync.missing) fail(where, 'the PFD range control is missing');
+            else if (sync.pfdPressed !== 'true' || sync.radarPressed !== 'true') {
+              fail(where, `range set on the PFD did not reach the radar page: pfd=${sync.pfdPressed} radar=${sync.radarPressed} — two controls showing two different ranges`);
+            }
+          }
+
+          // THE FIRST-RUN INSTRUCTIONS OUTLIVE THE GATE. Pressing power took
+          // them away mid-read; they now MOVE to SETUP, and this checks the
+          // destination — this loop runs after the gate was dismissed.
+          if (name === 'setup') {
+            const moved = await page.evaluate(() => !!document.querySelector('#page-setup .gate-first'));
+            if (!moved) fail(where, 'the first-run instructions did not survive the gate — power-on threw them away again');
+          }
 
           // THE CITATION, CHECKED AS RENDERED rather than grepped for.
           //

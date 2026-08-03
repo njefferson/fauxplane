@@ -345,8 +345,42 @@ body {
   gap: var(--gap);
 }
 
-.pfd-plan {
+.pfd-plan-row {
   flex: 44 1 0;
+  min-height: 9rem;
+  display: flex;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.pfd-range {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.pfd-range-btn {
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0 0.5rem;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pfd-range-btn[aria-pressed='true'] {
+  border-color: var(--rail);
+  color: var(--text);
+}
+
+.pfd-plan {
+  flex: 1 1 0;
   /* In rem, like the horizon's, so it stays proportional to the reader's type
      size instead of becoming the next fixed height that fails at 200% text. */
   min-height: 9rem;
@@ -395,6 +429,15 @@ body {
  *     top of the horizon. Both are `flex: 0 0 auto` now, so each is as tall as
  *     its own content and the column simply scrolls.
  */
+/* The first-run block after its move to SETUP: reads as a card there. */
+.page .gate-first {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  margin: var(--gap) 0 0;
+}
+
 .gate-first {
   margin-top: 1rem;
   padding-top: 0.9rem;
@@ -503,11 +546,16 @@ body {
     height: 60vh;
     min-height: 10rem;
   }
-  .pfd-plan {
+  .pfd-plan-row {
     flex: 0 0 auto;
     /* Square-ish, because a plan view is a circle and a letterbox wastes it. */
     height: 45vh;
     min-height: 12rem;
+  }
+  .pfd-plan {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
   }
   .readouts {
     flex: 0 0 auto;
@@ -523,6 +571,15 @@ body {
    removes the browser chrome entirely and is the real answer; this is for
    before someone does that. */
 @media (max-height: 34rem) {
+  /* Four stacked 44px targets are taller than a landscape phone's plan row —
+     the gate measured the stack overlapping the build stamp above it and the
+     readouts below. Two-by-two fits: 2 x 44px + gap inside a ~160px row. */
+  .pfd-range {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(var(--target), 1fr));
+    align-self: center;
+  }
+
   .bar {
     padding: 0.2rem 0.5rem;
     gap: 0.5rem;
