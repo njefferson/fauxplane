@@ -6,6 +6,11 @@
  * User-Agent the Pages Functions send upstream. Never typed twice, or it will
  * eventually report a version the code is not.
  *
+ * `releases.js` is checked AGAINST this constant by `releases.test.mjs`, so the
+ * release notes and the build stamp cannot describe different builds. That test
+ * failed on its first run, which is how it earned its place: notes for 1.8.0
+ * had been written while this line still said 1.7.4.
+ *
  * The triplet is version.capability.iteration (Doctrine §7). Noah decides what
  * counts as a VERSION, and on 2026-08-03 he said this one: "Promote to main as
  * v1.0.0", with a radar page in front of him showing nineteen real aircraft.
@@ -13,7 +18,7 @@
  * it.
  */
 
-export const VERSION = '1.7.4';
+export const VERSION = '1.8.0';
 
 /** Cache name for the service worker. Bumping VERSION invalidates the shell. */
 export const CACHE_NAME = `fauxplane-${VERSION}`;

@@ -71,6 +71,7 @@ const SHELL = [
   '/src/data/navdata.js',
   '/src/data/geoid.js',
   '/src/data/manifest.js',
+  '/src/data/releases.js',
   '/data/manifest.json',
   '/src/data/wmm.js',
   '/src/render/canvas.js',
@@ -85,6 +86,7 @@ const SHELL = [
   '/src/panels/radar.js',
   '/src/panels/diagnostics.js',
   '/src/panels/setup.js',
+  '/src/panels/whatsnew.js',
 ];
 
 /** Precached if present. Absent in this build — see NOTES.md. A missing

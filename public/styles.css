@@ -1375,3 +1375,130 @@ body[data-powered='true'] .gate {
 .setup-current[data-state='stale'] {
   color: var(--stale);
 }
+
+/* --- what's new (Doctrine §7d) -------------------------------------------- */
+
+/* NO PROVENANCE TONES IN HERE, deliberately. --stale is the amber that means
+   "this reading is ageing"; a release note saying what is still broken is not a
+   provenance state, and borrowing that colour would make a patch note look like
+   a degraded instrument. The headings carry the meaning, which is also the
+   non-hue rule (§4). */
+
+.wn-card {
+  margin-top: var(--gap);
+}
+.wn-intro {
+  margin: 0 0 0.6rem;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+.wn-release {
+  border-top: 1px solid var(--hairline);
+  padding: 0.15rem 0;
+}
+.wn-release:first-of-type {
+  border-top: 0;
+}
+.wn-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  min-height: var(--target);
+  padding: 0.25rem 0;
+  cursor: pointer;
+  color: var(--text);
+}
+.wn-summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.wn-version {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.wn-date {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+.wn-body {
+  padding: 0 0 0.6rem;
+}
+.wn-headline {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+.wn-sub {
+  margin: 0.55rem 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.wn-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+.wn-list li + li {
+  margin-top: 0.3rem;
+}
+/* The outstanding list is set apart by a rail, not by hue. */
+.wn-list-broken {
+  border-left: 3px solid var(--hairline);
+  padding-left: 0.9rem;
+  margin-left: 0.1rem;
+  list-style: none;
+}
+.wn-none {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+
+/* The one-time banner after an update. */
+.wn-banner {
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.85rem;
+  margin-bottom: var(--gap);
+}
+.wn-banner-text {
+  margin: 0 0 0.55rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.wn-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+.wn-banner-actions button {
+  min-height: var(--target);
+  padding: 0 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wn-banner-open {
+  background: var(--surface-3);
+  border: 1px solid var(--rail);
+  color: var(--text);
+}
+.wn-banner-close {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--text-2);
+}
+.wn-banner-actions button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

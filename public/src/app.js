@@ -40,6 +40,7 @@ import { createBite } from './panels/bite.js';
 import { createRadar } from './panels/radar.js';
 import { buildReport, createDiagnostics, installConsoleCapture } from './panels/diagnostics.js';
 import { createSetup } from './panels/setup.js';
+import { createUpdateBanner } from './panels/whatsnew.js';
 import { DEGRADED, FAILED, PASS } from './core/capability.js';
 
 const $ = (id) => document.getElementById(id);
@@ -643,6 +644,17 @@ async function boot() {
     });
   }
   show('pfd');
+
+  // The patch notes live on BITE; this is how anyone finds out they exist. It
+  // appears once after an update, on the page the reader already opens, and
+  // "See what changed" is the only thing that moves them off it.
+  const updateBanner = createUpdateBanner({
+    onOpen: () => {
+      show('bite');
+      pages.bite.querySelector('.wn-card')?.scrollIntoView({ block: 'start' });
+    },
+  });
+  if (updateBanner) pages.pfd.prepend(updateBanner.root);
 
   // ---- render loop ---------------------------------------------------------
   state.subscribe((snapshot) => {

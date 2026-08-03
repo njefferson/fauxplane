@@ -2206,6 +2206,43 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.8.0 — the panel says what changed (Doctrine §7d), 2026-08-03
+
+**`public/src/data/releases.js` is the only place release notes are written.**
+The version stamp, the service-worker cache name and this list all resolve to
+`VERSION`, and `releases.test.mjs` fails the build if the newest entry is not
+that version. That test failed on its FIRST run — notes for 1.8.0 had been
+written while `version.js` still said 1.7.4 — which is the drift it exists to
+catch, caught before anything shipped.
+
+**The notes sit BELOW the built-in test list, not above it.** BITE's one job is
+answering "what is broken", and a reader who opened it to diagnose a crossed-out
+instrument must not scroll past release notes to get there. Discovery is the
+banner's job instead: it appears once after an update, on the PFD, and records
+the version as seen the moment it is SHOWN rather than when it is dismissed —
+someone who ignores it has still been told, and nagging every launch is worse
+than being missed once.
+
+**A first-ever run gets no banner.** There is no "before" to report, and it
+would compete with the first-run instructions for the same screen.
+
+**`broken` is a required key and may be empty.** An empty array claims nothing
+is outstanding; a missing key is an author who never considered the question.
+The test enforces the difference, because only the first is honest.
+
+**Two gates were added on the way, both proven red before being trusted:** the
+no-grid gate (the hub's `docs-check.mjs`, run as `npm run docs`), and a check
+that every module under `public/src` is in the service worker's precache list.
+The second was written because this release added two modules and the list is
+maintained by hand — the app would have worked perfectly online and failed only
+offline, on someone else's device, with nothing on screen to explain it.
+
+**The accessibility gate caught a real defect here**: the sub-headings jumped
+h2 → h4, because a `<summary>` is a disclosure control and not a heading, so
+nothing filled the level. Each release's version is now a real `h3` inside its
+summary, which also lets a screen reader jump between releases.
+
+
 ## Flight tracking as a SOURCE — what was checked, 2026-08-02
 
 Noah asked whether a flight number could drive the panel, and whether

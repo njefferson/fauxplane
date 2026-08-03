@@ -366,3 +366,32 @@ test('the service worker never searches OTHER releases’ caches', async () => {
   );
   assert.match(sw, /caches\.open\(CACHE_NAME\)/, 'sw.js must scope lookups to its own cache');
 });
+
+test('every shipped module is in the service worker precache list', async () => {
+  // A new module that nobody adds to the list works perfectly online and fails
+  // only offline, on someone else's device, with no error anyone sees. This
+  // release added two modules and the list was updated by hand — which is
+  // exactly the kind of memory that eventually misses one.
+  const { readdir, readFile } = await import('node:fs/promises');
+  const path = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const src = path.join(repo, 'public', 'src');
+
+  const walk = async (dir) => {
+    const out = [];
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) out.push(...(await walk(full)));
+      else if (entry.name.endsWith('.js')) out.push(full);
+    }
+    return out;
+  };
+
+  const sw = await readFile(path.join(repo, 'public', 'sw.js'), 'utf8');
+  const missing = (await walk(src))
+    .map((f) => `/${path.relative(path.join(repo, 'public'), f).split(path.sep).join('/')}`)
+    .filter((rel) => !sw.includes(`'${rel}'`));
+
+  assert.deepEqual(missing, [], `not precached, so the app breaks offline: ${missing.join(', ')}`);
+});
