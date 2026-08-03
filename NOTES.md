@@ -68,6 +68,66 @@ items.
 
 ---
 
+## 0.5.0 — traffic has a LIST of sources, and the panel credits the one that answered
+
+Noah: *"Why not switch to adsb.lol?"*
+
+No good reason. 0.4.9 wrote the decision up as his to make, which was
+over-deferring: he had asked for a working radar page, and which vendor answers
+it is the sort of thing a session should work out. The one real prerequisite was
+reading the terms from the publisher first (LESSONS 18), and that is done.
+
+**adsb.lol**: ODbL 1.0, no API key at present, dynamic rate limits, and they
+describe their API as *"compatible with the ADSBExchange Rapid API — a drop-in
+replacement"*, which is the same shape adsb.fi serves. So the existing parser
+reads either without a change.
+
+### A list, not a swap
+
+Neither provider has ever been reached from this sandbox — the proxy refuses
+CONNECT to both — so replacing one untested source with another untested source
+would have been a coin flip. The source became a LIST instead: adsb.lol first,
+adsb.fi second, tried in order, first real answer wins.
+
+The distinction that makes it work: a **404 from the callsign endpoint is an
+ANSWER** (that flight is not being heard right now) and must not fall through,
+while a 403 from a CDN is that provider refusing us and must. If every provider
+refuses, all of their reasons are reported together — "adsb.lol returned
+HTTP 403" alone would send the next reader to investigate adsb.lol, when the
+useful fact is usually that both refused and how each phrased it.
+
+### Crediting the wrong source is worse than crediting none
+
+The citation was rendered with the NAME from the response and the LINK
+hardcoded to `https://adsb.fi`. Fine while there was one source; a false
+citation the moment there were two. Both now come from the payload.
+
+And the gate that was supposed to protect this **grepped radar.js for the string
+`https://adsb.fi`** — which would have passed happily while the panel credited a
+provider that had not supplied a single byte. It now reads the rendered anchor
+and asserts its href matches the source the response named. Same lesson as the
+magenta canvas two releases ago: **a check that reads the source instead of the
+output is checking that somebody typed something, not that it works.**
+
+### What is NOT resolved
+
+- **Neither provider has answered this app, ever.** adsb.lol may block a Pages
+  Function exactly as adsb.fi does. The first device to open RADAR is the test.
+- **The `/v2/lat/.../lon/.../dist/...` path for adsb.lol is inferred** from their
+  "drop-in replacement for ADSBExchange" claim, not read off their endpoint list
+  — their docs host returned 403 to this sandbox too. If it is wrong the panel
+  will say `adsb.lol returned HTTP 404`, which is a clear enough signal.
+- **adsb.fi stays in the list.** The block may be theirs to lift, and asking
+  them is still the right move.
+
+### Verified
+
+**172 unit tests, 26/26 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+---
+
 ## 0.4.9 — the 403 named itself, and it is adsb.fi's FIREWALL, not their API
 
 0.4.7 made the traffic failure carry its own evidence. One tap on RADAR and it

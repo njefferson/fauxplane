@@ -91,9 +91,9 @@ const PAGES = ['pfd', 'atis', 'radar', 'bite', 'setup'];
  */
 const TRAFFIC_FIXTURE = {
   ok: true,
-  source: 'adsb.fi',
-  sourceUrl: 'https://adsb.fi',
-  attribution: 'Aircraft data from adsb.fi',
+  source: 'adsb.lol',
+  sourceUrl: 'https://adsb.lol',
+  attribution: 'Aircraft data from adsb.lol (ODbL)',
   query: { lat: 38.7, lon: -121.0, distNm: 40 },
   upstreamTime: '2026-08-02T15:04:05.000Z',
   fetchedAt: '2026-08-02T15:04:05.000Z',
@@ -617,6 +617,33 @@ async function main() {
             return bad;
           });
           for (const s of sentinel) fail(where, s);
+
+          // THE CITATION, CHECKED AS RENDERED rather than grepped for.
+          //
+          // This used to search radar.js for the literal "https://adsb.fi",
+          // which passed happily while the anchor's href was HARDCODED to a
+          // provider that had not supplied the data — a citation that is
+          // present, checked, and wrong. Now that a second source exists and
+          // either may answer, the only meaningful assertion is that the link
+          // on the page points at the source the response actually named.
+          if (name === 'radar') {
+            const credit = await page.evaluate(() => {
+              const a = document.querySelector('.radar-credit-link');
+              return a
+                ? { href: a.getAttribute('href') ?? null, text: (a.textContent ?? '').trim(), tag: a.tagName }
+                : null;
+            });
+            if (!credit) {
+              fail(where, 'the radar panel renders no source citation — every provider we use requires one');
+            } else if (credit.tag !== 'A' || !credit.href) {
+              fail(where, `the radar citation "${credit.text}" is not a link — the terms require a link to the home page`);
+            } else if (credit.href !== TRAFFIC_FIXTURE.sourceUrl) {
+              fail(
+                where,
+                `the radar citation links ${credit.href} but the data came from ${TRAFFIC_FIXTURE.sourceUrl} — crediting the wrong source is worse than crediting none`,
+              );
+            }
+          }
         }
 
         /* ---- the DIAGNOSTICS dialog, in its open state ------------------
@@ -905,13 +932,9 @@ async function checkNoSecrets(base) {
   // condition of use, not a courtesy, and a condition nobody checks is one that
   // quietly lapses in a refactor. Doctrine §15.1 makes the publisher's policy
   // the authority; this is the policy expressed as a test.
-  const radarSrc = await (await fetch(`${base}/src/panels/radar.js`)).text();
-  if (!/https:\/\/adsb\.fi/.test(radarSrc)) {
-    fail(where, 'the radar panel does not link adsb.fi — their terms require a citation with a link to their home page');
-  }
   const libSrc = await readFile(path.join(REPO, 'functions', 'api', '_lib.js'), 'utf8');
-  if (!/attribution:\s*['"][^'"]*adsb\.fi/.test(libSrc)) {
-    fail(where, 'POLICIES.traffic carries no adsb.fi attribution string for the client to render');
+  if (!/attribution:\s*['"][^'"]+['"]/.test(libSrc)) {
+    fail(where, 'no provider carries an attribution string for the client to render');
   }
 }
 

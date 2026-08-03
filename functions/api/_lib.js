@@ -52,18 +52,70 @@ export const POLICIES = {
    * the edge cache is what the panel's refresh rate actually hits.
    */
   traffic: {
-    source: 'adsb.fi',
-    policyUrl: 'https://github.com/adsbfi/opendata',
-    homeUrl: 'https://adsb.fi',
-    attribution: 'Aircraft data from adsb.fi',
-    // Comfortably inside 1 req/s even with several colos each holding their own
-    // copy, and still fresher than the panel can usefully redraw a plan view.
+    // The DEFAULT source, and the one credited before anything has answered.
+    // The live answer names whichever provider actually served it — see
+    // TRAFFIC_PROVIDERS.
+    source: 'adsb.lol',
+    policyUrl: 'https://www.adsb.lol/docs/open-data/api/',
+    homeUrl: 'https://adsb.lol',
+    attribution: 'Aircraft data from adsb.lol (ODbL)',
+    // Comfortably inside the tightest published limit even with several colos
+    // each holding their own copy, and still fresher than the panel can
+    // usefully redraw a plan view.
     cacheSeconds: 8,
     callsignCacheSeconds: 5,
     identifies: true,
     honoursRetryAfter: true,
   },
 };
+
+/**
+ * WHERE LIVE TRAFFIC COMES FROM, IN ORDER, and why there is more than one.
+ *
+ * adsb.fi answered every request with HTTP 403 from a Cloudflare block page —
+ * their EDGE refusing a Pages Function before their API ever saw it. The
+ * endpoint was correct and the request well-formed; we were simply not welcome
+ * from that origin. Nothing about that is fixable from this side without
+ * disguising the client to slip past a rule the operator deliberately set, and
+ * this app does not do that to a service whose data it is asking for.
+ *
+ * So the source became a LIST. Both publish an ADSBexchange-v2-compatible shape
+ * — adsb.lol describe theirs as "a drop-in replacement" — so one parser reads
+ * either, and the panel credits whichever actually answered rather than
+ * whichever we hoped would.
+ *
+ * NEITHER HAS EVER BEEN REACHED FROM THIS SANDBOX. Its proxy refuses CONNECT to
+ * both, so the paths below are the publishers' documented ones and the field
+ * mapping is from their published schema. The first device to open RADAR is the
+ * real test, and the failure text now names the provider, the CDN and the code.
+ *
+ * Terms, both of which are conditions and not courtesies:
+ *   adsb.lol — data under ODbL 1.0, no key at present, dynamic rate limit.
+ *   adsb.fi  — personal and non-commercial, citation with a link required,
+ *              1 request per second.
+ */
+export const TRAFFIC_PROVIDERS = Object.freeze([
+  Object.freeze({
+    id: 'adsb.lol',
+    base: 'https://api.adsb.lol',
+    homeUrl: 'https://adsb.lol',
+    attribution: 'Aircraft data from adsb.lol (ODbL)',
+    policyUrl: 'https://www.adsb.lol/docs/open-data/api/',
+    area: (lat, lon, dist) => `/v2/lat/${lat}/lon/${lon}/dist/${dist}`,
+    callsign: (cs) => `/v2/callsign/${cs}`,
+    hex: (h) => `/v2/hex/${h}`,
+  }),
+  Object.freeze({
+    id: 'adsb.fi',
+    base: 'https://opendata.adsb.fi/api',
+    homeUrl: 'https://adsb.fi',
+    attribution: 'Aircraft data from adsb.fi',
+    policyUrl: 'https://github.com/adsbfi/opendata',
+    area: (lat, lon, dist) => `/v3/lat/${lat}/lon/${lon}/dist/${dist}`,
+    callsign: (cs) => `/v2/callsign/${cs}`,
+    hex: (h) => `/v2/hex/${h}`,
+  }),
+]);
 
 /** A JSON response with the caching and provenance headers the client reads. */
 export function json(body, { status = 200, cacheSeconds = 0, stale = false, headers = {} } = {}) {

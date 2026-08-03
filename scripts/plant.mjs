@@ -131,12 +131,12 @@ const PLANTS = [
     // adsb.fi's terms REQUIRE the citation. A licence condition nobody watches
     // fail is a condition that quietly lapses in the next tidy-up — which is
     // the whole reason this file exists.
-    name: 'attribution: the adsb.fi citation their terms require is dropped',
-    check: 'the radar page links adsb.fi, as a condition of using their data',
+    name: 'attribution: the citation the providers\u2019 terms require stops being a link',
+    check: 'the radar page links whichever source answered, as a condition of use',
     file: 'public/src/panels/radar.js',
-    find: "el('a', { class: 'radar-credit-link', href: 'https://adsb.fi', rel: 'noopener', text: 'adsb.fi' })",
-    replace: "el('span', { class: 'radar-credit-link', text: 'adsb.fi' })",
-    expect: /does not link adsb\.fi|require a citation/,
+    find: "            ? el('a', { class: 'radar-credit-link', href: home, rel: 'noopener', text: name })",
+    replace: "            ? el('span', { class: 'radar-credit-link', text: name })",
+    expect: /is not a link|renders no source citation|require/,
   },
   {
     // THE REGRESSION THIS RELEASE IS ABOUT. A gyro with an ordinary zero-offset

@@ -60,15 +60,27 @@ Data the app bundles is generated, never hand-written:
 - `npm run navdata` — the OurAirports database. Still refuses to fetch until
   someone reads the published terms; no v1 panel needs it.
 
-Live traffic comes from **adsb.fi** (`/api/traffic`), whose terms are personal,
-non-commercial, and **require a citation with a link to their home page**. That
-citation is enforced by the accessibility gate and by a planted fault; do not
-remove it. Their published limit is 1 request/second, so every parameter is
-validated in the Function before anything is sent and the edge cache carries the
-panel's refresh rate.
+Live traffic comes from a **LIST** of providers, tried in order and declared in
+`TRAFFIC_PROVIDERS` (`functions/api/_lib.js`): **adsb.lol** first, then
+**adsb.fi**. There is more than one because adsb.fi's Cloudflare edge answers a
+Pages Function with a 403 block page before their API sees it — the endpoint is
+right and we are simply not welcome from that origin. Both publish an
+ADSBexchange-v2-compatible shape, so one parser reads either.
+
+**The panel credits WHICHEVER PROVIDER ANSWERED**, name and link both taken from
+the response — adsb.lol require attribution under ODbL, adsb.fi require a
+citation with a link to their home page, and crediting the wrong one is worse
+than crediting none. The gate checks the citation **as rendered**, not by
+grepping the source: the old check passed while the href was hardcoded to a
+provider that had not supplied the data. Every parameter is validated in the
+Function before anything is sent, because a 400 counts against a rate limit.
+
+**Do not add browser-shaped headers to get past a provider's bot rule.** That is
+circumventing an access control its operator set deliberately, on a service
+whose data we are asking for as a favour.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 168 unit tests over the pure logic, including the magnetic model
+- `npm test` — 172 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
   palettes x 5 pages, including the acceptance criteria.

@@ -8,8 +8,11 @@
  * full.
  *
  * ATTRIBUTION IS A REQUIREMENT, NOT A COURTESY. adsb.fi's terms say: "You must
- * cite adsb.fi and include a link to our home page." That link is rendered here
- * from the attribution string the API response itself carries, so the citation
+ * cite adsb.fi and include a link to our home page"; adsb.lol publish under
+ * ODbL, which also requires attribution. BOTH the name and the link come from
+ * the response, so the panel credits whichever provider actually served the
+ * data rather than whichever was tried first. That link is rendered here
+ * from the attribution the API response itself carries, so the citation
  * travels with the data rather than being a constant in a client that could
  * drift away from whoever is actually being called.
  *
@@ -216,10 +219,19 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
           `${result.centre.fromFix ? 'this device' : 'the home reference'} · updated ${age} ago`;
       }
 
+      // CREDIT WHOEVER ACTUALLY ANSWERED. The href used to be hardcoded to
+      // adsb.fi while the TEXT came from the response — fine while there was
+      // one source, and a false citation the moment there were two. Both the
+      // name and the link now come from the payload, so a fallback to the
+      // second provider credits the second provider.
       if (result?.attribution) {
+        const home = result.sourceUrl ?? null;
+        const name = result.source ?? 'the source';
         attribution.replaceChildren(
           document.createTextNode(`${result.attribution} — `),
-          el('a', { class: 'radar-credit-link', href: 'https://adsb.fi', rel: 'noopener', text: 'adsb.fi' }),
+          home
+            ? el('a', { class: 'radar-credit-link', href: home, rel: 'noopener', text: name })
+            : el('span', { class: 'radar-credit-link', text: name }),
           document.createTextNode(', a volunteer receiver network. Community coverage is strong over land and thin over oceans.'),
         );
       }

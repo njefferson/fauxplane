@@ -78,3 +78,38 @@ test('UPSTREAM: nothing to say produces nothing, not an empty dash', async () =>
   const out = await describeUpstreamFailure(res({}, ''));
   assert.equal(out, '');
 });
+
+/* ---------------------------------------------------------------- providers */
+
+import { TRAFFIC_PROVIDERS } from '../functions/api/_lib.js';
+
+test('PROVIDERS: there is more than one, and adsb.lol is tried first', () => {
+  // adsb.fi's edge refuses a Pages Function outright, so it cannot be the only
+  // source. It stays in the list because the block may be theirs to lift.
+  assert.ok(TRAFFIC_PROVIDERS.length >= 2, 'one refused provider is not a source');
+  assert.equal(TRAFFIC_PROVIDERS[0].id, 'adsb.lol');
+});
+
+test('PROVIDERS: every one carries the citation its terms require', () => {
+  // ODbL for adsb.lol, an explicit citation clause for adsb.fi. Both are
+  // conditions of use, and the client renders these strings verbatim.
+  for (const p of TRAFFIC_PROVIDERS) {
+    assert.ok(p.attribution && p.attribution.length > 8, `${p.id} has no attribution`);
+    assert.match(p.homeUrl, /^https:\/\//, `${p.id} has no home page to link`);
+    assert.match(p.policyUrl, /^https:\/\//, `${p.id} has no published terms to point at`);
+    assert.ok(p.attribution.includes(p.id), `${p.id}'s attribution must name ${p.id}`);
+  }
+});
+
+test('PROVIDERS: each builds all three query paths', () => {
+  for (const p of TRAFFIC_PROVIDERS) {
+    assert.match(p.area('38.7000', '-121.0000', 40), /^\/v\d\/lat\/38\.7000\/lon\/-121\.0000\/dist\/40$/);
+    assert.match(p.callsign('UAL328'), /^\/v\d\/callsign\/UAL328$/);
+    assert.match(p.hex('a1b2c3'), /^\/v\d\/hex\/a1b2c3$/);
+  }
+});
+
+test('PROVIDERS: no two share a base, or the fallback is not a fallback', () => {
+  const bases = TRAFFIC_PROVIDERS.map((p) => p.base);
+  assert.equal(new Set(bases).size, bases.length);
+});

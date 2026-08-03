@@ -1,11 +1,17 @@
 /**
- * /api/traffic — live aircraft, from adsb.fi open data.
+ * /api/traffic — live aircraft, from community ADS-B open data.
  *
- *   Source : https://opendata.adsb.fi/api/
+ *   Sources: adsb.lol, then adsb.fi — see TRAFFIC_PROVIDERS in _lib.js for the
+ *            order, the paths and each one's terms.
  *   Auth   : NONE. No key, no OAuth, no KV, no secret to leak.
- *   Terms  : https://github.com/adsbfi/opendata — personal, non-commercial,
- *            citation required. Quoted in full in POLICIES.traffic.
  *   Cache  : 8 s by area, 5 s by callsign, at the edge.
+ *
+ * THERE IS MORE THAN ONE SOURCE BECAUSE ONE OF THEM REFUSED US. adsb.fi
+ * answered every request with a Cloudflare block page — their edge declining a
+ * Pages Function before their API saw it. The endpoint was right and the
+ * request well-formed. Both publish an ADSBexchange-v2-compatible shape, so one
+ * parser reads either, and the panel credits WHICHEVER ANSWERED rather than
+ * whichever was tried first.
  *
  * WHY NOT OpenSky, WHICH THIS ENDPOINT USED TO CALL. Two reasons, in order of
  * how much they matter. First, OpenSky has no lookup by callsign at all — its
@@ -28,14 +34,12 @@
  * coincidence, makes every user within the same six miles share one cache entry.
  */
 
-import { POLICIES, USER_AGENT, cached, json, politeFetch, problem } from './_lib.js';
-
-const BASE = 'https://opendata.adsb.fi/api';
+import { POLICIES, TRAFFIC_PROVIDERS, USER_AGENT, cached, json, politeFetch, problem } from './_lib.js';
 
 /** Home reference, used only until the client has a fix (NOTES.md, settled). */
 const HOME = { lat: 38.68, lon: -121.0 };
 
-/** adsb.fi caps the radius query at 250 nm. Ours is tighter: a plan view of
+/** Both providers cap the radius query at 250 nm. Ours is tighter: a plan view of
  *  half a state is not a panel instrument, and §15.5 says do not sweep. */
 const MAX_DIST_NM = 120;
 const DEFAULT_DIST_NM = 40;
@@ -111,7 +115,7 @@ function parsePayload(payload) {
   // A body in neither shape is not "no aircraft" — it is an upstream we no
   // longer understand, and saying so is the difference between an empty sky
   // and a broken client.
-  if (!rows) return { error: 'adsb.fi returned a body with no aircraft array (ac/aircraft)' };
+  if (!rows) return { error: 'returned a body with no aircraft array (ac/aircraft)' };
 
   const aircraft = rows
     .map(parseAircraft)
@@ -173,13 +177,21 @@ export async function describeUpstreamFailure(res) {
   return bits.length ? ` — ${bits.join('; ')}` : '';
 }
 
-/** Shared tail of both query shapes: call upstream, normalise, wrap. */
-async function relay(upstreamUrl, meta, cacheSeconds) {
+/**
+ * ONE provider, one attempt. Returns either a finished Response or a `retry`
+ * marker saying why this provider is out, so the caller can go to the next one.
+ *
+ * The distinction matters: a 404 from the callsign endpoint is an ANSWER (that
+ * flight is not being heard) and must NOT cause a fallback, while a 403 from a
+ * CDN is that provider refusing us and must.
+ */
+async function tryProvider(provider, pathname, meta, cacheSeconds) {
+  const upstreamUrl = `${provider.base}${pathname}`;
   let res;
   try {
     res = await politeFetch(upstreamUrl, { headers: { 'user-agent': USER_AGENT } });
   } catch (err) {
-    return problem(`adsb.fi unreachable: ${err.message}`);
+    return { retry: `${provider.id} unreachable: ${err.message}` };
   }
 
   if (res.status === 429) {
@@ -187,13 +199,13 @@ async function relay(upstreamUrl, meta, cacheSeconds) {
     // a short Retry-After; reaching here means back off properly. There is
     // nothing to serve instead, and inventing an empty sky would read as "no
     // traffic" — which is a lie a radar page must never tell.
-    return problem('adsb.fi asked us to slow down (rate limited) — the display holds its last sweep', { status: 429 });
+    return { retry: `${provider.id} rate limited us (HTTP 429)` };
   }
   if (res.status === 404) {
     // The callsign endpoint 404s for a flight that is not currently airborne
     // and heard by a receiver. That is an ANSWER, not a fault.
     return json(
-      { ok: true, source: POLICIES.traffic.source, attribution: POLICIES.traffic.attribution, ...meta, count: 0, aircraft: [], notHeard: true },
+      { ok: true, source: provider.id, sourceUrl: provider.homeUrl, attribution: provider.attribution, ...meta, count: 0, aircraft: [], notHeard: true },
       { cacheSeconds },
     );
   }
@@ -216,27 +228,29 @@ async function relay(upstreamUrl, meta, cacheSeconds) {
     // just before the only part that means anything. Relaying MORE was not the
     // answer; relaying the RIGHT part was.
     const detail = await describeUpstreamFailure(res);
-    return problem(`adsb.fi returned HTTP ${res.status}${detail}`, { status: 502 });
+    return { retry: `${provider.id} returned HTTP ${res.status}${detail}` };
   }
 
   let payload;
   try {
     payload = await res.json();
   } catch (err) {
-    return problem(`adsb.fi returned a non-JSON body: ${err.message}`);
+    return { retry: `${provider.id} returned a non-JSON body: ${err.message}` };
   }
 
   const parsed = parsePayload(payload);
-  if (parsed.error) return problem(parsed.error, { status: 502 });
+  if (parsed.error) return { retry: `${provider.id}: ${parsed.error}` };
 
   return json(
     {
       ok: true,
-      source: POLICIES.traffic.source,
-      sourceUrl: POLICIES.traffic.homeUrl,
+      source: provider.id,
+      sourceUrl: provider.homeUrl,
       // Carried in the payload rather than hardcoded in the client, so the
-      // citation adsb.fi's terms require travels WITH the data it is about.
-      attribution: POLICIES.traffic.attribution,
+      // citation each provider's terms require travels WITH the data it is
+      // about — and names whichever one actually answered, not whichever was
+      // tried first.
+      attribution: provider.attribution,
       ...meta,
       upstreamTime: parsed.upstreamTime,
       fetchedAt: new Date().toISOString(),
@@ -247,21 +261,38 @@ async function relay(upstreamUrl, meta, cacheSeconds) {
   );
 }
 
+/**
+ * Try each provider in turn and return the first real answer.
+ *
+ * EVERY REASON IS KEPT, and all of them are reported if none works. "adsb.lol
+ * returned HTTP 403" alone would send the next reader to look at adsb.lol; the
+ * useful fact is usually that BOTH refused, and how each one phrased it.
+ */
+async function relay(pick, meta, cacheSeconds) {
+  const refusals = [];
+  for (const provider of TRAFFIC_PROVIDERS) {
+    const out = await tryProvider(provider, pick(provider), meta, cacheSeconds);
+    if (!out?.retry) return out;
+    refusals.push(out.retry);
+  }
+  return problem(refusals.join(' | '), { status: 502 });
+}
+
 export async function onRequestGet({ request }) {
   const url = new URL(request.url);
   const callsign = url.searchParams.get('callsign');
 
   // --- by callsign: "where is this flight right now" ------------------------
   if (callsign !== null) {
-    // VALIDATED BEFORE IT IS SENT. adsb.fi counts 400s and 404s against the
-    // same rate limit as real queries, so a client typo must cost us nothing
+    // VALIDATED BEFORE IT IS SENT. These services count 400s and 404s against
+    // the same rate limit as real queries, so a client typo must cost us nothing
     // upstream. Callsigns are ICAO-style: letters and digits, up to eight.
     const cs = callsign.trim().toUpperCase();
     if (!/^[A-Z0-9]{2,8}$/.test(cs)) {
       return problem('callsign must be 2 to 8 letters or digits, e.g. UAL328 or N172SP', { status: 400 });
     }
     return cached(request, `/api/traffic?callsign=${cs}`, POLICIES.traffic.callsignCacheSeconds, () =>
-      relay(`${BASE}/v2/callsign/${encodeURIComponent(cs)}`, { query: { callsign: cs } }, POLICIES.traffic.callsignCacheSeconds),
+      relay((p) => p.callsign(encodeURIComponent(cs)), { query: { callsign: cs } }, POLICIES.traffic.callsignCacheSeconds),
     );
   }
 
@@ -270,10 +301,10 @@ export async function onRequestGet({ request }) {
   if (hex !== null) {
     const h = hex.trim().toLowerCase();
     // Exactly six hex digits. Validated before sending, for the same reason as
-    // the callsign above: adsb.fi counts our 404s against our rate limit.
+    // the callsign above: a 404 counts against our rate limit too.
     if (!/^[0-9a-f]{6}$/.test(h)) return problem('hex must be six hexadecimal digits, e.g. a1b2c3', { status: 400 });
     return cached(request, `/api/traffic?hex=${h}`, POLICIES.traffic.callsignCacheSeconds, () =>
-      relay(`${BASE}/v2/hex/${h}`, { query: { hex: h } }, POLICIES.traffic.callsignCacheSeconds),
+      relay((p) => p.hex(h), { query: { hex: h } }, POLICIES.traffic.callsignCacheSeconds),
     );
   }
 
@@ -304,7 +335,7 @@ export async function onRequestGet({ request }) {
   const key = `/api/traffic?lat=${qLat.toFixed(1)}&lon=${qLon.toFixed(1)}&dist=${dist}`;
   return cached(request, key, POLICIES.traffic.cacheSeconds, () =>
     relay(
-      `${BASE}/v3/lat/${qLat.toFixed(4)}/lon/${qLon.toFixed(4)}/dist/${dist}`,
+      (p) => p.area(qLat.toFixed(4), qLon.toFixed(4), dist),
       {
         query: { lat: qLat, lon: qLon, distNm: dist },
         // Said out loud in the payload so the client can show it, and so a
