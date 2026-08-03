@@ -165,7 +165,10 @@ test('RESOLUTION: a rate under the floor keeps its VALUE and gains the bound', (
   });
   assert.notEqual(out.provenance, 'FAIL');
   assert.ok(Number.isFinite(out.value), 'the estimate is kept, not replaced with zero');
-  assert.match(out.reason, /resolves no better than/);
+  // String(...) on purpose: a null reason must fail as an ASSERTION quoting
+  // this regex, not as a TypeError that quotes nothing — which is exactly how
+  // the plant for this check came to look like it failed for another reason.
+  assert.match(String(out.reason ?? ''), /resolves no better than/);
 });
 
 test('RESOLUTION: a climb well ABOVE the floor is reported without the caveat', () => {

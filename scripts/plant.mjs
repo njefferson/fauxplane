@@ -345,6 +345,18 @@ const PLANTS = [
     expect: /overlap|smear/,
   },
   {
+    // Re-added after the harness was fixed. It could not be proven before: the
+    // test asserted on a null reason, which throws a TypeError instead of an
+    // assertion, so the expected regex never appeared in the output at all.
+    name: 'resolution: the vertical speed stops saying what it cannot resolve',
+    check: 'a rate under the GPS resolution keeps its value and gains the bound',
+    gate: 'tests',
+    file: 'public/src/core/derive.js',
+    find: '          { ...meta, reason: `GPS altitude resolves no better than ±${Math.round(floor).toLocaleString()} fpm here` },',
+    replace: '          meta,',
+    expect: /resolves no better than/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',
@@ -534,7 +546,24 @@ for (const plant of selected) {
       results.push({ plant, ok: false, why: 'the gate stayed GREEN with the fault planted' });
       process.stdout.write(`GREEN  ${plant.name}  <-- the check does not work\n`);
     } else if (!caught) {
-      results.push({ plant, ok: false, why: `the gate went red, but not about this: ${out.split('\n').filter((l) => l.includes('FAIL')).slice(0, 2).join(' | ')}` });
+      // WHY THIS DOES NOT GREP FOR "FAIL".
+      //
+      // It used to, and a PASSING unit test whose NAME contains the word — "a
+      // FAIL field CANNOT carry a value" — matched the filter. The harness then
+      // quoted a GREEN line as the cause of a red run, which sent a session
+      // looking at the wrong file twice. A diagnosis that names an innocent
+      // check is worse than "it went red", because it is followed.
+      //
+      // `not ok` is the TAP marker for a failing test and cannot appear on a
+      // passing one; the a11y gate's own failures are its `FAIL ` prefix at the
+      // start of a line, which a test NAME never has.
+      const why = out
+        .split('\n')
+        .filter((l) => /^\s*not ok /.test(l) || /^\s*FAIL\s/.test(l))
+        .slice(0, 2)
+        .map((l) => l.trim())
+        .join(' | ');
+      results.push({ plant, ok: false, why: `the gate went red, but not about this: ${why || '(no failing line found — read the gate output)'}` });
       process.stdout.write(`WRONG  ${plant.name}  <-- red for a different reason\n`);
     } else {
       results.push({ plant, ok: true });

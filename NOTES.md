@@ -68,6 +68,59 @@ items.
 
 ---
 
+## The plant harness named an innocent check, twice — fixed (scripts only)
+
+Flagged in 1.3.1 as the most valuable thing outstanding, because it weakened
+every plant number in this file. It turned out to be TWO bugs that looked like
+one, and only one of them was the harness.
+
+**The harness bug.** When a plant made the gate go red for the wrong reason, it
+described that reason by grepping the output for the string `FAIL`. A PASSING
+unit test whose NAME contains the word — `a FAIL field CANNOT carry a value` —
+matched that filter, so the harness quoted a green line as the cause of a red
+run. **A diagnosis that names an innocent check is worse than "it went red",
+because it gets followed**, and it was: two anchors were tried on the same plant
+and both were abandoned on the strength of it. It now keys on `not ok`, the TAP
+marker a passing test cannot carry, and on the accessibility gate's own
+line-initial `FAIL ` prefix, which a test name never has.
+
+**The test bug, which was mine.** The 1.3.1 plant was genuinely not caught, and
+not because of the harness. The test asserted `assert.match(out.reason, ...)`
+against a reason that is NULL in the planted case — and `assert.match(null, ...)`
+throws a TypeError, which quotes nothing. The expected pattern was therefore
+absent from the output and the plant was correctly reported as unproven. The
+assertion now coerces, so a null reason fails as an ASSERTION naming the pattern
+it wanted.
+
+The lesson is the second one. **An assertion that can throw instead of failing
+is invisible to anything reading the failure**, and a fault-injection harness
+reads failures for a living. The misleading message hid it; the brittle
+assertion caused it.
+
+Re-added the plant that could not be proven before. **It is caught now**, and the
+sweep is 29 for 29 — one more check than before, because a check that had never
+been shown to work is now shown to work.
+
+*(Scripts only. No deployed file changed, so no version bump.)*
+
+### Verified
+
+**198 unit tests, 29/29 planted faults caught.**
+
+### Still open
+
+- The overlap check from 1.2.1, still UNPROVEN — a different problem: the fault
+  is a PORTRAIT layout defect and `--quick` runs one landscape viewport, so the
+  gate stays genuinely green rather than red-for-the-wrong-reason. Not touched
+  by this fix.
+- The intermittent PANEL POWER contrast failure, cause unfound.
+- The airport / location picker, unblocked and scoped in 1.4.0.
+- A route for a followed flight, pending adsb.lol's terms.
+- Android and desktop, never confirmed by a device.
+- Repo metadata: description, website, topics, social preview, all unset.
+
+---
+
 ## 1.4.0 — the observed path of a followed flight
 
 Noah asked for two things: an airport (or any location) as the radar centre, and
