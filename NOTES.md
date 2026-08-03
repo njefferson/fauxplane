@@ -68,6 +68,17 @@ items.
 
 ---
 
+## 1.7.3 — tiles served from the site, and an icon-art variant
+
+Noah could not download the tile from GitHub on his iPad, which makes the
+deployed site the right distribution channel for its own artwork: both card
+designs now ship at `/social-preview.jpg` (concept render) and
+`/social-preview-icon.jpg` (drawn purely from the app icon — nothing
+borrowed). Long-press, save, upload. Repo metadata values now live in the
+hub's `METADATA.md`, per Noah: one file, every app, §10 status tracked.
+
+---
+
 ## The roadmap, judged — 2026-08-03
 
 Thirty ideas from a five-lens generation pass (the friend, the sensors, the
