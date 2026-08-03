@@ -68,6 +68,53 @@ items.
 
 ---
 
+## 1.0.1 — an error state that looks like a crash is a defect in its own right
+
+Noah, on a 1.0.0 screenshot: *"It doesn't need to look like this to error does
+it?"* No, it does not.
+
+**The horizon caption was severed mid-parenthesis.** It read
+`gravity reference only — gyro settling (…` — ellipsised on a single line, so
+the truncation landed inside the bracket and threw away the one number the
+sentence existed to deliver. The panel was working correctly and looked broken.
+
+Fixed with a `wrapText` primitive: the caption wraps to two lines and only the
+LAST line ellipsises, and only when the text genuinely does not fit. There had
+never been a wrap helper, only `ellipsise`, so every long string in a canvas had
+exactly one option and it was the destructive one.
+
+**The failure reason was three levels deep.** The vertical-speed readout said:
+
+> vertical acceleration: attitude not converged — no vertical reference (gravity
+> reference only — gyro settling (14.1°))
+
+A prefix from `worstOf`, wrapping a sentence, wrapping a parenthetical, wrapping
+a number. Each layer was individually reasonable and the total was unreadable.
+The filter's own reason is the more specific of the two and now passes straight
+through instead of being nested inside a second description of the same fact.
+
+**The rule this session keeps rediscovering:** honesty is necessary and not
+sufficient. Every one of those strings was TRUE. A true explanation that reads
+as a crash still costs the reader their confidence in the instrument, and this
+app spends its whole budget on being believable.
+
+### Still open, and deliberately not done here
+
+- **Red X density.** On a stationary desk several instruments cannot work, and
+  the panel is dominated by full-height red crosses. A real EFIS does cross a
+  failed instrument in red, so the convention is being followed — but
+  "unavailable in this situation" and "this instrument has failed" are different
+  facts and currently look identical. Distinguishing them is a real design
+  change and wants Noah's eye, not a session's taste.
+- **Label collision on a busy plan view**, unchanged from 1.0.0.
+
+### Verified
+
+**172 unit tests, the accessibility gate green across 3 viewports x 2 palettes x
+5 pages, both palettes clearing every hard floor.**
+
+---
+
 ## 1.0.0 — adsb.lol answered, and Noah called the version
 
 Nineteen aircraft, real callsigns, real flight levels: FFT3393 at FL360, UAL1730

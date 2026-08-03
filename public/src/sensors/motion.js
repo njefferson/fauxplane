@@ -84,7 +84,15 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, owns = () 
         if (mine) state.write('motion.verticalAccel', alongUp - G0, { at });
         vsi.updateAccel(alongUp - G0, at);
       } else if (mine) {
-        state.fail('motion.verticalAccel', `attitude not converged — no vertical reference (${att.reason ?? 'converging'})`);
+        // ONE SENTENCE, NOT THREE NESTED ONES. This read
+        //   "vertical acceleration: attitude not converged — no vertical
+        //    reference (gravity reference only — gyro settling (14.1°))"
+        // by the time worstOf had prefixed the field name and the filter's own
+        // reason had been parenthesised inside it — a parenthesis inside a
+        // parenthesis inside a prefix, three levels deep, on the face of a
+        // gauge. The filter's reason already says what is wrong and is the more
+        // specific of the two, so it is passed through rather than wrapped.
+        state.fail('motion.verticalAccel', att.reason ?? 'no attitude yet, so there is no vertical reference');
       }
 
       if (r) {

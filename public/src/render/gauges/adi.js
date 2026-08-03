@@ -17,7 +17,7 @@
  * conditions people fit instruments for.
  */
 
-import { ellipsise, failFlag, roundRect, text } from '../canvas.js';
+import { ellipsise, failFlag, roundRect, text, wrapText } from '../canvas.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -177,15 +177,25 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate, mou
     const size = Math.max(9, r * 0.075);
     const ty = y + h - r * 0.46;
     ctx.save();
-    const caption = ellipsise(ctx, attitude.reason, w - 16, { size });
-    ctx.font = `500 ${size}px ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace`;
-    const tw = Math.min(w - 10, ctx.measureText(caption).width + size);
-    ctx.globalAlpha = 0.82;
-    ctx.fillStyle = tokens.page;
-    roundRect(ctx, cx - tw / 2, ty - size * 0.85, tw, size * 1.7, size * 0.4);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    text(ctx, caption, cx, ty, { size, weight: 700, colour: tokens.stale });
+    // WRAPPED, NOT TRUNCATED. This ellipsised a single line, so on a tablet the
+    // caption read "gravity reference only — gyro settling (…" — severed inside
+    // the parenthesis, throwing away the one number the sentence existed to
+    // deliver, and looking like a crash while the panel worked correctly.
+    const lines = wrapText(ctx, attitude.reason, w - 16, { size, weight: 700, maxLines: 2 });
+    if (lines.length) {
+      ctx.font = `700 ${size}px ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace`;
+      const tw = Math.min(w - 10, Math.max(...lines.map((l) => ctx.measureText(l).width)) + size);
+      const th = size * (0.85 + 1.15 * lines.length);
+      const top = ty - size * 0.85 - (lines.length - 1) * size * 0.575;
+      ctx.globalAlpha = 0.82;
+      ctx.fillStyle = tokens.page;
+      roundRect(ctx, cx - tw / 2, top, tw, th, size * 0.4);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      lines.forEach((line, i) => {
+        text(ctx, line, cx, top + size * 0.85 + i * size * 1.15, { size, weight: 700, colour: tokens.stale });
+      });
+    }
     ctx.restore();
   }
 

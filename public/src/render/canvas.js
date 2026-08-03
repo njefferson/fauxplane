@@ -150,6 +150,47 @@ export function text(ctx, str, x, y, { size = 14, weight = 500, align = 'center'
 }
 
 /**
+ * Break a string across up to `maxLines` lines that each fit `maxWidth`.
+ *
+ * ELLIPSISING A SENTENCE THAT HAD ROOM TO WRAP IS NOT A TRUNCATION, IT LOOKS
+ * LIKE A CRASH. The horizon caption read "gravity reference only — gyro
+ * settling (…" on Noah's iPad: cut inside a parenthesis, so the one number the
+ * sentence existed to deliver was the part thrown away, and the panel looked
+ * broken while working correctly.
+ *
+ * Only the LAST line is ellipsised, and only if the text genuinely does not fit
+ * in the lines allowed. A word longer than the width is left over-long rather
+ * than chopped, because a broken word is harder to read than a wide one.
+ */
+export function wrapText(ctx, str, maxWidth, { size = 12, weight = 500, maxLines = 2 } = {}) {
+  if (!str) return [];
+  ctx.save();
+  ctx.font = `${weight} ${size}px ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace`;
+  const words = String(str).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (ctx.measureText(next).width <= maxWidth || !line) {
+      line = next;
+      continue;
+    }
+    lines.push(line);
+    line = word;
+    if (lines.length === maxLines) break;
+  }
+  if (lines.length < maxLines && line) lines.push(line);
+  ctx.restore();
+  // Anything that did not fit is signalled on the last line, where an ellipsis
+  // reads as "there is more" rather than as a severed word.
+  const used = lines.join(' ');
+  if (used.length < String(str).replace(/\s+/g, ' ').trim().length && lines.length) {
+    lines[lines.length - 1] = ellipsise(ctx, `${lines[lines.length - 1]} …`, maxWidth, { size, weight });
+  }
+  return lines;
+}
+
+/**
  * Trim a string to fit a width, ending in an ellipsis.
  *
  * Clipping instead — which is what a canvas clip path does — cuts mid-word and
