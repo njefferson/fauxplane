@@ -68,6 +68,63 @@ items.
 
 ---
 
+## The roadmap, judged — 2026-08-03
+
+Thirty ideas from a five-lens generation pass (the friend, the sensors, the
+feeds, the real 747 deck, the long-lived app), judged against honesty first,
+then joy, then feasibility. The full ranking lives in the session; what matters
+here is the order and the rulings Noah owes.
+
+### Build next, in order
+
+1. **HEAVY INBOUND** — a watch list: when a 747 (or any chosen type / any
+   "heavy") enters radar range, the ND flags it with a callout strip — "HEAVY:
+   B748, UPS94, FL340, 22 nm NE" — one tap to follow. Entirely from fields the
+   existing poll already carries; a missing type code cannot match, never
+   guessed. Peak joy for this specific friend.
+2. **Patch notes behind the version stamp** — the owed §7d surface. Small,
+   offline, generated from one source, says what is still broken.
+3. **MCP readout in FOLLOW** — the selected altitude/heading/speed the real
+   crew has dialled in, from nav_* fields already in the follow response;
+   absent broadcast renders FAIL with its reason. Jumpseat joy for a man
+   printing an MCP.
+
+### Strong, roughly in order
+
+Captain's 747-400 chronometer (CHR/ET/UTC — zero feed, fully offline) · TAF on
+ATIS (same NOAA source as METAR, zero new terms) · transponder panel (squawk
+already parsed, unconsumed; emergency reads AMBER for an observer) · overflight
+log (diary of the sky from polls already paid for; foundation for the life
+list and follow records) · long-exposure decaying trails · type life list ·
+climb staircase (side profile of a followed flight) · DATALINK comm-status
+page (renders the 1.7.0 backoff visibly) · MOUNT VIB (accelerometer RMS,
+labelled honestly) · follow records · pressure diary · military layer (terms
+of /v2/mil unread — §15.1 first) · SIGMET polygons on the ND · INT LTS manual
+dimmer (SETUP has no manual brightness at all).
+
+### Needs Noah's ruling before anyone builds
+
+- **Is an on-device ephemeris a feed or synthesis?** Sun/moon/terminator hangs
+  on whether computed astronomy is DERIVED like WMM or invented data. Precedent
+  call, his to make.
+- **Microphone** (cabin-noise meter): loosens Permissions-Policy from
+  microphone=() — a privacy-posture change needing explicit sign-off.
+- **Where does the friend live?** Weather radar, PIREPs and TAF coverage all
+  gate on it.
+- **Which tablet sits in the printed panel?** The lower-EICAS systems page is
+  alive on Android and mostly FAIL on iPad, so the device decides the feature.
+- **Aircraft photos** (planespotters.net): terms unread, §15.1 blocks.
+
+### Rejected for honesty, recorded so nobody re-litigates
+
+- **Barometer tapes** — no browser exposes a pressure sensor; revisit only if
+  platforms change.
+- **Engine gauges (EPR/N1/EGT)** — nothing broadcasts them; relabelling device
+  metrics as engines is invention. The only legitimate route is sim telemetry,
+  a separate workstream with its own recorded blocker.
+
+---
+
 ## 1.7.2 — the card leads with the icon
 
 The ADI-face icon replaces the hub-style mark bars on the share card, at
