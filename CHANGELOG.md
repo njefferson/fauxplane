@@ -6,6 +6,13 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 1.7.2 — ITERATION — 2026-08-03
+
+**The share card leads with the app's own icon** — the attitude-indicator face
+— in place of the colour bars. Noah's call: he really likes the icon, and a
+mark that is also the home-screen tile is a better signature than borrowed
+bars.
+
 ## 1.7.1 — ITERATION — 2026-08-03
 
 **The share card got its words.** Same family layout as the other repos — the

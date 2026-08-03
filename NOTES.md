@@ -68,6 +68,15 @@ items.
 
 ---
 
+## 1.7.2 — the card leads with the icon
+
+The ADI-face icon replaces the hub-style mark bars on the share card, at
+Noah's call ("I really like the icon"). It is the same artwork as the
+home-screen tile, so the card and the installed app now share a signature.
+Regenerated both outputs from the one card source.
+
+---
+
 ## 1.7.1 — words on the share card, in the family style
 
 Noah: "I want words on the social preview like my other repos." The hub has a
