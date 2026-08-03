@@ -75,6 +75,33 @@ const clampRange = (nm) => {
 };
 
 /** Position to search around: the live fix if there is one, else home. */
+/**
+ * The path a followed aircraft has actually flown, as observed.
+ *
+ * EVERY POINT ON THIS TRAIL IS A POSITION THIS PANEL WAS TOLD, at a time it was
+ * told it. Nothing is interpolated between them and nothing is extrapolated
+ * ahead — a smooth curve drawn through sparse observations is a drawing of a
+ * flight path rather than a record of one, and the gaps are information: a
+ * receiver dropout looks like a gap because it WAS one.
+ *
+ * Not to be confused with a flight PLAN, which is a different thing entirely
+ * and is not in an ADS-B broadcast. This is where it has been, not where it
+ * intends to go.
+ *
+ * Bounded by both age and count so a long follow cannot grow without limit.
+ */
+export function appendTrail(trail, point, { maxPoints = 240, maxAgeMs = 45 * 60_000 } = {}) {
+  if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lon) || !Number.isFinite(point.at)) return trail;
+  const last = trail[trail.length - 1];
+  // The followed aircraft is polled harder than it broadcasts, so the same
+  // position arrives repeatedly. Storing it again would weight a stationary
+  // aircraft's trail by how often we asked rather than by where it went.
+  if (last && last.lat === point.lat && last.lon === point.lon) return trail;
+  const cutoff = point.at - maxAgeMs;
+  const next = [...trail.filter((p) => p.at >= cutoff), point];
+  return next.length > maxPoints ? next.slice(next.length - maxPoints) : next;
+}
+
 export function radarCentre(fields) {
   const lat = fields?.['position.lat'];
   const lon = fields?.['position.lon'];
@@ -106,6 +133,10 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
   let lastResult = null;
   let followKey = null; // { by: 'callsign' | 'hex', value }
   let followed = null; // the last aircraft object seen for followKey
+  /** Observed positions of the followed aircraft, oldest first. Cleared with
+   *  the follow itself — a trail belonging to a different aircraft is worse
+   *  than no trail. */
+  let trail = [];
   let followError = null;
   let followSince = null;
   const turn = createTurnRate();
@@ -155,6 +186,10 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
     get followed() {
       return followed;
     },
+    /** The observed path of the followed aircraft, oldest first. */
+    get trail() {
+      return trail;
+    },
     get followError() {
       return followError;
     },
@@ -182,6 +217,7 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       if (!next) return null;
       followKey = next;
       followed = null;
+      trail = [];
       followError = null;
       followSince = clock();
       reportAt = null;
@@ -197,6 +233,7 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
     unfollow() {
       followKey = null;
       followed = null;
+      trail = [];
       followError = null;
       followSince = null;
       reportAt = null;
@@ -232,6 +269,14 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       }
       followed = list[0];
       followError = null;
+      // The observed path. Appended here, where a fresh broadcast arrives, so
+      // it records what was HEARD rather than what was rendered.
+      trail = appendTrail(trail, {
+        lat: followed.lat,
+        lon: followed.lon,
+        at: clock(),
+        altFt: followed.altBaroFt ?? followed.altGeomFt ?? null,
+      });
       // STAMPED WITH WHEN IT WAS HEARD, once, here. `seen_pos` is how many
       // seconds ago the position last arrived, so subtracting it hands the
       // store a real source time — and the store's own ageing then turns a

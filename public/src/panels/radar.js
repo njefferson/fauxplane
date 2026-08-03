@@ -259,6 +259,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         rangeNm,
         followedHex: traffic.followed?.hex ?? null,
         fromFix: !!result?.centre?.fromFix,
+        trail: traffic.trail,
       });
 
       canvas.setAttribute(

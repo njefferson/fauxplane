@@ -188,6 +188,7 @@ async function boot() {
       rangeNm: radar.rangeNm,
       followedHex: traffic.followed?.hex ?? null,
       fromFix: !!radarCentre(state.snapshot.fields)?.fromFix,
+      trail: traffic.trail,
     }),
     readoutHost: $('pfd-readouts'),
     announcer,

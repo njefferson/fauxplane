@@ -68,6 +68,59 @@ items.
 
 ---
 
+## 1.4.0 — the observed path of a followed flight
+
+Noah asked for two things: an airport (or any location) as the radar centre, and
+the flight path/plan of a followed flight. **This release does the flown path.**
+The other two pieces are scoped below rather than half-built.
+
+Every point on the trail is a position this panel was TOLD, at the time it was
+told it. Straight segments between them, nothing interpolated and nothing
+extrapolated ahead — a smooth curve through sparse observations is a DRAWING of
+a flight path rather than a record of one, and the gaps are information: a
+receiver dropout looks like a gap because it was one. It stops at the range ring
+and resumes on the way back in, the same contract the symbols keep.
+
+Appended where a fresh broadcast ARRIVES rather than where it is drawn, so it
+records what was heard. Bounded by age and by count, so a long follow cannot
+grow without limit, and identical repeated positions are not stored twice —
+the followed aircraft is polled harder than it broadcasts, so storing every
+reply would weight a parked aircraft's trail by how often we asked.
+
+**It is a PATH and not a PLAN, and the distinction is the honest one.** ADS-B
+carries no intent. Where an aircraft has been is in the broadcast; where it
+means to go is not, and is not invented here.
+
+### Scoped, not done
+
+**Choosing an airport as the centre.** `npm run navdata` has refused to fetch
+OurAirports since the repo was created, pending someone reading the terms. That
+is now done: **OurAirports is public domain (CC0)** — no attribution required,
+no restriction on redistribution or commercial use — and the data is mirrored as
+plain CSV at `davidmegginson.github.io/ourairports-data/`. The blocker is
+cleared and the work is: run the generator, ship a trimmed subset (ICAO, name,
+lat/lon, size — not all 80,000 rows), and put a type-ahead on the radar page.
+
+**An arbitrary location** is the easier half of the same feature and should
+share the control: an airport is a named location, and the picker should accept
+either.
+
+**A route (origin and destination).** adsb.lol publish a separate routes API —
+"plausible aircraft routes", in their own words, which is a phrasing worth
+respecting when the panel labels it. Their terms need reading first, exactly as
+adsb.lol's and adsb.fi's did.
+
+None of that is started. It is written here so the next session begins from the
+research rather than repeating it.
+
+### Verified
+
+**198 unit tests, 28/28 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+---
+
 ## 1.3.1 — the vertical speed says what it cannot resolve
 
 The last correctness item on the list. GPS altitude on Noah's iPad is accurate

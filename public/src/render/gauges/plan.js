@@ -94,7 +94,7 @@ export function placeLabels(items, { measure, lineHeight, bounds }) {
   return out;
 }
 
-export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix }) {
+export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, trail = [] }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
   const r = Math.min(w, h) / 2 - 4;
@@ -157,6 +157,36 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   text(ctx, fromFix ? 'YOU' : 'HOME', cx, cy + s * 2.6, { size: ringLabel * 0.9, weight: 700, colour: tokens['text-3'] });
 
   // --- the aircraft --------------------------------------------------------
+  // THE OBSERVED PATH of the followed aircraft, drawn before the symbols so it
+  // sits under them. Straight segments between reported positions and nothing
+  // else: no smoothing, because a curve through sparse observations is a
+  // DRAWING of a flight path rather than a record of one, and no extrapolation
+  // ahead, because ADS-B says where an aircraft has been and never where it is
+  // going.
+  if (trail.length > 1) {
+    ctx.save();
+    ctx.strokeStyle = tokens.primary;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let drawing = false;
+    for (const point of trail) {
+      const q = project(point, { centre, pxPerNm, cx, cy });
+      // Outside the ring it would read as a bearing it is not at, so the trail
+      // simply stops there and resumes when it comes back — the same contract
+      // the symbols keep.
+      if (!q || Math.hypot(q.x - cx, q.y - cy) > r) {
+        drawing = false;
+        continue;
+      }
+      if (drawing) ctx.lineTo(q.x, q.y);
+      else ctx.moveTo(q.x, q.y);
+      drawing = true;
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   const labelSize = Math.max(8, Math.min(12, r * 0.062));
   const pending = [];
   for (const a of aircraft ?? []) {

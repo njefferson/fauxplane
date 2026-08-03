@@ -273,6 +273,7 @@ export function createPfd({
       rangeNm: view.rangeNm ?? 40,
       followedHex: view.followedHex ?? null,
       fromFix: view.fromFix ?? false,
+      trail: view.trail ?? [],
     });
     if (planCanvas) {
       const n = (view.aircraft ?? []).length;
