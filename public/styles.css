@@ -1877,3 +1877,83 @@ body[data-powered='true'] .gate {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+/* --- the centre picker ---------------------------------------------------- */
+
+.radar-centre {
+  margin: 0 0 0.6rem;
+}
+.radar-centre-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 0.3rem;
+}
+.radar-centre-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+.radar-centre-input {
+  flex: 1 1 14rem;
+  min-height: var(--target);
+  padding: 0 0.7rem;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 0.875rem;
+}
+.radar-centre-clear {
+  min-height: var(--target);
+  padding: 0 0.9rem;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.radar-centre-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.radar-centre-list:empty {
+  margin-top: 0;
+}
+.radar-centre-hit {
+  min-height: var(--target);
+  padding: 0.4rem 0.7rem;
+  text-align: left;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.radar-centre-hit:hover,
+.radar-centre-hit:focus-visible {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.radar-centre-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+.radar-centre-input:focus-visible,
+.radar-centre-clear:focus-visible,
+.radar-centre-hit:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

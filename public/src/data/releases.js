@@ -29,6 +29,23 @@
  */
 export const RELEASES = [
   {
+    version: '1.16.0',
+    date: '2026-08-03',
+    headline: 'Point the radar at any airport you like.',
+    changed: [
+      'A box at the top of the RADAR page centres the scope wherever you want. Type SFO, or Sacramento, or a pair of coordinates, and press the one you meant — the scope moves there and the feed is re-asked about that patch of sky, so you are seeing the aircraft over that airport rather than the ones over your desk relabelled.',
+      'The airports are BUILT IN — 702 of them across Northern California, from the OurAirports public-domain database. That means the picker works with the radio off, and it cannot be rate limited the way the live feed can.',
+      'It ranks big airports first, so typing "san" offers San Francisco International before somebody\'s airstrip, and an exact code you already know always wins.',
+      '"Back to my position" puts it back on you. Following a flight still beats both — the aircraft is what the whole panel has become.',
+      'The crosshair in the middle of the scope now says what it is: YOU, HOME, the flight you are following, or the airport you picked. The navigation display on the PFD said HOME under that crosshair no matter what, including while following a 747.',
+    ],
+    broken: [
+      'Northern California only. The bundle is cut to the region this panel is built for; an airport outside it will not be found, though its coordinates still work if you type them.',
+      'Choosing an airport does not move your instruments — you are still on your desk. Only the traffic scope goes there, which is the honest answer: nothing on the phone can measure the air over Sacramento.',
+      'The live aircraft feed can still turn us away on the very first request of a session, and no picker fixes that.',
+    ],
+  },
+  {
     version: '1.15.0',
     date: '2026-08-03',
     headline: 'The radar reads like a real one now.',

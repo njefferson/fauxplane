@@ -57,8 +57,15 @@ Data the app bundles is generated, never hand-written:
 - `npm run geodata` — the WMM 2025 coefficients and the EGM96 geoid grid, plus
   NOAA's own test fixture. Reads two npm packages once and commits the extracted
   data; neither becomes a dependency.
-- `npm run navdata` — the OurAirports database. Still refuses to fetch until
-  someone reads the published terms; no v1 panel needs it.
+- `npm run navdata` — the OurAirports database, **now shipped**: 702 Northern
+  California airports in `public/data/navdata.json`, behind the RADAR page's
+  centre picker. The licence question is settled and the reasoning is in
+  NOTES.md — the publisher commits an **Unlicense** to the data repository the
+  CSVs come from, which is a licence grant on the artifact rather than a README
+  calling them "open-data downloads". `--mirror` reads them from
+  `raw.githubusercontent.com`, which is a decision the generator records, not a
+  silent fallback. A bundled dataset also cannot be rate limited, which is why
+  the picker keeps working on a day the live feed does not.
 
 Live traffic comes from a **LIST** of providers, tried in order and declared in
 `TRAFFIC_PROVIDERS` (`functions/api/_lib.js`): **adsb.lol** first, then
@@ -80,7 +87,7 @@ circumventing an access control its operator set deliberately, on a service
 whose data we are asking for as a favour.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 215 unit tests over the pure logic, including the magnetic model
+- `npm test` — 299 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
   palettes x 5 pages, including the acceptance criteria.

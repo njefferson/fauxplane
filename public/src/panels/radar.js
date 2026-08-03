@@ -29,10 +29,11 @@ import { createSurface } from '../render/canvas.js';
 import { drawPlan, altLabel, hitTestAircraft } from '../render/gauges/plan.js';
 import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, filterByAirframe, ownAltitudeFt, withinBand } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
+import { loadNavdata, parseLatLon, searchAirports } from '../data/navdata.js';
 
 const fmt = (v, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '—');
 
-export function createRadar({ host, traffic, announcer, onFollowChange = () => {} }) {
+export function createRadar({ host, traffic, announcer, onFollowChange = () => {}, onCentreChange = () => {} }) {
   let rangeNm = RADAR_RANGE_NM[2];
   let lastDrawnAt = 0;
 
@@ -71,6 +72,45 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
    *  different set than the one on screen. */
   let lastOwnAltFt = null;
   const bandHost = el('div', { class: 'radar-band', role: 'group', 'aria-label': 'Traffic altitude band' });
+
+  /**
+   * THE CENTRE PICKER (Noah: "I want to be able to set an airport on the radar
+   * page? Or another location. Airports should be easy to pick.").
+   *
+   * The airports are BUNDLED — OurAirports, public domain, 702 of them for this
+   * region in 317 KB. That is not only convenient: a dataset in the repo cannot
+   * be rate limited, which is what has been breaking the live feed all day.
+   */
+  let airports = [];
+  const centreInput = el('input', {
+    class: 'radar-centre-input',
+    type: 'search',
+    id: 'radar-centre',
+    placeholder: 'KSMF, Sacramento, or 38.68, -121.00',
+    autocomplete: 'off',
+    'aria-describedby': 'radar-centre-note',
+  });
+  /**
+   * A GROUP OF BUTTONS, not a `listbox`.
+   *
+   * The first draft claimed `role="listbox"` with `role="option"` children,
+   * which is a lie in the accessibility tree: that role promises arrow-key
+   * navigation and a roving tabindex, and these are plain buttons that a reader
+   * tabs through. Claiming a widget behaviour the code does not implement is
+   * the same class of defect as a synthetic reading — the label says one thing
+   * and the machinery does another. A labelled group of buttons is what this
+   * actually is, and it is fully usable by keyboard because buttons are.
+   */
+  const centreList = el('div', { class: 'radar-centre-list', role: 'group', 'aria-label': 'Matching airports' });
+  /** What the box says before anyone has typed. Restored whenever it empties. */
+  const centreHint = 'Type at least two letters. Without one, the scope stays on this device.';
+  const centreNote = el('p', { class: 'radar-centre-note', id: 'radar-centre-note', role: 'status', text: centreHint });
+  const centreClear = el('button', {
+    class: 'radar-centre-clear',
+    type: 'button',
+    text: 'Back to my position',
+    hidden: '',
+  });
 
   const picker = el('div', { class: 'radar-picker', role: 'group', 'aria-label': 'Filter the list by airframe' });
   /** null = every aircraft. Otherwise an id from airframeGroups. */
@@ -168,6 +208,95 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
     for (const fn of rangeListeners) fn(nm);
     announcer.say(`Radar range ${nm} nautical miles`);
   };
+  const setCentre = (place) => {
+    traffic.setCentre(place);
+    centreClear.hidden = !place;
+    centreList.replaceChildren();
+    centreNote.textContent = place
+      ? `Centred on ${place.label}.`
+      : 'Centred on this device again.';
+    if (place) centreInput.value = place.label;
+    else centreInput.value = '';
+    announcer.say(centreNote.textContent);
+    // The centre changed, so the fetch must too — the aircraft around a chosen
+    // airport are a different set from the ones around here.
+    onCentreChange();
+  };
+
+  const renderMatches = () => {
+    const q = centreInput.value;
+    const coord = parseLatLon(q);
+    if (coord) {
+      centreList.replaceChildren(
+        el('button', {
+          class: 'radar-centre-hit',
+          type: 'button',
+          text: `Use ${coord.lat.toFixed(3)}, ${coord.lon.toFixed(3)}`,
+          onclick: () =>
+            setCentre({
+              ...coord,
+              label: `${coord.lat.toFixed(3)}, ${coord.lon.toFixed(3)}`,
+              // What fits under the crosshair. A typed position has no name, so
+              // it gets the coarse degrees rather than a made-up waypoint code.
+              short: `${coord.lat.toFixed(1)}/${coord.lon.toFixed(1)}`,
+            }),
+        }),
+      );
+      // The note is this control's live region, so the count reaches a reader
+      // who cannot see the list appear underneath the box.
+      centreNote.textContent = 'That reads as a coordinate. Press it to move the scope there.';
+      return;
+    }
+    /**
+     * FIVE, NOT EIGHT. "sacra" matches eight fields around Sacramento, and eight
+     * buttons on a phone pushed the scope itself off the bottom of the screen —
+     * a picker that hides the instrument it aims is the wrong trade. Five fills
+     * the space above the range buttons and no more, and typing another letter
+     * is how a reader reaches the sixth.
+     */
+    const hits = searchAirports(airports, q, 5);
+    centreList.replaceChildren(
+      ...hits.map((a) =>
+        el('button', {
+          class: 'radar-centre-hit',
+          type: 'button',
+          // The code AND the name: a reader who typed a code wants to confirm
+          // it, and one who typed a town needs to tell two fields apart.
+          text: `${a.ident} — ${a.name}${a.municipality ? `, ${a.municipality}` : ''}`,
+          onclick: () => setCentre({ lat: a.lat, lon: a.lon, label: `${a.ident} ${a.name}`, short: a.ident }),
+        }),
+      ),
+    );
+    if (q.trim().length < 2) centreNote.textContent = centreHint;
+    else if (!hits.length) centreNote.textContent = `Nothing matches “${q.trim()}”. Try an airport code, a town, or a coordinate.`;
+    else if (hits.length === 5) centreNote.textContent = 'The five best matches. Type another letter to narrow it.';
+    else centreNote.textContent = `${hits.length} match${hits.length === 1 ? '' : 'es'}. Press one to move the scope.`;
+  };
+  centreInput.addEventListener('input', renderMatches);
+  centreClear.addEventListener('click', () => setCentre(null));
+
+  // The airports load once, lazily, and a failure is SAID rather than silent —
+  // an empty picker with no explanation reads as "there are no airports".
+  /**
+   * loadNavdata RESOLVES ON FAILURE — `{ ok: false, reason }` — and puts the
+   * bundle under `.data`, not at the top level. The first draft read `d.airports`
+   * and hung a `.catch` off the promise, so a perfectly loaded 702-airport file
+   * produced an empty picker and the message "the airport list is empty", while
+   * the catch that was supposed to explain it could never run. Read the shape
+   * the function actually returns, and say its own reason when it says no.
+   */
+  loadNavdata().then((d) => {
+    if (!d?.ok) {
+      centreNote.textContent = `Airport list unavailable — ${d?.reason ?? 'unknown reason'}. You can still type a coordinate.`;
+      return;
+    }
+    airports = d.data?.airports ?? [];
+    if (!airports.length) centreNote.textContent = 'The airport list loaded but is empty; you can still type a coordinate.';
+    // Someone who typed while it was still loading got "nothing matches" from
+    // an empty array. Re-run against the list that has now arrived.
+    else if (centreInput.value.trim()) renderMatches();
+  });
+
   const setBand = (id) => {
     bandId = id;
     for (const b of bandButtons) b.setAttribute('aria-pressed', b.dataset.band === id ? 'true' : 'false');
@@ -210,6 +339,12 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
   host.replaceChildren(
     el('section', { class: 'card radar-card' }, [
       el('h2', { class: 'card-title', text: 'Traffic' }),
+      el('div', { class: 'radar-centre' }, [
+        el('label', { class: 'radar-centre-label', for: 'radar-centre', text: 'Centre the scope on' }),
+        el('div', { class: 'radar-centre-row' }, [centreInput, centreClear]),
+        centreList,
+        centreNote,
+      ]),
       el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),
       bandHost,
       canvas,
@@ -435,8 +570,8 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         rangeNm,
         followedHex: traffic.followed?.hex ?? null,
         fromFix: !!result?.centre?.fromFix,
-        // While following, the centre IS the aircraft — say so on the scope.
-        centreLabel: result?.centre?.followed ? (result.centre.centredOn ?? 'FOLLOWED').slice(0, 10) : null,
+        // No centreLabel: the centre carries its own short name now, so this
+        // scope and the PFD's cannot disagree about what the crosshair is.
         ownAltFt,
         trail: traffic.trail,
       });

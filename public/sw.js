@@ -90,9 +90,15 @@ const SHELL = [
   '/src/panels/info.js',
 ];
 
-/** Precached if present. Absent in this build — see NOTES.md. A missing
- *  optional file must not fail the whole install, or one blocked download
- *  takes the offline shell with it. */
+/**
+ * Precached if present. A missing optional file must not fail the whole
+ * install, or one blocked download takes the offline shell with it.
+ *
+ * `navdata.json` is IN THIS BUILD now (702 airports, ~317 KB) and it is here
+ * rather than in SHELL for exactly that reason: it is the largest thing the app
+ * ships, and the panel's instruments do not need it. If it fails to download,
+ * the centre picker says so and everything else still works offline.
+ */
 const OPTIONAL = ['/data/navdata.json', '/data/geoid-norcal.json', '/data/wmm-cof.json'];
 
 self.addEventListener('install', (event) => {

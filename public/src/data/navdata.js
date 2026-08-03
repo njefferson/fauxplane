@@ -49,3 +49,71 @@ export async function loadNavdata(fetchImpl = fetch) {
     return { ok: false, reason: `navdata bundle unreadable: ${err.message}` };
   }
 }
+
+/**
+ * Search the bundled airports for a type-ahead.
+ *
+ * Noah: "I want to be able to set an airport on the radar page? Or another
+ * location. Airports should be easy to pick."
+ *
+ * EASY TO PICK means matching what someone actually types. A reader looking for
+ * Sacramento Executive types "sacramento", or "KSAC", or "SAC" — so identifier,
+ * name and municipality are all searched, and an identifier match outranks a
+ * name match because someone typing four letters means the code.
+ *
+ * BIG AIRPORTS FIRST within a tier, because "san" should offer San Francisco
+ * International before San Andreas' airstrip. That is a ranking, not a filter:
+ * the small fields are still there, further down.
+ */
+const SIZE_RANK = { large_airport: 0, medium_airport: 1, small_airport: 2 };
+
+export function searchAirports(airports, query, limit = 8) {
+  const q = String(query ?? '').trim().toLowerCase();
+  if (q.length < 2) return [];
+
+  const scored = [];
+  for (const a of airports ?? []) {
+    // Every identifier this airport answers to. OurAirports splits them across
+    // four columns and a reader does not know or care which one theirs is.
+    const idents = [a.ident, a.icao_code, a.iata_code, a.gps_code, a.local_code]
+      .filter((v) => typeof v === 'string' && v)
+      .map((v) => v.toLowerCase());
+    const name = (a.name ?? '').toLowerCase();
+    const town = (a.municipality ?? '').toLowerCase();
+
+    let tier = null;
+    if (idents.some((i) => i === q)) tier = 0;              // exact code — they know it
+    else if (idents.some((i) => i.startsWith(q))) tier = 1; // partial code
+    else if (name.startsWith(q) || town.startsWith(q)) tier = 2;
+    else if (name.includes(q) || town.includes(q)) tier = 3;
+    if (tier === null) continue;
+
+    scored.push({ a, tier, size: SIZE_RANK[a.type] ?? 3 });
+  }
+
+  scored.sort(
+    (x, y) => x.tier - y.tier || x.size - y.size || (x.a.name ?? '').localeCompare(y.a.name ?? ''),
+  );
+  return scored.slice(0, limit).map((s) => s.a);
+}
+
+/**
+ * A typed position, for "or another location".
+ *
+ * Accepts `38.68, -121.00` and the same with a degree sign or whitespace only.
+ * Returns null for anything it cannot read RATHER THAN GUESSING — a
+ * mis-parsed coordinate would centre the scope somewhere real and wrong, which
+ * is worse than refusing.
+ */
+export function parseLatLon(text) {
+  const m = String(text ?? '')
+    .replace(/[°\s]+/g, ' ')
+    .trim()
+    .match(/^(-?\d+(?:\.\d+)?)[ ,]+(-?\d+(?:\.\d+)?)$/);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lon = Number(m[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { lat, lon };
+}

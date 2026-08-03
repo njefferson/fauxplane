@@ -206,11 +206,15 @@ async function boot() {
     // does, at the same range, rather than keeping its own copy — two pictures
     // of one truth is exactly how they come to disagree.
     traffic: () => ({
-      centre: radarCentre(state.snapshot.fields, traffic.followed),
+      // The CHOSEN PLACE is passed too. Without it the ND drew a ring around
+      // this desk while the aircraft in it had been fetched around whatever
+      // airport was picked on the RADAR page — the two-pictures-of-one-truth
+      // failure this comment warns about, committed three lines below itself.
+      centre: radarCentre(state.snapshot.fields, traffic.followed, traffic.chosenPlace),
       aircraft: traffic.nearby,
       rangeNm: radar.rangeNm,
       followedHex: traffic.followed?.hex ?? null,
-      fromFix: !!radarCentre(state.snapshot.fields, traffic.followed)?.fromFix,
+      fromFix: !!radarCentre(state.snapshot.fields, traffic.followed, traffic.chosenPlace)?.fromFix,
       trail: traffic.trail,
     }),
     readoutHost: $('pfd-readouts'),
@@ -324,6 +328,10 @@ async function boot() {
     host: $('page-radar'),
     traffic,
     announcer,
+    // A chosen centre changes WHICH SKY is being asked for, so it re-fetches at
+    // once rather than waiting out the interval — the same argument as opening
+    // the RADAR page. One request, on a deliberate act.
+    onCentreChange: () => refreshTraffic(),
     onFollowChange: () => {
       syncFollowBanner();
       // Ask at once rather than waiting out the interval: the five seconds

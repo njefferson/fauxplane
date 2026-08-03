@@ -52,6 +52,12 @@ const SOURCES = [
     href: 'https://open-meteo.com/en/terms',
   },
   {
+    name: 'Airports',
+    detail:
+      'OurAirports, released into the public domain by its contributors. 702 Northern California fields are bundled with the app, so the radar’s centre picker works with the radio off.',
+    href: 'https://ourairports.com/data/',
+  },
+  {
     name: 'Magnetic declination',
     detail:
       'The NOAA World Magnetic Model 2025, bundled with the app and checked against NOAA’s own published test values at 100 points.',

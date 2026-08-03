@@ -218,11 +218,18 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   ctx.moveTo(cx, cy - s);
   ctx.lineTo(cx, cy + s);
   ctx.stroke();
-  // THE CENTRE SAYS WHAT IT IS. Three states, not two: this device, the home
-  // reference before a fix, and — while following — the aircraft the whole panel
-  // has become. Labelling a followed aircraft "YOU" was the scope agreeing with
-  // the rest of the panel by accident rather than saying so.
-  text(ctx, centreLabel ?? (fromFix ? 'YOU' : 'HOME'), cx, cy + s * 2.6, {
+  // THE CENTRE SAYS WHAT IT IS, and `radarCentre` is the one thing that decides.
+  //
+  // Four states now: this device, the home reference before a fix, the aircraft
+  // the whole panel has become while following, and a place chosen by hand. The
+  // caller used to work the label out, which meant each scope worked it out
+  // separately — the RADAR page named a followed flight and the PFD's navigation
+  // display drew HOME under the identical crosshair, and once a place could be
+  // picked the RADAR page said HOME while its own status line said KSMF.
+  //
+  // `centreLabel` remains only as an override for a caller that has something
+  // truer to say; nothing passes one today.
+  text(ctx, (centreLabel ?? centre?.short ?? (fromFix ? 'YOU' : 'HOME')).slice(0, 12), cx, cy + s * 2.6, {
     size: ringLabel * 0.9,
     weight: 700,
     colour: tokens['text-3'],

@@ -216,8 +216,15 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
   if (metar?.last?.reason) line(`             last result: ${metar.last.reason}`);
   const tr = traffic?.last;
   line(
-    `  traffic    ${!tr ? 'not asked yet (the radar page fetches on open)' : tr.ok ? `${tr.aircraft?.length ?? 0} aircraft within ${tr.rangeNm} nm of ${tr.centre?.fromFix ? 'the fix' : 'home'}` : `FAILED — ${tr.reason}`}`,
+    // `centredOn` NAMES the centre. The old line read "of the fix" or "of home"
+    // and had no third answer, so once a place could be chosen the report said
+    // "of home" while the scope was over Sacramento International — a wrong
+    // sentence in the one document that is supposed to replace a photograph.
+    `  traffic    ${!tr ? 'not asked yet (the radar page fetches on open)' : tr.ok ? `${tr.aircraft?.length ?? 0} aircraft within ${tr.rangeNm} nm of ${tr.centre?.centredOn ?? (tr.centre?.fromFix ? 'the fix' : 'home')}` : `FAILED — ${tr.reason}`}`,
   );
+  if (traffic?.chosenPlace) {
+    line(`             scope centred by hand on ${traffic.chosenPlace.label} — not on this device`);
+  }
   if (traffic?.isFollowing) {
     line(`  FOLLOWING  ${traffic.followLabel}${traffic.followError ? ` — ${traffic.followError}` : ''}`);
     const a = traffic.followed;

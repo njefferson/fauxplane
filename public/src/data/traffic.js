@@ -294,8 +294,19 @@ export function appendTrail(trail, point, { maxPoints = 240, maxAgeMs = 45 * 60_
  *
  * `centredOn` NAMES it, because "56 aircraft within 40 nm of this device" is a
  * false sentence when the scope is centred on a 737 over the Sierra.
+ *
+ * `short` is the same fact in the few characters that fit UNDER THE CROSSHAIR,
+ * and it lives here rather than at each drawing site because there are two of
+ * them. The RADAR page worked out its own label and the PFD's navigation
+ * display did not, so following a flight put the aircraft's callsign under one
+ * scope's centre and the word HOME under the other — the same crosshair, two
+ * answers. One function decides, both draw what it says.
  */
-export function radarCentre(fields, followed = null) {
+export function radarCentre(fields, followed = null, chosen = null) {
+  // PRECEDENCE, and it is deliberate. A followed aircraft outranks a chosen
+  // place because the whole panel has become that aircraft; a chosen place
+  // outranks the device's own fix because choosing it was a deliberate act and
+  // a GPS fix arriving must not silently undo it.
   if (followed && Number.isFinite(followed.lat) && Number.isFinite(followed.lon)) {
     return {
       lat: followed.lat,
@@ -303,12 +314,24 @@ export function radarCentre(fields, followed = null) {
       fromFix: false,
       followed: true,
       centredOn: followed.callsign ?? followed.hex?.toUpperCase() ?? 'the followed aircraft',
+      short: followed.callsign ?? followed.hex?.toUpperCase() ?? 'FOLLOWED',
+    };
+  }
+  if (chosen && Number.isFinite(chosen.lat) && Number.isFinite(chosen.lon)) {
+    return {
+      lat: chosen.lat,
+      lon: chosen.lon,
+      fromFix: false,
+      followed: false,
+      chosen: true,
+      centredOn: chosen.label ?? 'the chosen place',
+      short: chosen.short ?? chosen.label ?? 'CHOSEN',
     };
   }
   const lat = fields?.['position.lat'];
   const lon = fields?.['position.lon'];
   if (lat && lon && lat.provenance !== 'FAIL' && lon.provenance !== 'FAIL') {
-    return { lat: lat.value, lon: lon.value, fromFix: true, followed: false, centredOn: 'this device' };
+    return { lat: lat.value, lon: lon.value, fromFix: true, followed: false, centredOn: 'this device', short: 'YOU' };
   }
   return {
     lat: REGION.home.lat,
@@ -316,6 +339,7 @@ export function radarCentre(fields, followed = null) {
     fromFix: false,
     followed: false,
     centredOn: 'the home reference',
+    short: 'HOME',
   };
 }
 
@@ -351,6 +375,8 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
   /** The provider that answered the last followed query, for the reason strings.
    *  Null until one has. */
   let followedSource = null;
+  /** An airport or coordinate the reader picked as the scope centre. */
+  let chosenPlace = null;
   /** Observed positions of the followed aircraft, oldest first. Cleared with
    *  the follow itself — a trail belonging to a different aircraft is worse
    *  than no trail. */
@@ -438,11 +464,19 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
     },
 
     /** The plan view: everything within `rangeNm` of the centre. */
+    /** A place the reader chose, or null for "wherever I am". */
+    setCentre(place) {
+      chosenPlace = place;
+    },
+    get chosenPlace() {
+      return chosenPlace;
+    },
+
     async refreshNearby(fields, rangeNm) {
       // The followed aircraft, if any, decides the centre — so the scope keeps
       // pointing at it even while the feed is refusing us and no new fix has
-      // arrived for either.
-      const centre = radarCentre(fields, followed);
+      // arrived for either. A chosen place comes next, ahead of the fix.
+      const centre = radarCentre(fields, followed, chosenPlace);
       // The DISPLAY range, which is what the scope and every count describe.
       const display = clampRange(rangeNm);
       // The FETCH range, always the widest, so all four buttons share one cache

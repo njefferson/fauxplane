@@ -741,3 +741,41 @@ test('RADAR: with no fix and no follow, the centre is the home reference and say
   assert.equal(c.fromFix, false);
   assert.equal(c.centredOn, 'the home reference');
 });
+
+/**
+ * THE CROSSHAIR LABEL, which two scopes draw and neither owns.
+ *
+ * The RADAR page computed its own and the PFD's navigation display computed
+ * none, so a followed flight was named under one crosshair and called HOME
+ * under the other. `short` moved the decision into radarCentre; these assert
+ * every state has one, because a missing one falls back to HOME and that is the
+ * exact wrong answer in three of the four cases.
+ */
+test('RADAR: every centre carries a short label for under the crosshair', () => {
+  const fields = { 'position.lat': R(38.68, 'deg'), 'position.lon': R(-121.0, 'deg') };
+  assert.equal(radarCentre({}).short, 'HOME');
+  assert.equal(radarCentre(fields).short, 'YOU');
+  assert.equal(radarCentre(fields, { hex: 'a1', callsign: 'UAL328', lat: 38.9, lon: -121.1 }).short, 'UAL328');
+  assert.equal(
+    radarCentre(fields, null, { lat: 38.6954, lon: -121.591, label: 'KSMF Sacramento International', short: 'KSMF' }).short,
+    'KSMF',
+    'a chosen airport must show its identifier, not the word HOME',
+  );
+});
+
+test('RADAR: a chosen place outranks the fix but yields to a followed aircraft', () => {
+  const fields = { 'position.lat': R(38.68, 'deg'), 'position.lon': R(-121.0, 'deg') };
+  const ksmf = { lat: 38.6954, lon: -121.591, label: 'KSMF Sacramento International', short: 'KSMF' };
+
+  // Choosing a place is a deliberate act; a GPS fix arriving must not undo it.
+  const chosen = radarCentre(fields, null, ksmf);
+  assert.equal(chosen.lat, 38.6954);
+  assert.equal(chosen.chosen, true);
+  assert.equal(chosen.fromFix, false);
+  assert.equal(chosen.centredOn, 'KSMF Sacramento International');
+
+  // Following moves the whole panel onto the aircraft, including the scope.
+  const followed = radarCentre(fields, { hex: 'a1', callsign: 'UAL328', lat: 38.9, lon: -121.1 }, ksmf);
+  assert.equal(followed.lat, 38.9, 'a chosen airport must not outrank the aircraft being followed');
+  assert.equal(followed.followed, true);
+});

@@ -445,6 +445,32 @@ const PLANTS = [
     expect: /did not survive into the \(i\) menu|first-run instructions/,
   },
   {
+    // THE PICKER'S DANGEROUS FAILURE is not an empty list — that is visible.
+    // It is the scope relabelling itself KSMF while the feed is still being
+    // asked about this desk, so the panel shows the aircraft over a house
+    // under an airport's name. Only re-asking the feed makes it true, so the
+    // plant severs exactly that and nothing else.
+    name: 'centre picker: choosing an airport stops re-asking the feed',
+    check: 'the traffic query moves to the chosen airport, not just the label',
+    file: 'public/src/panels/radar.js',
+    find: '    onCentreChange();',
+    replace: '    // onCentreChange();',
+    expect: /did not re-ask the traffic feed|still asked about/,
+  },
+  {
+    // The centre's short name is drawn by two scopes and owned by neither
+    // until radarCentre supplied it. Removing it puts HOME back under the
+    // crosshair of a scope centred on an airport — the label contradicting the
+    // status line three lines below it.
+    name: 'centre picker: the crosshair goes back to saying HOME',
+    check: 'the crosshair names the chosen airport',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: "      short: chosen.short ?? chosen.label ?? 'CHOSEN',",
+    replace: '',
+    expect: /must show its identifier, not the word HOME/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

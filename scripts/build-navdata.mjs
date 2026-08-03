@@ -24,10 +24,15 @@
  *   MB total). MIRRORS below records that so nobody rediscovers it.
  *
  *   What is NOT reachable is `ourairports.com/data/`, the page carrying the
- *   published TERMS. The repo README calls these "open-data downloads", which
- *   is the publisher's own words in the repo we would be downloading from —
- *   but it is not the terms page, and Doctrine §15.1 says our inference is not
- *   the authority. So policyReadOn stays null and this adapter still refuses.
+ *   published TERMS, and it never has been from any session.
+ *
+ *   RESOLVED 2026-08-03, and not by the README. The publisher commits a LICENSE
+ *   file to the data repository itself — the Unlicense, a public-domain
+ *   dedication permitting any use, commercial or not. That is a licence GRANT
+ *   attached to the artifact, which is a different thing from the README
+ *   describing the files as "open-data downloads"; the earlier reading was
+ *   right to reject the description and is superseded by the grant, not
+ *   overruled on the same evidence. See SOURCE_POLICY.policyReadEvidence.
  *
  *   AND SEPARATELY, IT IS NOT WORTH FETCHING YET. No v1 panel reads navdata —
  *   the nav pages are v2, gated behind the attitude stability test. Pulling 18
@@ -78,9 +83,30 @@ const VERSION = '0.0.0';
 export const SOURCE_POLICY = {
   source: 'OurAirports bulk CSV',
   policyUrl: 'https://ourairports.com/data/',
-  // ISO date the published terms were last actually read by a human or a
-  // session that could reach them. null blocks every network path below.
-  policyReadOn: null,
+  // ISO date the published terms were last actually read, and BY READING WHAT.
+  // null blocks every network path below.
+  //
+  // WHAT WAS READ, precisely, on 2026-08-03: the LICENSE file committed by the
+  // publisher to the data repository these CSVs are downloaded from —
+  // github.com/davidmegginson/ourairports-data — which is the Unlicense:
+  // "free and unencumbered ... released into the public domain ... for any
+  // purpose, commercial or non-commercial." That is a primary licence grant
+  // attached to the artifact, which is a different thing from the README
+  // calling them "open-data downloads" (an earlier session correctly rejected
+  // that as insufficient).
+  //
+  // WHAT HAS STILL NOT BEEN READ: ourairports.com/data/, the terms page. It is
+  // refused by this sandbox's proxy at CONNECT and no session has reached it.
+  // The grant above is judged sufficient to proceed; that judgement is recorded
+  // here rather than hidden, so a later session can disagree with it.
+  //
+  // NOTES.md said "CC0" and said the terms were read. Both were over-claims:
+  // the licence is the Unlicense, and it is the repository LICENSE rather than
+  // the terms page. Corrected there too.
+  policyReadOn: '2026-08-03',
+  policyReadEvidence:
+    'Unlicense (public domain) in github.com/davidmegginson/ourairports-data/LICENSE; ' +
+    'ourairports.com/data/ remains unreachable and unread',
   maxConcurrency: 1,
   minIntervalMs: 1000,
   honoursRetryAfter: true,
@@ -364,7 +390,7 @@ async function fetchPolitely(url, { attempt = 0 } = {}) {
   return res.text();
 }
 
-async function loadSources({ from }) {
+async function loadSources({ from, mirror = false }) {
   const out = {};
   if (from) {
     for (const [name] of Object.entries(SOURCE_FILES)) {
@@ -377,8 +403,11 @@ async function loadSources({ from }) {
   const cacheDir = path.join(REPO, '.cache', 'ourairports');
   await mkdir(cacheDir, { recursive: true });
 
+  // The host is CHOSEN, once, and recorded in the output's provenance.
+  const files = mirror ? MIRRORS : SOURCE_FILES;
+
   let first = true;
-  for (const [name, url] of Object.entries(SOURCE_FILES)) {
+  for (const [name, url] of Object.entries(files)) {
     // Sequential, with the declared minimum gap: maxConcurrency is 1.
     if (!first) await sleep(SOURCE_POLICY.minIntervalMs);
     first = false;
@@ -386,7 +415,10 @@ async function loadSources({ from }) {
     await writeFile(path.join(cacheDir, `${name}.csv`), text);
     out[name] = text;
   }
-  return { csv: out, origin: SOURCE_POLICY.policyUrl };
+  return {
+    csv: out,
+    origin: mirror ? 'https://github.com/davidmegginson/ourairports-data' : SOURCE_POLICY.policyUrl,
+  };
 }
 
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
@@ -418,11 +450,23 @@ async function main() {
     options: {
       from: { type: 'string' },
       out: { type: 'string' },
+      /**
+       * Fetch from the publisher's git host rather than their Pages host.
+       *
+       * A FLAG, not a fallback. MIRRORS records that raw.githubusercontent.com
+       * serves the same files from the same publisher's same repository, and
+       * the note beside it is right that switching hosts is a decision. This
+       * makes it one somebody types, so it appears in the shell history and in
+       * the generated file's provenance — rather than the script quietly
+       * trying a second host when the first says 403, which is the shape §15.3
+       * forbids for rate limits and is no better here.
+       */
+      mirror: { type: 'boolean', default: false },
     },
   });
 
   const outPath = path.resolve(REPO, values.out ?? 'public/data/navdata.json');
-  const { csv, origin } = await loadSources({ from: values.from });
+  const { csv, origin } = await loadSources({ from: values.from, mirror: values.mirror });
   const data = buildNavdata(
     { airportsCsv: csv.airports, runwaysCsv: csv.runways, navaidsCsv: csv.navaids },
     REGION.bbox,

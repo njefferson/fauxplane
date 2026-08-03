@@ -1,10 +1,10 @@
 {
   "_readme": "Which optional data bundles are actually shipped, and why any of them is not. This file is COMMITTED and always present; the app reads it before reaching for a bundle, so a deliberately-absent file is answered from data rather than from a 404. That matters twice: the console stays clean (acceptance criterion 1 is 'no console errors', and a 404 is a console error even when it is expected), and BITE can print a sentence somebody wrote on purpose instead of an HTTP status. Each entry carries a SHORT reason, which is what an instrument flag shows, and a longer detail, which is what the BITE page adds underneath it. scripts/build-navdata.mjs rewrites the navdata entry when it emits the bundle.",
   "navdata": {
-    "present": false,
+    "present": true,
     "path": "/data/navdata.json",
-    "reason": "navdata bundle not generated — not needed by any v1 panel",
-    "detail": "Backs the HSI and nav pages, which are v2. Nothing on the PFD, ATIS or BITE pages reads it, so its absence costs nothing on screen. Run `npm run navdata` to generate it."
+    "reason": null,
+    "detail": "702 airports, 407 runways, 44 navaids for norcal."
   },
   "geoid": {
     "present": true,

@@ -188,6 +188,11 @@ const REGISTRY = [
   { selector: ".radar-band-btn[aria-pressed='false']", label: 'altitude band (unselected)', min: 4.6, page: 'radar' },
   { selector: ".radar-pick[aria-pressed='true']", label: 'airframe picker (selected)', min: 4.6, page: 'radar' },
   { selector: ".radar-pick[aria-pressed='false']", label: 'airframe picker (unselected)', min: 4.6, page: 'radar' },
+  // The centre picker's resting state (§4, same commit). Its typed states —
+  // the field with a value in it, the match buttons, the clear button — are
+  // measured by checkCentrePicker, which has to type before they exist.
+  { selector: '.radar-centre-label', label: 'centre picker label', min: 4.6, page: 'radar' },
+  { selector: '.radar-centre-note', label: 'centre picker note', min: 4.6, page: 'radar' },
   // The power annunciator, both states (§4: a new fg/bg pair joins the gate in
   // the same commit). The LIT state is the one that matters — an annunciator
   // nobody can read is worse than no annunciator.
@@ -224,6 +229,18 @@ const REGISTRY = [
  * text moved into the (i) dialog. The rows moved with it rather than being
  * deleted, which is the difference between relocating coverage and losing it.
  */
+/**
+ * The centre picker's TYPED states. None of these exist until someone types, so
+ * they cannot live in the page sweep — checkCentrePicker types first, then runs
+ * this. That is the same relocation as INFO_REGISTRY: the coverage moves to
+ * where the pixels are rather than being dropped for being awkward to reach.
+ */
+const CENTRE_REGISTRY = [
+  { selector: '.radar-centre-input', label: 'centre picker field', min: 4.6 },
+  { selector: '.radar-centre-hit', label: 'centre picker match', min: 4.6 },
+  { selector: '.radar-centre-clear', label: 'centre picker reset', min: 4.6 },
+];
+
 const INFO_REGISTRY = [
   { selector: '.gate-first-h', label: 'first-run heading', min: 4.6 },
   { selector: '.gate-pages dt', label: 'first-run page name', min: 4.6 },
@@ -366,12 +383,30 @@ async function checkContrast(page, registry, where) {
 
   const found = await page.evaluate((rows) => {
     return rows.map((row) => {
-      const nodes = [...document.querySelectorAll(row.selector)].filter((n) => {
+      const onScreen = [...document.querySelectorAll(row.selector)].filter((n) => {
         const r = n.getBoundingClientRect();
-        const s = getComputedStyle(n);
-        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && n.textContent.trim().length > 0;
+        return r.width > 0 && r.height > 0 && getComputedStyle(n).visibility !== 'hidden';
       });
-      if (!nodes.length) return { ...row, matched: 0 };
+      // A FORM FIELD HAS NO textContent, so this registry was structurally
+      // blind to every input in the app: registering one reported "selector
+      // matched nothing", which reads as a missing element rather than as a
+      // gate that cannot see it. Its rendered text is its VALUE — never its
+      // placeholder, which is drawn in a different colour by `::placeholder`
+      // and would have this measure a pair that is not on screen.
+      const nodes = onScreen.filter((n) =>
+        n.matches('input, textarea, select')
+          ? String(n.value ?? '').trim().length > 0
+          : n.textContent.trim().length > 0,
+      );
+      if (!nodes.length) {
+        return {
+          ...row,
+          matched: 0,
+          why: onScreen.length
+            ? `${onScreen.length} matched but carried no text — a registered field must be measured with a real value typed into it`
+            : null,
+        };
+      }
       const n = nodes[0];
       const r = n.getBoundingClientRect();
       const s = getComputedStyle(n);
@@ -392,13 +427,33 @@ async function checkContrast(page, registry, where) {
 
   const live = found.filter((f) => f.matched > 0);
   for (const miss of found.filter((f) => f.matched === 0)) {
-    fail(where, `contrast registry selector matched nothing: ${miss.selector} (${miss.label})`);
+    fail(
+      where,
+      `contrast registry selector matched nothing: ${miss.selector} (${miss.label})${miss.why ? ` — ${miss.why}` : ''}`,
+    );
   }
   if (!live.length) return;
 
   // Hide the registered text, screenshot, sample, restore.
+  //
+  // A FORM FIELD PAINTS ITS OWN BACKGROUND, so `visibility: hidden` would take
+  // the fill away with the text and the sampler would read the card behind it —
+  // measuring the field's text against a colour it is not on. Blanking the
+  // value leaves the box painted and removes only the ink.
   await page.evaluate((rows) => {
-    for (const row of rows) for (const n of document.querySelectorAll(row.selector)) n.style.visibility = 'hidden';
+    const blanked = [];
+    for (const row of rows) {
+      for (const n of document.querySelectorAll(row.selector)) {
+        if (n.matches('input, textarea, select')) {
+          blanked.push([n, n.value, n.placeholder]);
+          n.value = '';
+          n.placeholder = '';
+        } else {
+          n.style.visibility = 'hidden';
+        }
+      }
+    }
+    window.__gateBlanked = blanked;
   }, registry);
   const backdrops = await sampleBackdrops(
     page,
@@ -406,6 +461,11 @@ async function checkContrast(page, registry, where) {
   );
   await page.evaluate((rows) => {
     for (const row of rows) for (const n of document.querySelectorAll(row.selector)) n.style.visibility = '';
+    for (const [n, value, placeholder] of window.__gateBlanked ?? []) {
+      n.value = value;
+      n.placeholder = placeholder;
+    }
+    window.__gateBlanked = [];
     for (const [n, overflow, height, maxHeight, position, margin] of window.__gateRestore ?? []) {
       n.style.overflow = overflow;
       n.style.height = height;
@@ -882,6 +942,7 @@ async function main() {
     await checkProvenanceCoverage(browser, base);
     await checkStoredLevelling(browser, base);
     await checkRadarTap(browser, base);
+    await checkCentrePicker(browser, base);
 
     /* ---- 4. the bundled geophysical data actually reaches the panel ----- */
     await checkGeoDataChain(browser, base);
@@ -1286,6 +1347,116 @@ async function checkRadarTap(browser, base) {
     fail(where, `tapped UAL328 but the panel is following "${after.what}"`);
   }
 
+  await context.close();
+}
+
+/**
+ * THE CENTRE PICKER, asserted end to end.
+ *
+ * Noah: "I want to be able to set an airport on the radar page? Or another
+ * location. Airports should be easy to pick." Three things have to be true and
+ * only one of them is visible: the matches appear, pressing one moves the
+ * label, AND THE NEXT FETCH ASKS ABOUT SOMEWHERE ELSE. The third is the one
+ * that makes the feature real — a picker that relabels the scope without moving
+ * the query is exactly the class of defect this app exists not to ship, because
+ * the panel would then show this desk's traffic under an airport's name.
+ *
+ * The typed states are contrast-measured here too, because they do not exist
+ * during the page sweep.
+ */
+async function checkCentrePicker(browser, base) {
+  const where = 'centre-picker';
+  const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+  const queries = [];
+  await context.route('**/api/traffic**', (route) => {
+    queries.push(new URL(route.request().url()));
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) });
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.querySelector('[data-page="radar"]').click());
+  await page.waitForTimeout(600);
+
+  const field = page.locator('.radar-centre-input');
+  if ((await field.count()) === 0) {
+    fail(where, 'the radar page has no centre picker');
+    await context.close();
+    return;
+  }
+
+  /* ---- 1. a code finds the airport, best match first ------------------- */
+  await field.fill('KSMF');
+  await page.waitForTimeout(400);
+  const hits = await page.evaluate(() => [...document.querySelectorAll('.radar-centre-hit')].map((b) => b.textContent.trim()));
+  if (!hits.length) {
+    // Nothing below this can mean anything without a match to press, and
+    // waiting 30 seconds for a button that will never exist reports a timeout
+    // where the real finding is one line up.
+    const why = await page.evaluate(() => document.querySelector('.radar-centre-note')?.textContent?.trim() ?? '');
+    fail(where, `typing KSMF offered no airports — the bundled list did not reach the picker (it says: "${why}")`);
+    for (const e of errors) fail(where, `the centre picker threw: ${e}`);
+    await context.close();
+    return;
+  }
+  if (!hits[0].startsWith('KSMF')) {
+    fail(where, `typing the exact code KSMF offered "${hits[0]}" first`);
+  }
+
+  // Measured with a real value in the box and the matches on screen.
+  await checkContrast(page, CENTRE_REGISTRY.filter((r) => r.selector !== '.radar-centre-clear'), where);
+
+  /* ---- 2. pressing one moves the scope AND the query ------------------- */
+  const before = queries.length;
+  await page.locator('.radar-centre-hit').first().click();
+  await page.waitForTimeout(900);
+
+  const after = await page.evaluate(() => ({
+    note: document.querySelector('.radar-centre-note')?.textContent?.trim() ?? '',
+    value: document.querySelector('.radar-centre-input')?.value ?? '',
+    clearShown: !document.querySelector('.radar-centre-clear')?.hidden,
+  }));
+  if (!/KSMF/.test(after.value)) fail(where, `pressing the KSMF match left the box reading "${after.value}"`);
+  if (!/centred on/i.test(after.note)) fail(where, `the picker did not say where the scope is now: "${after.note}"`);
+  if (!after.clearShown) fail(where, 'the scope is on an airport but there is no way back to this device');
+
+  const fresh = queries.slice(before);
+  if (!fresh.length) {
+    fail(where, 'choosing an airport did not re-ask the traffic feed — the scope would be labelled KSMF and show this desk');
+  } else {
+    // KSMF is 38.6954 / −121.591. The home fallback is 38.68 / −121.00, so a
+    // query still pointed at home is a full half-degree of longitude away and
+    // cannot be mistaken for rounding.
+    const q = fresh[fresh.length - 1];
+    const lat = Number(q.searchParams.get('lat'));
+    const lon = Number(q.searchParams.get('lon'));
+    if (!(Math.abs(lat - 38.6954) < 0.02 && Math.abs(lon + 121.591) < 0.02)) {
+      fail(where, `after choosing KSMF the feed was still asked about ${lat}, ${lon}`);
+    }
+  }
+
+  // The matches are GONE now — choosing one closes the list — so this pass is
+  // the reset control, which only exists once there is something to reset.
+  await checkContrast(page, CENTRE_REGISTRY.filter((r) => r.selector !== '.radar-centre-hit'), where);
+
+  /* ---- 3. a typed coordinate, and the way back ------------------------- */
+  await field.fill('37.62, -122.37');
+  await page.waitForTimeout(300);
+  const coordHit = await page.evaluate(() => document.querySelector('.radar-centre-hit')?.textContent?.trim() ?? '');
+  if (!/37\.620/.test(coordHit)) fail(where, `a typed coordinate offered "${coordHit}" instead of the position`);
+
+  await page.locator('.radar-centre-clear').click();
+  await page.waitForTimeout(600);
+  const home = await page.evaluate(() => ({
+    value: document.querySelector('.radar-centre-input')?.value ?? '',
+    clearShown: !document.querySelector('.radar-centre-clear')?.hidden,
+  }));
+  if (home.value !== '') fail(where, `going back to this device left "${home.value}" in the box`);
+  if (home.clearShown) fail(where, 'the reset control is still offered with nothing to reset');
+
+  for (const e of errors) fail(where, `the centre picker threw: ${e}`);
   await context.close();
 }
 
