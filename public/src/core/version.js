@@ -7,12 +7,13 @@
  * eventually report a version the code is not.
  *
  * The triplet is version.capability.iteration (Doctrine §7). Noah decides what
- * counts as a VERSION, so the first slot stays 0 until he says otherwise; this
- * release bumps the CAPABILITY slot, because the app can now do something it
- * could not do before.
+ * counts as a VERSION, and on 2026-08-03 he said this one: "Promote to main as
+ * v1.0.0", with a radar page in front of him showing nineteen real aircraft.
+ * The first slot moved because he moved it, which is the only thing that moves
+ * it.
  */
 
-export const VERSION = '0.5.0';
+export const VERSION = '1.0.0';
 
 /** Cache name for the service worker. Bumping VERSION invalidates the shell. */
 export const CACHE_NAME = `fauxplane-${VERSION}`;

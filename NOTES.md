@@ -68,6 +68,57 @@ items.
 
 ---
 
+## 1.0.0 — adsb.lol answered, and Noah called the version
+
+Nineteen aircraft, real callsigns, real flight levels: FFT3393 at FL360, UAL1730
+at FL350, DAL1088 at FL235, SCX396 at FL276, ground traffic marked GND, and the
+citation reading "Aircraft data from adsb.lol (ODbL)" with the link their
+licence requires. **The first live traffic this app has ever shown.**
+
+Two things that had never been verified now are:
+- **adsb.lol serves a Pages Function.** adsb.fi's edge does not, and the
+  fallback chain is what made trying cost nothing.
+- **The `/v2/lat/{lat}/lon/{lon}/dist/{dist}` path was inferred** from their
+  "drop-in replacement for the ADSBExchange shape" claim, because their docs
+  host refused this sandbox too. It was right. Recorded as inference confirmed
+  by a device, not by a session.
+
+Noah: *"Promote to main as v1.0.0."* Doctrine §7 says he decides what counts as
+a VERSION, and the first slot stays 0 until he says otherwise. He said otherwise.
+
+### What v1.0.0 IS
+
+A panel whose every number traces to a sensor on the device or a feed from a
+named source, which says which, and which crosses out — with a reason a person
+can read — everything it cannot honestly answer. It runs offline, replaces its
+own releases, levels itself to whatever it is clamped in, and can hand the whole
+panel over to a real aircraft overhead.
+
+### What v1.0.0 is NOT, and none of this is hidden
+
+- **Not certified for anything, and never for navigation.** Said in the footer
+  of every page.
+- **Android and desktop in landscape have never been confirmed by a device.**
+  Every real report so far is iPad or iPhone.
+- **Labels collide on a busy plan view.** Visible in the 40 nm screenshot at
+  1.0.0: around a dozen aircraft in one quadrant overprint each other into an
+  unreadable smear. It is cosmetic, it is real, and it is the first thing worth
+  fixing next.
+- **The accessibility gate has one intermittent failure** (PANEL POWER contrast,
+  three re-runs green, cause unfound) that is recorded rather than dismissed.
+- **The VSI resolution floor is still not implemented** — on a desk, GPS
+  altitude at plus or minus 27 m every 5 s cannot resolve a climb under roughly
+  1,500 fpm, and the panel does not yet say so.
+
+### Verified at the tag
+
+**172 unit tests, 26/26 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor** — and, for the first time, a live third-party feed confirmed on the
+target device rather than against a fixture.
+
+---
+
 ## 0.5.0 — traffic has a LIST of sources, and the panel credits the one that answered
 
 Noah: *"Why not switch to adsb.lol?"*
