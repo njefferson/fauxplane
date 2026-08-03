@@ -106,6 +106,75 @@ export function withinRange(aircraft, rangeNm) {
   return (aircraft ?? []).filter((a) => Number.isFinite(a.distanceNm) && a.distanceNm <= rangeNm);
 }
 
+/**
+ * The id used for aircraft that broadcast no type.
+ *
+ * A SEPARATE BUCKET, never folded into a real type and never dropped. An
+ * aircraft whose type is not being received is a real aircraft — hiding it
+ * would make the counts disagree with the scope, and filing it under some
+ * other airframe would be an invention. ICAO type designators are at most four
+ * characters, so this string cannot collide with one.
+ */
+export const UNTYPED = 'UNTYPED';
+
+/**
+ * Which airframes are up there RIGHT NOW, with how many of each.
+ *
+ * Built from the aircraft actually in range at this moment (Noah: "types
+ * currently in range only") — not accumulated, so a type that has flown out of
+ * range stops being offered rather than becoming a button that finds nothing.
+ *
+ * The LABEL prefers the broadcast description over the code, because "Boeing
+ * 737-800" is the thing worth reading and "B738" is not. Aircraft of one type
+ * can carry slightly different description strings, so the most common one wins
+ * and ties break alphabetically — deterministic, so the button does not flicker
+ * between two spellings as aircraft come and go.
+ */
+export function airframeGroups(aircraft) {
+  const groups = new Map();
+
+  for (const a of aircraft ?? []) {
+    const code = typeof a.type === 'string' && a.type.trim() ? a.type.trim().toUpperCase() : null;
+    const id = code ?? UNTYPED;
+    let g = groups.get(id);
+    if (!g) {
+      g = { id, code, count: 0, descriptions: new Map() };
+      groups.set(id, g);
+    }
+    g.count += 1;
+    const d = typeof a.description === 'string' && a.description.trim() ? a.description.trim() : null;
+    if (d) g.descriptions.set(d, (g.descriptions.get(d) ?? 0) + 1);
+  }
+
+  const out = [...groups.values()].map((g) => {
+    const best = [...g.descriptions.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))[0];
+    return {
+      id: g.id,
+      code: g.code,
+      count: g.count,
+      label: best ? best[0] : g.code ?? 'Type not broadcast',
+    };
+  });
+
+  // Most numerous first — what is most of overhead is the most interesting
+  // thing to look at. The untyped bucket sorts LAST whatever its count, because
+  // it is an absence of information rather than an airframe.
+  return out.sort((a, b) => {
+    if (a.id === UNTYPED) return 1;
+    if (b.id === UNTYPED) return -1;
+    return b.count - a.count || a.label.localeCompare(b.label);
+  });
+}
+
+/** Aircraft of one airframe id. A null id means every aircraft, unfiltered. */
+export function filterByAirframe(aircraft, id) {
+  if (id === null || id === undefined) return aircraft ?? [];
+  return (aircraft ?? []).filter((a) => {
+    const code = typeof a.type === 'string' && a.type.trim() ? a.type.trim().toUpperCase() : null;
+    return (code ?? UNTYPED) === id;
+  });
+}
+
 /** Position to search around: the live fix if there is one, else home. */
 /**
  * The path a followed aircraft has actually flown, as observed.

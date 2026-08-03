@@ -2206,6 +2206,50 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.10.0 — the airframe picker, 2026-08-03
+
+Noah, choosing it over a hardcoded 747 callout: *"instead of heavy-inbound, an
+airframe picker from all aircraft on the radar, and he can choose to see what's
+up there... Types currently in range only, and filters its own list."* His idea
+is better than the one it replaced: a callout only fires for the type someone
+guessed in advance, while a picker built from the live sky offers whatever is
+actually there — and it puts "Boeing 747-400 (1)" on the panel of the man
+building one, without anything in the code knowing about 747s.
+
+**Built from the aircraft in range at that moment, never accumulated.** A type
+that has flown away stops being offered rather than becoming a button that finds
+nothing. That has a consequence worth stating: the selected button can be the
+one that disappears, so the selection is released and ANNOUNCED — *"No Boeing
+747-400 in range any more. Showing every aircraft."* Silently keeping the filter
+would leave an empty list under a control that no longer exists, and the reader
+would read that as an empty sky.
+
+**Aircraft broadcasting no type get their own bucket, sorted last.** Not folded
+into a real type, which would be an invention, and not dropped, which would make
+the picker's counts disagree with what the scope is drawing. It sorts last
+whatever its count, because it is an absence of information rather than an
+airframe. The tested invariant is that every group's count equals what selecting
+it shows — a picker whose number disagrees with its list is worse than none.
+
+**The LABEL is the description, not the code.** "Boeing 737-800", not "B738",
+because the reader loves planes and does not speak ICAO. One type can carry
+slightly different description strings between aircraft, so the most common wins
+and ties break alphabetically — deterministic, so a button does not flicker
+between two spellings as aircraft come and go. There is a test that runs the
+same set in two orders and asserts the label is identical.
+
+**The scope keeps drawing everything while the list is filtered**, and that is
+deliberate rather than unfinished. A plan view that hides traffic is a plan view
+that lies about the sky.
+
+**A wrong assumption, corrected before it cost anything.** This session assumed
+the accessibility sweep was blind to the picker because a sandbox hears no
+aircraft, and started building a fixture — the gate has served one through
+`apiStubs` since the radar page was written. The picker was covered all along.
+What WAS missing is the §4 obligation: its two colour states are now in the
+contrast registry, and since a registry selector matching nothing fails the
+build, the gate passing is itself proof the control renders in both states.
+
 ## 1.9.0 — the cache that never once worked, 2026-08-03
 
 Noah, with a screenshot of an empty scope: "I am getting rate limited far too

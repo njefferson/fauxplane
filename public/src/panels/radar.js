@@ -27,7 +27,7 @@
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
 import { drawPlan, altLabel } from '../render/gauges/plan.js';
-import { RADAR_RANGE_NM } from '../data/traffic.js';
+import { RADAR_RANGE_NM, airframeGroups, filterByAirframe } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
 
 const fmt = (v, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '—');
@@ -46,6 +46,19 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
   const status = el('p', { class: 'radar-status', role: 'status', 'aria-live': 'polite', text: 'Waiting for the first sweep.' });
   const list = el('div', { class: 'radar-list', role: 'group', 'aria-label': 'Aircraft heard, nearest first' });
   const followNote = el('p', { class: 'radar-follow-note' });
+  /**
+   * THE AIRFRAME PICKER. Noah: "an airframe picker from all aircraft on the
+   * radar, and he can choose to see what's up there... Types currently in range
+   * only, and filters its own list."
+   *
+   * So it offers exactly what is overhead AT THIS MOMENT, rebuilt every sweep,
+   * and selecting one filters THIS list — the scope keeps drawing every
+   * aircraft, because a plan view that hides traffic is a plan view that lies
+   * about the sky.
+   */
+  const picker = el('div', { class: 'radar-picker', role: 'group', 'aria-label': 'Filter the list by airframe' });
+  /** null = every aircraft. Otherwise an id from airframeGroups. */
+  let airframe = null;
 
   // --- the flight-number box ------------------------------------------------
   const input = el('input', {
@@ -157,7 +170,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       attribution,
     ]),
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Follow a flight' }), form, followNote]),
-    el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Heard right now' }), list]),
+    el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Heard right now' }), picker, list]),
   );
 
   function renderFollowNote() {
@@ -173,10 +186,70 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       : `The panel is following ${label}. Pitch, slip, airspeed and indicated altitude stay crossed out — ADS-B does not carry them.`;
   }
 
-  /** The aircraft list. Rebuilt only when the SET changes, so a row a finger is
-   *  already moving toward does not get replaced underneath it. */
+  /**
+   * Rebuild the picker for the airframes currently in range.
+   *
+   * Only rebuilt when the SET of ids or counts changes, for the same reason the
+   * list is: replacing a button under a finger already moving toward it is a
+   * pointer-cancellation failure, and this row changes every few seconds.
+   */
+  let lastPickerKey = '';
+  /** Labels of ids seen recently, so a group that has GONE can still be named
+   *  in the announcement that releases it. */
+  const lastLabels = new Map();
+  /** The aircraft list is rebuilt only when the SET changes, so a row a finger
+   *  is already moving toward does not get replaced underneath it. */
   let lastKeys = '';
-  function renderList(aircraft) {
+
+  function renderPicker(aircraft) {
+    const groups = airframeGroups(aircraft);
+
+    // A SELECTION THAT HAS FLOWN AWAY IS RELEASED, AND SAID OUT LOUD. Types are
+    // "currently in range only", so an aircraft leaving can remove the very
+    // button that is selected. Silently keeping the filter would show an empty
+    // list under a control that no longer exists, and the reader would read
+    // that as "nothing up there".
+    if (airframe !== null && !groups.some((g) => g.id === airframe)) {
+      const gone = lastLabels.get(airframe) ?? airframe;
+      airframe = null;
+      announcer.say(`No ${gone} in range any more. Showing every aircraft.`);
+    }
+    for (const g of groups) lastLabels.set(g.id, g.label);
+
+    const key = `${airframe}|${groups.map((g) => `${g.id}:${g.count}`).join(',')}`;
+    if (key === lastPickerKey) return;
+    lastPickerKey = key;
+
+    if (groups.length < 2) {
+      // One airframe (or none) is not a choice. An "All" button on its own is
+      // a control that cannot do anything.
+      picker.replaceChildren();
+      return;
+    }
+
+    const button = (id, label, count) =>
+      el('button', {
+        class: 'radar-pick',
+        type: 'button',
+        'aria-pressed': airframe === id ? 'true' : 'false',
+        text: `${label} (${count})`,
+        onclick: () => {
+          airframe = id;
+          lastPickerKey = '';
+          lastKeys = '';
+          renderPicker(traffic.nearby);
+          renderList(traffic.nearby);
+          announcer.say(id === null ? 'Showing every aircraft.' : `Showing ${label} only.`);
+        },
+      });
+
+    picker.replaceChildren(
+      button(null, 'All', aircraft.length),
+      ...groups.map((g) => button(g.id, g.label, g.count)),
+    );
+  }
+  function renderList(all) {
+    const aircraft = filterByAirframe(all, airframe);
     const keys = aircraft.map((a) => a.hex).join(',');
     if (keys === lastKeys) {
       // Same aircraft, new numbers: update text in place.
@@ -189,7 +262,14 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
     lastKeys = keys;
 
     if (!aircraft.length) {
-      list.replaceChildren(el('p', { class: 'radar-empty', text: 'Nothing being heard within this range right now.' }));
+      // Two different facts, and conflating them would be the panel lying about
+      // the sky: an empty scope and a filter that matches nothing look the same
+      // and mean completely different things.
+      const text =
+        airframe === null
+          ? 'Nothing being heard within this range right now.'
+          : `Nothing of that airframe within this range right now — ${all.length} other aircraft are being heard.`;
+      list.replaceChildren(el('p', { class: 'radar-empty', text }));
       return;
     }
 
@@ -272,6 +352,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         );
       }
 
+      renderPicker(aircraft);
       renderList(aircraft);
       renderFollowNote();
 

@@ -180,6 +180,11 @@ const REGISTRY = [
   { selector: '.ro-unit', label: 'readout unit', min: 4.6, page: 'pfd' },
   { selector: '.ro-reason', label: 'readout failure reason', min: 4.6, page: 'pfd' },
   { selector: '.chip-fail', label: 'FAIL chip', min: 4.6, page: 'pfd' },
+  // The airframe picker (Doctrine §4: a new fg/bg pair joins the gate in the
+  // same commit as the code that renders it). Both states, because a pressed
+  // button changes BOTH its fill and its text colour.
+  { selector: ".radar-pick[aria-pressed='true']", label: 'airframe picker (selected)', min: 4.6, page: 'radar' },
+  { selector: ".radar-pick[aria-pressed='false']", label: 'airframe picker (unselected)', min: 4.6, page: 'radar' },
   { selector: '.setup-body', label: 'setup body text', min: 4.6, page: 'setup' },
   { selector: '.setup-caution', label: 'setup caution (amber)', min: 4.6, page: 'setup' },
   { selector: ".pfd-range-btn[aria-pressed='true']", label: 'PFD range (selected)', min: 4.6, page: 'pfd' },

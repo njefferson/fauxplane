@@ -29,6 +29,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.10.0',
+    date: '2026-08-03',
+    headline: 'Pick an airframe and see what is actually up there.',
+    changed: [
+      'The "Heard right now" list has a row of airframe buttons — whatever is overhead at that moment, named properly: "Boeing 747-400 (1)", "Airbus A320 (2)". Press one and the list shows only those.',
+      'The buttons are built from the sky in front of you, so a type that has flown out of range stops being offered instead of becoming a button that finds nothing. If the one you picked leaves, the panel says so and goes back to showing everything.',
+      'Aircraft that do not broadcast a type get their own button rather than being hidden, so the numbers always add up to what the scope is drawing.',
+    ],
+    broken: [
+      'The plan view still draws every aircraft while the list is filtered. That is deliberate — a scope that hides traffic is a scope that lies about the sky.',
+      'A type is only as good as what the aircraft transmits. Some send nothing, and the panel will not guess.',
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-08-03',
     headline: 'Far fewer requests to the aircraft feed, so it stops shutting you out.',

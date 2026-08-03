@@ -1676,3 +1676,39 @@ body[data-powered='true'] .gate {
 .gate-uses strong {
   color: var(--text);
 }
+
+/* --- the airframe picker --------------------------------------------------
+   Same shape as the range buttons: a pressed state carried by BORDER and FILL
+   together, both reserved in either state so pressing one never changes its
+   size and never reflows the row under a finger already moving. */
+
+.radar-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}
+.radar-picker:empty {
+  margin: 0;
+}
+.radar-pick {
+  min-height: var(--target);
+  padding: 0 0.85rem;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.radar-pick[aria-pressed='true'] {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--rail);
+}
+.radar-pick:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
