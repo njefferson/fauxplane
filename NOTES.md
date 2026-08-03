@@ -1667,11 +1667,11 @@ self-consistency test standing in for a correctness one.
 Worked from Noah's own raw axes: earth-up in device coordinates
 (0.610, 0.031, 0.792) at a reported angle of 90.
 
-| what | pitch | roll |
-|---|---|---|
-| the app as shipped (angle 0) | −52.3 | **−87.1** ← reproduces the fault |
-| true angle, old sign | −52.3 | −177.1 |
-| **true angle, corrected sign** | −52.3 | **+2.9** ← an iPad held square |
+- **The app as shipped (angle 0)** — pitch −52.3, roll **−87.1**. Reproduces the
+  fault.
+- **True angle, old sign** — pitch −52.3, roll −177.1.
+- **True angle, corrected sign** — pitch −52.3, roll **+2.9**. An iPad held
+  square.
 
 The sign flip carried into three other places that had to move with it —
 `screenToDevice`, `applyScreenAngle`, the gyro's rate vector, and the gyro
@@ -1691,12 +1691,14 @@ better evidence than either alone would have been.
 **`screen.orientation.angle` on that iPad is exactly 90 degrees out in BOTH
 orientations**, and `window.orientation` is right in both:
 
-| device / orientation | angle | type | window.orientation | truth |
-|---|---|---|---|---|
-| iPad portrait | **90** | portrait-primary | 0 | 0 |
-| iPad landscape | **0** | landscape-primary | 90 | 90 |
-| iPhone portrait | 0 | portrait-primary | 0 | 0 |
-| iPhone landscape | 90 | landscape-primary | 90 | 90 |
+- **iPad portrait** — `angle` **90**, type portrait-primary, `window.orientation`
+  0. Truth: 0.
+- **iPad landscape** — `angle` **0**, type landscape-primary,
+  `window.orientation` 90. Truth: 90.
+- **iPhone portrait** — `angle` 0, type portrait-primary, `window.orientation`
+  0. Truth: 0.
+- **iPhone landscape** — `angle` 90, type landscape-primary,
+  `window.orientation` 90. Truth: 90.
 
 That is why the iPad was ninety out in both orientations, and it confirms the
 rule: on iOS, `window.orientation` told the truth on both devices in all four
@@ -1713,13 +1715,13 @@ convincing rather than merely consistent:
 
 Checked against every one of the four raw vectors:
 
-| | app reported | with both fixes |
-|---|---|---|
-| iPad portrait | −90.8 | **−5.5** |
-| iPad landscape | −89.0 | **+2.9** |
-| iPad landscape (second report) | −88.6 | **+3.1** |
-| iPhone portrait | −0.9 | −0.9 (unchanged, was already right) |
-| iPhone landscape | −145.5 | **+2.1** |
+- **iPad portrait** — app reported −90.8; with both fixes **−5.5**.
+- **iPad landscape** — app reported −89.0; with both fixes **+2.9**.
+- **iPad landscape, second report** — app reported −88.6; with both fixes
+  **+3.1**.
+- **iPhone portrait** — app reported −0.9; with both fixes −0.9, unchanged
+  because it was already right.
+- **iPhone landscape** — app reported −145.5; with both fixes **+2.1**.
 
 All five are now a **table-driven test** in `fusion.test.mjs`, asserting each
 solves to under ten degrees of roll. They are kept as a table rather than folded
@@ -2092,12 +2094,12 @@ simulation of one.
 What matters more is **what it refuses to write**, each FAILing with its reason
 on screen:
 
-| | why |
-|---|---|
-| pitch | ADS-B carries no attitude. Flight path angle is not pitch. |
-| slip / skid | not broadcast, and coordinated flight is the assumption the bank was derived FROM |
-| TAS / CAS | need winds aloft where the AIRCRAFT is, not where this device is |
-| indicated altitude | the Kollsman setting is a local station's |
+- **pitch** — ADS-B carries no attitude. Flight path angle is not pitch.
+- **slip / skid** — not broadcast, and coordinated flight is the assumption the
+  bank was derived FROM.
+- **TAS / CAS** — need winds aloft where the AIRCRAFT is, not where this device
+  is.
+- **indicated altitude** — the Kollsman setting is a local station's.
 
 And what it honestly derives: **bank** from `tan(bank) = V·ω/g` with ω the rate of
 change of the broadcast track, **load factor** from `n = 1/cos(bank)`, and the
