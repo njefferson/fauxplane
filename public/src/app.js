@@ -26,7 +26,7 @@ import { probeNetwork, watchNetwork } from './sensors/network.js';
 import { probeMagnetometer } from './sensors/magnetometer.js';
 
 import { createMetarSource } from './data/metar.js';
-import { createTrafficSource } from './data/traffic.js';
+import { createTrafficSource, radarCentre } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
@@ -169,9 +169,26 @@ async function boot() {
   // ---- panels --------------------------------------------------------------
   const canvas = $('pfd-canvas');
   const surface = createSurface(canvas);
+  // The navigation display beside the horizon. Its own surface, because a
+  // canvas measures the box it is actually in and these are two different boxes.
+  const planCanvas = $('pfd-plan');
+  const planSurface = createSurface(planCanvas);
+
   const pfd = createPfd({
     canvas,
     surface,
+    planCanvas,
+    planSurface,
+    // ONE SOURCE, TWO DRAWINGS. The ND reads the same traffic the RADAR page
+    // does, at the same range, rather than keeping its own copy — two pictures
+    // of one truth is exactly how they come to disagree.
+    traffic: () => ({
+      centre: radarCentre(state.snapshot.fields),
+      aircraft: traffic.nearby,
+      rangeNm: radar.rangeNm,
+      followedHex: traffic.followed?.hex ?? null,
+      fromFix: !!radarCentre(state.snapshot.fields)?.fromFix,
+    }),
     readoutHost: $('pfd-readouts'),
     announcer,
     // Only reported when it is actually in force; a levelling captured in the
@@ -486,7 +503,11 @@ async function boot() {
     // Polling a volunteer network to draw a canvas nobody has open is exactly
     // the shape §15.6 forbids — and it is free to avoid, because the page
     // re-asks the moment it is opened.
-    if (active === 'radar') {
+    // The PFD now carries a navigation display, so it is a page that is LOOKING
+    // at the plan view and may ask for it. The rule is unchanged — fetch only
+    // for a page somebody has open — and the edge cache means two pages open in
+    // turn cost one upstream request, not two.
+    if (active === 'radar' || active === 'pfd') {
       await traffic.refreshNearby(state.snapshot.fields, radar.rangeNm);
       trafficBite();
     }

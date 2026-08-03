@@ -18,13 +18,23 @@
 
 import { formatAge } from '../core/units.js';
 import { drawAdi } from '../render/gauges/adi.js';
+import { drawPlan } from '../render/gauges/plan.js';
 import { drawGMeter, drawVsi } from '../render/gauges/vsi.js';
 import { drawHeadingTape, drawVerticalTape } from '../render/gauges/tape.js';
 import { createReadout, describeField } from '../render/dom.js';
 
 const withAge = (field) => (field ? { ...field, ageText: formatAge(field.ageMs) } : field);
 
-export function createPfd({ canvas, surface, readoutHost, announcer, mountOffset = () => null }) {
+export function createPfd({
+  canvas,
+  surface,
+  readoutHost,
+  announcer,
+  mountOffset = () => null,
+  planSurface = null,
+  planCanvas = null,
+  traffic = () => ({ aircraft: [], centre: null, rangeNm: 40, fromFix: false, followedHex: null }),
+}) {
   let peakG = null;
 
   const readouts = {
@@ -237,10 +247,49 @@ export function createPfd({ canvas, surface, readoutHost, announcer, mountOffset
     canvas.setAttribute('aria-label', `Primary flight display. ${parts.join('. ')}.`);
   };
 
+  /**
+   * The navigation display beside the horizon — the same plan view the RADAR
+   * page draws, from the same source, because two drawings of one truth is how
+   * they end up disagreeing.
+   *
+   * Silent when there is no traffic surface (the unit tests construct the panel
+   * without one) and when the centre is unknown, which is the honest state
+   * before the first fix rather than a ring drawn around nowhere.
+   */
+  const drawSide = () => {
+    if (!planSurface) return;
+    planSurface.begin();
+    const t = planSurface.tokens;
+    const view = traffic() ?? {};
+    if (!view.centre) return;
+    drawPlan(planSurface.ctx, {
+      x: 0,
+      y: 0,
+      w: planSurface.width,
+      h: planSurface.height,
+      tokens: t,
+      centre: view.centre,
+      aircraft: view.aircraft ?? [],
+      rangeNm: view.rangeNm ?? 40,
+      followedHex: view.followedHex ?? null,
+      fromFix: view.fromFix ?? false,
+    });
+    if (planCanvas) {
+      const n = (view.aircraft ?? []).length;
+      planCanvas.setAttribute(
+        'aria-label',
+        n
+          ? `Navigation display: ${n} aircraft within ${view.rangeNm ?? 40} nautical miles. The list on the RADAR page has each one as text.`
+          : 'Navigation display: no aircraft being heard within range.',
+      );
+    }
+  };
+
   return {
     /** Called on every publish while this page is the visible one. */
     render(snapshot) {
       draw(snapshot.fields);
+      drawSide();
       updateReadouts(snapshot.fields);
       updateAlt(snapshot.fields, snapshot.t);
       announcer.watch('Attitude', snapshot.fields['attitude.pitch']);

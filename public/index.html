@@ -123,9 +123,19 @@
             carry the same values as real, selectable, screen-reader text.
           -->
           <canvas id="pfd-canvas" class="pfd-canvas" role="img" aria-label="Primary flight display. Starting up."></canvas>
-          <!-- A scrollable region must be reachable and scrollable from the
-               keyboard, so it is focusable and named. -->
-          <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
+          <!--
+            THE RIGHT-HAND COLUMN IS A NAVIGATION DISPLAY OVER THE VALUES, which
+            is how an airliner is actually laid out: PFD on the left, ND beside
+            it. Noah asked for the radar here instead of the readouts; the
+            readouts STAY underneath it because a canvas is not text, and they
+            are the only screen-reader-accessible copy of these numbers.
+          -->
+          <div class="pfd-side">
+            <canvas id="pfd-plan" class="pfd-plan" role="img" aria-label="Navigation display. Starting up."></canvas>
+            <!-- A scrollable region must be reachable and scrollable from the
+                 keyboard, so it is focusable and named. -->
+            <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
+          </div>
         </div>
       </section>
 

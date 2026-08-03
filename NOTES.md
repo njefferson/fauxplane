@@ -68,6 +68,63 @@ items.
 
 ---
 
+## 1.1.0 — a navigation display beside the horizon, which is where one goes
+
+Noah: *"The radar would be better next to the PFD than these diagnostics."*
+
+He is describing the layout of an actual airliner. A 747 has the PFD in front of
+the pilot and the **Navigation Display** immediately beside it; the plan view
+belongs there, and the column of values he was looking at is a debug surface
+that had quietly become the main thing on the right half of the screen.
+
+The right column is now the ND over the values: plan view on top, readouts
+underneath, the column scrolling as before.
+
+**The readouts STAY, and that is not a compromise.** A canvas is not text. Those
+rows are the only screen-reader-accessible copy of these numbers, they are what
+the contrast registry measures, and they are what acceptance criterion 1 is
+asserted against — "with every permission denied, no readout is showing digits"
+cannot be checked against a drawing. Replacing them with a canvas would have
+traded an accessibility guarantee for a picture.
+
+**One source, two drawings.** The ND reads the same traffic the RADAR page does,
+at the same range, through the same accessor — rather than keeping its own copy,
+which is precisely how two pictures of one truth come to disagree.
+
+The fetch rule is unchanged and now simply has one more page under it: traffic is
+requested only while a page that DRAWS it is open. The PFD is now such a page.
+Two pages open in turn cost one upstream request, not two, because the edge cache
+carries the second.
+
+### Seen, not merely gated
+
+`scripts/preview.mjs` rendered it, and that is the only reason this entry can say
+the ND draws at all. **The canvas sentinel added in 0.4.7 skips transparent
+pixels**, so a plan view that drew nothing whatever would have passed it in
+silence — a green gate here proves the absence of magenta, not the presence of a
+picture. The preview is what closes that gap.
+
+### Found in the preview render, NOT fixed
+
+The indicated-altitude failure reads:
+
+> MSL altitude, altimeter setting, station altimeter unavailable (MSL altitude:
+> GPS altitude, geoid separation unavailable (GPS altitude: not yet initialised))
+
+The same three-level nesting 1.0.1 fixed for vertical speed, still present in the
+altitude chain. `worstOf` composes a reason out of its inputs' reasons, and
+nothing stops that recursing. The real fix is a depth limit in `worstOf` itself
+rather than another one-off unwrapping — which is a change to the shared
+provenance code and wants its own release.
+
+### Verified
+
+**172 unit tests, the accessibility gate green across 3 viewports x 2 palettes x
+5 pages including the 200%-text case, both palettes clearing every hard floor,
+and the layout rendered and looked at.**
+
+---
+
 ## 1.0.1 — an error state that looks like a crash is a defect in its own right
 
 Noah, on a 1.0.0 screenshot: *"It doesn't need to look like this to error does
