@@ -6,6 +6,11 @@ or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
+## 1.7.4 — ITERATION — 2026-08-03
+
+**The icon-art card is the share card.** Noah picked it, so shared links now
+carry the card drawn entirely from the app's own artwork.
+
 ## 1.7.3 — ITERATION — 2026-08-03
 
 **The share tiles are now on the site itself**, at /social-preview.jpg and

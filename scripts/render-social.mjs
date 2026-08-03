@@ -19,7 +19,7 @@ const browser = await chromium.launch({
 for (const [card, w, h, out] of [
   ['social-card.html', 1280, 640, path.join(HERE, '..', 'docs', 'social-preview.jpg')],
   ['social-card.html', 1280, 640, path.join(HERE, '..', 'public', 'social-preview.jpg')],
-  ['social-card.html', 1200, 630, path.join(HERE, '..', 'public', 'og-image.jpg')],
+  ['social-card-icon.html', 1200, 630, path.join(HERE, '..', 'public', 'og-image.jpg')],
   ['social-card-icon.html', 1280, 640, path.join(HERE, '..', 'public', 'social-preview-icon.jpg')],
 ]) {
   const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2 });

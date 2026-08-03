@@ -68,6 +68,25 @@ items.
 
 ---
 
+## 1.7.4 — the icon-art card is canonical
+
+**The intermittent gate-contrast flake struck a second time**, during this
+release's first a11y run: `first-run page description measured 1.46:1` and
+`gate small print measured 1.21:1` — on a commit that touched only `<head>`
+meta tags, and green on the immediate re-run. First strike was 0.4.5's
+`PANEL POWER button measured 3.52:1`. Both are POWER-GATE-surface rows, and
+ratios that low mean the text was measured against nearly its own colour —
+consistent with the backdrop screenshot (taken with the text hidden) racing
+the dialog's paint. Two data points now, both on the gate dialog, none on a
+panel page. The check to suspect is the gate-surface screenshot timing, and
+this line exists so the next session starts there instead of at zero.
+
+Noah picked the icon-art card. og:image now renders from it (with width,
+height and alt for parity with the hub), and METADATA.md names it as the
+chosen tile. The concept-render card stays in the repo as the alternate.
+
+---
+
 ## 1.7.3 — tiles served from the site, and an icon-art variant
 
 Noah could not download the tile from GitHub on his iPad, which makes the
