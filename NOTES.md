@@ -2206,6 +2206,70 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.14.1 — the tap that never worked, 2026-08-03
+
+Noah: *"I cannot tap the radar to add planes to the follow dialogue box like I
+asked."*
+
+**`hitTestAircraft` was used in `radar.js` and never imported.** Every tap threw
+`hitTestAircraft is not defined`. The feature has not worked ONCE since it
+shipped in 1.7.0 — seven releases, described in release notes twice, recorded in
+NOTES as done.
+
+**Why nothing caught it, exactly.** The accessibility gate asserts "no console
+errors, anywhere" and would have caught this instantly — but it had never
+CLICKED anything. It loads pages, reads them, measures them, and looks. **An
+error that only fires on interaction is invisible to a sweep that only
+observes.** `checkRadarTap` now drives a real pointer at a real aircraft's
+painted position, using the renderer's own geometry, and asserts the follow
+started. It was watched failing with the import removed, reporting the exact
+message, before the fix was believed.
+
+**A wrong diagnosis on the way, corrected in the same session.** The report said
+"CONSOLE (0 captured since boot)", so this session concluded the capture was
+blind to uncaught errors and wrote a `window.onerror` hook — calling a `push()`
+that does not exist, four lines above the existing hooks that already do exactly
+that. `installConsoleCapture` has captured `error` and `unhandledrejection`
+since it was written. The zero was because he had not tapped in that session,
+not because the capture was broken. Reverted.
+
+**Power is part of a control strip now.** Noah: *"Power looks visually tied to
+nothing."* It was its own row under the left edge of the panel, in a group of
+one, labelled by nothing. Power, levelling and clear are the three things you do
+TO the panel, so they share one named group with a divider.
+
+### The radar is not what a real one looks like, and that is now the next job
+
+Noah: *"What does the radar look like in a real jet? This crowded? What info is
+shown for each object? Is it static or toggle-able? What are the real life
+ranges? My desired fix is ALWAYS more like a regular aircraft."*
+
+**The honest answer is that ours is a plane-spotting display, not a flight-deck
+one.** A real ND's traffic layer is TCAS, and it is far more austere:
+
+- **No callsigns. No registrations. No type codes.** TCAS shows a symbol and a
+  number, nothing else.
+- **RELATIVE altitude in hundreds of feet**, signed, drawn above or below the
+  symbol: `+03` is three hundred feet above you. Never an absolute flight level.
+- **An up or down arrow** beside it if the aircraft is climbing or descending
+  more than about 500 fpm.
+- **Symbol shape carries threat, not identity**: open diamond for other traffic,
+  filled diamond for proximate, amber circle for a traffic advisory, red square
+  for a resolution advisory.
+- **An ALTITUDE BAND FILTER is the real de-clutter**, and we have nothing like
+  it: normal shows roughly ±2700 ft, with ABOVE and BELOW switches that extend
+  it to +9900 or −9900. Most of the fifty-six aircraft in Noah's screenshot
+  would simply not be displayed on a real ND.
+- **It is toggle-able** — a TFC button on the EFIS control panel.
+- **Real Boeing ranges** are 10, 20, 40, 80, 160, 320 and 640 nm. Ours are 10,
+  25, 40 and 80; the 25 is not a real step.
+
+**The plan, therefore:** relative altitude and vertical trend instead of
+callsign plus flight level, an altitude band filter with ABOVE / NORM / BELOW,
+real range steps, and the callsign moved to a tap — which is where the identity
+belongs and is now, finally, reachable. The "Heard right now" list keeps every
+detail, so nothing is lost: the SCOPE gets austere, the LIST stays rich.
+
 ## 1.14.0 — the scope follows the aircraft, 2026-08-03
 
 **ANSWERED AT LAST: the crew readouts are real.** Noah's report, following

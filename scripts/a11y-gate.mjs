@@ -869,6 +869,7 @@ async function main() {
     /* ---- 3. acceptance criterion 4: every readout traces to a field ----- */
     await checkProvenanceCoverage(browser, base);
     await checkStoredLevelling(browser, base);
+    await checkRadarTap(browser, base);
 
     /* ---- 4. the bundled geophysical data actually reaches the panel ----- */
     await checkGeoDataChain(browser, base);
@@ -1202,6 +1203,80 @@ async function checkNoSecrets(base) {
  * rendered sentence. It also cross-checks the ADI's own badge, because the bug
  * was two surfaces disagreeing and either one alone could be the wrong one.
  */
+/**
+ * TAPPING AN AIRCRAFT ON THE SCOPE FOLLOWS IT.
+ *
+ * `hitTestAircraft` was used in radar.js and never imported, so every tap threw
+ * `hitTestAircraft is not defined` and the feature had never worked once since
+ * it shipped. Nothing caught it for seven releases, and the reason is exact:
+ * this gate asserts "no console errors" but had never CLICKED anything. An
+ * error that only fires on interaction is invisible to a sweep that only looks.
+ *
+ * So this drives a real pointer at a real aircraft's drawn position, using the
+ * SAME geometry the renderer uses, and asserts the follow actually started.
+ */
+async function checkRadarTap(browser, base) {
+  const where = 'radar-tap';
+  const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+  await context.route('**/api/traffic**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) }),
+  );
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.querySelector('[data-page="radar"]').click());
+  await page.waitForTimeout(800);
+
+  // Where the FIRST aircraft is actually painted, from the renderer's own maths.
+  const target = await page.evaluate(async () => {
+    const canvas = document.querySelector('.radar-canvas');
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const { greatCircleNm, bearingDeg } = await import('/src/core/units.js');
+    const { radarCentre } = await import('/src/data/traffic.js');
+    const { state } = await import('/src/core/state.js');
+    const c = radarCentre(state.snapshot.fields);
+    const a = { lat: 38.9, lon: -121.15 }; // UAL328 in the fixture
+    const w = rect.width;
+    const h = rect.height;
+    const r = Math.min(w, h) / 2 - 4;
+    const pxPerNm = r / 40;
+    const rad = (bearingDeg(c, a) * Math.PI) / 180;
+    const d = greatCircleNm(c, a);
+    return {
+      clientX: rect.x + w / 2 + Math.sin(rad) * d * pxPerNm,
+      clientY: rect.y + h / 2 - Math.cos(rad) * d * pxPerNm,
+    };
+  });
+
+  if (!target) {
+    fail(where, 'the radar canvas is missing');
+    await context.close();
+    return;
+  }
+
+  await page.mouse.click(target.clientX, target.clientY);
+  await page.waitForTimeout(400);
+
+  const after = await page.evaluate(() => ({
+    following: !document.getElementById('follow-banner')?.hidden,
+    what: document.getElementById('follow-what')?.textContent?.trim() ?? '',
+    input: document.querySelector('.radar-form input')?.value ?? '',
+  }));
+
+  // An error thrown by the handler is the actual defect, so name it first.
+  for (const e of errors) fail(where, `tapping the scope threw: ${e}`);
+  if (!after.following) {
+    fail(where, `tapping an aircraft did not start following it (banner hidden, input "${after.input}")`);
+  } else if (!/UAL328/.test(`${after.what} ${after.input}`)) {
+    fail(where, `tapped UAL328 but the panel is following "${after.what}"`);
+  }
+
+  await context.close();
+}
+
 async function checkStoredLevelling(browser, base) {
   const where = 'stored-levelling';
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });

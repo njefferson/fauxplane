@@ -1832,8 +1832,17 @@ body[data-powered='true'] .gate {
   min-height: var(--target);
 }
 
-/* The power switch sits with the levelling controls, under the horizon. */
-.pfd-power {
+/* ONE CONTROL STRIP under the horizon: power, then a divider, then levelling.
+   The switch was its own floating row before, tied to nothing (Noah). */
+.pfd-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: var(--gap);
+}
+.pfd-controls-sep {
+  width: 1px;
+  align-self: stretch;
+  min-height: var(--target);
+  background: var(--hairline);
 }

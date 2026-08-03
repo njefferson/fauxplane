@@ -29,6 +29,18 @@
  */
 export const RELEASES = [
   {
+    version: '1.14.1',
+    date: '2026-08-03',
+    headline: 'Tapping an aircraft on the radar works. It never has before.',
+    changed: [
+      'Tapping an aircraft on the scope now follows it. It threw an error on every single tap since the feature was added seven releases ago, so it has never worked once — nothing caught it because the checks look at the screen and had never pressed anything.',
+      'Power, levelling and clear are one control strip under the horizon now, instead of the power switch floating on its own row attached to nothing.',
+    ],
+    broken: [
+      'The scope is still far more crowded than a real one, and still labels every aircraft with its callsign and absolute altitude. A real flight deck shows relative height in hundreds of feet, filters by an altitude band, and shows no callsigns at all. That is the next change.',
+    ],
+  },
+  {
     version: '1.14.0',
     date: '2026-08-03',
     headline: 'Following a flight now centres the radar on it — and the crew readouts are real.',

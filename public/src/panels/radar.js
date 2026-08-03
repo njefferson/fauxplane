@@ -26,7 +26,7 @@
 
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
-import { drawPlan, altLabel } from '../render/gauges/plan.js';
+import { drawPlan, altLabel, hitTestAircraft } from '../render/gauges/plan.js';
 import { RADAR_RANGE_NM, airframeGroups, filterByAirframe } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
 

@@ -142,37 +142,19 @@
               implementation, in setup.js; these call it.
             -->
             <!--
-              PANEL POWER LIVES ON THE PANEL, which is what Noah asked for:
-              "Should there just be a 'power' button on the display?" It was
-              briefly in the header and did not belong there — measured, the
-              right-hand group went from 216px to 341px and wrapped the bar onto
-              two rows on a landscape phone, which the panel paid for by
-              overlapping its own footer. The header is full; the display is not,
-              and a switch beside the crossed-out instruments is where a cockpit
-              would put it anyway.
+              ONE CONTROL STRIP, not a switch floating above a pair of buttons.
+              Noah: "Power looks visually tied to nothing." It was its own row
+              under the left edge of the panel, grouped with nothing and labelled
+              by nothing — so it read as a stray chip rather than as one of the
+              panel's controls. Power, levelling and clearing are the three
+              things you do TO the panel; they belong in one named group.
             -->
-            <div class="pfd-power" role="group" aria-label="Panel power">
-              <!--
-              PANEL POWER, as a switch on the panel rather than a modal in front of
-              it. Noah: "Should there just be a 'power' button on the display?"
-
-              IT MUST BE A PRESS, and that is not a design choice: iOS grants motion
-              and orientation permission only from inside a user gesture, so
-              something has to be pressed before any sensor can start. What was a
-              choice — and was wrong — was making that press a full-screen dialog
-              with two paragraphs above it. The panel opens as ITSELF now, every
-              sensor-driven instrument honestly crossed out, and this wakes it.
-
-              A real switch, both ways: role="switch" with aria-checked, and the
-              state as a WORD rather than a colour (§4). The visible text is the
-              accessible name, so voice control matches what is written (SC 2.5.3).
-            -->
-            <button type="button" role="switch" aria-checked="false" id="power-btn" class="power-btn">
+            <div class="pfd-controls" role="group" aria-label="Panel controls">
+              <button type="button" role="switch" aria-checked="false" id="power-btn" class="power-btn">
               <span class="power-word">PWR</span>
               <span class="power-state" id="power-state">OFF</span>
             </button>
-            </div>
-            <div class="pfd-level" role="group" aria-label="Levelling">
+              <span class="pfd-controls-sep" aria-hidden="true"></span>
               <button type="button" id="pfd-level" class="pfd-level-btn">Level the horizon</button>
               <button type="button" id="pfd-level-clear" class="pfd-level-btn pfd-level-clear" hidden>Clear levelling</button>
               <p id="pfd-level-status" class="pfd-level-status" role="status" aria-live="polite"></p>
