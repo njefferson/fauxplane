@@ -497,6 +497,9 @@ async function boot() {
     const vs = vsi.read({
       altitudeField: f['position.altitudeGeometric'],
       verticalAccelField: f['motion.verticalAccel'],
+      // The receiver's own stated accuracy, so the instrument can say what it
+      // can and cannot resolve rather than implying a precision it lacks.
+      altitudeAccuracyField: f['position.altitudeAccuracy'],
     });
     writeField('vsi.rate', vs, t);
     const aoa = angleOfAttack({ pitchDeg: f['attitude.pitch'], groundspeedKt: f['position.groundspeed'], verticalSpeedFpm: vs });

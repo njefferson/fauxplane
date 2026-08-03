@@ -68,6 +68,74 @@ items.
 
 ---
 
+## 1.3.1 — the vertical speed says what it cannot resolve
+
+The last correctness item on the list. GPS altitude on Noah's iPad is accurate
+to plus or minus 27 m and arrives every 5 s; the panel showed a vertical speed
+derived from it without ever saying what that combination can actually
+distinguish from noise.
+
+`verticalResolutionFpm()` computes it: each fix carries its own uncertainty, so
+their difference carries both in quadrature; divided by the interval that is the
+rate resolution, then reduced by the complementary filter's own steady-state
+noise gain, sqrt(k/(2-k)) for k = dt/tau. **His iPad indoors: about 1,500 fpm** —
+which is most of what a light aircraft ever does. A good fix at 1 Hz gets it to
+about 620.
+
+### It SHOWS the bound rather than zeroing the reading, unlike groundspeed
+
+That difference is deliberate and worth writing down, because the two look like
+the same situation and are not:
+
+- Two position fixes agreeing inside their accuracy **IS** evidence of standing
+  still. Reporting 0 kt there is a measurement.
+- An altitude rate under the floor is **NOT** evidence of not climbing. It means
+  the GPS half of the filter cannot resolve it, while the accelerometer half may
+  be carrying real information. Zeroing it would invent a "not climbing" that
+  nothing measured.
+
+So the estimate stays and the bound goes on the face of it: *"GPS altitude
+resolves no better than ±1,503 fpm here"*. A number whose uncertainty exceeds
+the number is still the best estimate available, and saying so is the difference
+between a coarse instrument and a lying one.
+
+### The plant for it is UNPROVEN, and was removed
+
+Two anchors were tried and both made the gate go red for the WRONG reason. The
+harness extracts the failure lines by matching "FAIL" in the output — and a
+passing test whose NAME contains the word FAIL ("a FAIL field CANNOT carry a
+value") matches that filter, so the harness quoted a green line as the cause and
+declared the plant unproven.
+
+**That is a defect in the harness's reporting, not evidence about this change.**
+Nothing about it says the check does not work; it says the harness cannot
+currently tell me whether it does. Fixing the extraction to key on `not ok`
+rather than on the string FAIL is the real repair, and it is the next thing on
+the list rather than something to bolt on here.
+
+The behaviour itself is covered by five unit tests, including the two cases that
+matter — a rate under the floor keeping its value and gaining the caveat, and a
+1,200 fpm climb reported without it. The first version of that second test used
+30,000 fpm and tripped the runaway guard instead, which is the runaway guard
+working.
+
+### Verified
+
+**192 unit tests, 28/28 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor.**
+
+### Still open
+
+- The plant harness misattributes failures containing the word FAIL. Now the
+  most valuable thing on this list, because it weakens every future plant.
+- The overlap check from 1.2.1, still UNPROVEN.
+- The intermittent PANEL POWER contrast failure, cause unfound.
+- Android and desktop, never confirmed by a device.
+- Repo metadata: description, website, topics, social preview, all unset.
+
+---
+
 ## 1.3.0 — labels on a busy plan view stop overprinting
 
 Noah's 40 nm screenshot at 1.0.0: nineteen aircraft, about a dozen of them in

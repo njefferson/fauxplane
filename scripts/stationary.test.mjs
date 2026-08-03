@@ -125,3 +125,61 @@ test('VSI: once it starts moving again it stops claiming zero', () => {
   const out = vsi.read({ altitudeField: altField, verticalAccelField: accelField });
   assert.ok(out.value > 1000, `a real climb must still read: got ${out.value}`);
 });
+
+/* ------------------------------------------------- vertical resolution floor */
+
+import { verticalResolutionFpm } from '../public/src/core/derive.js';
+
+test('RESOLUTION: Noah’s iPad indoors cannot resolve a light-aircraft climb', () => {
+  // 27 m altitude accuracy, fixes about 5 s apart — his actual reports. The
+  // answer is roughly 1,500 fpm, which is most of what a light aircraft ever
+  // does, and that is a fact about GPS rather than a defect to hide.
+  const floor = verticalResolutionFpm({ accuracyM: 27, gapS: 5 });
+  assert.ok(floor > 1200 && floor < 1800, `got ${Math.round(floor)} fpm`);
+});
+
+test('RESOLUTION: a good fix at 1 Hz resolves far better', () => {
+  const floor = verticalResolutionFpm({ accuracyM: 5, gapS: 1 });
+  assert.ok(floor < 800, `got ${Math.round(floor)} fpm`);
+  assert.ok(floor < verticalResolutionFpm({ accuracyM: 27, gapS: 5 }));
+});
+
+test('RESOLUTION: it refuses to invent a bound it cannot compute', () => {
+  assert.equal(verticalResolutionFpm({ accuracyM: null, gapS: 5 }), null);
+  assert.equal(verticalResolutionFpm({ accuracyM: 27, gapS: null }), null);
+  assert.equal(verticalResolutionFpm({ accuracyM: 27, gapS: 0 }), null);
+});
+
+test('RESOLUTION: a rate under the floor keeps its VALUE and gains the bound', () => {
+  // The opposite of what groundspeed does, deliberately: two fixes agreeing IS
+  // evidence of standing still, but an altitude rate under the floor is NOT
+  // evidence of not climbing — the accelerometer half may hold real
+  // information. Zeroing it would invent a fact nothing measured.
+  const vsi = createVsi();
+  vsi.updateAltitude(1500, 0);
+  vsi.updateAltitude(1504, 5000); // 48 fpm, far under a 27 m / 5 s floor
+  const out = vsi.read({
+    altitudeField: altField,
+    verticalAccelField: accelField,
+    altitudeAccuracyField: { provenance: 'LIVE', value: 27, at: 1000, reason: null },
+  });
+  assert.notEqual(out.provenance, 'FAIL');
+  assert.ok(Number.isFinite(out.value), 'the estimate is kept, not replaced with zero');
+  assert.match(out.reason, /resolves no better than/);
+});
+
+test('RESOLUTION: a climb well ABOVE the floor is reported without the caveat', () => {
+  const vsi = createVsi();
+  // A real airliner climb, not an absurd one: 1,200 fpm against a floor of
+  // about 460. The first version of this test used 30,000 fpm and tripped the
+  // runaway guard instead, which is the guard working.
+  vsi.updateAltitude(1500, 0);
+  vsi.updateAltitude(1560, 3000); // 60 ft in 3 s = 1,200 fpm
+  const out = vsi.read({
+    altitudeField: altField,
+    verticalAccelField: accelField,
+    altitudeAccuracyField: { provenance: 'LIVE', value: 5, at: 1000, reason: null },
+  });
+  assert.notEqual(out.provenance, 'FAIL');
+  assert.ok(!/resolves no better/.test(out.reason ?? ''), `unexpected caveat: ${out.reason}`);
+});

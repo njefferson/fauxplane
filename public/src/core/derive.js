@@ -323,12 +323,46 @@ export function createTurnRate({ maxGapMs = 30_000, minGapMs = 900 } = {}) {
  */
 export const VSI_ABSURD_FPM = 20_000;
 
+/**
+ * The smallest vertical rate two GPS altitude fixes can tell from noise.
+ *
+ * Each fix carries its own uncertainty, so their difference carries both added
+ * in quadrature; divided by the interval, that is the rate resolution. The
+ * complementary filter then averages over `tau`, which reduces the noise by the
+ * standard steady-state gain of an exponential moving average, sqrt(k/(2-k))
+ * for k = dt/tau.
+ *
+ * WHY THIS IS SHOWN RATHER THAN USED TO ZERO THE READING, which is the opposite
+ * of what groundspeed does with its floor, and the difference is real:
+ *
+ *   Two position fixes agreeing inside their accuracy IS evidence of standing
+ *   still. An altitude rate below this floor is NOT evidence of not climbing —
+ *   it means the GPS half of the filter cannot resolve it, while the
+ *   accelerometer half may be carrying real information. Zeroing it would
+ *   invent a "not climbing" that nothing measured.
+ *
+ * So the number stays and the bound goes on the face of it. Noah's iPad
+ * indoors: 27 m accuracy, fixes 5 s apart, tau 3 s — about 1,500 fpm, which is
+ * most of what a light aircraft ever does. That is worth knowing and it is not
+ * a defect to hide.
+ */
+export function verticalResolutionFpm({ accuracyM, gapS, tau = 3 }) {
+  if (!Number.isFinite(accuracyM) || !Number.isFinite(gapS) || !(gapS > 0) || !(accuracyM > 0)) return null;
+  const sigmaRateMs = (accuracyM * Math.SQRT2) / gapS;
+  const k = Math.min(1, gapS / tau);
+  const smoothing = Math.sqrt(k / (2 - k));
+  return msToFpm(sigmaRateMs * smoothing);
+}
+
 export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
   let rateFpm = null;
   let lastAltFt = null;
   let lastAltAt = null;
   let lastAccelAt = null;
   let stationaryAt = null;
+  /** Seconds between the last two altitude fixes — the interval the rate was
+   *  actually differenced over, not a nominal one. */
+  let lastGapS = null;
   let reason = 'no altitude samples yet';
 
   const reset = (why = 'vertical speed filter reset') => {
@@ -337,6 +371,7 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
     lastAltAt = null;
     lastAccelAt = null;
     stationaryAt = null;
+    lastGapS = null;
     reason = why;
   };
 
@@ -404,6 +439,7 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
         return;
       }
 
+      lastGapS = dt;
       const gpsRate = ((altitudeFt - lastAltFt) / dt) * 60;
       lastAltFt = altitudeFt;
       lastAltAt = at;
@@ -418,7 +454,7 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
       reason = null;
     },
 
-    read({ altitudeField, verticalAccelField }) {
+    read({ altitudeField, verticalAccelField, altitudeAccuracyField = null }) {
       // STATIONARY SHORT-CIRCUIT, and it deliberately does NOT consult GPS
       // altitude. When the motion sensors say the device is not translating,
       // they are the evidence for zero — a fix that stopped arriving cannot
@@ -445,6 +481,21 @@ export function createVsi({ tau = 3, maxGapMs = 5000 } = {}) {
         return fail(
           `vertical speed reached ${Math.round(runaway).toLocaleString()} fpm, which is not a real climb — the filter has been reset`,
           { unit: 'fpm' },
+        );
+      }
+      // THE RESOLUTION, ON THE FACE OF IT. A number whose uncertainty exceeds
+      // the number is still the best estimate available, and saying so is the
+      // difference between a coarse instrument and a lying one.
+      const floor = verticalResolutionFpm({
+        accuracyM: isUsable(altitudeAccuracyField) ? altitudeAccuracyField.value : null,
+        gapS: lastGapS,
+        tau,
+      });
+      if (floor !== null && Math.abs(rateFpm) < floor) {
+        return mk(
+          rateFpm,
+          { ...meta, reason: `GPS altitude resolves no better than ±${Math.round(floor).toLocaleString()} fpm here` },
+          'fpm',
         );
       }
       return mk(rateFpm, meta, 'fpm');
