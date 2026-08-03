@@ -1651,3 +1651,16 @@ body[data-powered='true'] .gate {
   padding: 0;
   background: none;
 }
+
+/* The three uses, in the first-run block and the (i) menu. */
+.gate-uses {
+  margin: 0 0 0.6rem;
+  padding-left: 1.1rem;
+  color: var(--text-2);
+}
+.gate-uses li + li {
+  margin-top: 0.35rem;
+}
+.gate-uses strong {
+  color: var(--text);
+}

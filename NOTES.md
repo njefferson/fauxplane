@@ -2263,6 +2263,35 @@ same invented name — self-consistent and measuring nothing. The RADAR test
 caught it. The fixture now runs real aircraft through `withRangeAndBearing`
 first, so a rename breaks it loudly instead of emptying the sky.
 
+**The app's own copy described only the desk.** Noah, explaining fauxplane to
+friends: *"You can follow a flight, or use it on a flight to see like the pilot,
+or use it in a car while you drive! Install it to your Home Screen and it works
+like an app."* Three uses. Every version of the first-run text described one —
+the stationary desk, which is the ONE reader's case — and the repo description
+still says "for your desk". The two omitted uses are the ones where the panel
+comes alive: in a car or on an aircraft, groundspeed, track, vertical speed,
+turn rate and G are all real, and the boresight levelling was built for a car
+cradle in the first place. An app whose own description is narrower than the app
+is undersold by the only text anybody reads. The three uses are now in the
+first-run block and the (i) menu, in his words; the repo description is proposed
+in the hub's METADATA.md for him to apply (§10).
+
+**The accessibility gate could not see a modal dialog below the fold, and did
+not know.** Adding those four lines pushed the registered first-run text past
+the bottom of the screen, and the contrast check reported 1.37:1 — measuring a
+pixel the text is not painted on. A modal `<dialog>` is in the TOP LAYER:
+composited against the viewport, absent from document flow, so `fullPage`
+screenshots contain only the on-screen part. `position: static` does not fix it
+because top-layer membership is not a positioning property; the dialog is now
+demoted with `close()` + `open` for sampling and promoted again afterwards.
+
+The check had been green for weeks and WAS genuinely measuring — while the gate
+content happened to fit on screen. Content length silently decided whether the
+check worked. A dark wrong pixel would have produced a false PASS just as
+easily. Because the fix turned a red into a green, which is the exact shape of a
+fix that disables a check rather than repairing it, a bad colour was planted and
+the gate was watched reporting 1.08:1 before the pass was believed.
+
 ## 1.8.0 — the panel says what changed (Doctrine §7d), 2026-08-03
 
 **`public/src/data/releases.js` is the only place release notes are written.**

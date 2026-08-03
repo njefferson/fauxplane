@@ -292,12 +292,48 @@ const EXPAND = '.page-cards, .readouts, .page-pfd, .gate, .panel, body, html';
 
 async function checkContrast(page, registry, where) {
   const restore = await page.evaluate((sel) => {
+    // A MODAL <dialog> LIVES IN THE TOP LAYER, which is painted relative to the
+    // VIEWPORT and is not part of the document flow at all. A full-page
+    // screenshot therefore captures only the part of it that fits on screen;
+    // everything below the fold shows the page behind, so sampling a coordinate
+    // down there reads an unpainted pixel and returns near-white. That is what
+    // reported the first-run text at 1.37:1 against a backdrop it is not on.
+    //
+    // `position: static` cannot fix this — top-layer membership is not a
+    // positioning property. The dialog has to be demoted to a plain open
+    // dialog, which puts it back in normal flow, and promoted again after.
+    const modals = [];
+    for (const d of document.querySelectorAll('dialog')) {
+      if (d.matches(':modal')) {
+        modals.push(d);
+        d.close();
+        d.setAttribute('open', '');
+      }
+    }
+    window.__gateModals = modals;
+
     const saved = [];
     for (const n of document.querySelectorAll(sel)) {
-      saved.push([n, n.style.overflow, n.style.height, n.style.maxHeight]);
+      saved.push([n, n.style.overflow, n.style.height, n.style.maxHeight, n.style.position, n.style.margin]);
       n.style.overflow = 'visible';
       n.style.height = 'auto';
       n.style.maxHeight = 'none';
+      // A FIXED OVERLAY TALLER THAN THE VIEWPORT CANNOT BE SCREENSHOTTED.
+      //
+      // The power gate is `position: fixed; inset: 0; margin: auto`. Expanding
+      // it to its full height leaves it auto-centred against the viewport, so
+      // half of it sits at NEGATIVE document coordinates where a full-page
+      // screenshot does not reach — and the sampler then read whatever pixel
+      // happened to be at those coordinates instead. It reported the first-run
+      // text at 1.37:1 against a backdrop that text is not on.
+      //
+      // Dropping it into normal flow puts every line at a real document
+      // coordinate. This gate could not measure ANY fixed overlay longer than
+      // the screen until now, which is precisely where first-run copy lives.
+      if (getComputedStyle(n).position === 'fixed') {
+        n.style.position = 'static';
+        n.style.margin = '0';
+      }
     }
     window.__gateRestore = saved;
     return saved.length;
@@ -346,11 +382,22 @@ async function checkContrast(page, registry, where) {
   );
   await page.evaluate((rows) => {
     for (const row of rows) for (const n of document.querySelectorAll(row.selector)) n.style.visibility = '';
-    for (const [n, overflow, height, maxHeight] of window.__gateRestore ?? []) {
+    for (const [n, overflow, height, maxHeight, position, margin] of window.__gateRestore ?? []) {
       n.style.overflow = overflow;
       n.style.height = height;
       n.style.maxHeight = maxHeight;
+      n.style.position = position;
+      n.style.margin = margin;
     }
+    for (const d of window.__gateModals ?? []) {
+      d.removeAttribute('open');
+      try {
+        d.showModal();
+      } catch {
+        d.setAttribute('open', '');
+      }
+    }
+    window.__gateModals = [];
     window.__gateRestore = [];
   }, registry);
 
