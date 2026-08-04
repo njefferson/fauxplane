@@ -29,6 +29,22 @@
  */
 export const RELEASES = [
   {
+    version: '1.21.1',
+    date: '2026-08-04',
+    headline: 'The route feed was quietly eating the radar’s allowance. Fixed.',
+    changed: [
+      'You reported tapping the radar to add an aircraft had stopped working. The tapping itself is fine — there was nothing on the scope to tap, and that is what 1.21.0 broke.',
+      'The route feature I added yesterday talks to adsb.lol, which is the same service the aircraft feed uses. When a service turns us away, the panel is supposed to stop asking it for a while. I recorded that stand-off separately for the route feed — which sounds careful and is the opposite, because their limit counts every request from us together, not per feature.',
+      'So a refusal earned by asking for a route never told the aircraft feed to back off, and the aircraft feed kept asking, and got refused. The route is a nicety; the aircraft ARE the instrument. One stand-off now covers the whole service.',
+      'The panel also will not ask for a route at all while the aircraft feed is being refused. Spending the next request on a line of text instead of on the contents of your radar is the wrong trade.',
+    ],
+    broken: [
+      'If your scope was empty, give it a few minutes after loading this version — any stand-off already recorded has to expire on its own.',
+      'The route shape is still unconfirmed, so the route itself may read as unavailable. The diagnostics report behind the version stamp has a block called WHAT THE ROUTE FEED ACTUALLY SENT — that is the thing to send me.',
+      'The underlying rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+    ],
+  },
+  {
     version: '1.21.0',
     date: '2026-08-04',
     headline: 'The flight you are following says where it is going.',

@@ -171,7 +171,23 @@ export async function onRequestGet({ request }) {
    */
   const key = `/api/route?callsign=${callsign}`;
   return cached(request, key, POLICIES.route.cacheSeconds, async () => {
-    const cool = await inCooldown(request, `${ROUTE_SOURCE.id}:route`).catch(() => null);
+    /**
+     * THE STANDOFF IS PER PROVIDER, NOT PER ENDPOINT, and getting that wrong
+     * shipped once. This read `${ROUTE_SOURCE.id}:route`, which gives the route
+     * feed a private cooldown — and adsb.lol's rate limit is per IP across
+     * their whole API, so a private cooldown is not a cooldown at all. It broke
+     * both ways: a 429 earned here never told the TRAFFIC feed to back off, and
+     * a traffic feed already standing off from adsb.lol still got asked for
+     * routes, spending the allowance the standoff existed to protect.
+     *
+     * The visible consequence is not a missing route. It is an EMPTY SCOPE —
+     * the aircraft feed refused, because a second endpoint was quietly
+     * competing with it for one shared Cloudflare egress address.
+     *
+     * `inCooldown`'s own comment says "the standing refusal for a PROVIDER".
+     * Use the provider's id.
+     */
+    const cool = await inCooldown(request, ROUTE_SOURCE.id).catch(() => null);
     if (cool) {
       return problem(`route not asked — ${cool.reason}, standing off for up to ${cool.seconds ?? '?'}s`, { status: 503 });
     }
@@ -206,11 +222,14 @@ export async function onRequestGet({ request }) {
 
     if (res.status === 429 || res.status === 403) {
       const after = Number(res.headers?.get?.('retry-after'));
+      // Recorded against the PROVIDER, so the traffic feed backs off too. The
+      // limit that produced this is per IP across their whole API; a refusal
+      // earned here is a refusal the aircraft feed is about to earn as well.
       await noteRefusal(
         request,
-        `${ROUTE_SOURCE.id}:route`,
+        ROUTE_SOURCE.id,
         cooldownSeconds(res.status, after),
-        `refused us (HTTP ${res.status})`,
+        `refused us (HTTP ${res.status}) on the route feed`,
       ).catch(() => {});
     }
 

@@ -1070,7 +1070,12 @@ async function main() {
     /* ---- 3. acceptance criterion 4: every readout traces to a field ----- */
     await checkProvenanceCoverage(browser, base);
     await checkStoredLevelling(browser, base);
-    await checkRadarTap(browser, base);
+    // BOTH INPUT MODES. Noah reported tap-to-follow broken on his iPad while
+    // this check — which only ever drove a MOUSE — was green. A mouse click
+    // and a touch tap are different event paths, and the device this app is
+    // built for only has one of them.
+    await checkRadarTap(browser, base, { touch: false });
+    await checkRadarTap(browser, base, { touch: true });
     await checkCentrePicker(browser, base);
     await checkUpdateStrip(browser);
     await checkFirstRunIntro(browser, base);
@@ -1419,9 +1424,9 @@ async function checkNoSecrets(base) {
  * So this drives a real pointer at a real aircraft's drawn position, using the
  * SAME geometry the renderer uses, and asserts the follow actually started.
  */
-async function checkRadarTap(browser, base) {
-  const where = 'radar-tap';
-  const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+async function checkRadarTap(browser, base, { touch = false } = {}) {
+  const where = touch ? 'radar-tap/touch' : 'radar-tap/mouse';
+  const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [], hasTouch: touch });
   await seenIntro(context);
   await context.route('**/api/traffic**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) }),
@@ -1469,7 +1474,8 @@ async function checkRadarTap(browser, base) {
     return;
   }
 
-  await page.mouse.click(target.clientX, target.clientY);
+  if (touch) await page.touchscreen.tap(target.clientX, target.clientY);
+  else await page.mouse.click(target.clientX, target.clientY);
   await page.waitForTimeout(400);
 
   const after = await page.evaluate(() => ({

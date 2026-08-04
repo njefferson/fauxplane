@@ -11,7 +11,7 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.21.0 is on staging: https://staging.fauxplane.pages.dev**
+**1.21.1 is on staging: https://staging.fauxplane.pages.dev**
 
 **THE ONE THING TO DO ON THIS BUILD: follow a flight, then open the
 diagnostics report behind the version stamp and send it.** 1.21.0 ships the
@@ -2264,6 +2264,67 @@ view is checked WITH aircraft on it rather than empty.
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
   airborne and being heard right now.
+
+---
+
+## 1.21.1 — the route feed was starving the radar, 2026-08-04
+
+Noah, within the hour of 1.21.0 landing: *"You broke touch to add on the
+radar."*
+
+**He was right, and the touch handling was not the fault.** Tap-to-follow was
+driven under real touch emulation — canvas tap, the "heard right now" list and
+the centre picker, at phone size — and all three work. What 1.21.0 broke was
+the thing that puts aircraft ON the scope, and an empty scope has nothing to
+tap. The report was accurate; my first instinct to look at the tap handler was
+not where the defect lived.
+
+### The defect, in one string
+
+`functions/api/route.js` recorded and read its provider stand-off under
+`adsb.lol:route` instead of `adsb.lol`.
+
+That reads like careful scoping and is exactly backwards. **adsb.lol rate limit
+per IP across their whole API**, so a per-endpoint cooldown is not a cooldown.
+It failed in both directions:
+
+- a 429 earned by a ROUTE request never told the TRAFFIC feed to back off, so
+  the traffic feed kept asking and kept being refused;
+- a traffic feed already standing off from adsb.lol still got asked for routes,
+  spending the very allowance the stand-off existed to protect.
+
+`inCooldown`'s own docstring says *"the standing refusal for a PROVIDER"*. The
+call site ignored it.
+
+**The symptom is not a missing route.** It is an EMPTY SCOPE, because the
+aircraft feed is the one running every ten seconds behind the surface the
+reader is actually looking at.
+
+### What else changed
+
+The client will not ask for a route at all while the traffic feed is failing.
+Both endpoints are one service on one shared Cloudflare address; a route is a
+nicety and the aircraft ARE the instrument. Buying a line of text with the
+contents of the radar is the wrong trade, and now it cannot happen.
+
+### Why nothing caught it, and what does now
+
+Three tests were written for this and the first two were worthless. They called
+`noteRefusal` with the right id and asserted the right consequence — **and they
+both passed while route.js was writing the wrong key**, because they never went
+near route.js's call site. That is hub LESSONS §42 in this repo, one day after
+it was written down: *a gate on the decision function cannot see the path that
+never asks it.*
+
+The third drives `onRequestGet` itself with a stubbed `caches` and a 429, and
+reads the key the handler actually wrote. It was watched failing on the shipped
+bug before being kept. There is a plant for it too.
+
+**And the accessibility gate only ever drove a MOUSE.** It ran `checkRadarTap`
+with `page.mouse.click`, was green throughout, and the device this app exists
+for has no mouse. The check now runs under both input modes, so a touch-only
+break has something watching it. That gap was invisible for as long as the
+check has existed.
 
 ---
 

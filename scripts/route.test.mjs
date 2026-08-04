@@ -14,7 +14,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseRoute } from '../functions/api/route.js';
+import { ROUTE_SOURCE, onRequestGet, parseRoute } from '../functions/api/route.js';
+import { inCooldown, noteRefusal } from '../functions/api/_lib.js';
 import { createRouteSource, routeCaveat, routeLine } from '../public/src/data/route.js';
 
 test('route: the rich form, with names and positions', () => {
@@ -194,4 +195,104 @@ test('route source: a feed that fails says so instead of going quiet', async () 
   assert.equal(r.state, 'none');
   assert.match(r.reason, /unreachable/);
   assert.equal(routeLine(r), null, 'a failed fetch must never render as a route');
+});
+
+/**
+ * THE STANDOFF IS PER PROVIDER, AND THIS IS THE TEST THAT WOULD HAVE CAUGHT IT.
+ *
+ * 1.21.0 shipped with the route feed keying its cooldown as `adsb.lol:route`.
+ * That reads like scoping and is the opposite: adsb.lol rate limit per IP
+ * across their whole API, so a private cooldown for one endpoint is no cooldown
+ * at all. Two failures, in opposite directions, from one wrong string:
+ *
+ *   · a 429 earned by a ROUTE request never told the TRAFFIC feed to back off
+ *   · a traffic feed already standing off still got asked for routes
+ *
+ * And the symptom is not a missing route — it is an EMPTY SCOPE, because the
+ * aircraft feed is the one that runs every ten seconds and loses the race for a
+ * shared Cloudflare egress address.
+ */
+test('cooldown: a refusal on the route feed silences the aircraft feed too', async () => {
+  const store = new Map();
+  const cache = {
+    put: async (req, res) => store.set(req.url, res),
+    match: async (req) => store.get(req.url) ?? null,
+  };
+  const request = new Request('https://example.test/api/route?callsign=UAL328&lat=1&lon=2');
+
+  // What route.js records when adsb.lol refuses it: the PROVIDER's id.
+  await noteRefusal(request, ROUTE_SOURCE.id, 600, 'refused us (HTTP 429) on the route feed', cache);
+
+  const seenByTraffic = await inCooldown(request, 'adsb.lol', cache);
+  assert.ok(
+    seenByTraffic,
+    'a refusal earned on the route feed must be visible to the traffic feed — they share one IP and one allowance',
+  );
+  assert.equal(seenByTraffic.id, 'adsb.lol');
+
+  // The endpoint-scoped key is what shipped, and it is what must never come back.
+  assert.equal(
+    await inCooldown(request, 'adsb.lol:route', cache),
+    null,
+    'the standoff must not be recorded under a per-endpoint key',
+  );
+});
+
+test('cooldown: the route feed honours a standoff the aircraft feed earned', async () => {
+  const store = new Map();
+  const cache = { put: async (r, v) => store.set(r.url, v), match: async (r) => store.get(r.url) ?? null };
+  const request = new Request('https://example.test/api/route?callsign=UAL328&lat=1&lon=2');
+
+  // Traffic got a 429 first — the ordinary case, since it asks far more often.
+  await noteRefusal(request, 'adsb.lol', 60, 'rate limited (HTTP 429)', cache);
+
+  // route.js checks exactly this key before sending anything upstream.
+  const seenByRoute = await inCooldown(request, ROUTE_SOURCE.id, cache);
+  assert.ok(seenByRoute, 'the route feed must not ask a provider the traffic feed has just agreed to leave alone');
+  assert.match(seenByRoute.reason, /429/);
+
+  // A DIFFERENT provider is untouched: this is a standoff, not a mute button.
+  assert.equal(await inCooldown(request, 'adsb.fi', cache), null);
+});
+
+/**
+ * DRIVEN THROUGH `onRequestGet`, AND THAT IS THE WHOLE POINT OF THIS ONE.
+ *
+ * The two tests above call `noteRefusal` with the right id and assert the right
+ * thing happens — and they would BOTH have passed while route.js was writing
+ * `adsb.lol:route`, because they never went near route.js's call site. That is
+ * hub LESSONS §42 exactly: a gate on the decision function cannot see the path
+ * that never asks it. So this one makes the real handler run and reads what it
+ * actually wrote.
+ */
+test('the route handler records its refusal against the PROVIDER, through the real path', async () => {
+  const store = new Map();
+  const fakeCache = {
+    put: async (req, res) => store.set(typeof req === 'string' ? req : req.url, res),
+    match: async (req) => store.get(typeof req === 'string' ? req : req.url) ?? null,
+    delete: async () => true,
+  };
+  const realCaches = globalThis.caches;
+  const realFetch = globalThis.fetch;
+  globalThis.caches = { default: fakeCache };
+  // adsb.lol turning us away, with no Retry-After, which is the common shape.
+  globalThis.fetch = async () => new Response('{}', { status: 429, headers: { 'content-type': 'application/json' } });
+
+  try {
+    const request = new Request('https://example.test/api/route?callsign=UAL328&lat=38.7&lon=-121.0');
+    await onRequestGet({ request });
+
+    const keys = [...store.keys()];
+    assert.ok(
+      keys.some((k) => /adsb\.lol/.test(k) && !/adsb\.lol:route|adsb\.lol%3Aroute/.test(k)),
+      `the standoff must be keyed on the provider; the handler wrote ${JSON.stringify(keys)}`,
+    );
+    assert.ok(
+      !keys.some((k) => /adsb\.lol:route|adsb\.lol%3Aroute/.test(k)),
+      `a per-endpoint standoff is not a standoff — the handler wrote ${JSON.stringify(keys)}`,
+    );
+  } finally {
+    globalThis.caches = realCaches;
+    globalThis.fetch = realFetch;
+  }
 });

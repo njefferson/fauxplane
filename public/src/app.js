@@ -389,6 +389,18 @@ async function boot() {
   const refreshRoute = async () => {
     const a = traffic.followed;
     if (!a?.callsign) return;
+    /**
+     * NOT WHILE THE AIRCRAFT FEED IS STRUGGLING, and this is a priority call
+     * rather than politeness. Both endpoints are adsb.lol — one shared
+     * Cloudflare egress address, one allowance — so a route request and a
+     * traffic request compete, and the traffic request is the one running every
+     * ten seconds behind the thing the reader is actually looking at.
+     *
+     * A route is a nicety. The aircraft ARE the instrument. If the scope is
+     * already being refused, spending the next request on a route would buy a
+     * line of text with the contents of the radar.
+     */
+    if (traffic.last && !traffic.last.ok) return;
     await route.forFlight(a.callsign, { lat: a.lat, lon: a.lon });
     const line = routeLine(route.current);
     const caveat = routeCaveat(route.current);

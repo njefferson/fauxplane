@@ -199,6 +199,22 @@ const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // SHIPPED IN 1.21.0 AND FIXED IN 1.21.1. Keying the route feed's cooldown
+    // as `adsb.lol:route` reads like careful scoping and is the opposite:
+    // adsb.lol rate limit per IP across their whole API, so a per-endpoint
+    // standoff is no standoff. A 429 earned by a route request never told the
+    // traffic feed to back off, and the visible symptom was not a missing
+    // route — it was an EMPTY SCOPE, because the aircraft feed is the one
+    // running every ten seconds.
+    name: 'etiquette: the route feed gets a private cooldown the traffic feed cannot see',
+    check: 'a refusal stands the whole PROVIDER down, not one endpoint',
+    gate: 'tests',
+    file: 'functions/api/route.js',
+    find: '        ROUTE_SOURCE.id,\n        cooldownSeconds(res.status, after),',
+    replace: '        `${ROUTE_SOURCE.id}:route`,\n        cooldownSeconds(res.status, after),',
+    expect: /provider|standoff|stand-off/i,
+  },
+  {
     // The synthetic-data path this parser could grow. One airport is not a
     // route, and an off-by-one here turns "KSAC" into "KSAC → KSAC" — a
     // departure and arrival at the same field, invented by arithmetic rather
