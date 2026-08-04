@@ -4870,7 +4870,21 @@ boot, dimmed with a colour token, its contrast pair in the gate), branches.
 
 Not done, and why:
 - **Hub wiring (§13.6)** — the hub links out to the app, the app links back, and
-  its About links the shared accessibility statement. The app already links to
-  `noahjefferson.pages.dev/accessibility` in its footer. The hub's outbound link
-  waits on a deploy; there is no URL to point at yet.
+  its About links the shared accessibility statement. Two of the three are done:
+  the app links back to `noahjefferson.pages.dev` from the (i) menu and the
+  footer, and to `/accessibility` from both.
+
+  The hub's outbound link is WRITTEN but NOT LIVE. An app row, its icon and an
+  entry in the hub's shared accessibility statement are committed in the hub on
+  `claude/fauxplane-hub-integration-w6dv11` (`c8f631e`), and the hub deploys only
+  from `main`, so nothing of it is on noahjefferson.pages.dev yet.
+
+  The reason recorded here before — "waits on a deploy; there is no URL to point
+  at yet" — was stale. `fauxplane.pages.dev` has been this repo's website in the
+  hub's `METADATA.md`, applied and verified, since 2026-08-03. Nothing technical
+  is blocking it.
+
+  **What it waits on is Noah.** He decides what goes on the hub, and a session
+  does not put an app there, propose one, or restore one without him naming it
+  (Noah, 2026-08-04).
 - **Repo metadata** — item 6 above.
