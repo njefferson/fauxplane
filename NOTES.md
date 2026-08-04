@@ -2306,12 +2306,21 @@ replace.
 **315 unit tests, the accessibility gate green across 3 viewports x 2 palettes
 x 5 pages, both palettes clearing every hard floor, `pwa-check.mjs` green.**
 
-**Planted faults: 44/45 from the full sweep, and the 45th — the canvas sentinel
-— re-proven individually after the ordering fix above.** Stated that way on
-purpose: the ordering change landed AFTER that sweep, so no single run has yet
-seen all forty-five against this build. A whole-sweep number would be a claim
-about a run that has not happened, which is the kind of rounding-up this file
-exists to prevent. The full sweep is re-running; the next entry records it.
+**Planted faults: 45/45.**
+
+That number took two sweeps and the first one is the interesting half. The first
+came back 44/45 with the canvas sentinel UNPROVEN — the blunting described
+above. The ordering fix landed after it, so for a while the honest claim was
+"44 from a sweep plus one re-proven individually", and this file said exactly
+that rather than rounding up: a whole-sweep number would have been a claim about
+a run that had not happened. The second sweep, against the new ordering, is
+where the 45 comes from.
+
+**Worth keeping as a habit: when a fix lands after the sweep that justified it,
+the sweep is stale.** Both times this file has recorded a number it had not
+earned, it was earned a few minutes later and nobody would have known the
+difference — which is the whole argument for writing the smaller true number
+down in between.
 
 ---
 
