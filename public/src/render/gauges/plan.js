@@ -158,6 +158,30 @@ export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slo
   return best;
 }
 
+/**
+ * Below this drawn length a line cannot carry a direction — it is a speck, and
+ * a speck that claims to be a runway is worse than a symbol that claims to be
+ * an airport. Chosen from the measured sizes: at 40 nm real runways draw 4–9px,
+ * which is squarely under it, and at 10 nm they draw 24px+, which is over.
+ */
+export const RUNWAY_MIN_PX = 14;
+
+/** The airport symbol's radius. Small enough not to compete with a traffic
+ *  mark, big enough to be a deliberate circle rather than a dot. */
+export const AIRPORT_SYMBOL_R = 3.5;
+
+/**
+ * How wide to draw a runway of a given drawn length.
+ *
+ * EXPORTED SO THE TEST USES THIS ONE. The first version of the test declared
+ * its own copy of the formula and asserted things about the copy — which would
+ * have stayed green with any width at all in the renderer. That is hub LESSONS
+ * §42 in miniature: a check on a decision the shipped code never consults.
+ */
+export function runwayWidthPx(len) {
+  return Math.max(2, Math.min(7, len * 0.13));
+}
+
 export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [] }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
@@ -194,33 +218,74 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   }
 
   /**
-   * --- RUNWAYS (Noah, 2026-08-03: "Show the runway at airports.") -----------
+   * --- RUNWAYS AND AIRPORTS (Noah, 2026-08-03: "Show the runway at airports.")
+   *
+   * TWO MARKS, AND THE CHOICE BETWEEN THEM IS THE WHOLE FIX. Noah,
+   * 2026-08-04: "Why does every runway look exactly the same even at different
+   * scales?" Measured against the real navdata at a 350px scope radius, he was
+   * exactly right and for two compounding reasons:
+   *
+   *   · THE WIDTH FORMULA WAS DEAD. It was `max(1.5, min(5, len * 0.06))`, and
+   *     `len * 0.06` never exceeds 1.44 at any real drawn length, so the `max`
+   *     pinned every runway at 1.5px forever. It had never once varied.
+   *   · TO SCALE, A RUNWAY IS NOTHING AT RANGE. At 40 nm a 4,000 ft strip is
+   *     6px; at 80 nm it is 3px and culled. A 3,000 ft runway and a 6,000 ft
+   *     one differ by five pixels of length at identical width — which is to
+   *     say they look identical, because they are.
+   *
+   * Drawing them bigger than they are would be a lie about a distance, which
+   * this panel does not tell. So below the length where a line can carry
+   * ORIENTATION, the mark becomes an AIRPORT SYMBOL — a small open circle, the
+   * same convention every aeronautical chart uses — placed once per airport
+   * rather than once per runway. A symbol is not a scale drawing and does not
+   * claim to be one; that is exactly why it is honest at range.
+   *
+   * Above that length the runway is drawn where it is, pointing where it
+   * points, from real threshold coordinates, with a width that now actually
+   * scales.
    *
    * Drawn UNDER everything else, because they are the ground and the aircraft
-   * are above it. Real threshold coordinates from OurAirports, both ends, so a
-   * line is the runway where it is and pointing where it points — not a symbol
-   * placed near an airport.
-   *
-   * A RUNWAY TOO SHORT TO BE A LINE IS NOT DRAWN. At 80 nm an 8,600 ft runway
-   * is under three pixels, which is a speck indistinguishable from a traffic
-   * symbol on a scope whose whole job is telling marks apart. It reappears as
-   * the reader zooms in, which is what a real ND does.
+   * are above it.
    */
   ctx.save();
-  ctx.strokeStyle = tokens['text-3'];
   ctx.lineCap = 'butt';
+  const drawn = [];
   for (const rw of runways) {
     const a = project(rw.le, { centre, pxPerNm, cx, cy });
     const b = project(rw.he, { centre, pxPerNm, cx, cy });
     if (!a || !b) continue;
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    if (len < 6) continue;
-    // Wide enough to read as a strip rather than a hairline, and never so wide
-    // that two parallels merge into one at close range.
-    ctx.lineWidth = Math.max(1.5, Math.min(5, len * 0.06));
+    drawn.push({ rw, a, b, len: Math.hypot(b.x - a.x, b.y - a.y) });
+  }
+
+  // The airports whose longest runway is too short to read as a direction.
+  // Grouped, so a field with three runways is one symbol rather than three
+  // specks stacked in the same place.
+  const byAirport = new Map();
+  for (const d of drawn) {
+    const cur = byAirport.get(d.rw.ident);
+    if (!cur || d.len > cur.len) byAirport.set(d.rw.ident, d);
+  }
+
+  ctx.strokeStyle = tokens['text-3'];
+  for (const d of drawn) {
+    if (d.len < RUNWAY_MIN_PX) continue;
+    // Proportional and visible: a strip, not a hairline, and never so wide that
+    // two parallel runways merge at close range.
+    ctx.lineWidth = runwayWidthPx(d.len);
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
+    ctx.moveTo(d.a.x, d.a.y);
+    ctx.lineTo(d.b.x, d.b.y);
+    ctx.stroke();
+  }
+
+  // One symbol per airport that is too small to draw as a runway.
+  ctx.lineWidth = 1.5;
+  for (const d of byAirport.values()) {
+    if (d.len >= RUNWAY_MIN_PX) continue;
+    const mx = (d.a.x + d.b.x) / 2;
+    const my = (d.a.y + d.b.y) / 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, AIRPORT_SYMBOL_R, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.restore();

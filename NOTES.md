@@ -9,6 +9,58 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
+## STAGED NOW — 1.25.1, runways measured rather than eyeballed, 2026-08-04
+
+**1.25.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.23.1.
+
+Noah: *"Why does every runway look exactly the same even at different scales?"*
+
+### Measured against the real navdata, and he was right twice over
+
+Computed from `navdata.json` at a 350px scope radius, for the runways actually
+near his home reference:
+
+- at **10 nm**, the closest runway draws **24px**
+- at **20 nm**, 8.6–17.3px
+- at **40 nm**, 4.3–8.6px, several culled
+- at **80 nm**, 2.2–4.3px, nearly all culled
+
+**And the width was 1.5px in every one of those cases.** The formula was
+`max(1.5, min(5, len * 0.06))`; `len * 0.06` reaches 1.44 at the largest size a
+real runway ever draws, so the `max` pinned it at 1.5 permanently. It had never
+varied once since it shipped.
+
+**The precision matters and the first test got it wrong.** The formula is not
+constant for arbitrary lengths — at 40px it gives 2.4 — it is constant across
+**the lengths real runways reach**. A test asserting the general claim failed,
+correctly, and was rewritten around the ten measured sizes.
+
+### The honest fix is two marks, not a bigger line
+
+Drawing a runway larger than it is would be a lie about a distance, which this
+panel does not tell. So below `RUNWAY_MIN_PX` — the length at which a line can
+carry an ORIENTATION at all — the mark becomes an **airport symbol**: a small
+open circle, the convention every aeronautical chart uses, drawn **once per
+airport** rather than once per runway (a field with three runways was three
+specks stacked in the same place).
+
+Above it, the runway is drawn from real threshold coordinates as before, with a
+width that now actually scales.
+
+**A symbol is not a scale drawing and does not claim to be one.** That is
+precisely why it is honest at range, and why this is not the same as inflating
+the line.
+
+### The test caught a flaw in the test
+
+The width test declared its OWN copy of the formula. Planting a constant into
+`plan.js` left it green — a check on a decision the shipped code never
+consults, which is hub LESSONS §42 in miniature. `runwayWidthPx` is exported
+now and the test imports it; the plant then goes red as it should.
+
+---
+
 ## STAGED NOW — 1.25.0, and a test found a bug nobody reported, 2026-08-04
 
 **1.25.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on

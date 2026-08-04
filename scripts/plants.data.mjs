@@ -177,6 +177,20 @@ export const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // Noah, 2026-08-04: "Why does every runway look exactly the same even at
+    // different scales?" The width was `max(1.5, min(5, len * 0.06))` and
+    // `len * 0.06` never reaches 1.5 at any size a real runway draws — so it
+    // was pinned at 1.5 for every runway at every range, forever. Putting a
+    // constant back is the defect.
+    name: 'runways: the width goes back to a constant hairline',
+    check: 'a runway is drawn as a strip whose width varies with its size',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: '  return Math.max(2, Math.min(7, len * 0.13));',
+    replace: '  return Math.max(1.5, Math.min(5, len * 0.06));',
+    expect: /same width|hairline|pinned at 1\.5/i,
+  },
+  {
     // FOUND BY THE FIRST RUN OF invariants.test.mjs, not by a person. The
     // followed aircraft was `list[0]` — whatever came back, adopted without
     // checking it was the aircraft we asked about. Real numbers, real

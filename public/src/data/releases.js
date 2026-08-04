@@ -29,6 +29,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.25.1',
+    date: '2026-08-04',
+    headline: 'Runways stop being identical hairlines, and airports get their own mark.',
+    changed: [
+      'You asked why every runway looks the same at every scale. Two reasons, and I measured both against the real airport data rather than guessing.',
+      'The width was pinned. The formula worked out to 1.5 pixels for every runway at every range — it had never varied once, for any airport, since the day it shipped. Width now rises with the runway\u2019s drawn size.',
+      'And at 40 or 80 miles a real runway is three to nine pixels long. Drawn honestly it is a speck; drawn bigger it would be a lie about a distance. So below the size where a line can actually show you a DIRECTION, it becomes a small circle — the airport symbol every aeronautical chart uses — one per airport rather than one per runway.',
+      'Zoom in and the circles become real runways again, where they are, pointing where they point. That is what a real navigation display does.',
+    ],
+    broken: [
+      'The route still does not appear. Follow a flight and send the report — 1.24.1 added the last piece I need.',
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+    ],
+  },
+  {
     version: '1.25.0',
     date: '2026-08-04',
     headline: 'The panel now checks the aeroplane it was handed is the one it asked for.',

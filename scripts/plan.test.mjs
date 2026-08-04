@@ -14,7 +14,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { placeLabels } from '../public/src/render/gauges/plan.js';
+import { placeLabels, RUNWAY_MIN_PX, runwayWidthPx} from '../public/src/render/gauges/plan.js';
 
 /** A monospace-ish stand-in: every glyph six pixels wide. */
 const measure = (t) => t.length * 6;
@@ -115,4 +115,70 @@ test('TAP: the NEAREST of two close symbols wins — a tap is not a lottery', ()
   const far = { hex: 'f1', lat: 39.05, lon: -121.0 };
   assert.equal(hitTestAircraft([far, near], VIEW, 200, 106, 44)?.hex, 'n1');
   assert.equal(hitTestAircraft([near, far], VIEW, 200, 106, 44)?.hex, 'n1');
+});
+
+/**
+ * RUNWAY WIDTH, WHICH WAS DEAD CODE FOR EVERY RUNWAY AT EVERY RANGE.
+ *
+ * Noah, 2026-08-04: "Why does every runway look exactly the same even at
+ * different scales?" The formula was `max(1.5, min(5, len * 0.06))`, and
+ * `len * 0.06` never reaches 1.5 at any drawn length a real runway produces —
+ * a 24px runway gives 1.44 — so the `max` pinned it at 1.5 permanently. Every
+ * runway, every range, one width, forever.
+ *
+ * This is the shape of defect a unit test catches instantly and a screenshot
+ * never does, because 1.5px and 1.44px look the same and BOTH look wrong only
+ * once you know what you are looking at.
+ */
+// IMPORTED, not re-declared. See the note on runwayWidthPx in plan.js.
+const runwayWidth = runwayWidthPx;
+
+/**
+ * MEASURED, not invented. These are the drawn lengths real NorCal runways
+ * actually produce on a 350px scope at 10/20/40/80 nm, computed from
+ * `navdata.json`: 2.2px at the far end up to 24px for the closest at 10 nm.
+ *
+ * The distinction matters and the first version of this test got it wrong: the
+ * old formula is NOT constant for arbitrary lengths — at 40px it gives 2.4 —
+ * it is constant across the lengths REAL RUNWAYS REACH, because none of them
+ * reaches 25px. A test using invented sizes proved a claim nobody made.
+ */
+const REAL_DRAWN_PX = [2.2, 2.9, 4.3, 5.8, 6, 8.6, 11.5, 12, 17.3, 24];
+
+test('runway width: it varies across the sizes real runways actually reach', () => {
+  const widths = new Set(REAL_DRAWN_PX.map((l) => runwayWidth(l).toFixed(2)));
+  assert.ok(widths.size > 1, `every real runway drew the same width: ${[...widths]}`);
+
+  // The old formula, kept as the thing that must never come back. Across every
+  // size a real runway reaches, it produced ONE number.
+  const dead = new Set(REAL_DRAWN_PX.map((l) => Math.max(1.5, Math.min(5, l * 0.06)).toFixed(2)));
+  assert.deepEqual([...dead], ['1.50'], 'the old formula was pinned at 1.5 for every real runway — that is why this exists');
+});
+
+test('runway width: it is a strip at every size, never a hairline', () => {
+  for (const len of [...REAL_DRAWN_PX, 14, 20, 40, 80, 200]) {
+    const w = runwayWidth(len);
+    assert.ok(w >= 2, `${len}px runway drew a ${w}px hairline`);
+    assert.ok(w <= 7, `${len}px runway drew ${w}px — two parallels would merge`);
+  }
+});
+
+test('runway width: it rises with length and then stops', () => {
+  assert.ok(runwayWidth(40) > runwayWidth(20), 'a longer runway must be wider');
+  assert.equal(runwayWidth(200), runwayWidth(1000), 'past the cap it must not keep growing');
+});
+
+/**
+ * THE THRESHOLD IS THE HONEST PART. Below it a line cannot carry a direction,
+ * so the mark becomes an airport SYMBOL rather than a runway drawn bigger than
+ * it is — which would be a lie about a distance.
+ */
+test('runway threshold: real runways fall the right side of it at each range', () => {
+  // A 4,000 ft runway is about 0.66 nm; a 350px scope radius is typical.
+  const drawnPx = (nm, rangeNm) => nm * (350 / rangeNm);
+  assert.ok(drawnPx(0.66, 10) >= RUNWAY_MIN_PX, 'at 10 nm a small runway must draw as a runway');
+  assert.ok(drawnPx(0.66, 40) < RUNWAY_MIN_PX, 'at 40 nm it cannot, and must become a symbol');
+  assert.ok(drawnPx(0.66, 80) < RUNWAY_MIN_PX, 'at 80 nm certainly not');
+  // A big one — 12,000 ft, about 2 nm — should survive further out.
+  assert.ok(drawnPx(2.0, 20) >= RUNWAY_MIN_PX, 'a major runway must still read at 20 nm');
 });
