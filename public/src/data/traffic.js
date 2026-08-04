@@ -129,6 +129,98 @@ export function withinBand(aircraft, ownAltFt, bandId) {
 
 /** Fields FOLLOW takes ownership of. Listed once, so releasing them on unfollow
  *  cannot drift from claiming them. */
+/**
+ * HOW OFTEN THE FOLLOWED AIRCRAFT IS ASKED, and how long its answer lives.
+ *
+ * THESE TWO BELONG TOGETHER AND USED NOT TO BE. The poll was in `app.js` and
+ * the freshness windows were the field registry's — chosen from how fast each
+ * quantity CHANGES, which is the right rule for a sensor this device reads at
+ * 25 Hz and the wrong one for the same field when a ten-second poll owns it.
+ *
+ * Heading is the case that proved it: the registry gives `attitude.heading` a
+ * 5 s staleMs, and following an aircraft fills that field from THIS poll. The
+ * limit was half the cadence, so HDG could not be anything but FAIL — the panel
+ * declared its own freshest possible data dead. Noah photographed the result:
+ * every instrument crossed out, on a feed that was working, with PWR ON.
+ *
+ * `traffic-pacing.test.mjs` holds the relationship rather than the numbers, so
+ * changing the poll cannot quietly re-create the defect.
+ */
+export const FOLLOW_POLL_MS = 10_000;
+
+/**
+ * One missed poll is nothing; six is a feed that has stopped. LIVE spans two
+ * polls, FAIL waits for nine — the same shape the registry already chose for
+ * the other ADS-B fields (`nav.selectedAltitude` and friends, 20 s / 90 s), so
+ * this is matching a precedent rather than inventing a threshold.
+ */
+export const FOLLOW_WINDOWS = Object.freeze({ freshMs: 2 * FOLLOW_POLL_MS, staleMs: 9 * FOLLOW_POLL_MS });
+
+/**
+ * WHAT STATE THE SCOPE IS IN, AND WHETHER A TAP WOULD DO ANYTHING.
+ *
+ * Noah, 2026-08-04: *"It would be nice to have an indicator that shows when the
+ * radar is populated and another for any other states like being ready to
+ * tap."* He asked because he could not tell a scope that was still filling from
+ * one that was finished, and could not tell either from one whose aircraft were
+ * drawn but not yet tappable.
+ *
+ * ONE FUNCTION, READ BY BOTH THE INDICATOR AND THE TAP HANDLER, and that is the
+ * whole design rather than a tidiness preference. An indicator computing "ready
+ * to tap" separately from the code that handles the tap is two opinions about
+ * one fact, and they drift — hub LESSONS §42 is exactly this shape. `tappable`
+ * here IS the tap handler's precondition.
+ *
+ * Pure, so every sentence it can produce is testable without a browser.
+ */
+export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0, following = null }) {
+  const count = aircraft.length;
+  /**
+   * THE TAP'S REAL PRECONDITION: a centre to measure bearings from, and at
+   * least one aircraft currently drawn. Without the centre the hit test has no
+   * geometry; without an aircraft there is nothing under the finger. Both are
+   * what `radar.js` checks before it hit-tests, and it now asks THIS.
+   */
+  const tappable = !!result?.centre && count > 0;
+  const ageS = nearbyAt === null ? null : Math.max(0, Math.round((now - nearbyAt) / 1000));
+
+  if (following) {
+    return { state: 'following', tappable, label: `FOLLOWING ${following}`, detail: 'The panel is showing that aircraft. Tap another to switch.' };
+  }
+  if (!result) {
+    return { state: 'listening', tappable: false, label: 'LISTENING', detail: 'Waiting for the first sweep — nothing to tap yet.' };
+  }
+  if (!result.ok) {
+    // REFUSED, BUT NOT NECESSARILY EMPTY. Aircraft heard before the refusal are
+    // real observations that stay on the scope and stay tappable; saying
+    // otherwise would be as wrong as pretending the feed is healthy.
+    return count
+      ? {
+          state: 'ageing',
+          tappable,
+          label: `AGEING · ${count}`,
+          detail:
+            `The feed is not answering. ${count === 1 ? 'This is the last aircraft' : `These are the last ${count} aircraft`}`
+            + ` actually heard${ageS === null ? '' : `, ${ageS}s ago`} — still tappable.`,
+        }
+      : { state: 'refused', tappable: false, label: 'NO CONTACT', detail: 'The feed is not answering and nothing has been heard yet.' };
+  }
+  if (!count) {
+    return { state: 'empty', tappable: false, label: 'NO CONTACT', detail: 'The sweep worked and nothing is in range. Try a wider range or another band.' };
+  }
+  return {
+    state: 'contact',
+    // THE COMPUTED ONE, not a literal. This branch said `true` outright and a
+    // test caught it: a healthy sweep with no centre yet would have advertised
+    // "tap one to follow it" over a scope whose hit test returns immediately.
+    // That is the very drift this function exists to prevent, committed inside
+    // the function itself.
+    tappable,
+    label: `CONTACT · ${count}`,
+    detail: `${count === 1 ? 'One aircraft' : `${count} aircraft`} on the scope${ageS === null ? '' : `, heard ${ageS}s ago`} — tap one to follow it.`,
+  };
+}
+
 export const FOLLOW_WRITES = [
   'nav.selectedAltitude',
   'nav.selectedHeading',
@@ -696,7 +788,11 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       const from = `broadcast by ${a.callsign ?? a.hex} via ${via}`;
       const put = (path, value) => {
         if (value === null || value === undefined) return false;
-        state.write(path, value, { at, reason: from });
+        // THE FEED'S WINDOW, NOT THE REGISTRY'S — see FOLLOW_WINDOWS. These
+        // fields are normally this device's own sensors at 25 Hz; while an
+        // aircraft owns them they arrive once per FOLLOW_POLL_MS, and holding
+        // them to a sensor's limits crossed the whole panel out.
+        state.write(path, value, { at, reason: from, windows: FOLLOW_WINDOWS });
         return true;
       };
 
@@ -748,9 +844,13 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
         derivedBank = bankAngle({ groundspeedKt: state.peek('position.groundspeed'), turnRateDegPerSec: derivedTurn });
         derivedG = loadFactorFromBank({ bankDeg: derivedBank });
       }
-      writeDerived(state, 'attitude.turnRate', derivedTurn, at);
-      writeDerived(state, 'attitude.roll', derivedBank, at);
-      writeDerived(state, 'motion.gLoad', derivedG, at);
+      // Computed FROM the broadcast, so they age with it. Left on the sensor
+      // windows these crossed out between polls while the numbers they were
+      // computed from were still LIVE — a derived value expiring before its
+      // own input.
+      writeDerived(state, 'attitude.turnRate', derivedTurn, at, FOLLOW_WINDOWS);
+      writeDerived(state, 'attitude.roll', derivedBank, at, FOLLOW_WINDOWS);
+      writeDerived(state, 'motion.gLoad', derivedG, at, FOLLOW_WINDOWS);
 
       // --- and the ones it does not -----------------------------------------
       for (const [path, reason] of Object.entries(FOLLOW_FAILS)) state.fail(path, reason);
@@ -759,7 +859,7 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
       // it from the ground track would be asserting there is no wind, which for
       // an airliner at altitude is the one thing certainly untrue.
       if (a.headingDeg !== null && a.headingDeg !== undefined) {
-        state.write('attitude.heading', a.headingDeg, { at, reason: from });
+        state.write('attitude.heading', a.headingDeg, { at, reason: from, windows: FOLLOW_WINDOWS });
       } else {
         state.fail(
           'attitude.heading',
@@ -777,7 +877,7 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
 /** Copy a computed field in, preserving provenance and reason. Mirrors the
  *  writeField helper in app.js; kept local so this module has no import from
  *  the app layer. */
-function writeDerived(state, path, field, at) {
+function writeDerived(state, path, field, at, windows = null) {
   if (!field || field.provenance === 'FAIL') {
     state.fail(path, field?.reason ?? 'not computable');
     return;
@@ -785,7 +885,7 @@ function writeDerived(state, path, field, at) {
   // `derived: true` because these ARE computed, whatever the field registry
   // calls the slot. Without it the turn rate published LIVE while the bank
   // angle derived from it published DERIVED.
-  state.write(path, field.value, { at, reason: field.reason, stale: field.provenance === 'STALE', derived: true });
+  state.write(path, field.value, { at, reason: field.reason, stale: field.provenance === 'STALE', derived: true, windows });
 }
 
 /**

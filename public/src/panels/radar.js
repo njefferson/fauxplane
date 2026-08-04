@@ -27,7 +27,7 @@
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
 import { drawPlan, altLabel, hitTestAircraft } from '../render/gauges/plan.js';
-import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, explainTrafficRefusal, filterByAirframe, ownAltitudeFt, withinBand } from '../data/traffic.js';
+import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, explainTrafficRefusal, filterByAirframe, ownAltitudeFt, radarReadiness, withinBand } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
 import { loadNavdata, parseLatLon, runwaysNear, searchAirports } from '../data/navdata.js';
 
@@ -45,6 +45,16 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
   const surface = createSurface(canvas);
 
   const status = el('p', { class: 'radar-status', role: 'status', 'aria-live': 'polite', text: 'Waiting for the first sweep.' });
+  /**
+   * THE STATE OF THE SCOPE, AT A GLANCE (Noah, 2026-08-04).
+   *
+   * `aria-hidden` because every word in it is already in `status`, which is
+   * the live region — announcing both would read the same state twice to a
+   * screen reader. This is the SEEN copy; `status` is the SPOKEN one.
+   */
+  const readyChip = el('p', { class: 'radar-ready', 'aria-hidden': 'true', text: 'LISTENING' });
+  /** The last readiness computed, so the tap handler and the chip cannot disagree. */
+  let readiness = { tappable: false };
   const list = el('div', { class: 'radar-list', role: 'group', 'aria-label': 'Aircraft heard, nearest first', tabindex: '0' });
   /** Outside the scroller on purpose: a "scroll for more" that itself scrolls
    *  out of view is the one place it must not be. */
@@ -182,7 +192,10 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
   // is an enhancement rather than the only way.
   canvas.addEventListener('click', (e) => {
     const result = traffic.last;
-    if (!result?.centre) return;
+    // THE SAME PREDICATE THE CHIP SHOWS. Asking a second question here is how
+    // an indicator that says "tap to follow" ends up on a scope that ignores
+    // taps — two opinions about one fact, which is hub LESSONS 42.
+    if (!readiness.tappable || !result?.centre) return;
     const rect = canvas.getBoundingClientRect();
     // THE SAME SET THE SCOPE IS DRAWING. Hit-testing the unfiltered list would
     // follow an aircraft the band is hiding — a tap on empty space picking
@@ -366,6 +379,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       ]),
       el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),
       bandHost,
+      readyChip,
       canvas,
       status,
       attribution,
@@ -570,6 +584,20 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       const ownAltFt = ownAltitudeFt(snapshot.fields, traffic.followed);
       lastOwnAltFt = ownAltFt;
       const aircraft = withinBand(traffic.nearby, ownAltFt, bandId);
+
+      // ONE COMPUTATION, READ BY THE CHIP AND BY THE TAP. See radarReadiness.
+      readiness = radarReadiness({
+        result,
+        aircraft,
+        nearbyAt: result?.nearbyAt ?? null,
+        now: snapshot.t,
+        following: traffic.followLabel,
+      });
+      readyChip.textContent = readiness.label;
+      readyChip.dataset.state = readiness.state;
+      // THE CHIP SAYS WHETHER A TAP WOULD DO ANYTHING, because "populated" and
+      // "ready to tap" are not the same fact and Noah asked for both.
+      readyChip.dataset.tappable = readiness.tappable ? 'true' : 'false';
 
       if (!result) status.textContent = 'Waiting for the first sweep.';
       else if (!result.ok) {

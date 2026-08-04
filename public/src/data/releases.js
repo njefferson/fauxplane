@@ -29,6 +29,23 @@
  */
 export const RELEASES = [
   {
+    version: '1.22.0',
+    date: '2026-08-04',
+    headline: 'The panel stops crossing itself out while a flight is being followed.',
+    changed: [
+      'You sent a photo of DAL2229 with every instrument crossed out at once — speed, G, attitude, altitude, vertical speed, heading — with the power on and the feed working. That was arithmetic, not a broken feed, and it is fixed.',
+      'Each reading has a limit on how long it stays believable before the panel refuses to show it. Those limits were set for this device\u2019s own sensors, which report many times a second. Heading\u2019s limit was five seconds — and a followed aircraft is asked once every ten. The number was dead before the next one could possibly arrive, every single time.',
+      'The aircraft\u2019s readings now age on the aircraft\u2019s own clock: still shown, still honest about how old they are, but no longer declared dead a moment after they arrive. Nothing is invented and nothing is held longer than it should be — a followed flight goes STALE, and then FAIL, only when the feed has genuinely stopped.',
+      'THE RADAR NOW SAYS WHAT STATE IT IS IN, above the scope. LISTENING before the first sweep. CONTACT with a count once aircraft are on it. AGEING when the feed has stopped answering but the aircraft shown are still real ones. NO CONTACT — which means two different things, so it says which: nothing in range, or the feed will not answer.',
+      'The indicator also tells you when a tap will actually do something. That is a separate fact from the scope being full, which is why it is shown separately: an ageing scope is still tappable, and a fresh sweep with an empty sky is not.',
+    ],
+    broken: [
+      'The route shape is still unconfirmed, so the route may read as unavailable. The diagnostics report behind the version stamp carries WHAT THE ROUTE FEED ACTUALLY SENT — that is the thing to send me.',
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands. AGEING on the indicator is that, named.',
+      'Following an aircraft still crosses out pitch, slip, true and indicated airspeed, and indicated altitude. That is correct and is not this defect — ADS-B does not carry them, and the panel will not invent them.',
+    ],
+  },
+  {
     version: '1.21.1',
     date: '2026-08-04',
     headline: 'The route feed was quietly eating the radar’s allowance. Fixed.',

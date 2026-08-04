@@ -36,7 +36,7 @@ import { probeNetwork, watchNetwork } from './sensors/network.js';
 import { probeMagnetometer } from './sensors/magnetometer.js';
 
 import { createMetarSource } from './data/metar.js';
-import { RADAR_RANGE_NM, createTrafficSource, lastKnownFix, radarCentre, rememberFix } from './data/traffic.js';
+import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, lastKnownFix, radarCentre, rememberFix } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
@@ -96,9 +96,17 @@ const WINDS_INTERVAL_MS = 15 * 60_000;
  * cannot drift back apart.
  */
 const TRAFFIC_INTERVAL_MS = 15_000;
-/** The followed aircraft is polled harder, because it IS the instrument
- *  source — but still under its own 20 s edge cache. */
-const FOLLOW_INTERVAL_MS = 10_000;
+/**
+ * The followed aircraft is polled harder, because it IS the instrument source —
+ * but still under its own 20 s edge cache.
+ *
+ * IMPORTED RATHER THAN DECLARED, and that is the fix for the wall of red
+ * crosses. This number and the freshness windows the followed fields are aged
+ * against have to agree, and while they lived in different files they did not:
+ * a 10 s poll against heading's 5 s limit meant HDG was structurally incapable
+ * of being anything but FAIL. They are declared together now.
+ */
+const FOLLOW_INTERVAL_MS = FOLLOW_POLL_MS;
 
 async function boot() {
   // ---- the build stamp, written at BOOT ------------------------------------

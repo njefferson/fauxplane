@@ -1276,6 +1276,54 @@ body[data-powered='true'] .gate {
   border-color: var(--rail);
 }
 
+/* THE SCOPE'S STATE, AT A GLANCE (Noah, 2026-08-04: "an indicator that shows
+   when the radar is populated and another for any other states like being
+   ready to tap").
+
+   THE WORD CARRIES THE MEANING AND COLOUR ONLY REINFORCES IT (Doctrine §4).
+   CONTACT, AGEING, NO CONTACT, LISTENING and FOLLOWING are distinguishable
+   with every tone stripped out, which is the test — a state legible only as a
+   hue is a state a grayscale render deletes.
+
+   `[data-tappable]` is a SEPARATE channel from `[data-state]` on purpose: an
+   ageing scope is still tappable, and a healthy sweep with nothing in range is
+   not. Those are two facts and one colour cannot hold both. */
+.radar-ready {
+  margin: 0.6rem 0 0.4rem;
+  padding: 0.2rem 0.6rem;
+  align-self: start;
+  display: inline-block;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.radar-ready[data-state="contact"] {
+  color: var(--live);
+  border-color: var(--live);
+}
+.radar-ready[data-state="ageing"] {
+  color: var(--stale);
+  border-color: var(--stale);
+}
+.radar-ready[data-state="refused"] {
+  color: var(--fail);
+  border-color: var(--fail);
+}
+.radar-ready[data-state="following"] {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+/* Ready to tap gets a second, non-hue mark — a thicker rule — so "populated"
+   and "tappable" stay separable without colour. */
+.radar-ready[data-tappable="true"] {
+  border-width: 2px;
+}
+
 .radar-status {
   margin: 0.6rem 0 0.2rem;
   font-size: 0.875rem;

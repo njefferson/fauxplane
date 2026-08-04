@@ -199,6 +199,39 @@ const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // NOAH PHOTOGRAPHED THIS: following DAL2229, every instrument crossed out
+    // at once, PWR ON. "This aircraft makes the whole display look broken
+    // without any data, despite being 'turned on.'" The followed fields were
+    // aged on the registry's SENSOR windows — heading's staleMs is 5 s because
+    // a magnetometer updates many times a second, and the follow poll is 10 s.
+    // A field cannot survive a limit shorter than the cadence that fills it.
+    name: 'follow: the broadcast is aged on a sensor window it cannot possibly meet',
+    check: 'a followed field outlives the poll that fills it',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: '        state.write(path, value, { at, reason: from, windows: FOLLOW_WINDOWS });',
+    replace: '        state.write(path, value, { at, reason: from });',
+    expect: /window|freshness|sensor window/i,
+  },
+  {
+    // AN INDICATOR THAT STOPS TRACKING IS WORSE THAN NO INDICATOR, because the
+    // reader now trusts it. Noah asked for this precisely so he could tell a
+    // filling scope from a finished one; a frozen chip answers every question
+    // with the same word and looks authoritative doing it.
+    //
+    // NOTE ON A PLANT THAT DID NOT WORK. The first version of this deleted the
+    // `readiness.tappable` guard from the tap handler — and the gate stayed
+    // GREEN, correctly: in the scenario the gate drives, the tap succeeds
+    // either way, so removing a guard that was not blocking anything changes
+    // nothing observable. A plant has to break something the check can SEE.
+    name: 'radar: the readiness indicator freezes instead of tracking the scope',
+    check: 'the indicator says which state the scope is actually in',
+    file: 'public/src/panels/radar.js',
+    find: '      readyChip.textContent = readiness.label;\n      readyChip.dataset.state = readiness.state;',
+    replace: "      readyChip.textContent = 'CONTACT';\n      readyChip.dataset.state = 'contact';",
+    expect: /indicator still reads|must name the aircraft/i,
+  },
+  {
     // SHIPPED IN 1.21.0 AND FIXED IN 1.21.1. Keying the route feed's cooldown
     // as `adsb.lol:route` reads like careful scoping and is the opposite:
     // adsb.lol rate limit per IP across their whole API, so a per-endpoint

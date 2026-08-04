@@ -5,25 +5,122 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { POLICIES } from '../functions/api/_lib.js';
-import { FETCH_RANGE_NM, RADAR_RANGE_NM, withRangeAndBearing, withinRange, explainTrafficRefusal } from '../public/src/data/traffic.js';
+import {
+  FETCH_RANGE_NM,
+  FOLLOW_POLL_MS,
+  FOLLOW_WINDOWS,
+  RADAR_RANGE_NM,
+  createTrafficSource,
+  radarReadiness,
+  withRangeAndBearing,
+  withinRange,
+  explainTrafficRefusal,
+} from '../public/src/data/traffic.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * The client's intervals are plain constants in app.js, which imports the whole
- * browser world and cannot be loaded here. Reading them as text is the honest
- * option: it fails loudly if either is renamed, which is the only way this
- * check could silently stop measuring anything.
+ * TRAFFIC's interval is still a plain constant in app.js, which imports the
+ * whole browser world and cannot be loaded here, so it is read as text — that
+ * fails loudly if it is renamed, which is the only way this check could
+ * silently stop measuring anything.
+ *
+ * FOLLOW's is IMPORTED, because it moved. It now lives beside the freshness
+ * windows the followed fields are aged against, in traffic.js, and the two have
+ * to agree: the poll was 10 s while heading's staleness limit was 5 s, so HDG
+ * was structurally incapable of being anything but FAIL and the panel crossed
+ * itself out on a working feed. Importing the real value is strictly better
+ * than scraping a copy of it.
  */
 async function clientIntervals() {
   const src = await readFile(path.join(repo, 'public', 'src', 'app.js'), 'utf8');
-  const read = (name) => {
-    const m = src.match(new RegExp(`const ${name} = ([0-9_]+);`));
-    assert.ok(m, `${name} not found in app.js — this test has stopped measuring anything`);
-    return Number(m[1].replace(/_/g, ''));
-  };
-  return { traffic: read('TRAFFIC_INTERVAL_MS'), follow: read('FOLLOW_INTERVAL_MS') };
+  const m = src.match(/const TRAFFIC_INTERVAL_MS = ([0-9_]+);/);
+  assert.ok(m, 'TRAFFIC_INTERVAL_MS not found in app.js — this test has stopped measuring anything');
+  assert.match(
+    src,
+    /const FOLLOW_INTERVAL_MS = FOLLOW_POLL_MS;/,
+    'app.js must take the follow interval from traffic.js, not declare its own copy',
+  );
+  return { traffic: Number(m[1].replace(/_/g, '')), follow: FOLLOW_POLL_MS };
 }
+
+test('the followed aircraft outlives its own poll, or the panel crosses itself out', () => {
+  // NOAH PHOTOGRAPHED THIS. Following DAL2229: GS, LOAD G, ATT, GPS ALT, VS,
+  // HDG and TURN all crossed out at once, PWR ON, banner saying FOLLOWING —
+  // "makes the whole display look broken without any data".
+  //
+  // The cause was arithmetic. The poll is every FOLLOW_POLL_MS; the registry
+  // gave `attitude.heading` a 5 s staleMs because a magnetometer updates many
+  // times a second. A field cannot survive a limit shorter than the cadence
+  // that fills it, so HDG read "no update for 5s (limit 5s)" forever.
+  //
+  // The RELATIONSHIP is what is asserted, never the numbers — changing the poll
+  // must not be able to quietly re-create this.
+  assert.ok(
+    FOLLOW_WINDOWS.freshMs >= 2 * FOLLOW_POLL_MS,
+    `a followed field must stay LIVE across a missed poll: freshMs ${FOLLOW_WINDOWS.freshMs} vs poll ${FOLLOW_POLL_MS}`,
+  );
+  assert.ok(
+    FOLLOW_WINDOWS.staleMs >= 6 * FOLLOW_POLL_MS,
+    `a followed field must not FAIL until the feed has genuinely stopped: staleMs ${FOLLOW_WINDOWS.staleMs} vs poll ${FOLLOW_POLL_MS}`,
+  );
+  assert.ok(FOLLOW_WINDOWS.staleMs > FOLLOW_WINDOWS.freshMs, 'FAIL must come after STALE, not before it');
+});
+
+test('every field the followed aircraft owns is aged on the FEED’s window', async () => {
+  // DRIVEN THROUGH THE REAL apply(), not asserted about a constant. The window
+  // has to reach EVERY field the broadcast writes; one left on the registry's
+  // sensor limits is the same defect wearing a different label, and asserting
+  // that FOLLOW_WINDOWS has sensible numbers would not notice.
+  const writes = [];
+  const store = {
+    write: (path, value, opts = {}) => writes.push({ path, value, windows: opts.windows ?? null }),
+    fail: () => {},
+    peek: () => null,
+  };
+
+  const traffic = createTrafficSource({
+    state: store,
+    clock: () => 1_000_000,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        source: 'adsb.lol',
+        count: 1,
+        aircraft: [
+          {
+            hex: 'a1b2c3',
+            callsign: 'DAL2229',
+            lat: 38.9,
+            lon: -121.15,
+            altBaroFt: 34000,
+            altGeomFt: 34350,
+            onGround: false,
+            groundspeedKt: 452,
+            trackDeg: 118,
+            headingDeg: 121,
+            verticalRateFpm: -1216,
+            seenPosS: 1.2,
+          },
+        ],
+      }),
+    }),
+  });
+
+  traffic.follow({ callsign: 'DAL2229' });
+  await traffic.refreshFollowed();
+  traffic.apply();
+
+  assert.ok(writes.length, 'the followed aircraft wrote nothing at all — this test is measuring nothing');
+  const bare = writes.filter((w) => !w.windows);
+  assert.deepEqual(
+    bare.map((w) => w.path),
+    [],
+    'these fields are written by the followed aircraft but aged on the registry’s sensor windows',
+  );
+  for (const w of writes) assert.deepEqual(w.windows, FOLLOW_WINDOWS, `${w.path} carries the wrong window`);
+});
 
 test('the edge cache outlives the poll interval, or it does nothing', async () => {
   // THE DEFECT THIS EXISTS FOR. The TTLs were 8 s and 5 s against polls of 10 s
@@ -155,4 +252,86 @@ test('refusal: an empty or unknown reason still produces a sentence', () => {
     assert.ok(out.length > 20, `"${raw}" produced "${out}"`);
     assert.match(out, /aircraft feed/);
   }
+});
+
+/**
+ * THE SCOPE'S STATE, IN WORDS (Noah, 2026-08-04).
+ *
+ * *"It would be nice to have an indicator that shows when the radar is
+ * populated and another for any other states like being ready to tap."*
+ *
+ * Every branch below is a DIFFERENT FACT about the sky and the feed, and the
+ * reader has to be able to tell them apart: nothing swept yet, swept and empty,
+ * refused with nothing heard, refused but still showing real aircraft, and
+ * healthy. Two of those show no aircraft and mean opposite things.
+ */
+test('readiness: nothing has swept yet, and it does not pretend otherwise', () => {
+  const r = radarReadiness({ result: null });
+  assert.equal(r.state, 'listening');
+  assert.equal(r.tappable, false, 'there is nothing on the scope to tap');
+});
+
+test('readiness: a working sweep with an empty sky is NOT a failure', () => {
+  // The distinction the reader most needs and the one a naive indicator loses:
+  // "we asked and there is nothing there" against "we could not ask".
+  const empty = radarReadiness({ result: { ok: true, centre: { lat: 1, lon: 2 } }, aircraft: [] });
+  const refused = radarReadiness({ result: { ok: false, centre: { lat: 1, lon: 2 } }, aircraft: [] });
+  assert.equal(empty.state, 'empty');
+  assert.equal(refused.state, 'refused');
+  assert.notEqual(empty.detail, refused.detail, 'an empty sky and a refused feed must not read identically');
+  assert.match(empty.detail, /nothing is in range/);
+  assert.match(refused.detail, /not answering/);
+});
+
+test('readiness: a refused feed still showing real aircraft says they are TAPPABLE', () => {
+  // 1.20.0 established that a failed refresh is not an empty sky — the aircraft
+  // already drawn are real observations that did not stop being true. The
+  // indicator has to agree with the scope, or it tells the reader not to try
+  // something that works.
+  const r = radarReadiness({
+    result: { ok: false, centre: { lat: 1, lon: 2 } },
+    aircraft: [{}, {}],
+    nearbyAt: 0,
+    now: 45_000,
+  });
+  assert.equal(r.state, 'ageing');
+  assert.equal(r.tappable, true);
+  assert.match(r.detail, /still tappable/);
+  assert.match(r.detail, /45s ago/, 'an ageing scope must say how old it is');
+});
+
+test('readiness: a healthy scope invites the tap, and counts what is on it', () => {
+  const r = radarReadiness({
+    result: { ok: true, centre: { lat: 1, lon: 2 } },
+    aircraft: [{}, {}, {}],
+    nearbyAt: 0,
+    now: 3_000,
+  });
+  assert.equal(r.state, 'contact');
+  assert.equal(r.tappable, true);
+  assert.match(r.label, /CONTACT · 3/);
+  assert.match(r.detail, /tap one to follow/);
+});
+
+test('readiness: one aircraft is described in the singular', () => {
+  // Written because the first draft produced "These is the last aircraft".
+  const ageing = radarReadiness({ result: { ok: false, centre: {} }, aircraft: [{}], nearbyAt: 0, now: 1000 });
+  const contact = radarReadiness({ result: { ok: true, centre: {} }, aircraft: [{}], nearbyAt: 0, now: 1000 });
+  assert.match(ageing.detail, /This is the last aircraft/);
+  assert.doesNotMatch(ageing.detail, /These is/);
+  assert.match(contact.detail, /One aircraft/);
+});
+
+test('readiness: no centre means no geometry, so nothing is tappable', () => {
+  // The tap handler hit-tests bearings from the centre. Claiming "tap one to
+  // follow" without one would advertise a control that cannot work.
+  const r = radarReadiness({ result: { ok: true, centre: null }, aircraft: [{}, {}] });
+  assert.equal(r.tappable, false);
+});
+
+test('readiness: while following, the chip says whose aircraft the panel is showing', () => {
+  const r = radarReadiness({ result: { ok: true, centre: { lat: 1, lon: 2 } }, aircraft: [{}], following: 'DAL2229' });
+  assert.equal(r.state, 'following');
+  assert.match(r.label, /DAL2229/);
+  assert.match(r.detail, /Tap another to switch/);
 });

@@ -60,6 +60,7 @@ export function makeField({
   reason = null,
   forcedStale = false,
   forcedDerived = false,
+  windows = null,
 }) {
   if (!PROVENANCE.includes(provenance)) {
     throw new Error(`provenance must be one of ${PROVENANCE.join('/')}, got ${JSON.stringify(provenance)}`);
@@ -76,7 +77,7 @@ export function makeField({
   if (provenance === FAIL && !reason) {
     throw new Error('a FAIL field must explain itself — BITE and the flags both print the reason');
   }
-  return Object.freeze({ value, unit, provenance, ageMs, reason, at, forcedStale, forcedDerived });
+  return Object.freeze({ value, unit, provenance, ageMs, reason, at, forcedStale, forcedDerived, windows });
 }
 
 /** A reading straight off a sensor or a feed. Ageing decides LIVE vs STALE. */
@@ -133,6 +134,10 @@ export function age(field, { now, freshMs, staleMs, kind }) {
     reason: stale ? (field.reason ?? 'past its freshness window') : field.reason,
     forcedStale: field.forcedStale,
     forcedDerived: field.forcedDerived,
+    // CARRIED THROUGH AGEING. Without this the owner's window survives exactly
+    // one publish: `publishNow` re-ages from the raw field every 40 ms, and a
+    // window dropped here would silently revert to the registry default.
+    windows: field.windows,
   });
 }
 

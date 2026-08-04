@@ -1474,6 +1474,27 @@ async function checkRadarTap(browser, base, { touch = false } = {}) {
     return;
   }
 
+  /**
+   * THE INDICATOR AGREES WITH THE SCOPE BEFORE THE TAP, AND AFTER IT.
+   *
+   * Noah asked for a state indicator because he could not tell a filling scope
+   * from a finished one. An indicator that says CONTACT over a scope that
+   * ignores taps would be worse than none — so this asserts the chip claims
+   * tappable at the moment a tap is about to succeed.
+   */
+  const beforeTap = await page.evaluate(() => {
+    const chip = document.querySelector('.radar-ready');
+    if (!chip) return null;
+    const r = chip.getBoundingClientRect();
+    return { text: chip.textContent.trim(), tappable: chip.dataset.tappable, state: chip.dataset.state, w: r.width, h: r.height };
+  });
+  if (!beforeTap) fail(where, 'the radar has no readiness indicator at all');
+  else if (beforeTap.w < 1 || beforeTap.h < 1) fail(where, `the readiness indicator is not painted (${Math.round(beforeTap.w)}x${Math.round(beforeTap.h)})`);
+  else if (beforeTap.state !== 'contact') fail(where, `the scope has aircraft drawn but the indicator reads "${beforeTap.text}" (state ${beforeTap.state})`);
+  else if (beforeTap.tappable !== 'true') {
+    fail(where, `the indicator says "${beforeTap.text}" but does not claim to be tappable, on a scope where a tap is about to work`);
+  }
+
   if (touch) await page.touchscreen.tap(target.clientX, target.clientY);
   else await page.mouse.click(target.clientX, target.clientY);
   await page.waitForTimeout(400);
@@ -1506,6 +1527,17 @@ async function checkRadarTap(browser, base, { touch = false } = {}) {
    * route presented bare reads as a filed flight plan to someone who is not a
    * pilot, which is the exact misreading this app is not allowed to cause.
    */
+  const afterFollow = await page.evaluate(() => {
+    const chip = document.querySelector('.radar-ready');
+    return chip ? { text: chip.textContent.trim(), state: chip.dataset.state } : null;
+  });
+  if (afterFollow && afterFollow.state !== 'following') {
+    fail(where, `the panel is following an aircraft and the indicator still reads "${afterFollow.text}"`);
+  }
+  if (afterFollow && !/UAL328/.test(afterFollow.text)) {
+    fail(where, `the indicator says "${afterFollow.text}" — it must name the aircraft the panel has become`);
+  }
+
   // BACK TO THE PANEL FIRST. The banner lives inside `#page-pfd`, which is
   // `[hidden]` while the scope is up — so measuring here without switching
   // reads 0x0 for a perfectly visible element and would have to be "fixed" by

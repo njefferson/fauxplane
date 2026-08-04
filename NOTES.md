@@ -11,7 +11,7 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.21.1 is on staging: https://staging.fauxplane.pages.dev**
+**1.22.0 is on staging: https://staging.fauxplane.pages.dev**
 
 **THE ONE THING TO DO ON THIS BUILD: follow a flight, then open the
 diagnostics report behind the version stamp and send it.** 1.21.0 ships the
@@ -2264,6 +2264,94 @@ view is checked WITH aircraft on it rather than empty.
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
   airborne and being heard right now.
+
+---
+
+## 1.22.0 — the panel was crossing itself out on a working feed, 2026-08-04
+
+Noah, with three screenshots: *"It works, but the aircraft have a delay before I
+can touch them? Seems to pull extra data first? It would be nice to have an
+indicator that shows when the radar is populated and another for any other
+states like being ready to tap. This aircraft makes the whole display look
+broken without any data, despite being 'turned on.'"*
+
+### The wall of crosses was ARITHMETIC, not a broken feed
+
+The third screenshot is following DAL2229 with GS, LOAD G, ATT, GPS ALT, VS,
+HDG and TURN all crossed out at once, PWR ON, banner reading FOLLOWING. The
+heading flag said it outright: **`no update for 5s (limit 5s)`**.
+
+`attitude.heading` has `staleMs: 5000` in the field registry. That is the right
+number for a magnetometer this device reads many times a second. **A followed
+aircraft fills the same field from a poll that runs every 10 s** — so the limit
+was HALF the cadence, and the field was structurally incapable of being anything
+but FAIL. Every followed field had a version of this; heading was simply the one
+that could never win at all.
+
+The registry's own comment explains how it happened: *"Windows are chosen from
+how fast the underlying quantity actually changes, not from how often we happen
+to poll."* That is correct for a sensor and wrong for a feed. **An observation
+cannot arrive faster than the thing observing it reports**, and provenance
+describes the observation.
+
+### The fix: the OWNER of a field declares its window
+
+`state.write` takes `windows`, the field carries them, and `publishNow` prefers
+them over the registry's. The registry is the default rather than the authority.
+
+That is not a softening of the honesty rule — it is the honesty rule applied
+properly, and it lands exactly where this app already says it should: *"exactly
+one source owns each field at a time — following an aircraft moves ownership
+wholesale."* Ownership now moves the freshness window with it.
+
+`FOLLOW_POLL_MS` and `FOLLOW_WINDOWS` are declared TOGETHER in `traffic.js`, and
+`app.js` imports the poll rather than declaring its own copy — the two numbers
+being in different files is the entire reason they were allowed to contradict
+each other. The test asserts the RELATIONSHIP (`freshMs >= 2 polls`,
+`staleMs >= 6 polls`), never the numbers, so changing the cadence cannot quietly
+re-create the defect.
+
+**The windows themselves are not invented**: 20 s / 90 s is what the registry
+already chose for the other ADS-B fields (`nav.selectedAltitude` and friends).
+This is matching a precedent, not picking a threshold that makes a screenshot
+look better.
+
+### The indicator he asked for
+
+A chip above the scope, in five states, driven by `radarReadiness()`:
+
+- **LISTENING** — no sweep yet
+- **CONTACT · n** — aircraft on the scope, tap one
+- **AGEING · n** — the feed stopped answering; these are the last ones really
+  heard, with their age, and they are still tappable
+- **NO CONTACT** — which is TWO different facts and says which: a sweep that
+  worked and found nothing, or a feed that will not answer
+- **FOLLOWING <callsign>**
+
+`tappable` is a SEPARATE channel from the state, because "populated" and "ready
+to tap" are different questions — an ageing scope is tappable and a fresh sweep
+over an empty sky is not. That was Noah's distinction and he was right to draw
+it.
+
+**One function, read by the chip AND by the tap handler.** An indicator that
+computes "ready to tap" separately from the code handling the tap is two
+opinions about one fact — hub LESSONS §42 — and it would drift into saying CONTACT
+over a scope that ignores taps. Which is worse than no indicator, because then
+the reader concludes the fault is theirs.
+
+**And that drift happened INSIDE the function while it was being written.** The
+`contact` branch returned `tappable: true` as a literal rather than the computed
+value, so a healthy sweep with no centre yet would have advertised a tap that
+returns immediately. A unit test caught it. The lesson had been written down the
+day before and was still committed one function later.
+
+### On the delay before a tap registers
+
+Not reproducible as a broken handler: tap-to-follow was driven under real touch
+emulation at phone size across the canvas tap, the heard-now list and the centre
+picker, and all three work. What he was seeing is the two states above being
+indistinguishable — a scope drawn but not yet swept looks exactly like one that
+is ready. The indicator is the fix for that, not a change to the tap.
 
 ---
 

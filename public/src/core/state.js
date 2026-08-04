@@ -147,7 +147,7 @@ class Store {
 
   /** Write a sensor/feed reading. `at` defaults to now; pass it when the
    *  source stamped its own time (a METAR observation is older than its fetch). */
-  write(path, value, { at = this.clock(), reason = null, stale = false, derived = false } = {}) {
+  write(path, value, { at = this.clock(), reason = null, stale = false, derived = false, windows = null } = {}) {
     const spec = this.spec(path);
     if (value === null || value === undefined || (typeof value === 'number' && !Number.isFinite(value))) {
       // A sensor that fired with nothing in it has not produced a reading.
@@ -174,6 +174,25 @@ class Store {
         reason,
         forcedStale: stale,
         forcedDerived: derived,
+        /**
+         * THE OWNER DECLARES HOW LONG ITS OBSERVATION LIVES.
+         *
+         * The registry's windows are chosen from how fast a quantity CHANGES,
+         * which is right for a sensor this device reads many times a second and
+         * wrong for the same field when a feed owns it. Heading is the case
+         * that proved it: `staleMs` is 5 s, and following an aircraft fills
+         * that field from a poll that runs every 10 s. The limit was shorter
+         * than the cadence, so HDG could not be anything but FAIL — the panel
+         * declared its own freshest possible data dead, and Noah photographed a
+         * wall of red crosses on a working feed.
+         *
+         * This does not soften the honesty rule; it is the honesty rule applied
+         * properly. Provenance describes the OBSERVATION, and an observation
+         * cannot arrive faster than the thing observing it reports. Set only by
+         * whoever writes the field — which is exactly the app's model, since
+         * exactly one source owns each field at a time.
+         */
+        windows,
       }),
     );
   }
@@ -210,7 +229,15 @@ class Store {
     const fields = {};
     for (const [path, spec] of Object.entries(FIELDS)) {
       const raw = this.raw.get(path);
-      const aged = age(raw, { now: t, freshMs: spec.freshMs, staleMs: spec.staleMs, kind: spec.kind });
+      // The writer's windows win when it set any; the registry is the default
+      // rather than the authority.
+      const w = raw?.windows;
+      const aged = age(raw, {
+        now: t,
+        freshMs: w?.freshMs ?? spec.freshMs,
+        staleMs: w?.staleMs ?? spec.staleMs,
+        kind: spec.kind,
+      });
       // A field that has aged out is written back, so its FAIL reason persists
       // instead of being recomputed from a timestamp that keeps growing.
       if (aged !== raw && aged.provenance === FAIL && raw.provenance !== FAIL) this.raw.set(path, aged);
