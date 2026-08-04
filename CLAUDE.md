@@ -146,6 +146,16 @@ Every gate, and each one exits non-zero:
   commit while it runs either** — the lock cannot stop a session, and mid-run
   the tree genuinely contains a planted fault. `git diff` during a run looks
   alarming and is meant to; wait for it to finish.
+- **`node ../noahjefferson/privacy-check.mjs --repo .`** — Doctrine §9b: nothing
+  personal about Noah lands in this repo, and it is a **HARD CI gate** rather
+  than a lint. It runs in `deploy.yml` on every push to staging and main, from a
+  checkout of the hub — the gate is NEVER forked here, because five divergent
+  copies of a privacy rule is worse than none. The hub is public so it needs no
+  token, and the checkout is untracked so `git ls-files` cannot see it.
+  **It reads the working TREE only**; git history is out of its reach and
+  rewriting public history is Noah's call, never a session's. Wired 2026-08-04,
+  and "wired" means the exact CI command was watched going red on a LOCAL plant
+  — never a pushed one, because a pushed plant IS the violation.
 - `node scripts/preview.mjs` — renders the panel in live states a sandbox cannot
   reach. Not shipped, not imported by the app; it drives the store from outside
   through the same public write the sensors use.

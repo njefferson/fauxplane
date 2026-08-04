@@ -13,7 +13,8 @@ name: Deploy
 # Pages:Edit token.
 #
 # WHAT THIS GATE DOES AND DOES NOT RUN, stated plainly rather than implied:
-# it runs the unit tests. It does NOT run the accessibility gate, which needs a
+# it runs the unit tests and the hub's privacy gate (Doctrine §9b).
+# It does NOT run the accessibility gate, which needs a
 # Chromium the runner would have to download; that gate is run locally before
 # every push and its result is reported in the handoff. Claiming CI coverage it
 # does not have would be the exact false-confidence failure Doctrine §4 records.
@@ -47,6 +48,27 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      # DOCTRINE §9b — nothing personal about the owner lands in any repo, and
+      # it is a HARD gate rather than a lint. The check lives in the hub and is
+      # NEVER forked: a copy here would drift, and five divergent versions of a
+      # privacy rule is worse than none. The hub is public, so this needs no
+      # token; it is checked out to a path so it cannot disturb the app tree,
+      # and `git ls-files` means the checkout is invisible to the scan itself.
+      #
+      # Pinned by SHA like every other action here (§16.1) — a tag is a mutable
+      # pointer someone else controls.
+      - name: Check out the doctrine hub (for the canonical gate)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: njefferson/noahjefferson
+          path: .hub
+          persist-credentials: false
+
+      # It reads the working TREE. Git history is out of its reach, and
+      # rewriting public history is Noah's call rather than a session's.
+      - name: Privacy gate (Doctrine §9b)
+        run: node .hub/privacy-check.mjs --repo .
 
       - name: Prepare Cloudflare credentials
         id: cf
