@@ -141,11 +141,24 @@ Every gate, and each one exits non-zero:
   Each plant names the gate that should catch it: `a11y` (the default) or
   `tests`. Sensor-logic plants MUST use `tests` — a headless browser has no
   accelerometer, so the accessibility gate is structurally blind to them and
-  would stay green. It takes a pid lock; never run two at once, because the
-  second restores the first's injected code into the tree. **Do not edit or
-  commit while it runs either** — the lock cannot stop a session, and mid-run
-  the tree genuinely contains a planted fault. `git diff` during a run looks
-  alarming and is meant to; wait for it to finish.
+  would stay green.
+
+  **IT RUNS IN A COPY OF THE TREE, so it blocks NOTHING.** A run copies the
+  working tree — tracked, untracked and uncommitted, exactly as it stands — to a
+  scratch directory and re-runs itself there. Keep editing, keep committing,
+  keep pushing while it runs. This used to inject into the real tree, and the
+  "do not edit or commit while it runs" rule that followed was an implementation
+  detail promoted into a law that made Noah wait for permission to work
+  (2026-08-04, and he was blunt about it). `--here` forces the old in-place
+  behaviour and is for debugging this harness, never for verifying a release.
+
+  **IT NEVER GATES A PUSH TO STAGING.** Staging exists so Noah can try the
+  thing; holding a fix back for a forty-five-minute meta-check inverts the whole
+  point of having a staging branch. Push on the FAST gates — `npm test`,
+  palette, docs, and `a11y` — and let the sweep run after, or before a promote.
+  **The sweep verifies the GATES, not the code**; the code is verified by the
+  gates it just ran. Sweep whole before a promote to `main`, and whenever the
+  measuring instrument itself moved (hub LESSONS §51).
 - **`node ../noahjefferson/privacy-check.mjs --repo .`** — Doctrine §9b: nothing
   personal about Noah lands in this repo, and it is a **HARD CI gate** rather
   than a lint. It runs in `deploy.yml` on every push to staging and main, from a

@@ -39,7 +39,7 @@
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -178,7 +178,7 @@ const SWEEP_EVERYTHING_IF_TOUCHED = [
 ];
 
 const { values: argv } = parseArgs({
-  options: { only: { type: 'string' }, changed: { type: 'string' }, dry: { type: 'boolean' } },
+  options: { only: { type: 'string' }, changed: { type: 'string' }, dry: { type: 'boolean' }, here: { type: 'boolean' } },
 });
 
 /**
@@ -262,6 +262,57 @@ if (argv.dry) {
   console.log(`\n--dry: ${selected.length} plant(s) would run, ${PLANTS.length - selected.length} would not.`);
   process.exit(0);
 }
+/**
+ * THE SWEEP RUNS IN A COPY, SO IT NEVER TAKES THE WORKING TREE HOSTAGE.
+ *
+ * Noah, 2026-08-04: "WHY THE FUCK DO YOU RUN SWEEPS THAT DELAY EVERY FUCKING
+ * THING WHEN *I* AM NOT FUCKING DONE WORKING... WHY AM I WAITING ON YOU TO TELL
+ * ME IT'S OK TO WORK, WHEN NO ONE TOLD YOU TO DELAY"
+ *
+ * He is right, and the blocking was self-inflicted. This harness injected
+ * faults into the REAL tree, so for forty-five minutes nobody could edit or
+ * commit — every session running one told him to wait, and the waiting was
+ * never anyone's requirement. It was an implementation detail of the harness
+ * that had been promoted into a rule in CLAUDE.md.
+ *
+ * So the first thing a run does now is copy the tree — tracked, untracked,
+ * uncommitted, exactly as it stands — into a scratch directory and re-run
+ * itself there. `node_modules` is symlinked rather than copied, because it is
+ * the only large thing and nothing plants into it.
+ *
+ * WHAT THIS DELETES, and it is the point: the "do not edit or commit while it
+ * runs" rule, the alarming `git diff` mid-run, and the entire class of accident
+ * where a killed run left an injected fault behind in real work. The pid lock
+ * and the crash-safe restore stay — they now protect the copy, which costs
+ * nothing and means a killed run still cleans up after itself.
+ *
+ * `--here` forces the old in-place behaviour. It exists for debugging the
+ * harness itself and should not be used to verify a release.
+ */
+if (!process.env.PLANT_ISOLATED && !argv.here && !argv.dry) {
+  const scratch = path.join(REPO, '..', `.plant-run-${process.pid}`);
+  const SKIP = new Set(['node_modules', '.git', '.plant-backup', '.plant-backup.lock']);
+  rmSync(scratch, { recursive: true, force: true });
+  cpSync(REPO, scratch, {
+    recursive: true,
+    filter: (src) => !SKIP.has(path.basename(src)),
+  });
+  // Symlinked, not copied: it is the only large thing here and no plant touches
+  // it. A copy would add tens of seconds to every run for nothing.
+  try {
+    symlinkSync(path.join(REPO, 'node_modules'), path.join(scratch, 'node_modules'), 'dir');
+  } catch {
+    /* already there, or unsupported — the run will fail loudly on a missing dep */
+  }
+  process.stdout.write(`plant: running in ${scratch} — your working tree is untouched\n`);
+  const child = spawnSync(process.execPath, [path.join(scratch, 'scripts', 'plant.mjs'), ...process.argv.slice(2)], {
+    stdio: 'inherit',
+    env: { ...process.env, PLANT_ISOLATED: '1' },
+  });
+  rmSync(scratch, { recursive: true, force: true });
+  process.exit(child.status ?? 1);
+}
+
 const results = [];
 
 /**
