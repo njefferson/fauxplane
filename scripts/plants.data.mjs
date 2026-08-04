@@ -177,6 +177,19 @@ export const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // FOUND BY THE FIRST RUN OF invariants.test.mjs, not by a person. The
+    // followed aircraft was `list[0]` — whatever came back, adopted without
+    // checking it was the aircraft we asked about. Real numbers, real
+    // provenance, real timestamps, WRONG AEROPLANE, and invisible.
+    name: 'identity: a broadcast is adopted without checking which aircraft it is',
+    check: 'the answer is about the aircraft we asked about',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: '      const want = followKey.value.trim().toUpperCase();',
+    replace: "      const want = String(list[0]?.callsign ?? '').trim().toUpperCase();",
+    expect: /present or imply a different aircraft|answered about/i,
+  },
+  {
     // Noah's first real route probe came back HTTP 201 — the shape was
     // ACCEPTED — and the report could only say "no readable keys", which
     // cannot tell an empty body from a non-JSON one from valid JSON of an

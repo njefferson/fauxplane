@@ -9,6 +9,79 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
+## STAGED NOW — 1.25.0, and a test found a bug nobody reported, 2026-08-04
+
+**1.25.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.23.1.
+
+Noah: *"Can you not just build simple tests for some of this shit??"*
+
+### The audit, which is not flattering
+
+Of the last five defects **he** found on his own device, four were reachable by
+a plain unit test:
+
+- heading's staleness limit (5 s) was half the poll that filled it (10 s) —
+  arithmetic;
+- "this device reports no magnetic heading" printed while the same report showed
+  the compass at 278.3° — a pure function;
+- the FOLLOW banner claiming a broadcast that had never arrived — a pure
+  function;
+- a field keeping the PREVIOUS aircraft's name after a switch — a two-step state
+  machine.
+
+**In every one, a test was written AFTERWARDS as a regression guard.** That is
+the wrong job. Regression guards prove a fixed bug stays fixed; nothing in the
+suite was looking for the NEXT one. The plant sweep does not help either — it
+proves the gates catch faults that are deliberately planted, not that the app is
+free of faults nobody thought of.
+
+The fifth — the route feed's 201/text/html/0 bytes — genuinely needs the
+network. **Verified rather than assumed this time**: the sandbox's proxy denies
+every outbound host, google included. That one costs a round trip through his
+device and no test replaces it.
+
+### What was built, and what it found in its first run
+
+`scripts/invariants.test.mjs` — properties that must hold in EVERY state,
+checked by driving the app through follow, switch, refresh and refusal:
+
+- no field presents or implies an aircraft the panel is not following;
+- every field the feed owns outlives the poll that fills it;
+- the registry carries no impossible window;
+- nothing claims data before it arrives;
+- every failure explains itself.
+
+**The first one failed on its first run, on a defect nobody had reported.**
+`refreshFollowed` did `followed = list[0]` — whatever came back, adopted as the
+followed aircraft **without checking it was the aircraft we asked about**.
+
+That is the app's central rule broken at the source, and it would have been
+INVISIBLE: real numbers, real provenance, real timestamps, wrong aeroplane.
+Callsigns are reused, a callsign query can match more than one airframe, and a
+cache can outlive a switch. It costs one comparison. The panel now refuses a
+broadcast that is not about the followed aircraft and says so.
+
+### The invariant was refined by contact, not weakened
+
+Its first form flagged the honest refusal sentence — *"the feed answered about
+N460DF when asked about N81AB — not showing it"* legitimately names both. The
+rule is not "never mention another callsign"; it is **never present another
+aircraft's data as the followed one, and never name one without admitting which
+you follow**.
+
+**Both original defects were re-injected to confirm the refined form still
+catches them.** It does — the 1.24.0 heading bug trips the second clause,
+because that sentence never mentions the aircraft actually being followed.
+
+### The rule going forward
+
+**Write the invariant, not the example.** When a defect is found, ask what
+SENTENCE it violated, and test that sentence over every field in every state —
+not the one field that happened to show it.
+
+---
+
 ## STAGED NOW — 1.24.1, and THE PANEL IS FLYING A REAL AEROPLANE, 2026-08-04
 
 **1.24.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on

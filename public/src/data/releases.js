@@ -29,6 +29,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.25.0',
+    date: '2026-08-04',
+    headline: 'The panel now checks the aeroplane it was handed is the one it asked for.',
+    changed: [
+      'You asked why I could not just write simple tests instead of sending you round the houses. You were right: of the last five things you found, four were reachable by a plain test and in every case I only wrote the test AFTER you found it. That is backwards.',
+      'So I wrote tests that check RULES rather than examples — sentences that must be true of every reading in every state, checked by walking the panel through following, switching aircraft, and losing the feed.',
+      'The first one failed immediately, on a bug nobody had reported. When the panel asked the feed about one aircraft, it accepted whatever came back without checking it was that aircraft. Real numbers, real timestamps, honest-looking provenance — wrong aeroplane. You would have had no way to tell.',
+      'It now refuses a broadcast that is not about the aircraft you are following, and says so instead of showing it.',
+    ],
+    broken: [
+      'The route still does not appear. 1.24.1 added the last piece of evidence I need — follow a flight and send the report.',
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+    ],
+  },
+  {
     version: '1.24.1',
     date: '2026-08-04',
     headline: 'One more line in the route probe, and this is finished.',

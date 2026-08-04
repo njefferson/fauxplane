@@ -791,6 +791,30 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
           : `${followKey.value} returned no aircraft`;
         return result;
       }
+      /**
+       * THE ANSWER MUST BE ABOUT THE AIRCRAFT WE ASKED ABOUT.
+       *
+       * This was `followed = list[0]` — whatever came back, adopted as the
+       * followed aircraft without checking. Found by the first run of the
+       * invariant test in `invariants.test.mjs`, which walks a follow, a
+       * switch, and a refresh and asserts no field names an aircraft the panel
+       * is not following. Ten fields did.
+       *
+       * Every value on this panel has to trace to what it claims to be. A
+       * broadcast adopted under the wrong name is that rule broken at the
+       * source, and it would be INVISIBLE: real numbers, real provenance, real
+       * timestamps, wrong aeroplane. Callsigns are reused, a callsign query can
+       * match more than one airframe, and a cache can outlive a switch — this
+       * costs one comparison and closes all of it.
+       */
+      const want = followKey.value.trim().toUpperCase();
+      const got = followKey.by === 'callsign'
+        ? String(list[0]?.callsign ?? '').trim().toUpperCase()
+        : String(list[0]?.hex ?? '').trim().toUpperCase();
+      if (got !== want) {
+        followError = `the feed answered about ${got || 'an unnamed aircraft'} when asked about ${want} — not showing it`;
+        return result;
+      }
       followed = list[0];
       followError = null;
       // Which provider answered THIS query. The followed aircraft is fetched
