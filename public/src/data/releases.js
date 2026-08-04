@@ -29,6 +29,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.23.1',
+    date: '2026-08-04',
+    headline: 'The icon at the top of the panel is now actually the app’s icon.',
+    changed: [
+      'You held the panel up next to your home screen and said it did not match closely enough. It did not: it was a hand-drawn copy — no dark plate around it, the horizon level instead of banked, no pitch ladder, and no dark outline on the aircraft symbol. Same idea, different drawing.',
+      'It is the real icon file now — the exact same one on your home screen and in your browser tab, not a copy of it. It cannot drift away from that icon again, because there is only one of it.',
+      'A check now fails the build if those ever stop being the same file. Resembling the icon is not good enough, which was the whole point.',
+    ],
+    broken: [
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'The route shape is still unconfirmed. WHAT THE ROUTE FEED ACTUALLY SENT, in the diagnostics report, is the thing to send me.',
+    ],
+  },
+  {
     version: '1.23.0',
     date: '2026-08-04',
     headline: 'The radar counts down instead of saying "a moment".',

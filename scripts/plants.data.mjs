@@ -177,6 +177,19 @@ export const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // Noah, 2026-08-04: the mark at the top of the (i) panel "does not match
+    // the app's icon close enough, and looks like an error because it is
+    // different." A LOOKALIKE is the defect — the only version that cannot
+    // drift from the icon on his home screen is the identical file, so the
+    // panel points at the manifest's own icon and the gate checks that.
+    name: 'identity: the panel mark drifts to a lookalike of the app icon',
+    check: 'the mark is the SAME icon file the manifest declares',
+    file: 'public/index.html',
+    find: '        <img class="gate-mark" src="/icons/icon.svg" alt="" width="88" height="88" />',
+    replace: '        <img class="gate-mark" src="/icons/icon-192.png" alt="" width="88" height="88" />',
+    expect: /manifest's icon|lookalike|app mark/i,
+  },
+  {
     // Noah, looking at NO CONTACT above "Standing off ... for a moment":
     // "No indication of how long I'll wait before the radar will work…like the
     // delay countdown, maybe?…. Just looks broken." A wait with no number is

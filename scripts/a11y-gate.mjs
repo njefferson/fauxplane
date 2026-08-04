@@ -1204,6 +1204,33 @@ async function checkInfoMenu(page, base) {
       hasFirstRun: !!dlg?.querySelector('.gate-first'),
       hasWhatsNew: !!dlg?.querySelector('.wn-card'),
       hasSources: !!dlg?.querySelector('.info-sources'),
+      /**
+       * THE MARK AT THE TOP OF THE PANEL IS THE SAME FILE the manifest
+       * declares, not a redrawn approximation.
+       *
+       * Noah, 2026-08-04, with his home screen beside it: it "does not match the
+       * app's icon close enough, and looks like an error because it is
+       * different." It was a hand-drawn SVG — no plate, level horizon rather
+       * than the icon's 12-degree bank, no pitch ladder, palette tokens instead
+       * of the icon's colours — under a comment claiming the two were the same.
+       *
+       * RESEMBLING THE ICON IS NOT THE REQUIREMENT. A redraw drifts the moment
+       * either copy is touched, and a comment asserting they match is not a
+       * check. The only version that cannot drift is the identical file, so
+       * that is what this asserts. Painted size too: an <img> whose src 404s
+       * still exists in the DOM and still reports its class.
+       */
+      mark: (() => {
+        const img = dlg?.querySelector('.gate-mark');
+        if (!img) return null;
+        const r = img.getBoundingClientRect();
+        return {
+          src: new URL(img.getAttribute('src'), location.href).pathname,
+          w: r.width,
+          h: r.height,
+          loaded: img.complete && img.naturalWidth > 0,
+        };
+      })(),
     };
   });
 
@@ -1213,6 +1240,20 @@ async function checkInfoMenu(page, base) {
   }
   await page.waitForTimeout(200);
   if (!opened.open) fail(where, 'pressing (i) did not open the information dialog');
+
+  // The manifest is the authority on what this app's icon IS; the panel must
+  // point at that file and not at a lookalike.
+  const manifest = await (await fetch(`${base}/manifest.webmanifest`)).json();
+  const canonical = manifest.icons?.[0]?.src;
+  if (!opened.mark) {
+    fail(where, 'the information panel carries no app mark — it does not say which app it belongs to');
+  } else if (opened.mark.src !== canonical) {
+    fail(where, `the panel's mark is "${opened.mark.src}" but the manifest's icon is "${canonical}" — a lookalike drifts from the icon on the home screen`);
+  } else if (!opened.mark.loaded) {
+    fail(where, `the panel's mark "${opened.mark.src}" did not load`);
+  } else if (opened.mark.w < 16 || opened.mark.h < 16) {
+    fail(where, `the panel's mark is ${Math.round(opened.mark.w)}x${Math.round(opened.mark.h)} — too small to read as the app's icon`);
+  }
   if (!opened.hasFirstRun) fail(where, 'the first-run instructions did not survive into the (i) menu');
   if (!opened.hasWhatsNew) fail(where, 'the (i) menu carries no release notes (Doctrine §7d)');
   if (!opened.hasSources) fail(where, 'the (i) menu does not say where the numbers come from (Doctrine §7e)');
