@@ -135,13 +135,42 @@ export function parseRoute(payload, callsign) {
  * too, bounded — a probe that reports a status without the body is half a
  * probe, and it cost a whole round trip through a real device to find that out.
  */
-function describe(payload, status, raw = null, contentType = null) {
+function describe(payload, status, raw = null, res = null) {
   const top = payload && typeof payload === 'object' ? Object.keys(payload).slice(0, 20) : [];
   const list = Array.isArray(payload) ? payload : (payload?.routes ?? payload?.planes ?? null);
   const first = Array.isArray(list) && list[0] && typeof list[0] === 'object' ? Object.keys(list[0]).slice(0, 30) : [];
+  const header = (h) => res?.headers?.get?.(h) ?? null;
   return {
     status,
-    contentType,
+    contentType: header('content-type'),
+    /**
+     * WHERE THE REPLY ACTUALLY CAME FROM, and this is the evidence the second
+     * probe round needs.
+     *
+     * Noah's device got HTTP 201, `text/html`, ZERO BYTES. That is not a JSON
+     * API answering — a routes endpoint returning routes sends
+     * `application/json` with something in it. Three things produce this and
+     * they need different responses:
+     *
+     *   · an edge or proxy intercepting before the API sees us (`server`
+     *     naming it, a `cf-ray` present) — the same shape adsb.fi's 403 has;
+     *   · a REDIRECT that turned our POST into something else — Workers' fetch
+     *     follows redirects, and a 301/302 converts a POST to a GET, which
+     *     would land on an HTML page exactly like this;
+     *   · the endpoint genuinely answering 201-with-no-content, in which case
+     *     the route lives somewhere other than the response body.
+     *
+     * `finalUrl` and `redirected` separate the second from the other two
+     * outright, and the headers separate the first from the third. Capturing
+     * them costs nothing on a request already made. NOT GUESSING WHICH IT IS —
+     * this is what the next report answers.
+     */
+    finalUrl: res?.url ?? null,
+    redirected: res?.redirected ?? null,
+    server: header('server'),
+    cfRay: header('cf-ray'),
+    location: header('location'),
+    allow: header('allow'),
     // Bounded and reported separately from the parse, so "empty" and
     // "unparseable" stop looking identical.
     bodyLength: raw === null ? null : raw.length,
@@ -266,7 +295,7 @@ export async function onRequestGet({ request }) {
       ).catch(() => {});
     }
 
-    const probe = describe(payload, res.status, raw, res.headers?.get?.('content-type') ?? null);
+    const probe = describe(payload, res.status, raw, res);
 
     if (!res.ok) {
       return json(

@@ -302,6 +302,13 @@ export function buildReport({ snapshot, fusion, traffic, route = null, metar, bo
       line(`  NOTE: this is the LAST probe, for ${rp.callsign} — the panel is now following ${traffic.followLabel}`);
     }
     if (rp.contentType) line(`  content-type ${rp.contentType}`);
+    // WHERE THE REPLY CAME FROM. A 201 of text/html with nothing in it is not a
+    // JSON API answering, and these three lines say which of the possibilities
+    // it actually is rather than leaving it to be guessed at.
+    if (rp.finalUrl) line(`  answered by ${rp.finalUrl}${rp.redirected ? '  (REDIRECTED — our POST may have become a GET)' : ''}`);
+    for (const [k, v] of [['server', rp.server], ['cf-ray', rp.cfRay], ['location', rp.location], ['allow', rp.allow]]) {
+      if (v) line(`  ${k}: ${v}`);
+    }
     // THE BODY, which the first real probe did not carry and needed to. A 201
     // with nothing readable in it is three different faults wearing one face.
     if (rp.bodyLength !== null && rp.bodyLength !== undefined) {

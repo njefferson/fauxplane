@@ -29,6 +29,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.24.1',
+    date: '2026-08-04',
+    headline: 'One more line in the route probe, and this is finished.',
+    changed: [
+      'Your last report said the route feed answered with 201, content-type text/html, and ZERO bytes. That is not the routes API replying — an API returning routes sends JSON with something in it. Something else is answering.',
+      'The probe now records WHO answered: the final address, whether the request got redirected on the way, and the server and ray headers. Those three things tell apart the possibilities I am not going to guess between.',
+      'That is the last piece. Follow a flight, send the report, and this either works in the next release or gets abandoned with a reason.',
+    ],
+    broken: [
+      'The route still does not appear, and until the above comes back I will not pretend to know why.',
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'The ResizeObserver warnings you saw on the iPad have not come back in your latest report — they are still not diagnosed, only absent.',
+    ],
+  },
+  {
     version: '1.24.0',
     date: '2026-08-04',
     headline: 'Your route probe came back — and the request was ACCEPTED.',

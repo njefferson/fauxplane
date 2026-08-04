@@ -9,6 +9,81 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
+## STAGED NOW — 1.24.1, and THE PANEL IS FLYING A REAL AEROPLANE, 2026-08-04
+
+**1.24.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.23.1.
+
+### First: it works
+
+Noah's 1.24.0 report is the panel doing the thing it was built for. Following
+**N460DF, a C-130**, `seen_pos 0.13s ago`:
+
+- groundspeed **214 kt LIVE**, GPS altitude **4,325 ft LIVE**, track **127°T
+  LIVE**, vertical speed **+900 fpm DERIVED**, MSL **4,426 ft DERIVED**
+- winds aloft LIVE, METAR LIVE, declination DERIVED
+- 13 FAIL, and every one is a legitimate "ADS-B does not carry this" — pitch,
+  slip, TAS, CAS, AoA, the three autopilot fields, indicated and pressure
+  altitude
+- **zero console errors**
+
+The scope behind it is full of real traffic with real flight levels. This is the
+first report in the whole project where nothing is wrong with the app.
+
+### The route probe is ANSWERED, and it is not our request
+
+    callsign N460DF   HTTP 201
+    content-type text/html
+    body 0 bytes   parsed as JSON: NO
+
+**201, `text/html`, zero bytes.** A routes endpoint returning routes sends
+`application/json` with something in it. Whatever answered is not the JSON API,
+and `parseRoute` correctly reported "no entries" because there were none to
+find — the client behaved perfectly on a reply that contained nothing.
+
+Two probe rounds have now each converted a guess into a fact: round one killed
+"the request shape is wrong" (a 422 never came), round two killed "the reply is
+JSON we cannot parse" (there is no reply at all).
+
+**1.24.1 captures the last discriminator and NOTHING IS GUESSED PAST IT.**
+`finalUrl`, `redirected`, and the `server` / `cf-ray` / `location` / `allow`
+headers. Three possibilities remain and these separate them:
+
+- an edge or proxy intercepting before the API sees us — `server` names it and a
+  `cf-ray` is present, the same shape adsb.fi's 403 has;
+- a REDIRECT that turned our POST into a GET — Workers' `fetch` follows
+  redirects and a 301/302 converts the method, landing on an HTML page exactly
+  like this. `redirected: true` or a `finalUrl` that differs proves it outright;
+- the endpoint genuinely answering 201-with-no-content, in which case the route
+  is not in the response body and the whole approach needs rethinking.
+
+**The next report decides it.** If it shows an intermediary rather than
+adsb.lol, the honest move is to STOP CALLING the endpoint — a request that
+cannot succeed is spending the shared rate-limit allowance the radar needs
+(1.21.1's lesson), and this feature is a nicety while the aircraft are the
+instrument.
+
+### Also fixed in 1.24.0, from the same report
+
+`attitude.heading` kept the PREVIOUS aircraft's name across a switch — following
+N81AB while heading read "N460DF is not broadcasting a heading". It is written
+outside `FOLLOW_WRITES` (it has its own two-case message) and that write only
+happens where a report exists. Failed with the waiting reason now, with a test
+that follows two aircraft and asserts no field names the abandoned one.
+
+### Open, and NOT guessed at
+
+**`ResizeObserver loop completed with undelivered notifications`** — nine on the
+iPad in the 1.23.1 report, **zero in the 1.24.0 report**. Absent is not
+diagnosed. Do not close this on one clean report.
+
+**`position.accuracy` FAIL "no update for 120s (limit 120s)"** while following:
+the device's own geo sensor ageing out because follow mode stops it writing.
+True, but it does not SAY that, which is the same half-true sentence 1.22.1
+fixed twice elsewhere.
+
+---
+
 ## STAGED NOW — 1.24.0, and the route probe ANSWERED, 2026-08-04
 
 **1.24.0 is on staging: https://staging.fauxplane.pages.dev**
