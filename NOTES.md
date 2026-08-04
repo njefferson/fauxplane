@@ -9,33 +9,49 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — waiting on Noah
+## PROMOTED — staging and main are level at 1.22.1, 2026-08-04
 
-**1.22.1 is on staging: https://staging.fauxplane.pages.dev**
+**Noah said "Promote to main" on 2026-08-04.** `main` fast-forwarded cleanly
+from **1.15.0 to 1.22.1** — eleven releases, eighteen commits, no merge. Live at
+**https://fauxplane.pages.dev**; staging is the same commit.
 
-**THE ONE THING TO DO ON THIS BUILD: follow a flight, then open the
-diagnostics report behind the version stamp and send it.** 1.21.0 ships the
-plausible-route feature with a request shape that is a REASONED GUESS — see the
-1.21.0 entry below for why nothing here could confirm it — and the report now
-carries a block called `WHAT THE ROUTE FEED ACTUALLY SENT` that records exactly
-what came back. If the route reads as unavailable, that block is the answer,
-not a bug report. It is the whole point of shipping this release now rather
-than waiting.
+Every gate was run against the exact commit being promoted, not against an
+earlier one: 359 tests, the accessibility gate over three viewports and two
+palettes and both input modes, palette, no-grid, and the §7h PWA gate. The
+54/54 plant sweep behind 1.22.1 is recorded in that release's entry.
 
-**The horizon is still the thing to test.** 1.19.0 found and fixed the root
-cause of "gentle rotation errors the horizon" — the gyro propagation was using
-a small-angle shortcut only exact when the panel is bolt upright. Put it in the
-cradle, level it, and turn it. It should stay put.
+**What went out, in one line each:**
 
-Everything since main: the airport centre picker, the stale-app update strip,
-the value strip moving off the right-hand column, runways drawn at airports,
-ground traffic no longer shown as traffic below you, landscape giving the
-instruments their height back, the provider stand-off, 1.20.0's readable
-refusal, and 1.21.0's route.
+- **1.16.0** point the radar at any airport (702 bundled, Unlicense)
+- **1.17.0** the panel can say it has gone out of date (§7h)
+- **1.18.0** the instruments get their screen back
+- **1.19.0** runways on the scope, and the horizon's root cause — the gyro
+  propagation was using a small-angle shortcut only exact bolt upright
+- **1.19.1** landscape gets its instruments back
+- **1.19.2** stop knocking on a door we know is locked (provider stand-off)
+- **1.20.0** the refusal, in words the reader can use
+- **1.21.0** the followed flight says where it is going, and says it is a guess
+- **1.21.1** the route feed was eating the radar's allowance
+- **1.22.0** the panel stops crossing itself out on a working feed
+- **1.22.1** two sentences the panel was saying that were not true
 
-`main` is on 1.15.0 until you say promote. This block is rewritten by whichever
-session stages the next candidate; a staged build nobody can see is the failure
-it exists to prevent (Doctrine §7).
+**THE ONE THING STILL WANTED FROM A REAL DEVICE:** follow a flight, then open
+the diagnostics report behind the version stamp and send it. The route feature
+ships with a request shape that is a REASONED GUESS — see the 1.21.0 entry for
+why nothing here could confirm it — and the report carries
+`WHAT THE ROUTE FEED ACTUALLY SENT`. If the route reads as unavailable, that
+block is the answer rather than a bug report.
+
+**Still open, and NOT understood:** in the 1.21.1 report, orientation stopped
+32 s before capture and geolocation 57 s before, with a good gravity vector
+still in the raw block. That looks like backgrounding, but `markStale` should
+have caught it and did not. A report taken immediately after returning to the
+app would settle it. No reason string has been written for it, deliberately —
+see the 1.22.1 entry.
+
+**The next session stages onto `staging` as usual.** This block is rewritten by
+whichever session stages the next candidate; a staged build nobody can see is
+the failure it exists to prevent (Doctrine §7).
 
 ---
 
