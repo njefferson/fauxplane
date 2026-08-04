@@ -11,16 +11,18 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.19.2 is on staging: https://staging.fauxplane.pages.dev**
+**1.20.0 is on staging: https://staging.fauxplane.pages.dev**
 
 **The horizon is still the thing to test.** 1.19.0 found and fixed the root
 cause of "gentle rotation errors the horizon" — the gyro propagation was using
 a small-angle shortcut only exact when the panel is bolt upright. Put it in the
 cradle, level it, and turn it. It should stay put.
 
-Also since main: runways drawn at airports, ground traffic no longer shown as
-traffic below you, landscape giving the instruments their height back, and
-1.19.2's provider stand-off.
+Everything since main: the airport centre picker, the stale-app update strip,
+the value strip moving off the right-hand column, runways drawn at airports,
+ground traffic no longer shown as traffic below you, landscape giving the
+instruments their height back, the provider stand-off, and 1.20.0's readable
+refusal.
 
 `main` is on 1.15.0 until you say promote. This block is rewritten by whichever
 session stages the next candidate; a staged build nobody can see is the failure
@@ -2213,6 +2215,55 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.20.0 — the refusal, in words the reader can use, 2026-08-04
+
+Noah, 2026-08-04: *"I'm not getting a receiver."* That is the right call and it
+settles the rate limiting as a PERMANENT CONDITION rather than an open problem —
+which changes what the app owes the reader about it.
+
+**What was on the face of a gauge**, photographed on his phone:
+
+    No traffic: adsb.lol rate limited us (HTTP 429; cf-ray a258e8a82ff1fa4e-SJC)
+    | adsb.fi returned HTTP 403 — server: cloudflare; ray a258e8a9483dfa4e-SJC;
+    Attention Required! | Cloudflare
+
+Every word true, and every word written for whoever is debugging the Pages
+Function. A Cloudflare ray ID is not a thing the reader can act on, and this
+panel is for someone building a 747 cockpit in his house.
+
+**Three things the sentence now carries, and one it deliberately does not.**
+
+It says WHAT happened, in the reader's terms — rate limited, refused, standing
+off, or unreachable.
+
+It says WHY, **but only for the case where the cause is actually settled.** A
+429 on a shared Cloudflare egress address is a diagnosis this repo has done the
+work to earn; a 403 from a firewall or a dead network is not, and guessing would
+repeat the groundspeed reason that could not tell two causes apart and said so
+in a way that read as if it could. A test asserts the cause is NOT offered for
+those.
+
+It says what is still true on screen: the aircraft already drawn are real
+observations that did not stop being true because the next request failed. A
+stale scope and an empty sky mean completely different things and the panel has
+to say which it is showing.
+
+And it does not HIDE anything. The full chain is still in the diagnostics report
+(§7f) and on the element's `title`, which is a long-press away and a paste away.
+**Summarising an error is help; hiding one is not, and the difference is whether
+the detail is still reachable.**
+
+### Verified
+
+**326 unit tests, 47/47 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor, `pwa-check.mjs` green.**
+
+The new plant puts the raw upstream chain back on the gauge, which is the exact
+regression this release is about.
+
+---
+
 ## 1.19.2 — the provider terms, read properly, and what they changed, 2026-08-04
 
 Noah sent adsb.fi's terms page as a screenshot after asking for the providers'
@@ -4084,8 +4135,19 @@ working until he has looked.
 
 ## Open — needs Noah
 
-0. **THE RATE LIMITING NEEDS HARDWARE, not a code change.** Both providers say
-   the same thing and 1.19.2 is the last thing the code can do about it.
+0. **SETTLED 2026-08-04: NO RECEIVER.** Noah: "I'm not getting a receiver."
+   That closes this, and it closes it as a PERMANENT CONDITION rather than an
+   open problem — which changes what the app should do about it. 1.20.0 is that
+   change: the panel now explains the refusal in a sentence a reader can use
+   instead of printing a Cloudflare ray ID on the face of a gauge, and says
+   what is still true on screen.
+
+   **Do not re-open this as an engineering task.** There is no code fix. The
+   reasoning is kept below because a future session will otherwise rediscover
+   the 429s and go looking for one.
+
+   **THE RATE LIMITING NEEDED HARDWARE, not a code change.** Both providers say
+   the same thing and 1.19.2 was the last thing the code could do about it.
 
    The failure is a SHARED ADDRESS. adsb.fi rate limit to one request per second
    per IP; this panel reaches them through a Cloudflare Pages Function, whose

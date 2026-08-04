@@ -787,3 +787,63 @@ function writeDerived(state, path, field, at) {
   // angle derived from it published DERIVED.
   state.write(path, field.value, { at, reason: field.reason, stale: field.provenance === 'STALE', derived: true });
 }
+
+/**
+ * Turn a chain of upstream refusals into a sentence for the READER.
+ *
+ * What was on Noah's phone, on the face of a gauge:
+ *
+ *   No traffic: adsb.lol rate limited us (HTTP 429; cf-ray a258e8a82ff1fa4e-SJC)
+ *   | adsb.fi returned HTTP 403 — server: cloudflare; ray a258e8a9483dfa4e-SJC;
+ *   Attention Required! | Cloudflare
+ *
+ * Every word of that is true and it is written for whoever is debugging the
+ * Function. A Cloudflare ray ID is not a thing the reader can do anything with,
+ * and this panel is for someone building a 747 cockpit in his house.
+ *
+ * NOTHING IS THROWN AWAY. The full chain still goes to the diagnostics report
+ * (§7f) and onto the element's `title`, which is where technical detail belongs
+ * — the report is the thing this app asks to be sent instead of a photograph.
+ * This is a summary layer, not a replacement, and the distinction matters: a
+ * panel that SIMPLIFIES an error is helping, a panel that HIDES one is lying.
+ *
+ * The cause is stated because it is structural and settled (NOTES, Open §0):
+ * the panel reaches these services through Cloudflare, whose egress address is
+ * shared with an enormous number of unrelated sites, so the per-address
+ * allowance can be spent by traffic that has nothing to do with this app. Noah
+ * decided on 2026-08-04 not to run a receiver, which is the only thing that
+ * would fix it — so this is now a permanent condition the panel lives with
+ * rather than a fault it is waiting to have fixed.
+ */
+export function explainTrafficRefusal(reason, { heard = 0 } = {}) {
+  const raw = String(reason ?? '');
+  const has = (re) => re.test(raw);
+
+  let what;
+  if (!raw) what = 'The aircraft feed did not answer.';
+  else if (has(/not asked/i)) what = 'Standing off from the aircraft feeds for a moment, so we do not keep knocking.';
+  else if (has(/429|rate limit/i)) what = 'The aircraft feed is rate limiting us.';
+  else if (has(/403|refus|forbidden/i)) what = 'The aircraft feed is refusing us.';
+  else if (has(/unreachable|network|fetch failed|timed? ?out/i)) what = 'Cannot reach the aircraft feed.';
+  else what = 'The aircraft feed did not answer.';
+
+  /**
+   * WHY, but only for the case where the cause is actually known. A rate limit
+   * on a shared address is a settled diagnosis; a 403 from a firewall or a dead
+   * network is not, and guessing would be the same error the groundspeed reason
+   * once made when it could not tell two causes apart.
+   */
+  const why = has(/429|rate limit/i)
+    ? ' We share an address with a great many other sites, so the allowance can be spent by traffic that is nothing to do with you.'
+    : '';
+
+  // WHAT IS STILL TRUE ON SCREEN. The aircraft already drawn are real
+  // observations that did not stop being true because the next request failed,
+  // and saying so is the difference between a stale scope and an empty sky.
+  const still =
+    heard > 0
+      ? ` The ${heard} aircraft on the scope are the last ones actually heard, and they are ageing.`
+      : ' Nothing has been heard yet, so the scope is empty rather than quiet.';
+
+  return `${what}${why}${still}`;
+}

@@ -29,6 +29,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.20.0',
+    date: '2026-08-04',
+    headline: 'The radar explains itself in English when the feed says no.',
+    changed: [
+      'When the aircraft feed turns us away, the panel now says so in a sentence instead of printing the raw server reply. It used to read "No traffic: adsb.lol rate limited us (HTTP 429; cf-ray a258e8a82ff1fa4e-SJC) | adsb.fi returned HTTP 403 — server: cloudflare; ray ...". Every word of that was true and none of it was for you.',
+      'It says WHY when the cause is actually known: the panel reaches these services through Cloudflare, whose address is shared with a great many other sites, so the allowance can be spent by traffic that has nothing to do with you. When the cause is not known it does not guess.',
+      'It says what is still true on screen — that the aircraft drawn are the last ones really heard and are ageing — because a stale scope and an empty sky mean completely different things.',
+      'Nothing is hidden. The full server reply is still in the diagnostics report behind the version stamp, and on a long-press of the status line. Simplifying an error is help; hiding one is not.',
+    ],
+    broken: [
+      'The rate limiting itself is not fixed and will not be. The only thing that would fix it is running a receiver to earn an API key tied to you rather than to a shared address, and that is hardware. Decided against on 2026-08-04, so the panel is now built to live with it rather than waiting for it to be solved.',
+    ],
+  },
+  {
     version: '1.19.2',
     date: '2026-08-04',
     headline: 'The panel stops knocking on a door it knows is locked.',

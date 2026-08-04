@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { POLICIES } from '../functions/api/_lib.js';
-import { FETCH_RANGE_NM, RADAR_RANGE_NM, withRangeAndBearing, withinRange } from '../public/src/data/traffic.js';
+import { FETCH_RANGE_NM, RADAR_RANGE_NM, withRangeAndBearing, withinRange, explainTrafficRefusal } from '../public/src/data/traffic.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -104,4 +104,55 @@ test('every provider is asked for a radius the Function will accept', async () =
   const m = src.match(/MAX_DIST_NM\s*=\s*(\d+)/);
   assert.ok(m, 'MAX_DIST_NM not found');
   assert.ok(FETCH_RANGE_NM <= Number(m[1]), `fetch radius ${FETCH_RANGE_NM} exceeds the Function's cap ${m[1]}`);
+});
+
+/**
+ * THE REFUSAL, IN WORDS THE READER CAN USE.
+ *
+ * What was on Noah's phone: "No traffic: adsb.lol rate limited us (HTTP 429;
+ * cf-ray a258e8a82ff1fa4e-SJC) | adsb.fi returned HTTP 403 — server:
+ * cloudflare; ray a258e8a9483dfa4e-SJC; Attention Required! | Cloudflare".
+ * True, and written for whoever is debugging the Pages Function.
+ */
+test('refusal: a rate limit is named as one, and the cause is given', () => {
+  const out = explainTrafficRefusal('adsb.lol rate limited us (HTTP 429; cf-ray abc-SJC)', { heard: 9 });
+  assert.match(out, /rate limiting us/);
+  // The cause is settled (a shared egress address), so it is stated.
+  assert.match(out, /share an address/);
+  // No ray IDs, no status codes, no pipes.
+  assert.doesNotMatch(out, /cf-ray|HTTP \d|\|/);
+});
+
+test('refusal: a cause that is NOT settled is not guessed at', () => {
+  // A firewall 403 and a dead network have the same shape and different causes.
+  // The groundspeed reason that could not tell two causes apart is already
+  // recorded in this repo as a defect; this must not repeat it.
+  for (const raw of ['adsb.fi returned HTTP 403 — server: cloudflare', 'adsb.lol unreachable: fetch failed']) {
+    const out = explainTrafficRefusal(raw, { heard: 0 });
+    assert.doesNotMatch(out, /share an address/, `guessed a cause for "${raw}"`);
+  }
+});
+
+test('refusal: what is still on screen is stated, because it is still true', () => {
+  // The aircraft already drawn are real observations that did not stop being
+  // true because the NEXT request failed. An empty scope and a stale one mean
+  // completely different things.
+  assert.match(explainTrafficRefusal('HTTP 429', { heard: 12 }), /12 aircraft on the scope are the last ones actually heard/);
+  assert.match(explainTrafficRefusal('HTTP 429', { heard: 0 }), /Nothing has been heard yet/);
+});
+
+test('refusal: a stand-off says we chose not to ask', () => {
+  // Being turned away and declining to ask are different facts.
+  const out = explainTrafficRefusal('adsb.fi not asked — refused us (HTTP 403), standing off for up to 600s', { heard: 3 });
+  assert.match(out, /Standing off/);
+  assert.doesNotMatch(out, /refusing us/);
+});
+
+test('refusal: an empty or unknown reason still produces a sentence', () => {
+  // A blank status line is the one outcome that tells the reader nothing.
+  for (const raw of ['', null, undefined, 'something nobody anticipated']) {
+    const out = explainTrafficRefusal(raw, { heard: 0 });
+    assert.ok(out.length > 20, `"${raw}" produced "${out}"`);
+    assert.match(out, /aircraft feed/);
+  }
 });

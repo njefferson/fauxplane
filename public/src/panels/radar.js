@@ -27,7 +27,7 @@
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
 import { drawPlan, altLabel, hitTestAircraft } from '../render/gauges/plan.js';
-import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, filterByAirframe, ownAltitudeFt, withinBand } from '../data/traffic.js';
+import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, explainTrafficRefusal, filterByAirframe, ownAltitudeFt, withinBand } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
 import { loadNavdata, parseLatLon, runwaysNear, searchAirports } from '../data/navdata.js';
 
@@ -572,8 +572,25 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
       const aircraft = withinBand(traffic.nearby, ownAltFt, bandId);
 
       if (!result) status.textContent = 'Waiting for the first sweep.';
-      else if (!result.ok) status.textContent = `No traffic: ${result.reason}`;
-      else {
+      else if (!result.ok) {
+        /**
+         * THE READER GETS A SENTENCE; THE FORENSICS GO WHERE FORENSICS GO.
+         *
+         * This used to print the raw refusal chain, so what Noah photographed
+         * on the face of a gauge was `cf-ray a258e8a82ff1fa4e-SJC`. True, and
+         * written for whoever is debugging the Pages Function.
+         *
+         * Nothing is lost: the full chain is still in the diagnostics report
+         * (§7f) and is on this element's `title`, so it is one long-press away
+         * and one paste away. Summarising an error is help; hiding one is not,
+         * and the difference is whether the detail is still reachable.
+         */
+        status.textContent = explainTrafficRefusal(result.reason, { heard: traffic.nearby.length });
+        status.title = result.reason ?? '';
+      } else {
+        status.title = '';
+      }
+      if (result?.ok) {
         // The age of the AIRCRAFT, not of the last attempt. See nearbyAt.
         const age = formatAge(snapshot.t - (result.nearbyAt ?? result.at));
         // NAME WHAT THE SCOPE IS CENTRED ON. "within 40 nm of this device" is a

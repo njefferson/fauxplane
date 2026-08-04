@@ -587,6 +587,18 @@ const PLANTS = [
     expect: /stands off far longer than a 429|cooldown/,
   },
   {
+    // Noah photographed `cf-ray a258e8a82ff1fa4e-SJC` on the face of a gauge.
+    // Every word of the raw chain is true and it is written for whoever is
+    // debugging the Pages Function. Putting it back is the defect.
+    name: 'refusal: the raw upstream chain goes back on the gauge',
+    check: 'the reader gets a sentence and the forensics go to diagnostics',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: "  else if (has(/429|rate limit/i)) what = 'The aircraft feed is rate limiting us.';",
+    replace: '  else if (has(/429|rate limit/i)) what = raw;',
+    expect: /cf-ray|rate limiting us/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',
