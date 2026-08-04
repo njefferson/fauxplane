@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { POLICIES } from '../functions/api/_lib.js';
+import { POLICIES, standoffPhrase } from '../functions/api/_lib.js';
 import {
   FETCH_RANGE_NM,
   FOLLOW_POLL_MS,
@@ -378,4 +378,80 @@ test('follow banner: once the broadcast arrives it says so, and says whose', () 
 test('follow banner: not following says nothing at all', () => {
   assert.equal(followBannerText(null, {}), '');
   assert.equal(followBannerText('', {}), '');
+});
+
+/**
+ * THE COUNTDOWN (Noah, 2026-08-04).
+ *
+ * *"No indication of how long I'll wait before the radar will work…like the
+ * delay countdown, maybe?…. Just looks broken."* He was looking at NO CONTACT
+ * above the words "Standing off from the aircraft feeds for a moment". "A
+ * moment" is not a number, and a wait with no number is indistinguishable from
+ * a hang.
+ *
+ * THE COUNTDOWN IS ABOUT THE ATTEMPT, NEVER THE RESULT. We can promise when we
+ * will ASK. We cannot promise the answer, because it may be another refusal —
+ * and a panel that will not invent a groundspeed does not get to invent an ETA.
+ */
+test('countdown: a refused scope says when it will ask again', () => {
+  const r = radarReadiness({ result: { ok: false, centre: {} }, aircraft: [], nextAttemptInS: 12 });
+  assert.match(r.label, /RETRY 12s/, 'the chip carries the number');
+  assert.match(r.detail, /Asking again in 12s/);
+});
+
+test('countdown: it never claims the radar will WORK by then', () => {
+  const r = radarReadiness({ result: { ok: false, centre: {} }, aircraft: [], nextAttemptInS: 30 });
+  const said = `${r.label} ${r.detail}`;
+  // The next answer may be another refusal. Anything promising a working scope
+  // at a stated time is a promise this app cannot keep.
+  assert.doesNotMatch(said, /will work|working in|back in \d+s|ready in/i);
+  assert.match(said, /Asking again/, 'it commits to the request, which is the part we control');
+});
+
+test('countdown: an ageing scope counts down too, and stays tappable', () => {
+  const r = radarReadiness({
+    result: { ok: false, centre: { lat: 1, lon: 2 } },
+    aircraft: [{}, {}],
+    nearbyAt: 0,
+    now: 45_000,
+    nextAttemptInS: 7,
+  });
+  assert.match(r.label, /AGEING · 2 · RETRY 7s/);
+  assert.equal(r.tappable, true, 'a countdown must not imply the aircraft shown stopped being tappable');
+});
+
+test('countdown: no schedule means no number, not a zero', () => {
+  // Zero would read as "asking right now", which is an instruction rather than
+  // an admission of not knowing.
+  for (const v of [null, undefined, 0, -3, Number.NaN]) {
+    const r = radarReadiness({ result: { ok: false, centre: {} }, aircraft: [], nextAttemptInS: v });
+    assert.doesNotMatch(r.label, /RETRY/, `nextAttemptInS ${v} must not produce a countdown`);
+    assert.doesNotMatch(r.detail, /Asking again/);
+  }
+});
+
+test('countdown: a healthy scope is not cluttered with one', () => {
+  // Nothing is being waited for, so a retry number would be noise on the one
+  // state that is working.
+  const r = radarReadiness({ result: { ok: true, centre: { lat: 1, lon: 2 } }, aircraft: [{}], nextAttemptInS: 9 });
+  assert.doesNotMatch(r.label, /RETRY/);
+});
+
+/**
+ * The SERVER side of the same complaint. "standing off for up to 600s" is the
+ * length of the stand-off as recorded — it never shrinks, so nine minutes into
+ * a ten-minute wait it still said 600s.
+ */
+test('standoff: the phrase reports what is LEFT, not what was recorded', () => {
+  assert.match(standoffPhrase({ seconds: 600, remainingS: 45 }), /45s/);
+  assert.doesNotMatch(standoffPhrase({ seconds: 600, remainingS: 45 }), /600/);
+  assert.match(standoffPhrase({ seconds: 600, remainingS: 425 }), /7m 5s/);
+  assert.match(standoffPhrase({ seconds: 600, remainingS: 120 }), /2m$/);
+});
+
+test('standoff: a record with no expiry says so rather than guessing zero', () => {
+  // Zero means "ask now". An unknown remaining time is not that.
+  const said = standoffPhrase({ seconds: 600, remainingS: null });
+  assert.match(said, /no expiry recorded/);
+  assert.doesNotMatch(said, /\b0s\b/);
 });

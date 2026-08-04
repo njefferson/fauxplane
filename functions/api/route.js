@@ -39,7 +39,7 @@
  * synthetic data path here either.
  */
 
-import { POLICIES, USER_AGENT, cached, cooldownSeconds, inCooldown, json, noteRefusal, politeFetch, problem } from './_lib.js';
+import { POLICIES, USER_AGENT, cached, cooldownSeconds, inCooldown, json, noteRefusal, politeFetch, problem, standoffPhrase } from './_lib.js';
 
 export const ROUTE_SOURCE = Object.freeze({
   id: 'adsb.lol',
@@ -189,7 +189,7 @@ export async function onRequestGet({ request }) {
      */
     const cool = await inCooldown(request, ROUTE_SOURCE.id).catch(() => null);
     if (cool) {
-      return problem(`route not asked — ${cool.reason}, standing off for up to ${cool.seconds ?? '?'}s`, { status: 503 });
+      return problem(`route not asked — ${cool.reason}, ${standoffPhrase(cool)}`, { status: 503 });
     }
 
     let res;

@@ -29,6 +29,22 @@
  */
 export const RELEASES = [
   {
+    version: '1.23.0',
+    date: '2026-08-04',
+    headline: 'The radar counts down instead of saying "a moment".',
+    changed: [
+      'When the scope is waiting, the indicator now shows a countdown: NO CONTACT · RETRY 12s, ticking down to the next sweep. You said a wait with no number just looks broken, and you were right — the app knew the number the whole time and never said it.',
+      'It counts down to when the panel will ASK, not to when the radar will work. Those are different promises and only the first one is mine to make: the next answer might be another refusal. You will see it try, and you will see what happened.',
+      'An ageing scope counts down too, and the aircraft on it stay tappable while it does.',
+      'The stand-off message now shrinks as the wait does. It used to say "standing off for up to 600s" for the whole ten minutes, including the last thirty seconds of it. It now says how much is actually left.',
+    ],
+    broken: [
+      'The countdown cannot tell you when the feed will start answering, only when the panel will next try. Nothing on this device knows the first one.',
+      'The rate limiting itself is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'The route shape is still unconfirmed. WHAT THE ROUTE FEED ACTUALLY SENT, in the diagnostics report, is the thing to send me.',
+    ],
+  },
+  {
     version: '1.22.1',
     date: '2026-08-04',
     headline: 'Two things the panel was saying that were not true.',

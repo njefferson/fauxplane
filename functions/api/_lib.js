@@ -290,7 +290,19 @@ export async function noteRefusal(request, id, seconds, reason, cache = caches.d
   const ttl = Math.min(Math.round(seconds), COOLDOWN_MAX_S);
   await cache.put(
     cooldownKey(request, id),
-    new Response(JSON.stringify({ id, reason, seconds: ttl }), {
+    /**
+     * `until` IS AN ABSOLUTE EXPIRY, and it is what makes a COUNTDOWN possible.
+     *
+     * `seconds` is the length of the stand-off as recorded — it never shrinks,
+     * so a panel reading it says "standing off for up to 600s" nine minutes
+     * into a ten-minute wait. Noah: "No indication of how long I'll wait before
+     * the radar will work… Just looks broken."
+     *
+     * Storing when it ENDS lets `inCooldown` return what is actually left, and
+     * a number that ticks down is the difference between a panel that is
+     * waiting and a panel that is broken.
+     */
+    new Response(JSON.stringify({ id, reason, seconds: ttl, until: Date.now() + ttl * 1000 }), {
       headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=${ttl}` },
     }),
   );
@@ -298,12 +310,39 @@ export async function noteRefusal(request, id, seconds, reason, cache = caches.d
 }
 
 /** The standing refusal for a provider, or null if it may be asked again. */
+/**
+ * How much longer we are not asking, in words — or the honest admission that we
+ * do not know.
+ *
+ * "up to 600s" was true and useless: it is the length of the stand-off, not
+ * what remains, so it read the same nine minutes in as it did at the start.
+ * A record written before `until` existed genuinely cannot say, and says that
+ * rather than guessing zero — zero means "ask now", which would be an
+ * instruction rather than a gap in knowledge.
+ */
+export function standoffPhrase(cool) {
+  const r = cool?.remainingS;
+  if (!Number.isFinite(r)) return 'standing off (no expiry recorded)';
+  if (r <= 0) return 'the stand-off has just expired';
+  if (r < 60) return `not asking again for ${r}s`;
+  const m = Math.floor(r / 60);
+  const rem = r % 60;
+  return `not asking again for ${m}m${rem ? ` ${rem}s` : ''}`;
+}
+
 export async function inCooldown(request, id, cache = caches.default) {
   const hit = await cache.match(cooldownKey(request, id));
   if (!hit) return null;
   try {
-    return await hit.json();
+    const rec = await hit.json();
+    // WHAT IS LEFT, not what was recorded. Null when the record predates
+    // `until` — an unknown remaining time must read as unknown rather than as
+    // zero, because zero means "ask now" and would be a wrong instruction.
+    const remainingS = Number.isFinite(rec?.until)
+      ? Math.max(0, Math.ceil((rec.until - Date.now()) / 1000))
+      : null;
+    return { ...rec, remainingS };
   } catch {
-    return { id, reason: 'refused recently', seconds: null };
+    return { id, reason: 'refused recently', seconds: null, remainingS: null };
   }
 }

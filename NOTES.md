@@ -9,7 +9,70 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## PROMOTED — staging and main are level at 1.22.1, 2026-08-04
+## STAGED NOW — 1.23.0, waiting on Noah
+
+**1.23.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.22.1 (promoted 2026-08-04; the record of that promote is below).
+
+Noah, on a 1.22.1 screenshot showing `NO CONTACT` above *"Standing off from the
+aircraft feeds for a moment"*: **"No indication of how long I'll wait before the
+radar will work…like the delay countdown, maybe?…. Just looks broken."**
+
+He is right, and the app already knew the number. `trafficAllowedAt` in `app.js`
+is the client's own exponential backoff clock and has existed since the 429
+work; nothing ever put it on screen. A wait with no number is indistinguishable
+from a hang, which is exactly what he read it as.
+
+### The countdown is about the ATTEMPT, never the RESULT
+
+`NO CONTACT · RETRY 12s` means WE WILL ASK in twelve seconds. It does not mean
+the radar will work in twelve seconds — the next answer may be another refusal.
+
+That distinction is the whole design and it is gated: one plant swaps "Asking
+again in 12s" for "Working again in 12s" and the tests go red. **A panel that
+will not invent a groundspeed does not get to invent an ETA**, and a countdown
+that promised a working scope would be a fabricated fact of exactly the kind
+1.22.1 removed two of.
+
+### It counts to the right instant, which is not the obvious one
+
+The countdown targets **the next TICK**, not `trafficAllowedAt`. The interval
+fires every `TRAFFIC_INTERVAL_MS` regardless and returns early while the backoff
+holds, so the moment the backoff expires is NOT when a request happens — the
+first tick at or after it is. Counting down to the wrong one would reach zero
+and then sit there, which is the precise failure Noah was already describing.
+
+`nextAttemptAt()` rounds up to that tick. `nextSweepAt` is stamped on every
+tick including the ones that return early, because the cadence is what the
+countdown measures against.
+
+### The server's half of the same complaint
+
+`inCooldown` returned the stand-off's length AS RECORDED, so the panel said
+"standing off for up to 600s" for the whole ten minutes — including the last
+thirty seconds. The record now stores an absolute `until` and `inCooldown`
+returns `remainingS`; `standoffPhrase()` is one helper used by both endpoints so
+the wording cannot drift.
+
+**A record with no `until` reports "no expiry recorded" rather than zero**,
+because zero means "ask now" — an instruction, not an admission of ignorance.
+
+### Also in this report, and NOT a defect
+
+The 1.22.1 report is a healthy panel: 5 of 41 fields failed and every one is
+correct. `position.track` FAILs because GPS reports no track at rest and the
+panel says the magnetic heading is shown instead; TAS and CAS fall out of that;
+AoA needs a groundspeed over 20 kt; there is no ambient light sensor. The three
+`nav.*` fields are listed as NOT APPLICABLE rather than failures. The filter is
+`ALIGNED`, `converged true`, residual 0.16°. Nothing to fix.
+
+**Note the device**: the user-agent says `Macintosh` — that is an iPad, which
+1.22.1's own DEVICE block resolves correctly via `window.orientation` and a
+1180x734 landscape viewport. Do not read that string as a Mac.
+
+---
+
+## PROMOTED — main reached 1.22.1, 2026-08-04
 
 **Noah said "Promote to main" on 2026-08-04.** `main` fast-forwarded cleanly
 from **1.15.0 to 1.22.1** — eleven releases, eighteen commits, no merge. Live at

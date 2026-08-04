@@ -199,6 +199,42 @@ const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // Noah, looking at NO CONTACT above "Standing off ... for a moment":
+    // "No indication of how long I'll wait before the radar will work…like the
+    // delay countdown, maybe?…. Just looks broken." A wait with no number is
+    // indistinguishable from a hang, and the app knew the number all along.
+    name: 'radar: the countdown stops being shown while the scope waits',
+    check: 'a waiting scope says when it will ask again',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: '  const retry = Number.isFinite(nextAttemptInS) && nextAttemptInS > 0 ? `RETRY ${Math.ceil(nextAttemptInS)}s` : null;',
+    replace: '  const retry = null;',
+    expect: /RETRY|Asking again/i,
+  },
+  {
+    // The other half, and the one that would be a LIE rather than an omission:
+    // a countdown that promises the radar will WORK. We control when we ask;
+    // we do not control the answer, and the next one may be another refusal.
+    name: 'radar: the countdown promises a working scope rather than a request',
+    check: 'the countdown commits only to the attempt',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: "  const retrySentence = retry ? ` Asking again in ${Math.ceil(nextAttemptInS)}s.` : '';",
+    replace: "  const retrySentence = retry ? ` Working again in ${Math.ceil(nextAttemptInS)}s.` : '';",
+    expect: /will work|working in|Asking again/i,
+  },
+  {
+    // The server's half. "up to 600s" is the length as RECORDED and never
+    // shrinks, so nine minutes into a ten-minute wait it still said 600s.
+    name: 'standoff: the wait reports its original length instead of what is left',
+    check: 'the stand-off phrase counts down',
+    gate: 'tests',
+    file: 'functions/api/_lib.js',
+    find: '  if (r < 60) return `not asking again for ${r}s`;',
+    replace: '  if (r < 60) return `not asking again for ${cool.seconds}s`;',
+    expect: /45s|600|remaining|left/i,
+  },
+  {
     // FROM NOAH'S 1.21.1 DIAGNOSTICS REPORT. The panel said attitude.heading
     // had failed because "this device reports no magnetic heading" — three
     // lines above a raw block reading `webkitCompassHeading 278.3`. His iPhone

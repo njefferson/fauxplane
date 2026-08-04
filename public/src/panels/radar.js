@@ -33,7 +33,19 @@ import { loadNavdata, parseLatLon, runwaysNear, searchAirports } from '../data/n
 
 const fmt = (v, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '—');
 
-export function createRadar({ host, traffic, announcer, onFollowChange = () => {}, onCentreChange = () => {} }) {
+export function createRadar({
+  host,
+  traffic,
+  announcer,
+  onFollowChange = () => {},
+  onCentreChange = () => {},
+  /**
+   * Seconds until the app next ASKS the feed, or null when it does not know.
+   * A thunk because the schedule lives in app.js and moves every tick — and
+   * because this panel is built before the poller exists.
+   */
+  nextAttemptInS = () => null,
+}) {
   let rangeNm = RADAR_RANGE_NM[2];
   let lastDrawnAt = 0;
 
@@ -592,6 +604,7 @@ export function createRadar({ host, traffic, announcer, onFollowChange = () => {
         nearbyAt: result?.nearbyAt ?? null,
         now: snapshot.t,
         following: traffic.followLabel,
+        nextAttemptInS: nextAttemptInS(),
       });
       readyChip.textContent = readiness.label;
       readyChip.dataset.state = readiness.state;

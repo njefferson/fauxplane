@@ -173,7 +173,27 @@ export const FOLLOW_WINDOWS = Object.freeze({ freshMs: 2 * FOLLOW_POLL_MS, stale
  *
  * Pure, so every sentence it can produce is testable without a browser.
  */
-export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0, following = null }) {
+export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0, following = null, nextAttemptInS = null }) {
+  /**
+   * THE COUNTDOWN, AND IT IS ABOUT THE ATTEMPT — NEVER ABOUT THE RESULT.
+   *
+   * Noah: *"No indication of how long I'll wait before the radar will work…
+   * like the delay countdown, maybe?…. Just looks broken."* He was looking at
+   * NO CONTACT above the sentence "Standing off from the aircraft feeds for a
+   * moment", and "a moment" is not a number.
+   *
+   * The app has always known this exactly — `trafficAllowedAt` in app.js is the
+   * client's own backoff clock — and simply never said it out loud.
+   *
+   * "RETRY 12s" means WE WILL ASK in twelve seconds. It does not mean the
+   * radar will work in twelve seconds, because the answer may be another
+   * refusal, and a countdown that implied otherwise would be a promise this
+   * app cannot keep. A panel that will not invent a groundspeed does not get
+   * to invent an ETA either.
+   */
+  const retry = Number.isFinite(nextAttemptInS) && nextAttemptInS > 0 ? `RETRY ${Math.ceil(nextAttemptInS)}s` : null;
+  const withRetry = (label) => (retry ? `${label} · ${retry}` : label);
+  const retrySentence = retry ? ` Asking again in ${Math.ceil(nextAttemptInS)}s.` : '';
   const count = aircraft.length;
   /**
    * THE TAP'S REAL PRECONDITION: a centre to measure bearings from, and at
@@ -198,12 +218,17 @@ export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0
       ? {
           state: 'ageing',
           tappable,
-          label: `AGEING · ${count}`,
+          label: withRetry(`AGEING · ${count}`),
           detail:
             `The feed is not answering. ${count === 1 ? 'This is the last aircraft' : `These are the last ${count} aircraft`}`
-            + ` actually heard${ageS === null ? '' : `, ${ageS}s ago`} — still tappable.`,
+            + ` actually heard${ageS === null ? '' : `, ${ageS}s ago`} — still tappable.${retrySentence}`,
         }
-      : { state: 'refused', tappable: false, label: 'NO CONTACT', detail: 'The feed is not answering and nothing has been heard yet.' };
+      : {
+          state: 'refused',
+          tappable: false,
+          label: withRetry('NO CONTACT'),
+          detail: `The feed is not answering and nothing has been heard yet.${retrySentence}`,
+        };
   }
   if (!count) {
     return { state: 'empty', tappable: false, label: 'NO CONTACT', detail: 'The sweep worked and nothing is in range. Try a wider range or another band.' };

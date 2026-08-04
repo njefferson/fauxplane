@@ -34,7 +34,7 @@
  * coincidence, makes every user within the same six miles share one cache entry.
  */
 
-import { POLICIES, TRAFFIC_PROVIDERS, USER_AGENT, cached, cooldownSeconds, inCooldown, json, noteRefusal, politeFetch, problem } from './_lib.js';
+import { POLICIES, TRAFFIC_PROVIDERS, USER_AGENT, cached, cooldownSeconds, inCooldown, json, noteRefusal, politeFetch, problem, standoffPhrase } from './_lib.js';
 
 /** Home reference, used only until the client has a fix (NOTES.md, settled). */
 const HOME = { lat: 38.68, lon: -121.0 };
@@ -398,7 +398,7 @@ async function relay(pick, meta, cacheSeconds, request = null) {
     if (request) {
       const cool = await inCooldown(request, provider.id).catch(() => null);
       if (cool) {
-        refusals.push(`${provider.id} not asked — ${cool.reason}, standing off for up to ${cool.seconds ?? '?'}s`);
+        refusals.push(`${provider.id} not asked — ${cool.reason}, ${standoffPhrase(cool)}`);
         continue;
       }
     }

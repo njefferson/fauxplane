@@ -419,6 +419,40 @@ async function boot() {
     if (spoken && spoken !== routeShown) announcer.say(spoken);
     routeShown = spoken;
   };
+  /**
+   * THE TRAFFIC SCHEDULE, DECLARED ABOVE THE PANEL THAT READS IT.
+   *
+   * `createRadar` is handed a thunk that calls `nextAttemptAt()`, and a
+   * declaration further down would work right up until something rendered
+   * the radar during boot — at which point it throws in the temporal dead
+   * zone. That trap was removed from the route source this week; it costs
+   * nothing to not re-introduce it here.
+   */
+  let trafficPenalty = 0;
+  let trafficAllowedAt = 0;
+  /**
+   * WHEN THE NEXT SWEEP ACTUALLY FIRES, so the panel can COUNT DOWN to it.
+   *
+   * Noah: "No indication of how long I'll wait before the radar will work…
+   * like the delay countdown, maybe?…. Just looks broken." The app has always
+   * known this exactly and never said it.
+   *
+   * It is the next TICK, not `trafficAllowedAt`. The interval fires every
+   * TRAFFIC_INTERVAL_MS regardless and returns early while the backoff is in
+   * force, so the moment the backoff expires is NOT when a request happens —
+   * the first tick at or after it is. Counting down to the wrong one would
+   * reach zero and then sit there, which is the failure mode Noah is already
+   * describing.
+   */
+  let nextSweepAt = 0;
+  const nextAttemptAt = () => {
+    if (!nextSweepAt) return 0;
+    if (nextSweepAt >= trafficAllowedAt) return nextSweepAt;
+    // Ticks land on a fixed cadence; find the first one past the backoff.
+    const skipped = Math.ceil((trafficAllowedAt - nextSweepAt) / TRAFFIC_INTERVAL_MS);
+    return nextSweepAt + skipped * TRAFFIC_INTERVAL_MS;
+  };
+
   const radar = createRadar({
     host: $('page-radar'),
     traffic,
@@ -432,6 +466,12 @@ async function boot() {
       // Ask at once rather than waiting out the interval: the five seconds
       // between a tap and the first numbers is the whole first impression.
       refreshFollowed();
+    },
+    // The countdown the chip shows. Null before the first sweep is scheduled —
+    // "unknown" is a state, and guessing a number would be inventing one.
+    nextAttemptInS: () => {
+      const at = nextAttemptAt();
+      return at ? Math.max(0, (at - now()) / 1000) : null;
     },
   });
 
@@ -740,8 +780,6 @@ async function boot() {
   // rate-limited round now doubles the wait before traffic is asked again —
   // any traffic, nearby or followed, because the limit is theirs, not
   // per-endpoint — and one success clears it.
-  let trafficPenalty = 0;
-  let trafficAllowedAt = 0;
   const noteTrafficResult = (result) => {
     if (result && result.ok === false && /rate limited/.test(String(result.reason ?? ''))) {
       trafficPenalty = Math.min(trafficPenalty + 1, 5);
@@ -753,6 +791,9 @@ async function boot() {
   };
 
   async function refreshTraffic() {
+    // Stamped on EVERY tick, including one that returns early — the cadence is
+    // what the countdown is measured against, not the successful requests.
+    nextSweepAt = now() + TRAFFIC_INTERVAL_MS;
     if (now() < trafficAllowedAt) return;
     // The plan view is only fetched while it is the page being LOOKED AT.
     // Polling a volunteer network to draw a canvas nobody has open is exactly
