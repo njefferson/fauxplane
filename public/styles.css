@@ -362,7 +362,20 @@ body {
   display: flex;
   flex-direction: row;
   gap: var(--gap);
-  min-height: 0;
+  /* NEVER SHORTER THAN ITS OWN CHILDREN, which `min-height: 0` allowed.
+     `0` is there so the horizon can shrink rather than overflow, and it does
+     that job right up until the row is handed less than the canvas and the plan
+     view have declared as their floors — at which point they hang out of their
+     parent and paint over whatever is below, silently.
+     `min-content` keeps the shrinking and stops the overflow: the row can give
+     up every pixel down to its children's own floors and no further.
+     Found twice. First on a landscape phone, where the value strip left the row
+     95px against 12rem floors and the gate reported the two overlaps by name.
+     Then again at tablet size, where it presented as a contrast reading of
+     1.00:1 on the power annunciator — the strip's amber chip was showing
+     through from behind the hidden text, so the gate was measuring one element
+     against another element's pixels and could not have known. */
+  min-height: min-content;
   min-width: 0;
 }
 
@@ -508,13 +521,28 @@ body {
      A floor of one target still permits shrinking far below content height, so
      the overflow-scroll this rule exists to enable is unaffected. */
   min-height: var(--target);
-  /* A THIRD OF THE PANEL, AT MOST. Every value stays reachable because the
-     region scrolls; what it can no longer do is grow until the horizon is a
-     letterbox, which is the failure this whole rule is a response to. */
-  max-height: 34%;
+  /* A FIFTH OF THE PANEL, AT MOST — it was a third, and a third was still too
+     much on a landscape iPad where height is the scarce axis. Every value stays
+     reachable because the region scrolls; what it can no longer do is grow
+     until the horizon is a letterbox. */
+  max-height: 21%;
   overflow-y: auto;
-  display: grid;
+  /* IT READS AS A BAND, not as clipped content. A grid of variable-height rows
+     cannot be capped at a whole number of them, so the last visible row is
+     usually cut — and a cut row against nothing looks like a rendering fault
+     rather than like a scroller. The rule above it says where the instruments
+     end and this begins. Same reasoning as the aircraft list, which needed its
+     count in words as well because "All (15)" beside seven rows was actively
+     misleading; nothing here claims a count. */
+  border-top: 1px solid var(--hairline);
+  padding-top: 0.4rem;
+  /* WIDE ENOUGH FOR THE WHOLE ROW ON ONE LINE, which is the point of the
+     compaction — narrower columns fit more across and gain nothing, because
+     each one then costs two lines when the provenance chip wraps. Measured:
+     13rem columns wrapped the chip and cost 103px a row; 15rem keep it on the
+     line at about 34px. */
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  display: grid;
   gap: 0.3rem;
   align-content: start;
 }
@@ -783,12 +811,27 @@ body {
 
 /* --- readout rows -------------------------------------------------------- */
 
+/*
+ * ONE LINE PER VALUE, and this is what "landscape is too cramped" was.
+ *
+ * Measured on a 1180x700 landscape iPad: each row was 110px tall, because
+ * `.ro-label` was `flex: 1 1 8rem` and GREW to 190px of a 285px column — which
+ * pushed the provenance chip onto a second line and the reason onto a third.
+ * Twenty-six of those needed 770px of content in a panel 584px high, so the
+ * strip took a third of the display and still scrolled, and the horizon was
+ * left a letterbox wider than it was tall.
+ *
+ * The label now takes the width of its own text and the reading is pushed to
+ * the right, so a row is one line and about 34px. The reason still gets its own
+ * line WHEN THERE IS ONE — that text is the whole point of a failed row and is
+ * never the thing that gets squeezed.
+ */
 .readout {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex-wrap: wrap;
-  padding: 0.35rem 0.5rem;
+  padding: 0.25rem 0.5rem;
   background: var(--surface);
   border-radius: var(--radius);
   border-left: 3px solid var(--hairline);
@@ -807,11 +850,17 @@ body {
 }
 
 .ro-label {
-  flex: 1 1 8rem;
+  /* ITS OWN WIDTH, not the whole row. It may still wrap on a narrow phone —
+     wrapping is honest, and ellipsis would hide the name of the reading. */
+  flex: 0 1 auto;
+  min-width: 0;
   color: var(--text-2);
   font-size: 0.8125rem;
 }
 .ro-figure {
+  /* The reading sits against the right edge, so a column of them lines up and
+     can be scanned without reading the labels. */
+  margin-left: auto;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 1.0625rem;
   font-weight: 700;
@@ -833,16 +882,20 @@ body {
 }
 
 /* The provenance chip. Colour reinforces; the glyph and the word carry it. */
+/* Trimmed rather than shrunk: the WORD is the non-hue channel (§4) and keeps
+   its size. What went is tracking and padding, which cost about ten pixels a
+   chip and decided whether a whole row fitted on one line. */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
+  gap: 0.25rem;
   font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 0.1rem 0.4rem;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.3rem;
   border-radius: 0.7rem;
   border: 1px solid currentColor;
+  white-space: nowrap;
 }
 .chip-live {
   color: var(--live);

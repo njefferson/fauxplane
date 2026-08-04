@@ -11,19 +11,17 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.19.0 is on staging: https://staging.fauxplane.pages.dev**
+**1.19.1 is on staging: https://staging.fauxplane.pages.dev**
 
-Answers six things from his 2026-08-03 screenshots. Runways are drawn at
-airports; ground traffic no longer appears as traffic below you; the aircraft
-list says how long it is and how much is below the fold; What's new stops being
-a version archive; the welcome screen leads with the instrument; and there is a
-link back to the hub in the (i) menu and the footer.
+**The horizon is the thing to test.** 1.19.0 found and fixed the root cause of
+"gentle rotation errors the horizon" — the gyro propagation was using a
+small-angle shortcut that is only exact when the panel is bolt upright. Put it
+in the cradle, level it, and turn it. It should stay put.
 
-**The one to test carefully is the horizon.** "Gentle rotation errors the
-horizon" is BOUNDED rather than fixed — the root cause is not found and a
-sandbox with no accelerometer cannot reproduce it. If it happens again, press
-the version stamp WHILE IT IS WRONG and send that report; it carries the
-filter's internals and a photograph cannot.
+Also in it: runways drawn at airports, ground traffic no longer shown as traffic
+below you, and 1.19.1's landscape fix — the value strip was taking a third of an
+iPad and is now a fifth, so the horizon and the radar are each about twenty
+percent bigger.
 
 `main` is on 1.15.0 until you say promote. This block is rewritten by whichever
 session stages the next candidate; a staged build nobody can see is the failure
@@ -2213,6 +2211,107 @@ view is checked WITH aircraft on it rather than empty.
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
   airborne and being heard right now.
+
+---
+
+## 1.19.1 — landscape gets its instruments back, 2026-08-03
+
+Noah, on a landscape iPad: "Landscape is too cramped now." 1.18.0 moved the
+value strip to the bottom, which was right, and then let it take a third of the
+height, which was not — the horizon came out a letterbox, wider than it was
+tall, and the strip STILL cut off mid-row.
+
+**Measured before touching anything.** On a 1180x700 landscape iPad: panel 584px,
+instruments 358px, strip 191px — a third — with 426px of content inside it. Each
+row was **110px tall**, for "Groundspeed 0 kt LIVE".
+
+**The row was the problem, not the cap.** `.ro-label` was `flex: 1 1 8rem` and
+GREW to 190px of a 285px column, which pushed the provenance chip onto a second
+line and the failure reason onto a third. The label takes its own width now and
+the reading is pushed right with `margin-left: auto`, so a row is one line and
+about 34px. Twenty-six of them need 238px instead of 770px.
+
+After: instruments 358 → **431px**, horizon canvas 308 → **380px**, strip 191 →
+**118px**. The cap came down from 34% to 21% as well, but the compaction is what
+made that affordable rather than merely tighter.
+
+The reason still gets its own line when there is one. That text is the entire
+point of a crossed-out row and is never the thing that gets squeezed.
+
+### Two defects found underneath it, and neither was the layout
+
+**`.pfd-row { min-height: 0 }` lets the row be crushed below its own children.**
+The zero is there so the horizon can shrink rather than overflow, and it does
+that job right up until the row is handed less than the canvas and the plan view
+declare as their floors — at which point they hang out of their parent and paint
+over whatever is below. Found on a landscape phone in 1.18.0 (the gate named
+both overlaps), and again here. `min-height: min-content` keeps the shrinking
+and stops the overflow: the row gives up every pixel down to its children's
+floors and no further.
+
+**THE CONTRAST SAMPLER WAS READING TWO DIFFERENT LAYOUTS.** This is the one
+worth remembering.
+
+`page.screenshot({ fullPage: true })` grows the viewport to the document height
+to take the shot, and any layout that depends on viewport height — percentage
+heights, flex distribution down a column, a panel sized to fill the screen —
+reflows while it does. Coordinates were being read at a 768px viewport and
+sampled out of an image laid out at 1030px.
+
+It surfaced as `power annunciator measured 1.00:1` — a foreground compared
+against its own colour, which is exactly what happens when the pixel sampled for
+the BACKDROP is the element's own text, still painted a hundred pixels from
+where the measurement said it was. Nothing was wrong with the colour, the
+element, or the hiding. Three separate investigations went past it: the DOM said
+the element was hidden, `elementsFromPoint` said nothing amber was behind it,
+and a hand-rolled replication of the sampler measured a perfectly good 10:1. All
+three were right, and all three were looking at the DOM while the gate was
+looking at a screenshot.
+
+Growing the viewport BEFORE measuring makes the later capture a no-op and the
+two agree by construction. Capped at 4000px so a tall document cannot mint an
+enormous screenshot per registry row per page.
+
+**The general shape, and it is the third time this file has recorded it: when a
+check disagrees with your reasoning, suspect the CHECK'S INSTRUMENT before the
+reasoning.** A gate that measures pixels has to be asked whether the pixels it
+measured are the ones it thinks.
+
+### And the sampler fix blunted a different check, which the sweep caught
+
+The four contrast and target plants were re-run individually after the sampler
+change, on the reasoning that a fix to an instrument can quietly blunt it. All
+four still went red about their own thing, and that was the wrong four.
+
+**The full sweep came back 44/45, with the magenta canvas sentinel UNPROVEN** —
+the gate stayed GREEN with its fault planted. Nothing was wrong in the app. The
+new viewport growth fires a `resize`, this app re-reads its canvas colour tokens
+on one, and re-reading them HEALS the exact fault that sentinel exists to catch.
+`checkContrast` ran before the sentinel in the page loop, so the sentinel was
+looking at a page another check had already repaired.
+
+**The fix is ORDERING, not un-doing the perturbation.** `checkContrast` expands
+scroll containers, demotes modals, hides text and grows the viewport; any of
+those could heal something, and a list of exemptions here would go stale on the
+next one added. So the pixel checks now run first and the contrast pass last:
+measure what the app produced, then mutate it.
+
+**The general shape, and it is why the sweep is run whole rather than
+selectively: a targeted re-run tests the plants you SUSPECT.** Picking the four
+that seemed related was reasoning, and reasoning is what the harness is there to
+replace.
+
+### Verified
+
+**315 unit tests, the accessibility gate green across 3 viewports x 2 palettes
+x 5 pages, both palettes clearing every hard floor, `pwa-check.mjs` green.**
+
+**Planted faults: 44/45 from the full sweep, and the 45th — the canvas sentinel
+— re-proven individually after the ordering fix above.** Stated that way on
+purpose: the ordering change landed AFTER that sweep, so no single run has yet
+seen all forty-five against this build. A whole-sweep number would be a claim
+about a run that has not happened, which is the kind of rounding-up this file
+exists to prevent. The full sweep is re-running; the next entry records it.
 
 ---
 

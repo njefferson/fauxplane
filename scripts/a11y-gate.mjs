@@ -392,6 +392,32 @@ async function checkContrast(page, registry, where) {
   }, EXPAND);
   if (restore === 0) fail(where, 'no scroll containers matched the expand selector — the sampler cannot be trusted');
 
+  /**
+   * MEASURE AND CAPTURE UNDER ONE LAYOUT.
+   *
+   * `page.screenshot({ fullPage: true })` grows the viewport to the document
+   * height to take the shot. Any layout that depends on viewport height —
+   * percentage heights, flex distribution down a column, a panel sized to fill
+   * the screen — REFLOWS while it does. So coordinates read beforehand at a
+   * 768px viewport were being sampled out of an image laid out at 1030px, and
+   * pointed at whatever had slid into that spot.
+   *
+   * It surfaced as `power annunciator measured 1.00:1` — a foreground compared
+   * against its own colour, which is what happens when the pixel sampled for
+   * the BACKDROP is the element's own text, still painted a hundred pixels from
+   * where the measurement said it was. Nothing was wrong with the colour, the
+   * element, or the hiding; the gate was reading two different layouts and
+   * could not have known.
+   *
+   * Growing the viewport FIRST makes the later fullPage capture a no-op and the
+   * two agree by construction. Capped, because a very tall document would
+   * otherwise mint an enormous screenshot for every registry row on every page.
+   */
+  const vp = page.viewportSize();
+  const docHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+  const tall = Math.min(Math.max(docHeight, vp.height), 4000);
+  if (tall > vp.height) await page.setViewportSize({ width: vp.width, height: tall });
+
   const found = await page.evaluate((rows) => {
     return rows.map((row) => {
       const onScreen = [...document.querySelectorAll(row.selector)].filter((n) => {
@@ -495,6 +521,7 @@ async function checkContrast(page, registry, where) {
     window.__gateModals = [];
     window.__gateRestore = [];
   }, registry);
+  if (tall > vp.height) await page.setViewportSize(vp);
 
   live.forEach((entry, i) => {
     const fg = parseRgb(entry.colour);
@@ -760,11 +787,6 @@ async function main() {
           await runAxe(page, where);
           await checkTargets(page, where);
           await checkNames(page, where);
-          await checkContrast(
-            page,
-            REGISTRY.filter((r) => !r.page || r.page === name),
-            where,
-          );
 
           // No blank screens: the visible panel must actually have painted
           // something. A page that renders nothing passes every check above.
@@ -842,6 +864,28 @@ async function main() {
             return bad;
           });
           for (const s of sentinel) fail(where, s);
+
+          /**
+           * CONTRAST LAST, because it PERTURBS THE PAGE and the checks above
+           * must see what the app produced.
+           *
+           * It expands scroll containers, demotes modals, hides text, and now
+           * grows the viewport to make the measurement and the screenshot agree.
+           * That last one fires a resize, which makes this app re-read its
+           * canvas colour tokens — and re-reading them HEALS the exact fault the
+           * magenta sentinel exists to catch. The canvas plant went from caught
+           * to UNPROVEN the moment the viewport grew, with nothing wrong in the
+           * app at all: a check had been blunted by another check's side effect.
+           *
+           * Ordering is the fix rather than un-doing the perturbation, because
+           * any of these steps could heal something and listing them here would
+           * be a list that goes stale. Measure the app first; mutate it after.
+           */
+          await checkContrast(
+            page,
+            REGISTRY.filter((r) => !r.page || r.page === name),
+            where,
+          );
 
           // ONE RANGE, TWO SURFACES, CHECKED AS RENDERED. The PFD's range
           // buttons and the RADAR page's drive one value through one setter;

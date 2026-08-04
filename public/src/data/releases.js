@@ -29,6 +29,19 @@
  */
 export const RELEASES = [
   {
+    version: '1.19.1',
+    date: '2026-08-03',
+    headline: 'Landscape gets its instruments back.',
+    changed: [
+      'On a landscape iPad the strip of values was taking a THIRD of the screen and still cutting off mid-row, which squashed the horizon into a letterbox. Each value is one line now instead of three, so the strip is a fifth of the height and the horizon and the radar are both about twenty percent bigger.',
+      'The reading sits against the right edge of each row, so a column of them lines up and can be read down without reading the labels.',
+      'A failing value still gets its own line for the reason. That text is the entire point of a crossed-out row and is never the thing that gets squeezed.',
+    ],
+    broken: [
+      'With everything crossed out — no permissions granted — every row carries a reason and the strip scrolls. That is the worst case and it is meant to look like that; with live readings most rows are a single line.',
+    ],
+  },
+  {
     version: '1.19.0',
     date: '2026-08-03',
     headline: 'Runways on the scope, and the horizon recovers twice as fast.',
