@@ -40,7 +40,7 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -836,9 +836,101 @@ const runGate = (which = 'a11y') =>
     child.on('close', (code) => resolve({ code, out }));
   });
 
-const { values: argv } = parseArgs({ options: { only: { type: 'string' } } });
+/**
+ * FILES WHOSE CHANGE CAN BLUNT A PLANT THAT DOES NOT NAME THEM.
+ *
+ * A change here forces the WHOLE sweep no matter what `--changed` computes,
+ * and the list is deliberately generous. Hub LESSONS §38 is why it exists at
+ * all: fixing the contrast sampler silently blunted the canvas sentinel, four
+ * targeted re-runs all came back green, and only the whole sweep found 44/45.
+ * The lesson was "run the sweep whole" — the refinement is knowing WHEN that
+ * argument actually applies, which is when the thing doing the measuring moves,
+ * not when a leaf module does.
+ *
+ *   the gates themselves   — a check that changed can stop catching anything
+ *   the store and provenance — every field on every page flows through them
+ *   dom/canvas renderers    — every readout and every pixel check
+ *   styles.css / index.html — contrast and target checks on every page read them
+ */
+const SWEEP_EVERYTHING_IF_TOUCHED = [
+  'scripts/a11y-gate.mjs',
+  'scripts/plant.mjs',
+  'scripts/serve.mjs',
+  'public/src/core/state.js',
+  'public/src/core/provenance.js',
+  'public/src/render/dom.js',
+  'public/src/render/canvas.js',
+  'public/styles.css',
+  'public/index.html',
+];
 
-const selected = argv.only ? [PLANTS[Number(argv.only)]] : PLANTS;
+const { values: argv } = parseArgs({
+  options: { only: { type: 'string' }, changed: { type: 'string' }, dry: { type: 'boolean' } },
+});
+
+/**
+ * `--changed=<git-ref>` runs only the plants whose target file actually moved.
+ *
+ * Noah, 2026-08-04: *"you make a small change and then rescan everything else
+ * that has no relationship and could not have changed."* He is right, and the
+ * arithmetic says so: 24 of these plants are gated by the ACCESSIBILITY gate,
+ * each one a full browser run, and they are ~95% of a sweep's wall-clock. The
+ * other 33 are unit-gated and cost about a second each.
+ *
+ * WHAT MAKES THIS SAFE IS THAT IT IS MECHANICAL. Choosing plants by judgement
+ * is precisely the habit §38 was written against — you re-run the ones you
+ * SUSPECT, which is the reasoning a fault-injection harness exists to replace.
+ * This asks git, not a session, and escalates to everything on any file that
+ * could affect an unrelated plant.
+ *
+ * AND IT SAYS WHAT IT SKIPPED. A selective run that prints the same closing
+ * line as a whole one is a silent cap, and reads as "everything is covered"
+ * when it is not.
+ */
+function changedFiles(ref) {
+  const out = spawnSync('git', ['diff', '--name-only', ref, '--'], { cwd: REPO, encoding: 'utf8' });
+  if (out.status !== 0) {
+    console.error(`--changed=${ref}: git diff failed — ${(out.stderr || '').trim()}`);
+    process.exit(2);
+  }
+  const tracked = out.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+  const untracked = spawnSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: REPO, encoding: 'utf8' });
+  return new Set([...tracked, ...(untracked.stdout ?? '').split('\n').map((l) => l.trim()).filter(Boolean)]);
+}
+
+let selected = PLANTS;
+let skipped = [];
+let escalated = null;
+
+if (argv.only) {
+  selected = [PLANTS[Number(argv.only)]];
+} else if (argv.changed) {
+  const touched = changedFiles(argv.changed);
+  const trigger = SWEEP_EVERYTHING_IF_TOUCHED.filter((f) => touched.has(f));
+  if (trigger.length) {
+    escalated = trigger;
+  } else {
+    selected = PLANTS.filter((pl) => touched.has(pl.file));
+    skipped = PLANTS.filter((pl) => !touched.has(pl.file));
+  }
+  console.log(`\nchanged since ${argv.changed}: ${[...touched].length} file(s)`);
+  if (escalated) {
+    console.log(`  WHOLE SWEEP FORCED — ${escalated.join(', ')} can blunt a plant that does not name it`);
+  } else {
+    console.log(`  running ${selected.length} plant(s) whose target file moved`);
+    console.log(`  NOT RUN: ${skipped.length} plant(s) whose target file did not change —`);
+    console.log('  this run is NOT evidence about them. Run the whole sweep before a release.');
+    for (const pl of selected) console.log(`    · ${pl.name}`);
+  }
+}
+
+// `--dry` answers "what WOULD this run" without paying for a browser. Useful
+// before a release to see whether the selector escalated, and it is the only
+// way to inspect the choice without a forty-minute commitment.
+if (argv.dry) {
+  console.log(`\n--dry: ${selected.length} plant(s) would run, ${PLANTS.length - selected.length} would not.`);
+  process.exit(0);
+}
 const results = [];
 
 /**
