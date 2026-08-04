@@ -660,13 +660,56 @@ means to go is not, and is not invented here.
 
 ### Scoped, not done
 
-**A route (origin and destination).** adsb.lol publish a separate routes API —
-"plausible aircraft routes", in their own words, which is a phrasing worth
-respecting when the panel labels it. Their terms need reading first, exactly as
-adsb.lol's and adsb.fi's did.
+**A route (origin and destination).** Noah asked for this the day the airframe
+picker landed — *"a 'flight plan' page with a map and details sounds good if
+that's real and possible?"* — and it sat here blocked on terms nobody could
+read, because this sandbox cannot reach `api.adsb.lol` at all.
 
-None of that is started. It is written here so the next session begins from the
-research rather than repeating it.
+**UNBLOCKED 2026-08-04.** Noah opened adsb.lol's OpenAPI page in Safari and sent
+it. Their Terms of Service, verbatim:
+
+> "You can use the API for free."
+> "In the future, you will require an API key which you can get by feeding to
+> adsb.lol."
+> "If you want to use the API for production purposes, please contact me so I do
+> not break your application by accident."
+
+And the licence, which is the part that settles it:
+
+> "The license for the API **as well as all data ADSB.lol makes public** is
+> ODbL. This is the same license OpenStreetMap uses."
+
+A blanket ODbL grant over the API and its data. No non-commercial restriction —
+this app is PolyForm Noncommercial by its own choice, not theirs — and the
+attribution ODbL requires is already rendered from whichever provider answered.
+
+**The endpoint is `POST /api/0/routeset`**, listed on that page as "Api
+Routeset", beside `GET /api/0/airport/{icao}` for airports by ICAO. The schema
+list names `PlaneInstance` and `PlaneList`, so it takes a SET of aircraft rather
+than one — almost certainly callsign plus position, returning a route per plane.
+
+**"Plausible" is their word and it belongs on screen.** A route inferred from a
+callsign is not a filed flight plan, and a panel whose entire contract is that
+values trace to a source must not present an inference as a clearance.
+
+**What is still not known: the exact request and response shape.** The schemas
+are collapsed in the capture and the sandbox cannot fetch the spec. Two honest
+routes, and the first is the one this repo has used before:
+
+- **Build it with a shape probe**, exactly as the traffic feed was. The Function
+  calls the endpoint and the diagnostics report gains a "WHAT THE ROUTE FEED
+  ACTUALLY SENT" block listing the keys that came back, so Noah's device
+  reports the contract on its first real run. Until a route is understood the
+  panel says so rather than inventing one. This is what confirmed the Mode S
+  crew readouts, which had been built from published field names without a
+  single real response ever having been seen.
+- Or expand `PlaneList` / `PlaneInstance` on the docs page and screenshot them,
+  and it can be built against the real contract immediately.
+
+**And the production courtesy is a real instruction, not boilerplate.** "Please
+contact me so I do not break your application by accident" is an invitation
+worth taking up if this ever goes beyond a hobby panel — recorded here so a
+later session does not have to decide whether it counted.
 
 ### Verified
 

@@ -110,6 +110,16 @@ out, and it is not an open question".** Noah supplied the API guide and it was
 wrong. A verdict from one of two documents is a guess in a verdict's clothes;
 NOTES keeps the whole story.
 
+**adsb.lol's terms and licence are READ and settled** (2026-08-04, from their
+OpenAPI page, which this sandbox cannot fetch — Noah screenshotted it): "You can
+use the API for free", an API key will be required "in the future" and is earned
+by feeding them, and **"The license for the API as well as all data ADSB.lol
+makes public is ODbL"**. A blanket grant with no non-commercial restriction. The
+routes endpoint is `POST /api/0/routeset` and is covered by the same grant; its
+request and response shape is NOT yet known and must be learned with a §7f probe
+rather than assumed. adsb.lol call routes **plausible**, which is their word and
+belongs on screen — an inference from a callsign is not a filed flight plan.
+
 Every gate, and each one exits non-zero:
 - `npm test` — 299 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.

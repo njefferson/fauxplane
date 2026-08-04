@@ -52,6 +52,12 @@ const SOURCES = [
     href: 'https://open-meteo.com/en/terms',
   },
   {
+    name: 'Flight routes',
+    detail:
+      'adsb.lol, under the same ODbL grant as their aircraft data. Routes are inferred from the callsign and adsb.lol call them PLAUSIBLE — they are not a filed flight plan, and the panel says so wherever one is shown.',
+    href: 'https://api.adsb.lol/docs',
+  },
+  {
     name: 'Airports',
     detail:
       'OurAirports, released into the public domain by its contributors. 702 Northern California fields are bundled with the app, so the radar’s centre picker works with the radio off.',
