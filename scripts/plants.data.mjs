@@ -177,6 +177,33 @@ export const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // Noah's first real route probe came back HTTP 201 — the shape was
+    // ACCEPTED — and the report could only say "no readable keys", which
+    // cannot tell an empty body from a non-JSON one from valid JSON of an
+    // unexpected shape. A probe that reports a status without the body is half
+    // a probe, and it cost a full round trip through his device to learn it.
+    name: 'probe: the route probe stops carrying the raw body',
+    check: 'a probe reports the body, not just the status',
+    gate: 'tests',
+    file: 'functions/api/route.js',
+    find: "    bodyPrefix: typeof raw === 'string' ? raw.slice(0, 400) : null,",
+    replace: '    bodyPrefix: null,',
+    expect: /raw text is the evidence|bodyPrefix|doctype/i,
+  },
+  {
+    // From the same report: following N81AB with every field reading "waiting
+    // for the first report from N81AB", while attitude.heading still read
+    // "N460DF is not broadcasting a heading". The panel was naming an aircraft
+    // it was no longer following.
+    name: 'honesty: heading keeps the PREVIOUS aircraft name after a switch',
+    check: 'no field names an aircraft the panel is not following',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: "        state.fail('attitude.heading', why);\n        return;",
+    replace: '        return;',
+    expect: /switching aircraft clears the previous one/i,
+  },
+  {
     // Noah, 2026-08-04: the mark at the top of the (i) panel "does not match
     // the app's icon close enough, and looks like an error because it is
     // different." A LOOKALIKE is the defect — the only version that cannot

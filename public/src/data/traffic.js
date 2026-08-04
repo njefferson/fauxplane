@@ -823,6 +823,21 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
         const why = followError ?? `waiting for the first report from ${followKey.value}`;
         for (const path of FOLLOW_WRITES) state.fail(path, why);
         for (const [path, reason] of Object.entries(FOLLOW_FAILS)) state.fail(path, reason);
+        /**
+         * HEADING TOO, AND IT WAS BEING LEFT BEHIND.
+         *
+         * It is written outside FOLLOW_WRITES because it has its own two-case
+         * message — the aircraft broadcasts a heading or it does not — and that
+         * write only happens in the branch below, where a report exists. So on
+         * switching aircraft before the first report arrives, this field kept
+         * the PREVIOUS aircraft's sentence.
+         *
+         * Noah's 1.23.1 report caught it exactly: following N81AB, with every
+         * other field reading "waiting for the first report from N81AB", while
+         * heading still read "N460DF is not broadcasting a heading". The panel
+         * was naming an aircraft it was no longer following.
+         */
+        state.fail('attitude.heading', why);
         return;
       }
 

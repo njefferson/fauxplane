@@ -29,6 +29,22 @@
  */
 export const RELEASES = [
   {
+    version: '1.24.0',
+    date: '2026-08-04',
+    headline: 'Your route probe came back — and the request was ACCEPTED.',
+    changed: [
+      'The route feed answered your device with HTTP 201, which means it accepted the request. I had expected a rejection naming a field I had got wrong; instead the shape is right and something else is going on with the reply.',
+      'My probe could not tell me what. It reported "no readable keys", which cannot distinguish an empty reply from an unreadable one from a perfectly good one in an unexpected shape — and those need three different fixes. It now carries the actual reply, its size and its type. One more report and this is solved.',
+      'A real bug you caught in the same report: you were following N81AB and the heading still said "N460DF is not broadcasting a heading". The panel was naming an aircraft you had stopped following. Every field is cleared on a switch now.',
+      'The diagnostics report also says when the route block is about a different aircraft than the one you are following, instead of quietly showing the last one.',
+    ],
+    broken: [
+      'The route still does not appear, and now I know it is not the request that is wrong. Follow a flight and send the report once more — WHAT THE ROUTE FEED ACTUALLY SENT now has the reply in it.',
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'The console shows repeated "ResizeObserver loop" warnings on iPad. They are noise from the layout settling, not a fault, and they are not fixed yet.',
+    ],
+  },
+  {
     version: '1.23.1',
     date: '2026-08-04',
     headline: 'The icon at the top of the panel is now actually the app’s icon.',

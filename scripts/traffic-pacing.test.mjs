@@ -455,3 +455,42 @@ test('standoff: a record with no expiry says so rather than guessing zero', () =
   assert.match(said, /no expiry recorded/);
   assert.doesNotMatch(said, /\b0s\b/);
 });
+
+/**
+ * NO FIELD MAY NAME AN AIRCRAFT THE PANEL IS NOT FOLLOWING.
+ *
+ * Noah's 1.23.1 report: following N81AB, every field reading "waiting for the
+ * first report from N81AB" — and `attitude.heading` still reading "N460DF is
+ * not broadcasting a heading". Heading is written outside FOLLOW_WRITES because
+ * it has its own two-case message, and that write only happens where a report
+ * exists, so switching aircraft before the first report left the previous one's
+ * sentence behind.
+ */
+test('follow: switching aircraft clears the previous one from EVERY field', async () => {
+  const failures = new Map();
+  const store = {
+    write: () => {},
+    fail: (path, reason) => failures.set(path, reason),
+    peek: () => null,
+  };
+  const traffic = createTrafficSource({
+    state: store,
+    clock: () => 1_000_000,
+    // Never answers, so `followed` stays null — the exact state the report was
+    // taken in, and the one where the stale name survived.
+    fetchImpl: async () => ({ ok: false, status: 429, json: async () => ({ ok: false, reason: 'rate limited' }) }),
+  });
+
+  traffic.follow({ callsign: 'N460DF' });
+  traffic.apply();
+  traffic.follow({ callsign: 'N81AB' });
+  traffic.apply();
+
+  const naming = [...failures.entries()].filter(([, reason]) => /N460DF/.test(String(reason)));
+  assert.deepEqual(
+    naming.map(([p]) => p),
+    [],
+    'these fields still name the aircraft the panel stopped following',
+  );
+  assert.match(failures.get('attitude.heading') ?? '', /N81AB/, 'heading must name the aircraft actually being followed');
+});

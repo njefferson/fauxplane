@@ -9,6 +9,78 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
+## STAGED NOW — 1.24.0, and the route probe ANSWERED, 2026-08-04
+
+**1.24.0 is on staging: https://staging.fauxplane.pages.dev**
+
+### HTTP 201 — the request shape is ACCEPTED
+
+Noah's 1.23.1 report carried the first real probe:
+
+    WHAT THE ROUTE FEED ACTUALLY SENT
+      callsign N460DF   HTTP 201   entries —
+      the reply carried no readable keys — see the HTTP status above
+
+**201, not 422.** The whole probe was designed around a 422 — FastAPI names the
+rejected field in `detail`, so a wrong body diagnoses itself. That branch never
+fired, which means `{planes:[{callsign, lat, lng}]}` is a shape adsb.lol
+ACCEPTS. The guess was right and the remaining problem is elsewhere.
+
+**And the probe could not say where**, which is the lesson. "No readable keys"
+cannot distinguish:
+
+- an EMPTY body,
+- a body that is not JSON at all,
+- valid JSON of a shape `parseRoute` does not recognise.
+
+Those need three different fixes and the report collapsed them into one
+sentence. `describe()` was built for the failure case and had nothing to say
+about success. **A probe that reports a status without the body is half a
+probe**, and it took a full round trip through Noah's device to find that out.
+
+It now reads `res.text()` FIRST and parses after, and carries `contentType`,
+`bodyLength`, `parsed` and a 400-character `bodyPrefix`. The unit tests assert
+the three states are tellable apart, and that a 50 KB reply reports its true
+length while only a bounded prefix travels.
+
+### A real defect in the same report: a field naming the wrong aircraft
+
+Following **N81AB**, every field read "waiting for the first report from
+N81AB" — and `attitude.heading` read **"N460DF is not broadcasting a heading"**.
+
+`attitude.heading` is not in `FOLLOW_WRITES`: it has its own two-case message
+(the aircraft broadcasts a heading, or it does not) and that write only happens
+in the branch where a report EXISTS. So switching aircraft before the first
+report kept the previous one's sentence. It is failed with the waiting reason
+now, and a test drives two `follow()` calls and asserts no field mentions the
+abandoned callsign.
+
+The diagnostics report also NAMES a stale probe rather than showing it silently:
+the block said `callsign N460DF` under a heading that never admitted the panel
+had moved on.
+
+### Working, confirmed on his device
+
+- **1.23.0's countdown**: `adsb.fi not asked — refused us (HTTP 403), not asking
+  again for 6m 17s` — the remaining time, not the recorded length.
+- **1.22.0's follow windows**: the filter reads ALIGNED, converged, residual
+  0.04°, with `MOUNT LEVELLING cradle -38.4 deg pitch` being subtracted.
+- **1.23.1's icon**: he is on `fauxplane-1.23.1` with no complaint about it.
+
+### Open, not fixed
+
+**`ResizeObserver loop completed with undelivered notifications`** — nine of
+them, in one burst, on the iPad. Benign in the sense that nothing visibly
+breaks; not benign in that it fills the console-capture block that exists to
+show REAL errors. Not diagnosed yet, and deliberately not guessed at.
+
+**`position.accuracy` and `position.altitudeAccuracy` FAIL with "no update for
+120s (limit 120s)"** while following. That is the device's own geo sensor ageing
+out because follow mode stops it writing — arguably correct, but the reason does
+not SAY that, which is the same class of half-true sentence 1.22.1 fixed twice.
+
+---
+
 ## STAGED NOW — 1.23.1, waiting on Noah
 
 **1.23.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on

@@ -289,6 +289,25 @@ export function buildReport({ snapshot, fusion, traffic, route = null, metar, bo
   if (rp) {
     line('WHAT THE ROUTE FEED ACTUALLY SENT');
     line(`  callsign ${rp.callsign ?? '—'}   HTTP ${rp.status ?? '—'}   entries ${rp.entries ?? '—'}`);
+    /**
+     * SAY SO WHEN THE PROBE IS ABOUT A DIFFERENT AIRCRAFT.
+     *
+     * Noah's 1.23.1 report has this block reading `callsign N460DF` while the
+     * panel was following N81AB — the last probe, correctly retained, sitting
+     * under a heading that never said it was stale. A block of evidence that
+     * does not say which question it answers is a trap for whoever reads it
+     * next, and that was going to be me.
+     */
+    if (traffic?.followLabel && rp.callsign && rp.callsign !== traffic.followLabel) {
+      line(`  NOTE: this is the LAST probe, for ${rp.callsign} — the panel is now following ${traffic.followLabel}`);
+    }
+    if (rp.contentType) line(`  content-type ${rp.contentType}`);
+    // THE BODY, which the first real probe did not carry and needed to. A 201
+    // with nothing readable in it is three different faults wearing one face.
+    if (rp.bodyLength !== null && rp.bodyLength !== undefined) {
+      line(`  body ${rp.bodyLength} bytes   parsed as JSON: ${rp.parsed ? 'yes' : 'NO'}`);
+    }
+    if (rp.bodyPrefix) for (const chunk of chunkList(String(rp.bodyPrefix).split(/(?<=.{70})/), 74)) line(`  raw   ${chunk}`);
     if (rp.topLevelKeys?.length) for (const chunk of chunkList(rp.topLevelKeys, 74)) line(`  top   ${chunk}`);
     if (rp.entryKeys?.length) for (const chunk of chunkList(rp.entryKeys, 74)) line(`  entry ${chunk}`);
     for (const v of rp.validation ?? []) line(`  REJECTED  at: ${v.at ?? '?'}   says: ${v.says ?? '?'}   (${v.kind ?? '?'})`);

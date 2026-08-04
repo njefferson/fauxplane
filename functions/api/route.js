@@ -120,13 +120,33 @@ export function parseRoute(payload, callsign) {
   };
 }
 
-/** What actually came back, for the diagnostics report. Costs no extra request. */
-function describe(payload, status) {
+/**
+ * What actually came back, for the diagnostics report. Costs no extra request.
+ *
+ * IT CARRIES THE RAW BODY NOW, and the first real probe is why. adsb.lol
+ * answered Noah's device with **HTTP 201** — not the 422 a wrong shape would
+ * have produced, so the request was ACCEPTED — and this function could only
+ * report "the reply carried no readable keys". That sentence is true and
+ * useless: it cannot tell an empty body from a non-JSON body from valid JSON
+ * with an unexpected shape, and those need three different fixes.
+ *
+ * The parsed view was built for a 422, where FastAPI's `detail` names the
+ * rejected field. It had nothing to say about success. So the raw text travels
+ * too, bounded — a probe that reports a status without the body is half a
+ * probe, and it cost a whole round trip through a real device to find that out.
+ */
+function describe(payload, status, raw = null, contentType = null) {
   const top = payload && typeof payload === 'object' ? Object.keys(payload).slice(0, 20) : [];
   const list = Array.isArray(payload) ? payload : (payload?.routes ?? payload?.planes ?? null);
   const first = Array.isArray(list) && list[0] && typeof list[0] === 'object' ? Object.keys(list[0]).slice(0, 30) : [];
   return {
     status,
+    contentType,
+    // Bounded and reported separately from the parse, so "empty" and
+    // "unparseable" stop looking identical.
+    bodyLength: raw === null ? null : raw.length,
+    bodyPrefix: typeof raw === 'string' ? raw.slice(0, 400) : null,
+    parsed: payload !== null,
     topLevelKeys: top,
     entryKeys: first,
     entries: Array.isArray(list) ? list.length : null,
@@ -212,12 +232,25 @@ export async function onRequestGet({ request }) {
       return problem(`the route feed is unreachable: ${err.message}`, { status: 502 });
     }
 
+    /**
+     * TEXT FIRST, THEN PARSE. `res.json()` consumes the body and throws away
+     * what it could not read, which is precisely the thing worth seeing when a
+     * 201 comes back empty. Reading the text keeps the evidence.
+     */
+    let raw = null;
     let payload = null;
     try {
-      payload = await res.json();
+      raw = await res.text();
     } catch {
-      // Left null on purpose: `describe` reports the status and empty keys,
-      // which is the honest picture of a non-JSON reply.
+      /* body unreadable; `describe` reports a null length, which says so */
+    }
+    if (raw) {
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        // Left null on purpose — `parsed: false` beside the raw prefix is the
+        // honest picture, and now the prefix is actually there to look at.
+      }
     }
 
     if (res.status === 429 || res.status === 403) {
@@ -233,7 +266,7 @@ export async function onRequestGet({ request }) {
       ).catch(() => {});
     }
 
-    const probe = describe(payload, res.status);
+    const probe = describe(payload, res.status, raw, res.headers?.get?.('content-type') ?? null);
 
     if (!res.ok) {
       return json(

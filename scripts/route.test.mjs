@@ -296,3 +296,80 @@ test('the route handler records its refusal against the PROVIDER, through the re
     globalThis.fetch = realFetch;
   }
 });
+
+/**
+ * THE FIRST REAL PROBE CAME BACK 201, AND THE PROBE COULD NOT SAY WHAT THAT WAS.
+ *
+ * adsb.lol answered Noah's device with HTTP 201 — not the 422 a wrong request
+ * shape produces, so the shape was ACCEPTED — and the report could only say
+ * "the reply carried no readable keys". True, and useless: it cannot tell an
+ * empty body from a non-JSON body from valid JSON of an unexpected shape, and
+ * those need three different fixes.
+ *
+ * A probe that reports a status without the body is half a probe.
+ */
+test('probe: an empty 201 is distinguishable from unparseable JSON', async () => {
+  const seen = [];
+  const store = new Map();
+  const cache = {
+    put: async (r, v) => store.set(typeof r === 'string' ? r : r.url, v),
+    match: async () => null,
+    delete: async () => true,
+  };
+  const realCaches = globalThis.caches;
+  const realFetch = globalThis.fetch;
+  globalThis.caches = { default: cache };
+
+  const run = async (body, status = 201, contentType = 'application/json') => {
+    globalThis.fetch = async () => new Response(body, { status, headers: { 'content-type': contentType } });
+    const request = new Request('https://example.test/api/route?callsign=UAL328&lat=38.7&lon=-121.0');
+    const res = await onRequestGet({ request });
+    const out = await res.json();
+    seen.push(out.probe);
+    return out.probe;
+  };
+
+  try {
+    const empty = await run('');
+    assert.equal(empty.status, 201);
+    assert.equal(empty.bodyLength, 0, 'an empty body must report zero bytes, not null');
+    assert.equal(empty.parsed, false);
+
+    const garbage = await run('<!doctype html><html>nope</html>', 201, 'text/html');
+    assert.ok(garbage.bodyLength > 0, 'a non-JSON body must report its real length');
+    assert.equal(garbage.parsed, false);
+    assert.match(garbage.bodyPrefix, /doctype/i, 'the raw text is the evidence — it must be carried');
+    assert.match(garbage.contentType, /text\/html/);
+
+    const good = await run(JSON.stringify([{ callsign: 'UAL328', airport_codes: 'KSFO-KJFK' }]));
+    assert.equal(good.parsed, true);
+    assert.ok(good.bodyLength > 0);
+
+    // The three states must be TELLABLE APART, which is the entire point.
+    assert.notDeepEqual(
+      [empty.bodyLength, empty.parsed],
+      [garbage.bodyLength, garbage.parsed],
+      'empty and unparseable must not read identically',
+    );
+  } finally {
+    globalThis.caches = realCaches;
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('probe: the raw body is bounded so a huge reply cannot flood the report', async () => {
+  const store = new Map();
+  const realCaches = globalThis.caches;
+  const realFetch = globalThis.fetch;
+  globalThis.caches = { default: { put: async (r, v) => store.set(r.url ?? r, v), match: async () => null, delete: async () => true } };
+  globalThis.fetch = async () => new Response('x'.repeat(50_000), { status: 201, headers: { 'content-type': 'text/plain' } });
+  try {
+    const res = await onRequestGet({ request: new Request('https://example.test/api/route?callsign=UAL328&lat=1&lon=2') });
+    const { probe } = await res.json();
+    assert.equal(probe.bodyLength, 50_000, 'the TRUE length is reported');
+    assert.ok(probe.bodyPrefix.length <= 400, 'but only a bounded prefix travels');
+  } finally {
+    globalThis.caches = realCaches;
+    globalThis.fetch = realFetch;
+  }
+});
