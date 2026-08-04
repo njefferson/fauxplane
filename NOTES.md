@@ -2283,22 +2283,68 @@ snapshot endpoint that is otherwise closed.
 So the open item has moved from "find a better provider" to "run a receiver",
 which is hardware and therefore Noah's call. It is in Open — needs Noah.
 
-### airplanes.live — NOT read, and this is the honest part
+### airplanes.live — READ, and the answer is NO
 
-Their site returns 403 to every automated fetch. That is the same Cloudflare bot
-rule that blocks our own Pages Function from adsb.fi, and getting past it means
-sending browser-shaped headers — which this repo forbids on principle, for a
-service whose data we are asking for as a favour.
+Their site 403s every automated fetch, so Noah opened the Legal Terms in Safari
+and sent the whole thing back as a fourteen-page capture. **This is settled now,
+and it is settled against using them.**
 
-A web search summarises them as 1 req/sec, non-commercial and educational only.
-**That is a paraphrase, not the publisher's words, and it is not enough.** This
-repo has already made that mistake once: OurAirports' README called the files
-"open-data downloads", an earlier session correctly rejected that as
-insufficient, and what actually settled it was an Unlicense committed to the
-data repository. A search snippet is weaker than the README that was rejected.
+Under PROHIBITED ACTIVITIES, verbatim:
 
-So airplanes.live remains unread and unused, and the URLs to open in a real
-browser are in Open — needs Noah.
+> "Except as may be the result of standard search engine or Internet browser
+> usage, use, launch, develop, or distribute any automated system, including
+> without limitation, any spider, robot, cheat utility, scraper, or offline
+> reader that accesses the Services, or use or launch any unauthorized script or
+> other software."
+
+> "Engage in any automated use of the system, such as using scripts to send
+> comments or messages, or using any data mining, robots, or similar data
+> gathering and extraction tools."
+
+And under intellectual property:
+
+> "The Content and Marks are provided in or through the Services 'AS IS' for
+> your personal, non-commercial use or internal business purpose only."
+
+> "...no part of the Services and no Content or Marks may be copied, reproduced,
+> aggregated, republished, uploaded, posted, publicly displayed, encoded,
+> translated, transmitted, distributed, sold, licensed, or otherwise exploited
+> for any commercial purpose whatsoever, without our express prior written
+> permission."
+
+> "If you wish to make any use of the Services, Content, or Marks other than as
+> set out in this section or elsewhere in our Legal Terms, please address your
+> request to: contact@airplanes.live."
+
+**The non-commercial clause is not the problem** — this app is PolyForm
+Noncommercial and clears it. The automated-access clause is, and a Pages
+Function polling a REST endpoint is an automated system accessing their Services
+by any reading of that sentence.
+
+**The tension is real and it is not ours to resolve.** They publish a REST API
+whose entire purpose is automated access, and this document is plainly a
+website-terms template rather than something written for it — the giveaways are
+a "Contribution License" section about posting comments and a clause about using
+"a buying agent or purchasing agent to make purchases". A published API is an
+invitation to automated access, and generic anti-scraper boilerplate probably
+was not aimed at it.
+
+**But we do not get to decide that on their behalf.** The rule this repo has
+already paid for once is that a grant must be something you can point at.
+OurAirports' README called the files "open-data downloads" and an earlier
+session correctly rejected that as insufficient; what settled it was an
+Unlicense committed to the repository. Here the only terms obtainable say the
+opposite of what a grant would say. Assuming the API page overrides them, when
+that page is the one we cannot read, is the same error with the sign flipped.
+
+**So: not used, and there is nothing to do about it in code.** Their own terms
+name the route if Noah ever wants it — `contact@airplanes.live` is the address
+that document tells you to write to — and one email describing a free
+non-commercial hobby panel would settle it either way.
+
+**And it would not have helped anyway.** Their limit would be per-IP like
+everyone's, and the 429 is a shared-address problem. A third provider was never
+the fix; §0 in Open — needs Noah is.
 
 ### Verified
 
@@ -4019,15 +4065,15 @@ working until he has looked.
    first is the one both services actually want, and it would make part of the
    panel's data come from Noah's own receiver, which is a better story anyway.
 
-   **And airplanes.live's terms are still unread.** Their site 403s every
-   automated fetch, and getting past it means browser-shaped headers, which this
-   repo forbids. A browser on an iPad is not a bot, so Noah can read what no
-   session here can:
+   **airplanes.live is CLOSED, not pending.** Noah read their Legal Terms on
+   2026-08-04 and they prohibit "any automated system... that accesses the
+   Services" except by search engine or browser. Not used, nothing to build, and
+   nothing to check again unless someone writes to `contact@airplanes.live` —
+   the address their own terms name — and gets a written exception. It would not
+   have solved the rate limiting regardless.
 
    - https://adsb.lol/feed
    - https://adsb.fi/contact and https://github.com/adsbfi/opendata
-   - https://airplanes.live/api-guide/
-   - https://airplanes.live/rest-api-adsb-data-field-descriptions/
 
 1. **Two repo secrets, and then it deploys itself.**
    `.github/workflows/deploy.yml` now builds and deploys on every push to

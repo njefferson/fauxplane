@@ -86,6 +86,20 @@ Function before anything is sent, because a 400 counts against a rate limit.
 circumventing an access control its operator set deliberately, on a service
 whose data we are asking for as a favour.
 
+**A provider that has just refused is NOT asked again** — see `noteRefusal` in
+`_lib.js`. adsb.fi's terms say a 400/401/403/404/429 counts toward a temporary
+IP restriction, and ours 403s on every attempt because their firewall blocks a
+Pages Function before their API sees it. Retrying a refusal you can predict is
+the "excessive invalid requests" that sentence describes, charged to an egress
+address shared with every other Cloudflare tenant.
+
+**airplanes.live is RULED OUT, and it is not an open question.** Their Legal
+Terms prohibit "any automated system... that accesses the Services" except by
+search engine or browser (read 2026-08-04, recorded in NOTES with the wording).
+Do not add them as a provider. A published REST API does sit oddly beside that
+sentence, and resolving the oddity is theirs to do, in writing, at
+`contact@airplanes.live` — not ours to assume.
+
 Every gate, and each one exits non-zero:
 - `npm test` — 299 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
