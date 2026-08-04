@@ -129,14 +129,46 @@ Every gate, and each one exits non-zero:
   `palettes/fauxplane.json`. The gate is never forked; it is run from the hub.
 - `node scripts/plant.mjs` — breaks one thing at a time and proves the gate
   goes red **about that thing**. A check nobody has watched fail is not evidence.
+  **The plants are DATA in `scripts/plants.data.mjs`; the harness is CODE in
+  `plant.mjs`**, and the split is load-bearing rather than cosmetic — see below.
+  `--changed=<ref>` runs only the plants whose target file moved, which on a
+  typical release is about twenty rather than fifty-seven; `--dry` shows the
+  selection without paying for a browser. It ESCALATES to the whole sweep on any
+  file that can blunt a plant that does not name it (the gates, the store,
+  provenance, the renderers, `styles.css`, `index.html`) and PRINTS what it did
+  not run. **A plant new or edited in the data file always runs**, whatever it
+  targets. Sweep WHOLE before any promote — hub LESSONS §51.
   Each plant names the gate that should catch it: `a11y` (the default) or
   `tests`. Sensor-logic plants MUST use `tests` — a headless browser has no
   accelerometer, so the accessibility gate is structurally blind to them and
-  would stay green. It takes a pid lock; never run two at once, because the
-  second restores the first's injected code into the tree. **Do not edit or
-  commit while it runs either** — the lock cannot stop a session, and mid-run
-  the tree genuinely contains a planted fault. `git diff` during a run looks
-  alarming and is meant to; wait for it to finish.
+  would stay green.
+
+  **IT RUNS IN A COPY OF THE TREE, so it blocks NOTHING.** A run copies the
+  working tree — tracked, untracked and uncommitted, exactly as it stands — to a
+  scratch directory and re-runs itself there. Keep editing, keep committing,
+  keep pushing while it runs. This used to inject into the real tree, and the
+  "do not edit or commit while it runs" rule that followed was an implementation
+  detail promoted into a law that made Noah wait for permission to work
+  (2026-08-04, and he was blunt about it). `--here` forces the old in-place
+  behaviour and is for debugging this harness, never for verifying a release.
+
+  **IT NEVER GATES A PUSH TO STAGING.** Staging exists so Noah can try the
+  thing; holding a fix back for a forty-five-minute meta-check inverts the whole
+  point of having a staging branch. Push on the FAST gates — `npm test`,
+  palette, docs, and `a11y` — and let the sweep run after, or before a promote.
+  **The sweep verifies the GATES, not the code**; the code is verified by the
+  gates it just ran. Sweep whole before a promote to `main`, and whenever the
+  measuring instrument itself moved (hub LESSONS §51).
+- **`node ../noahjefferson/privacy-check.mjs --repo .`** — Doctrine §9b: nothing
+  personal about Noah lands in this repo, and it is a **HARD CI gate** rather
+  than a lint. It runs in `deploy.yml` on every push to staging and main, from a
+  checkout of the hub — the gate is NEVER forked here, because five divergent
+  copies of a privacy rule is worse than none. The hub is public so it needs no
+  token, and the checkout is untracked so `git ls-files` cannot see it.
+  **It reads the working TREE only**; git history is out of its reach and
+  rewriting public history is Noah's call, never a session's. Wired 2026-08-04,
+  and "wired" means the exact CI command was watched going red on a LOCAL plant
+  — never a pushed one, because a pushed plant IS the violation.
 - `node scripts/preview.mjs` — renders the panel in live states a sandbox cannot
   reach. Not shipped, not imported by the app; it drives the store from outside
   through the same public write the sensors use.

@@ -9,7 +9,116 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.23.0, waiting on Noah
+## STAGED NOW — 1.23.1, waiting on Noah
+
+**1.23.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.23.0.
+
+Noah, 2026-08-04: *"The icon at the top of the (i) panel does not match the
+app's icon close enough, and looks like an error because it is different."*
+
+### The mark was a REDRAW, under a comment claiming it was not
+
+`.gate-mark` at the top of the first-run card was a hand-inlined SVG. Against
+`icons/icon.svg` it differed in every particular: no dark rounded-square plate,
+a LEVEL horizon rather than the icon's deliberate 12-degree bank, no pitch
+ladder, no dark outline under the aircraft symbol, and palette tokens
+(`var(--sky)`, `var(--symbol)`) instead of the icon's own fixed colours.
+
+Same idea. Different drawing. And the comment directly above it read *"The mark
+is the SAME attitude indicator the app icon is"* — **an assertion that was
+false, which is almost certainly why nobody ever checked it.**
+
+It is now `<img src="/icons/icon.svg">` — the file the manifest declares and the
+browser uses as the favicon. **A redraw that RESEMBLES the icon is the defect**,
+because it drifts the moment either copy is touched; the only version that
+cannot drift is the identical file. It is already in the service worker's
+precache, so it still needs no network, which was the only thing the inline copy
+was buying.
+
+The gate reads `manifest.webmanifest`, compares its first icon's `src` against
+the mark's, and fails on a mismatch, a 404, or a mark under 16px. The plant
+swaps in `icon-192.png` — a real icon **of this same app** — and it goes red,
+because resembling it is not the requirement.
+
+### How this session got it wrong first, which is the part worth keeping
+
+Asked about "the icon at the top of the (i) panel", the session grepped
+`info.js` for "icon", found none, and told Noah **"nothing in that panel carried
+the app's identity at all"**. The mark was in `index.html`, in the first-run
+card. One file was searched and a claim was made about the whole surface.
+
+Then, acting on that invented finding, it ADDED A SECOND ADI MARK to the panel
+header — which would have shipped two different attitude indicators in one
+dialog — and separately reshaped the header (i) button, which Noah had not
+mentioned and which his words explicitly excluded.
+
+Noah: *"FUCKING ASK IF YOU DO NOT IMMEDIATELY KNOW"* and *"DON'T EVER FUCKING
+GUESS."* Both additions were backed out to the byte before the real fix went in;
+`index.html`'s header block and `styles.css` match 1.23.0 exactly.
+
+**The rule: a grep that finds nothing proves nothing about a surface you have
+not looked at.** "I did not find it" and "it is not there" are different
+statements, and only one of them was earned. Where a screenshot exists, read the
+screenshot.
+
+---
+
+## PROMOTED — main reached 1.23.0, and the sweep got a selector, 2026-08-04
+
+**Noah said "Promote to main" on 2026-08-04**; `main` fast-forwarded cleanly
+from 1.22.1 to **1.23.0**, live at https://fauxplane.pages.dev. Every gate ran
+against the exact commit, including the plant sweep WHOLE at 57/57 — a promote
+is the one moment that cost is obviously worth it.
+
+### Why the sweep got a selector, and why the split matters
+
+Noah, the same day: *"you make a small change and then rescan everything else
+that has no relationship and could not have changed… I think you are wasting a
+lot of time if you are."*
+
+He was right. Measured here: the unit suite is **1.2 s** for all 366 tests,
+palette 0.2 s, docs 0.2 s — and the plant sweep is **~45 minutes**, of which the
+24 browser-driven plants are ~95%. Four whole sweeps ran that day; two of them
+proved that a build-stamp contrast plant still worked after an edit to a
+countdown.
+
+The reasoning behind that was hub LESSONS §38 — a targeted re-run tests the
+plants you SUSPECT, which is the reasoning a fault-injection harness exists to
+replace — and it was being over-read. **§38 came from a case where the GATE
+ITSELF changed.** It argues for sweeping whole when the thing doing the
+measuring moves, not when a leaf module does. That refinement is now hub
+LESSONS §51.
+
+`--changed=<ref>` asks git which files moved and runs the plants targeting them.
+Mechanical, because judgement is the part that drifts. It escalates on anything
+that can blunt a plant which does not name it, and it PRINTS what it skipped — a
+partial run closing with a full run's line is a silent cap.
+
+**Then the split, because the first version did not help where it mattered.**
+`plant.mjs` is on its own escalation list — editing the injector can break any
+plant — and almost every release ADDS a plant, so almost every release escalated
+and the selector saved nothing on exactly the changes it was built for. The
+plants are now DATA in `scripts/plants.data.mjs`; the harness is CODE in
+`plant.mjs`. Adding a plant is a data change and does not escalate.
+
+**KEEP THE DATA FILE INERT.** Nothing in it may import, branch or compute. The
+moment a `find` string is built rather than written, it stops being data and the
+escalation rule it exists to satisfy is quietly false.
+
+**The split opened a hole and it is closed.** Selecting purely by target file
+would skip a plant added in the same commit unless its target happened to change
+too — and a plant nobody has watched fail is not evidence, which is this
+harness's entire premise. A plant new or edited in the data file now always
+runs, found by parsing the diff for added `name:` lines.
+
+Verified: the whole sweep is 57/57 through the split harness, `--dry` selects 57
+by default and 1 under `--only`, and one plant was driven end to end — injected,
+caught, restored, backup directory empty.
+
+---
+
+## Previously staged — 1.23.0, the countdown
 
 **1.23.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.22.1 (promoted 2026-08-04; the record of that promote is below).
