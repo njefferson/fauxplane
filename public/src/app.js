@@ -139,6 +139,8 @@ async function boot() {
    * not have that trap.
    */
   const route = createRouteSource({ clock: now });
+  /** The last self-test run, declared above the report that reads it. */
+  let lastSelfTest = null;
   const diagnostics = createDiagnostics({
     trigger: stamp,
     build: ({ precisePosition }) =>
@@ -150,6 +152,7 @@ async function boot() {
         // state and its last probe, and the probe is the answer to what shape
         // `POST /api/0/routeset` actually takes.
         route,
+        selfTest: lastSelfTest,
         metar,
         bootAt: BOOT_AT,
         // The filter is read at the moment the report is asked for, not at the
@@ -264,7 +267,20 @@ async function boot() {
     },
   });
   const atis = createAtis({ host: $('page-atis'), state, announcer, clock: now });
-  const bite = createBite({ host: $('page-bite'), announcer });
+  const bite = createBite({
+    host: $('page-bite'),
+    announcer,
+    // Where to ask about, and which flight — both taken from what the panel
+    // actually has. Without a followed flight the route check reports SKIPPED
+    // rather than inventing a callsign to ask about.
+    selfTestContext: () => {
+      const c = radarCentre(state.snapshot.fields, traffic.followed, traffic.chosenPlace);
+      return { lat: c?.lat, lon: c?.lon, callsign: traffic.followed?.callsign ?? null };
+    },
+    onSelfTest: (result) => {
+      lastSelfTest = result;
+    },
+  });
   // Exposed for scripts/preview.mjs ONLY, which drives the real calibration
   // entry point from outside so a preview scene cannot diverge from the button.
   globalThis.__previewFusion = fusion;

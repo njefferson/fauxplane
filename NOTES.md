@@ -9,6 +9,65 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
+## STAGED NOW — 1.26.0, a self test Noah runs, 2026-08-04
+
+**1.26.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.23.1.
+
+Noah: *"You could build a simple test that I run, like the debug sheet, instead
+of redoing the whole app every fucking time."*
+
+He was describing the real cost of how this was being worked. Learning one fact
+about a live feed took a release, a follow, a report and a wait — **three times
+over for the route endpoint alone.** Every round trip spent HIS time answering a
+question a machine could ask.
+
+### It lives on BITE, because BITE already IS this
+
+"Built-in test" is what BITE means on a flight deck, and the page has always
+reported what every sensor and feed is doing. The only thing missing was the
+ability to ACTIVELY go and ask rather than report what happened to arrive. A
+sixth page would have been a second home for one idea.
+
+### It covers exactly what the sandbox cannot reach
+
+That boundary is the whole justification for a device-side test rather than
+another unit test:
+
+- **the real feeds**, through the real Functions, from a real Cloudflare edge —
+  this sandbox's proxy denies every outbound host, google included (verified,
+  not assumed);
+- **iOS Safari** — its permission model, its screen-angle reporting, and
+  `maxTouchPoints`, which is the only thing that tells an iPad from a Mac
+  because iPadOS reports itself as `Macintosh`;
+- **the service worker and its caches**, which exist only in a real browser.
+
+Everything else was already testable here and should have been tested here.
+
+### The distinctions it is built to keep
+
+**SKIPPED is not PASS.** Without a position the traffic check says skipped;
+without a followed flight the route check says skipped rather than inventing a
+callsign — asking about a made-up aeroplane is the synthetic-input form of the
+rule this app is built on. A plant flips that skip to a pass and the tests go
+red.
+
+**UNKNOWN is not PASS.** Anything it could not determine reports `????` with the
+reason, because "I could not tell" and "it is fine" are different answers and
+only one is earned.
+
+**It records the SHAPE of a reply, not just the status** — bytes, content type,
+whether it parsed. That is the exact gap that made the route question take three
+releases instead of one.
+
+### One paste, not two
+
+The result folds into the diagnostics report. A finding that lives only on the
+BITE page is a finding that arrives as a screenshot, and this project has spent
+enough on screenshots.
+
+---
+
 ## STAGED NOW — 1.25.1, runways measured rather than eyeballed, 2026-08-04
 
 **1.25.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on

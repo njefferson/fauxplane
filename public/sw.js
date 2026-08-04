@@ -89,6 +89,7 @@ const SHELL = [
   '/src/panels/setup.js',
   '/src/panels/whatsnew.js',
   '/src/panels/info.js',
+  '/src/panels/selftest.js',
 ];
 
 /**

@@ -177,6 +177,18 @@ export const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // The self test exists so Noah stops paying a release per fact. A
+    // diagnostic that LIES is worse than none, because it is believed — and the
+    // specific lie worth guarding is calling a check that never ran a pass.
+    name: 'selftest: a check that was skipped is reported as a pass',
+    check: 'not asked and answered are different facts',
+    gate: 'tests',
+    file: 'public/src/panels/selftest.js',
+    find: "      : { name: '/api/route', state: 'skipped', detail: 'follow a flight first",
+    replace: "      : { name: '/api/route', state: 'ok', detail: 'follow a flight first",
+    expect: /skipped|follow a flight first/i,
+  },
+  {
     // Noah, 2026-08-04: "Why does every runway look exactly the same even at
     // different scales?" The width was `max(1.5, min(5, len * 0.06))` and
     // `len * 0.06` never reaches 1.5 at any size a real runway draws — so it

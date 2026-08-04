@@ -1065,6 +1065,39 @@ body {
 }
 /* A LIST, not a grid (Doctrine §2). Each entry is a heading plus two lines, so
    it reflows at 200% text instead of becoming columns of clipped words. */
+/* The self test's controls. The button matches the other actions on the page;
+   the output is a <pre> so a pasted block keeps its columns. */
+.bite-test {
+  min-height: var(--target);
+  padding: 0 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--rail);
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.bite-test-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+.bite-test-out {
+  margin: 0.5rem 0 0;
+  padding: 0.6rem;
+  max-height: 22rem;
+  overflow: auto;
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  color: var(--text-2);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: pre;
+}
+
 .bite-list {
   display: flex;
   flex-direction: column;

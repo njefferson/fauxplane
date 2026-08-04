@@ -29,6 +29,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.26.0',
+    date: '2026-08-04',
+    headline: 'A self test you run, so you stop paying a release per question.',
+    changed: [
+      'BITE has a "Run the self test" button. One press asks every feed once and reports what this device can and cannot do — and the result goes into the diagnostics report automatically, so one paste carries everything.',
+      'It covers exactly what I cannot reach from here: the real feeds through the real servers, what iOS actually reports about your screen and sensors, and what the offline copy is holding. Everything else I can already test myself, and should have been.',
+      'It tells apart "did not ask" from "asked and got nothing". Without a followed flight the route check says SKIPPED rather than inventing a callsign to ask about — asking about a made-up aeroplane would break the same rule as inventing a reading.',
+      'Anything it could not determine says so, rather than quietly counting as fine.',
+    ],
+    broken: [
+      'The route still does not appear. Now you can press the self test with a flight followed and it will show exactly what came back, without me shipping anything first.',
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+    ],
+  },
+  {
     version: '1.25.1',
     date: '2026-08-04',
     headline: 'Runways stop being identical hairlines, and airports get their own mark.',

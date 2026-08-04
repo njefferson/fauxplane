@@ -20,6 +20,7 @@
 
 import { DEGRADED, FAILED, PASS, STATUS_MARK, mergeRuntime, probeStatic } from '../core/capability.js';
 import { el } from '../render/dom.js';
+import { formatSelfTest, runSelfTest } from './selftest.js';
 import { formatAge } from '../core/units.js';
 
 /**
@@ -120,7 +121,7 @@ function dedupeById(entries) {
 
 const ORDER = { [FAILED]: 0, [DEGRADED]: 1, [PASS]: 2 };
 
-export function createBite({ host, announcer }) {
+export function createBite({ host, announcer, selfTestContext = () => ({}), onSelfTest = () => {} }) {
   const staticEntries = probeStatic();
   const listHost = el('div', { class: 'bite-list' });
   const summary = el('p', { class: 'bite-summary', role: 'status' });
@@ -130,6 +131,47 @@ export function createBite({ host, announcer }) {
   // who opened it because an instrument is crossed out should not scroll past a
   // changelog to reach the answer. They now live in the (i) menu with the rest
   // of the material that is information rather than instrumentation.
+  /**
+   * THE ACTIVE HALF OF BUILT-IN TEST (Noah, 2026-08-04: "You could build a
+   * simple test that I run, like the debug sheet, instead of redoing the whole
+   * app every fucking time.")
+   *
+   * Everything above reports what HAPPENED to arrive. This goes and asks. It
+   * belongs here rather than as a sixth page because BITE is already the
+   * built-in test — the page was simply passive.
+   *
+   * It covers exactly what a sandbox cannot: the real feeds through the real
+   * Functions, iOS's own sensor and orientation reporting, and the service
+   * worker's caches. One press, one block to paste, folded into the diagnostics
+   * report so a single paste carries it.
+   */
+  const testBtn = el('button', { class: 'bite-test', type: 'button', text: 'Run the self test' });
+  const testOut = el('pre', { class: 'bite-test-out', tabindex: '0', 'aria-label': 'Self test result', hidden: true });
+  const testNote = el('p', { class: 'bite-test-note', role: 'status', 'aria-live': 'polite' });
+
+  testBtn.addEventListener('click', async () => {
+    testBtn.disabled = true;
+    testNote.textContent = 'Asking each feed once…';
+    try {
+      const result = await runSelfTest(selfTestContext());
+      const text = formatSelfTest(result);
+      testOut.textContent = text;
+      testOut.hidden = false;
+      // Handed up so the diagnostics report carries it too — nobody should have
+      // to paste two things.
+      onSelfTest(result);
+      const failed = result.groups.flatMap((g) => g.rows).filter((r) => r.state === 'fail');
+      testNote.textContent = failed.length
+        ? `${failed.length} check${failed.length === 1 ? '' : 's'} failed. The detail is below, and it is in the diagnostics report too.`
+        : 'Every check answered. The detail is below, and it is in the diagnostics report too.';
+      announcer?.say?.(testNote.textContent);
+    } catch (err) {
+      testNote.textContent = `The self test itself failed: ${err.message}`;
+    } finally {
+      testBtn.disabled = false;
+    }
+  });
+
   host.replaceChildren(
     el('section', { class: 'card', 'aria-labelledby': 'bite-h' }, [
       el('h2', { id: 'bite-h', text: 'Built-in test' }),
@@ -139,6 +181,16 @@ export function createBite({ host, announcer }) {
       }),
       summary,
       listHost,
+    ]),
+    el('section', { class: 'card', 'aria-labelledby': 'bite-test-h' }, [
+      el('h2', { id: 'bite-test-h', text: 'Self test' }),
+      el('p', {
+        class: 'bite-intro',
+        text: 'Asks every feed once, and reports what this device can and cannot do. Run it when something looks wrong, then send the diagnostics report — it carries the result.',
+      }),
+      testBtn,
+      testNote,
+      testOut,
     ]),
   );
 

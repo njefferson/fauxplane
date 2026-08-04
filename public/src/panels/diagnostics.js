@@ -22,6 +22,7 @@ import { VERSION } from '../core/version.js';
 import { FIELDS } from '../core/state.js';
 import { el } from '../render/dom.js';
 import { formatAge } from '../core/units.js';
+import { formatSelfTest } from './selftest.js';
 
 /** Console messages, captured from BOOT so a failure during startup is in the
  *  report rather than only in a devtools window nobody has open on a phone. */
@@ -98,7 +99,7 @@ function chunkList(items, width) {
   return out;
 }
 
-export function buildReport({ snapshot, fusion, traffic, route = null, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
+export function buildReport({ snapshot, fusion, traffic, route = null, selfTest = null, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
   // FIELD AGES are measured against the snapshot, which is when those values
   // were true. THE FILTER IS NOT A FIELD — it is live, and it keeps accepting
   // samples after a snapshot is taken. Reading it at `snapshot.t` is what put
@@ -321,6 +322,22 @@ export function buildReport({ snapshot, fusion, traffic, route = null, metar, bo
     if (!rp.topLevelKeys?.length && !rp.entryKeys?.length && !rp.validation?.length) {
       line('  the reply carried no readable keys — see the HTTP status above');
     }
+    line();
+  }
+
+  // ---- THE SELF TEST, if it has been run ------------------------------------
+  //
+  // Folded in so ONE paste carries everything. Noah should not have to assemble
+  // evidence from two screens, and a result that lives only on the BITE page is
+  // a result that arrives in a screenshot.
+  if (selfTest) {
+    const text = formatSelfTest(selfTest);
+    if (text) {
+      for (const l of text.split('\n')) line(l);
+      line();
+    }
+  } else {
+    line('SELF TEST  not run — press "Run the self test" on the BITE page');
     line();
   }
 
