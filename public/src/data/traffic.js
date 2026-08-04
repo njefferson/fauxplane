@@ -221,6 +221,29 @@ export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0
   };
 }
 
+/**
+ * WHAT THE FOLLOW BANNER SAYS, AND IT MUST NOT CLAIM DATA IT DOES NOT HAVE.
+ *
+ * The banner read "this panel is showing that aircraft's broadcast, not this
+ * device" from the instant FOLLOW was pressed. Noah's 1.21.1 diagnostics report
+ * shows what that meant when the feed was rate limited: every followed field
+ * reading "waiting for the first report from PXT466", under a banner asserting
+ * their broadcast was on screen. Nothing was.
+ *
+ * That sentence sat at the top of a panel of red crosses, which is exactly why
+ * it "looks broken without any data" — the app was telling him it HAD data. A
+ * false sentence in the one element whose job is to say what the panel is
+ * showing is the same defect as a fabricated number, and this app has no room
+ * for either.
+ *
+ * Pure, so both branches are testable without a browser or a feed.
+ */
+export function followBannerText(label, { followed = null, followError = null } = {}) {
+  if (!label) return '';
+  if (followed) return `${label} — this panel is showing that aircraft's broadcast, not this device`;
+  return `${label} — no broadcast received yet${followError ? `: ${followError}` : '. The panel stays crossed out until one arrives.'}`;
+}
+
 export const FOLLOW_WRITES = [
   'nav.selectedAltitude',
   'nav.selectedHeading',

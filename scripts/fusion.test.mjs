@@ -1490,3 +1490,39 @@ test('KINEMATICS: the error the small-angle form makes grows with tan of the til
   assert.ok(upright < 1, `even upright it drifted ${upright.toFixed(1)}°`);
   assert.ok(tilted < 3, `tilted it drifted ${tilted.toFixed(1)}°`);
 });
+
+/**
+ * A REASON STRING IS A VALUE, AND INVENTING ONE IS THE SAME DEFECT AS INVENTING
+ * A NUMBER.
+ *
+ * Noah's 1.21.1 diagnostics report said `attitude.heading` had failed because
+ * "this device reports no magnetic heading". Three lines below, the raw block
+ * read `webkitCompassHeading 278.3`, and the filter itself reported
+ * `heading 279.5`. His iPhone has a compass; it had simply stopped sending
+ * updates while the page was in the background.
+ *
+ * A confident wrong sentence is worse than a wrong number, because a wrong
+ * number looks wrong and this one sends the reader off to replace hardware that
+ * works.
+ */
+test('heading: a compass that went QUIET is not a device without one', () => {
+  const f = createFusion();
+  const t0 = 1_000_000;
+
+  // A device that has never produced a heading at all.
+  const never = f.read(t0);
+  assert.equal(never.hasHeading, false);
+  assert.match(never.headingReason, /reports no magnetic heading/, 'no compass must say so');
+
+  // Now one arrives, and then goes quiet for a long time.
+  f.updateHeading(278.3, t0 + 10);
+  const later = f.read(t0 + 600_000);
+  assert.equal(later.hasHeading, false, 'a ten-minute-old heading is not usable');
+  assert.doesNotMatch(
+    later.headingReason,
+    /reports no magnetic heading/,
+    'the device HAS a compass — claiming otherwise is a fabricated fact about the reader’s hardware',
+  );
+  assert.match(later.headingReason, /stopped updating/, 'it must say the reading went quiet');
+  assert.match(later.headingReason, /278|279/, 'and it must carry the last reading it actually had');
+});

@@ -11,7 +11,7 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.22.0 is on staging: https://staging.fauxplane.pages.dev**
+**1.22.1 is on staging: https://staging.fauxplane.pages.dev**
 
 **THE ONE THING TO DO ON THIS BUILD: follow a flight, then open the
 diagnostics report behind the version stamp and send it.** 1.21.0 ships the
@@ -2264,6 +2264,89 @@ view is checked WITH aircraft on it rather than empty.
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
   airborne and being heard right now.
+
+---
+
+## 1.22.1 — two sentences the panel was saying that were not true, 2026-08-04
+
+Noah sent a **1.21.1** diagnostics report — so it predates 1.22.0's window fix
+and does not test it. It contains two DIFFERENT defects, both of them fabricated
+reason strings, and both found by reading the report against itself.
+
+### "This device reports no magnetic heading" — on a phone with a compass
+
+The report's root-cause list:
+
+    attitude.heading   no earth-referenced heading source (this device reports
+                       no magnetic heading)
+
+Twenty lines below, in the raw block:
+
+    webkitCompassHeading   278.3
+
+and in the filter: `heading 279.5`. **His iPhone has a compass and was reporting
+278.3°.** It had stopped SENDING while the page was backgrounded —
+`orientation.compass` had aged out five seconds earlier.
+
+`fusion.read()` returns `hasHeading` false for two unrelated reasons — no
+heading at all, and a heading too old to use — and `app.js` printed the same
+sentence for both. The one it printed was the wrong one.
+
+**A reason string is a value like any other on this panel, and inventing one is
+the same defect as inventing a number.** It is worse in one respect: a wrong
+number looks wrong, while a confident wrong sentence sends the reader off to
+replace hardware that works. The filter now returns `headingReason` saying which
+of the two it is, and the quiet-compass branch carries the last reading it
+actually had.
+
+### The FOLLOW banner claimed a broadcast that had never arrived
+
+Same report. Every followed field:
+
+    position.groundspeed   waiting for the first report from PXT466
+
+and the traffic feed:
+
+    traffic   FAILED — adsb.lol rate limited us (HTTP 429...) | adsb.fi not
+              asked — refused us (HTTP 403), standing off for up to 600s
+
+So the aircraft had never reported once. And the banner across the top said
+*"PXT466 — this panel is showing that aircraft's broadcast, not this device"*.
+
+**It was showing nothing.** That sentence sits at the top of a panel of red
+crosses, which is exactly why the display "looks broken without any data" — the
+app was insisting it HAD data. The wording is now a pure function
+(`followBannerText`) with both branches tested; before the first report it says
+so and carries the feed's own reason.
+
+### What this report does NOT show
+
+**It is not a test of 1.22.0.** The wall of crosses here has a different cause
+from the one 1.22.0 fixed: the freshness-window bug crossed out fields whose
+data HAD arrived, and this is a followed aircraft that never reported at all
+because the feed was refusing us. Both produce the same screen. Only the first
+is fixed by the windows; the second is a fact about the feed, and 1.22.1 makes
+the panel say so instead of contradicting itself.
+
+Worth noting for the next session: **his device was still on 1.21.1 and the
+report says `a newer version is not waiting` as of 15:28**, so 1.22.0 had not
+reached it. Do not read an old report as a verdict on a new release.
+
+### The other thing in the report, unresolved
+
+`orientation.beta` and `.gamma` FAIL at `no update for 3s (limit 3s)`, the
+filter coasting 32 s with "no gravity reference", and position 57 s old — while
+the raw block holds a perfectly good gravity vector (`|g| 1.011`). Sensors and
+geolocation both stopping, at slightly different times, on an iPhone in Safari
+with `standalone false`, is what BACKGROUNDING looks like. `markStale` on
+`visibilitychange` exists but these aged out rather than being marked, so either
+the event did not fire or the app was foregrounded again by the time the report
+was taken.
+
+**Not fixed here, because it is not yet understood** — and the honest reason
+string for it would be "this device stopped sending sensor events while the
+panel was in the background", which is a claim no session has evidence for yet.
+It needs a report taken immediately after returning to the app.
 
 ---
 

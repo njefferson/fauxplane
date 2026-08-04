@@ -199,6 +199,35 @@ const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
+    // FROM NOAH'S 1.21.1 DIAGNOSTICS REPORT. The panel said attitude.heading
+    // had failed because "this device reports no magnetic heading" — three
+    // lines above a raw block reading `webkitCompassHeading 278.3`. His iPhone
+    // has a compass; it had stopped SENDING while the page was backgrounded.
+    // A confident wrong sentence is worse than a wrong number: a wrong number
+    // looks wrong, and this one sends the reader off to replace working
+    // hardware.
+    name: 'honesty: a quiet compass is reported as a device that has none',
+    check: 'a reason string never invents a fact about the reader’s hardware',
+    gate: 'tests',
+    file: 'public/src/core/fusion.js',
+    find: "          heading === null\n            ? 'this device reports no magnetic heading'",
+    replace: "          true\n            ? 'this device reports no magnetic heading'",
+    expect: /fabricated fact|no magnetic heading|stopped updating/i,
+  },
+  {
+    // The same report: every followed field reading "waiting for the first
+    // report from PXT466", under a banner asserting that aircraft's broadcast
+    // was on screen. It was showing nothing. That sentence sits at the top of a
+    // panel of red crosses and is why it "looks broken without any data".
+    name: 'honesty: the follow banner claims a broadcast that never arrived',
+    check: 'the banner does not claim data the panel does not have',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: '  if (followed) return `${label} — this panel is showing that aircraft\'s broadcast, not this device`;',
+    replace: '  return `${label} — this panel is showing that aircraft\'s broadcast, not this device`;',
+    expect: /never arrived|no broadcast received|showing that aircraft/i,
+  },
+  {
     // NOAH PHOTOGRAPHED THIS: following DAL2229, every instrument crossed out
     // at once, PWR ON. "This aircraft makes the whole display look broken
     // without any data, despite being 'turned on.'" The followed fields were

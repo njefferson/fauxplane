@@ -11,6 +11,7 @@ import {
   FOLLOW_WINDOWS,
   RADAR_RANGE_NM,
   createTrafficSource,
+  followBannerText,
   radarReadiness,
   withRangeAndBearing,
   withinRange,
@@ -334,4 +335,47 @@ test('readiness: while following, the chip says whose aircraft the panel is show
   assert.equal(r.state, 'following');
   assert.match(r.label, /DAL2229/);
   assert.match(r.detail, /Tap another to switch/);
+});
+
+/**
+ * THE FOLLOW BANNER MUST NOT CLAIM DATA IT DOES NOT HAVE.
+ *
+ * From Noah's 1.21.1 report: following PXT466 with the traffic feed rate
+ * limited, every followed field reading "waiting for the first report from
+ * PXT466" — under a banner saying "this panel is showing that aircraft's
+ * broadcast, not this device". It was showing nothing at all.
+ *
+ * That sentence sits at the top of a panel of red crosses, which is precisely
+ * why the display "looks broken without any data": the app was insisting it had
+ * data. A false sentence in the element whose whole job is to say what the
+ * panel is showing is the same defect as a fabricated number.
+ */
+test('follow banner: nothing is claimed before the first broadcast arrives', () => {
+  const waiting = followBannerText('PXT466', { followed: null });
+  assert.doesNotMatch(
+    waiting,
+    /is showing that aircraft/,
+    'the banner must not claim to be showing a broadcast that has never arrived',
+  );
+  assert.match(waiting, /PXT466/, 'it still names the aircraft being followed');
+  assert.match(waiting, /no broadcast received yet/);
+});
+
+test('follow banner: the feed’s own reason is carried when there is one', () => {
+  const withReason = followBannerText('PXT466', { followed: null, followError: 'the feed is rate limiting us' });
+  assert.match(withReason, /rate limiting us/, 'a known reason beats a generic one');
+
+  const without = followBannerText('PXT466', { followed: null });
+  assert.match(without, /crossed out until one arrives/, 'with no reason it still says what to expect');
+});
+
+test('follow banner: once the broadcast arrives it says so, and says whose', () => {
+  const live = followBannerText('PXT466', { followed: { hex: 'a1b2c3', callsign: 'PXT466' } });
+  assert.match(live, /is showing that aircraft's broadcast, not this device/);
+  assert.match(live, /PXT466/);
+});
+
+test('follow banner: not following says nothing at all', () => {
+  assert.equal(followBannerText(null, {}), '');
+  assert.equal(followBannerText('', {}), '');
 });

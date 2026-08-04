@@ -36,7 +36,7 @@ import { probeNetwork, watchNetwork } from './sensors/network.js';
 import { probeMagnetometer } from './sensors/magnetometer.js';
 
 import { createMetarSource } from './data/metar.js';
-import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, lastKnownFix, radarCentre, rememberFix } from './data/traffic.js';
+import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, followBannerText, lastKnownFix, radarCentre, rememberFix } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
@@ -371,7 +371,9 @@ async function boot() {
   const syncFollowBanner = () => {
     const label = traffic.followLabel;
     followBanner.hidden = !label;
-    followWhat.textContent = label ? `${label} — this panel is showing that aircraft's broadcast, not this device` : '';
+    // The wording is a pure function in traffic.js so both branches are
+    // testable — see followBannerText, and the report that made it necessary.
+    followWhat.textContent = followBannerText(label, { followed: traffic.followed, followError: traffic.followError });
     document.body.dataset.following = label ? 'true' : 'false';
     if (!label) {
       route.clear();
@@ -618,7 +620,10 @@ async function boot() {
       // The compass fails separately from the accelerometer, because it is a
       // different sensor answering a different question.
       if (att.hasHeading) state.write('attitude.heading', att.heading, { at: t });
-      else state.fail('attitude.heading', 'no earth-referenced heading source (this device reports no magnetic heading)');
+      // THE FILTER SAYS WHICH OF THE TWO IT IS. A device with no compass and a
+      // compass that has gone quiet are different faults with different
+      // answers, and this used one sentence — the wrong one — for both.
+      else state.fail('attitude.heading', `no usable magnetic heading — ${att.headingReason ?? 'this device reports no magnetic heading'}`);
     }
 
     // Magnetic declination, recomputed when the position moves or every hour.

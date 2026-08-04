@@ -1172,6 +1172,28 @@ export function createFusion(options = {}) {
         hasAttitude,
         hasHeading: heading !== null && !headingStale,
         /**
+         * WHY THERE IS NO HEADING, AND THE TWO ANSWERS ARE NOT THE SAME FACT.
+         *
+         * `hasHeading` goes false for two unrelated reasons and the panel used
+         * one sentence for both: "this device reports no magnetic heading".
+         *
+         * On Noah's iPhone that sentence was FALSE. His diagnostics report
+         * carried `webkitCompassHeading 278.3` in the raw block and `heading
+         * 279.5` in this filter, three lines above the panel asserting his
+         * phone had no compass. The compass had simply stopped sending updates
+         * — the page had been in the background — and a claim about his
+         * HARDWARE was manufactured from a claim about the last five seconds.
+         *
+         * A reason string is a value like any other on this panel. Inventing
+         * one is the same defect as inventing a number, and it is worse in one
+         * respect: a wrong number looks wrong, and a confident wrong sentence
+         * sends the reader off to replace a sensor that works.
+         */
+        headingReason:
+          heading === null
+            ? 'this device reports no magnetic heading'
+            : `the compass stopped updating ${Math.round((at - lastHeadingAt) / 1000)}s ago — the reading it last gave was ${heading.toFixed(0)}°`,
+        /**
          * 'ALIGNED' — gyro-stabilised and bias-corrected; good through motion.
          * 'COARSE'  — the gravity reference alone. Exact at rest, disturbed by
          *             linear acceleration, and it says so on the face of the

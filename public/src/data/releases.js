@@ -29,6 +29,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.22.1',
+    date: '2026-08-04',
+    headline: 'Two things the panel was saying that were not true.',
+    changed: [
+      'Your diagnostics report said the heading had failed because "this device reports no magnetic heading". Three lines further down, the same report showed your compass reading 278.3 degrees. Your phone has a compass — it had just stopped sending updates while the page was in the background. The panel now says which of those two it is, and shows the last reading it actually had.',
+      'That distinction matters more than it sounds. A wrong number looks wrong. A confident wrong sentence sends you off to fix hardware that works.',
+      'The FOLLOWING banner said "this panel is showing that aircraft\u2019s broadcast, not this device" from the moment you pressed follow — including when the feed was rate limited and no broadcast ever arrived. It was showing nothing. That sentence was sitting at the top of a panel of red crosses telling you it had data.',
+      'It now says "no broadcast received yet" until one actually arrives, and gives the feed\u2019s own reason when there is one. Same aircraft, same crosses, but the panel is no longer arguing with itself.',
+    ],
+    broken: [
+      'Rate limiting is unchanged. If it will not answer, following an aircraft still gives you a crossed-out panel — the difference is that the panel now tells you why instead of claiming otherwise.',
+      'The route shape is still unconfirmed. WHAT THE ROUTE FEED ACTUALLY SENT, in the diagnostics report, is the thing to send me.',
+    ],
+  },
+  {
     version: '1.22.0',
     date: '2026-08-04',
     headline: 'The panel stops crossing itself out while a flight is being followed.',
