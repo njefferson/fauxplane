@@ -93,12 +93,22 @@ Pages Function before their API sees it. Retrying a refusal you can predict is
 the "excessive invalid requests" that sentence describes, charged to an egress
 address shared with every other Cloudflare tenant.
 
-**airplanes.live is RULED OUT, and it is not an open question.** Their Legal
-Terms prohibit "any automated system... that accesses the Services" except by
-search engine or browser (read 2026-08-04, recorded in NOTES with the wording).
-Do not add them as a provider. A published REST API does sit oddly beside that
-sentence, and resolving the oddity is theirs to do, in writing, at
-`contact@airplanes.live` — not ours to assume.
+**airplanes.live is NOT USED, and the reason is not that they forbid it.** Both
+their documents were read on 2026-08-04 and they CONTRADICT EACH OTHER: the API
+guide publishes endpoints, states a 1 req/sec limit and says "access does not
+currently require a feeder", which is an invitation to automated access; the
+Legal Terms prohibit "any automated system... that accesses the Services" except
+by search engine or browser, and the API guide defers to them rather than
+carving itself out. Only they can settle that, at `contact@airplanes.live`.
+
+Do not add them without that answer — and do not add them WITH it either
+without a reason, because it would not help: they are 1 req/sec per IP like
+everyone else, and this app's problem is a shared Cloudflare egress address.
+
+**The first ruling here was written from the Legal Terms alone and said "ruled
+out, and it is not an open question".** Noah supplied the API guide and it was
+wrong. A verdict from one of two documents is a guess in a verdict's clothes;
+NOTES keeps the whole story.
 
 Every gate, and each one exits non-zero:
 - `npm test` — 299 unit tests over the pure logic, including the magnetic model

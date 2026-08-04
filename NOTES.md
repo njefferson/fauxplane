@@ -2283,7 +2283,50 @@ snapshot endpoint that is otherwise closed.
 So the open item has moved from "find a better provider" to "run a receiver",
 which is hardware and therefore Noah's call. It is in Open — needs Noah.
 
-### airplanes.live — READ, and the answer is NO
+### airplanes.live — BOTH documents read, and they contradict each other
+
+**CORRECTION, same day.** The section below was written from the Legal Terms
+alone and concluded "the answer is NO... not an open question". Noah then sent
+the API GUIDE, which is the document that actually governs the API, and it says:
+
+> "No SLA. No Uptime Guarantee. Non-Commercial Use. Airplanes.live REST API
+> lives @ https://api.airplanes.live/v2/. **Access does not currently require a
+> feeder.** That might change in the future. Contribute to Airplanes.live if use
+> the API."
+
+> "RATE LIMITING — The Airplanes.live REST API is rate limited to 1 request per
+> second."
+
+> "TERMS — Read the terms of use."
+
+**That is an invitation to automated access.** A published endpoint list, a
+stated rate limit, and an explicit sentence about who may access it is a grant
+you can point at — which is exactly the standard this repo set with OurAirports
+and then failed to apply here.
+
+**And it does not resolve the contradiction, because it defers to the document
+that creates it.** "Read the terms of use" points AT the Legal Terms, which
+prohibit "any automated system... that accesses the Services". The API guide
+does not carve itself out of that sentence; it sends you to it.
+
+So the position is: **their two documents disagree, and it is not ours to
+resolve in our own favour.** The judgement below about not assuming the API page
+overrides the Legal Terms still stands — but the reverse assumption, which is
+what the old wording amounted to, is no better. What was wrong was the
+certainty, not the caution.
+
+**The decision is unchanged and the REASON has changed.** Not "they forbid it" —
+"their documents contradict each other, only they can settle it at
+`contact@airplanes.live`, and it would not fix anything anyway". A third
+provider was never the answer to a shared-address rate limit: airplanes.live is
+1 request per second per IP like everyone else.
+
+**A lesson worth the embarrassment: a definitive ruling from one of two
+documents is a guess wearing a verdict's clothes.** "Not an open question" was
+written before the question had been fully asked, and the person who had to
+correct it was Noah, with a screenshot.
+
+### What the Legal Terms say, which is the other half
 
 Their site 403s every automated fetch, so Noah opened the Legal Terms in Safari
 and sent the whole thing back as a fourteen-page capture. **This is settled now,
@@ -4065,12 +4108,14 @@ working until he has looked.
    first is the one both services actually want, and it would make part of the
    panel's data come from Noah's own receiver, which is a better story anyway.
 
-   **airplanes.live is CLOSED, not pending.** Noah read their Legal Terms on
-   2026-08-04 and they prohibit "any automated system... that accesses the
-   Services" except by search engine or browser. Not used, nothing to build, and
-   nothing to check again unless someone writes to `contact@airplanes.live` —
-   the address their own terms name — and gets a written exception. It would not
-   have solved the rate limiting regardless.
+   **airplanes.live: both documents read, and they contradict each other.** The
+   API guide invites automated access — endpoints, a 1 req/sec limit, "access
+   does not currently require a feeder" — and the Legal Terms prohibit "any
+   automated system... that accesses the Services". Only they can settle it, at
+   `contact@airplanes.live`. Not used either way, because it would not fix the
+   rate limiting: they are 1 req/sec per IP like everyone, and this is a shared
+   address problem. Worth an email only if Noah wants them for some other
+   reason.
 
    - https://adsb.lol/feed
    - https://adsb.fi/contact and https://github.com/adsbfi/opendata
