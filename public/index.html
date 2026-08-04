@@ -143,6 +143,27 @@
         <div id="follow-banner" class="follow-banner" role="status" hidden>
           <span class="follow-badge">FOLLOWING</span>
           <span id="follow-what" class="follow-what"></span>
+          <!--
+            THE PLAUSIBLE ROUTE (adsb.lol, ODbL). Noah: "a 'flight plan' page
+            with a map and details sounds good if that's real and possible?"
+
+            It sits INSIDE the follow banner because it is a fact about the
+            aircraft the panel has become, and the banner is the standing
+            statement that the panel is showing somebody else's aeroplane. It
+            is hidden until a route is actually known — a blank where a route
+            would be says nothing, and this app's rule is that a missing value
+            says why it is missing.
+
+            TWO ELEMENTS, AND THE SECOND ONE IS NOT DECORATION. adsb.lol infer
+            the route from the CALLSIGN and call it PLAUSIBLE; that word is a
+            property of the number and has to be as readable as the number is.
+            The first draft of this put it in a `title` attribute, which on the
+            phone and the iPad this app is built for is no attribute at all —
+            there is no hover on a touch screen. Visible text, beside it,
+            always. Do not "tidy" it back into a tooltip.
+          -->
+          <span id="follow-route" class="follow-route" hidden></span>
+          <span id="follow-route-caveat" class="follow-caveat" hidden></span>
           <button type="button" id="follow-exit" class="follow-exit">Stop following</button>
         </div>
         <!--

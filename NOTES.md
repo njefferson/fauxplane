@@ -11,7 +11,16 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.20.0 is on staging: https://staging.fauxplane.pages.dev**
+**1.21.0 is on staging: https://staging.fauxplane.pages.dev**
+
+**THE ONE THING TO DO ON THIS BUILD: follow a flight, then open the
+diagnostics report behind the version stamp and send it.** 1.21.0 ships the
+plausible-route feature with a request shape that is a REASONED GUESS — see the
+1.21.0 entry below for why nothing here could confirm it — and the report now
+carries a block called `WHAT THE ROUTE FEED ACTUALLY SENT` that records exactly
+what came back. If the route reads as unavailable, that block is the answer,
+not a bug report. It is the whole point of shipping this release now rather
+than waiting.
 
 **The horizon is still the thing to test.** 1.19.0 found and fixed the root
 cause of "gentle rotation errors the horizon" — the gyro propagation was using
@@ -21,8 +30,8 @@ cradle, level it, and turn it. It should stay put.
 Everything since main: the airport centre picker, the stale-app update strip,
 the value strip moving off the right-hand column, runways drawn at airports,
 ground traffic no longer shown as traffic below you, landscape giving the
-instruments their height back, the provider stand-off, and 1.20.0's readable
-refusal.
+instruments their height back, the provider stand-off, 1.20.0's readable
+refusal, and 1.21.0's route.
 
 `main` is on 1.15.0 until you say promote. This block is rewritten by whichever
 session stages the next candidate; a staged build nobody can see is the failure
@@ -2255,6 +2264,140 @@ view is checked WITH aircraft on it rather than empty.
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
   airborne and being heard right now.
+
+---
+
+## 1.21.0 — the route, shipped as a probe rather than as a guess, 2026-08-04
+
+Noah asked for this the day the airframe picker landed: *"a 'flight plan' page
+with a map and details sounds good if that's real and possible?"* It is real.
+It took until 2026-08-04 to build because the terms had to be read first, and
+then because the endpoint's request shape turned out not to be knowable from
+here.
+
+### What shipped
+
+Follow an aircraft and the banner shows `KSFO → KJFK`, with every intermediate
+stop if the flight has any, and the word **plausible** beside it. adsb.lol serve
+it from `POST /api/0/routeset` under the same ODbL grant as their aircraft data.
+
+### The word "plausible" is the feature, not a disclaimer on it
+
+adsb.lol infer a route FROM THE CALLSIGN — UAL328 flies the sector United
+usually fly it on. That is a good inference and it is not a filed flight plan.
+The aircraft may be on a diversion, a repositioning leg, or a different sector
+under a reused callsign. This app crosses out a pitch angle it cannot measure;
+it is not going to present an inference as a clearance.
+
+So `plausible` is carried in the payload from the Function rather than added by
+the client, exactly as the traffic attribution is — if adsb.lol ever report a
+route as confirmed, the panel will say confirmed BECAUSE THEY DID.
+
+**It is visible text, and the first draft got that wrong.** The caveat went into
+a `title` attribute, which is no attribute at all on a phone or an iPad: there
+is no hover on a touch screen. It is a `<span>` beside the route now, it wraps
+onto its own line rather than being hidden at a narrow width, and the a11y gate
+measures its bounding box rather than reading `textContent` — because
+`textContent` would have found the `title` version and passed.
+
+### The request shape is a HYPOTHESIS and the release says so
+
+adsb.lol's OpenAPI page names the schemas `PlaneList` and `PlaneInstance`
+without expanding them in the capture we have, and this sandbox cannot reach
+`api.adsb.lol` at all. Three options existed:
+
+- Ask Noah for a fourth screenshot, of a page he had already screenshotted
+  twice, hoping the schema expanded this time.
+- Wait, and ship nothing.
+- **Send the best-reasoned shape and report what comes back.**
+
+The third is strictly better and it is what shipped. The Function sends
+`{planes:[{callsign, lat, lng}]}` — the shape the tar1090 family uses, which
+adsb.lol's lineage descends from — and the diagnostics report gained a
+`WHAT THE ROUTE FEED ACTUALLY SENT` block carrying the HTTP status, the
+top-level keys, the per-entry keys and, critically, the **validation detail**.
+
+The endpoint is FastAPI. FastAPI answers a body it does not like with a 422 and
+a `detail` array naming the exact field it rejected, with `loc`, `msg` and
+`type`. So a wrong guess is SELF-DIAGNOSING: the report will say
+`REJECTED at: body.planes.0.lat says: field required`, and the next release is
+a correction rather than another guess. The same method settled the Mode S crew
+readouts, which had been built from published field names without a single real
+response ever having been seen.
+
+**If the route does not appear on this build, that is the expected outcome of
+an unconfirmed hypothesis, not a fault.** What it will never do is invent one:
+an unreadable reply reads as unavailable.
+
+### The cost to a volunteer service is one request per flight
+
+A position changes every second and a route does not change at all. The client
+guards on the CALLSIGN rather than on a timer, so following one flight for an
+hour asks once and switching flights asks again immediately — the shape of the
+question rather than a rate the client made up. The Function caches a
+successful answer for ten minutes; an unsuccessful one for nothing, so a fix
+upstream is picked up at once.
+
+**The announcement needed its own guard, and that is a real distinction.**
+Stopping the REQUEST is not stopping the SPEECH: the cached answer still came
+back every sweep, so `announcer.say` fired every ten seconds for as long as the
+flight was followed. A screen-reader user would have heard the route read out
+six times a minute. The guard is on what is currently on screen, not on what
+was last fetched.
+
+### What the gates now hold
+
+- Two plants, both watched going red. One deletes the caveat while leaving the
+  route — **the way this feature actually rots**, because the banner is cramped
+  and the caveat is the longest thing in it, so "tidying" it is the obvious
+  edit. One makes the parser accept a single airport, which would render
+  `KSAC → KSAC`: a departure and an arrival at the same field, produced by
+  arithmetic rather than reported by anyone.
+- The a11y gate follows an aircraft, **switches back to the panel**, and
+  measures both elements. Without the switch it read 0x0 for a perfectly
+  visible element, because the banner lives inside `#page-pfd` and that page is
+  `[hidden]` while the scope is up. The fix was to make the check walk the
+  reader's path, not to weaken the assertion.
+- It also counts the route requests and fails above one per flight.
+- Nine more unit tests over the wording, because the wording IS the
+  implementation here: a reader who is not a pilot has to be able to tell "we
+  have not asked yet" from "there is no route" from "here is a guess", and
+  those are three different facts about a flight.
+
+### The sweep found a flaky gate, which is the thing it is FOR
+
+The full 49-plant sweep came back **48/49**, with
+`update: a waiting version is never mentioned to the reader` marked UNPROVEN —
+the gate went red, but about the wrong thing: *"a second worker was served,
+none is waiting, and no controllerchange fired"*. Run on its own, that same
+plant is caught cleanly.
+
+**The cause was a fixed sleep pretending to be a wait.** `checkUpdateStrip`
+called `reg.update()` and then `waitForTimeout(1200)`. Installing this app's
+worker means precaching forty-nine shell files plus a 317 KB airport database;
+1200 ms covers that on an idle machine and does not cover it on the
+forty-ninth browser of a sweep. So the check asked "is anything waiting?" of a
+worker that was still installing, and reported a browser that had not seen an
+update — a sentence that was simply false.
+
+It polls for the state now, with both exits being real answers (something is
+waiting, or a worker seized the page) and a twenty-second deadline that means
+a genuine failure rather than a slow machine.
+
+**Nothing was wrong in the app**, and that is the uncomfortable part: an
+intermittently-wrong check is worse than one that never worked, because its
+green reads as coverage. The harness is what caught it — the plant's verdict
+was UNPROVEN rather than "caught", which is precisely the distinction it exists
+to draw. This is the second time in this repo that fixing or running a check
+has exposed the check rather than the code (hub LESSONS §37, §38), and the same
+conclusion holds: **run the sweep whole.** The gate changed in this release, so
+it was run whole again afterwards.
+
+### Still owed
+
+No map. The route is two airport codes, not a drawn line — that waits until the
+shape above is confirmed, because drawing a line is only worth doing once there
+is reliably something to draw.
 
 ---
 

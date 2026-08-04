@@ -185,6 +185,33 @@ const PLANTS = [
     expect: /does not lead with what is failing/,
   },
   {
+    // THE MOST LIKELY WAY THIS FEATURE ROTS, and it rots into a lie rather than
+    // into a blank. adsb.lol infer a route from the callsign and call it
+    // PLAUSIBLE. Strip that word and "KSFO → KJFK" reads, to the person this
+    // app is actually built for, as the flight plan the crew filed. The banner
+    // is cramped, the caveat is the longest thing in it, and deleting it is the
+    // obvious tidy — so the gate has to be the thing that says no.
+    name: 'route: the plausible-route caveat is tidied out of the banner',
+    check: 'an inferred route never appears without the word that makes it an inference',
+    file: 'public/src/app.js',
+    find: '    followRouteCaveat.hidden = !line || !caveat;',
+    replace: '    followRouteCaveat.hidden = true;',
+    expect: /caveat|plausible/i,
+  },
+  {
+    // The synthetic-data path this parser could grow. One airport is not a
+    // route, and an off-by-one here turns "KSAC" into "KSAC → KSAC" — a
+    // departure and arrival at the same field, invented by arithmetic rather
+    // than reported by anyone.
+    name: 'route: one airport is dressed up as a route to nowhere',
+    check: 'the route parser refuses a partial answer instead of completing it',
+    gate: 'tests',
+    file: 'functions/api/route.js',
+    find: '  if (places.length < 2) {',
+    replace: '  if (places.length < 1) {',
+    expect: /one airport|route/i,
+  },
+  {
     // Mount levelling moves what the instrument calls zero. That is legitimate
     // and it is exactly why it must be visible: a horizon reading level at an
     // attitude the device is not at, with nothing saying so, is the most

@@ -1400,6 +1400,29 @@ body[data-powered='true'] .gate {
   color: var(--text-2);
 }
 
+/* The plausible route, inside the follow banner. Monospaced because it is a
+   pair of ICAO codes and they line up; text-2 because it is a fact ABOUT the
+   flight rather than the flight's identity. */
+.follow-route {
+  flex: 0 0 auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+/* THE CAVEAT, AND IT IS NEVER ALLOWED TO DISAPPEAR AT A NARROW WIDTH.
+   `display: none` under a media query would be the ordinary way to make a
+   cramped banner fit, and here it would delete the one word that stops a
+   reader who is not a pilot taking an inference for a filed flight plan. It
+   wraps onto its own line instead — `flex: 1 1 100%` once the banner has run
+   out of room — which costs a line of height and costs nothing true. */
+.follow-caveat {
+  flex: 1 1 auto;
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
 .radar-list-head {
   margin: 0 0 0.15rem;
   font-size: 0.75rem;

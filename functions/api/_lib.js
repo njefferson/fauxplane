@@ -79,6 +79,24 @@ export const POLICIES = {
     identifies: true,
     honoursRetryAfter: true,
   },
+
+  /**
+   * THE PLAUSIBLE ROUTE for a followed flight (adsb.lol, ODbL).
+   *
+   * CACHED FAR HARDER THAN THE TRAFFIC FEED, and the reason is the data rather
+   * than the etiquette: a position changes every second and a route does not
+   * change at all during a flight. Ten minutes means one follow costs one
+   * upstream request instead of one every ten seconds — and the whole feature
+   * is therefore close to free for a service that asks us to be careful.
+   */
+  route: {
+    source: 'adsb.lol',
+    policyUrl: 'https://api.adsb.lol/docs',
+    licence: 'ODbL',
+    cacheSeconds: 600,
+    identifies: true,
+    honoursRetryAfter: true,
+  },
 };
 
 /**

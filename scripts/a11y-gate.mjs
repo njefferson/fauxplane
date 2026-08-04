@@ -89,6 +89,26 @@ const PAGES = ['pfd', 'atis', 'radar', 'bite', 'setup'];
  * It says NOTHING about whether the live adsb.fi response looks like this. That
  * cannot be checked from here and is recorded in NOTES.md as unverified.
  */
+/**
+ * The plausible route, in the shape `/api/route` answers with.
+ *
+ * `plausible: true` is the case that matters. adsb.lol infer a route from the
+ * callsign and that word is theirs; the check below exists to prove it reaches
+ * the screen as text a reader can actually read.
+ */
+const ROUTE_FIXTURE = {
+  ok: true,
+  source: 'adsb.lol',
+  sourceUrl: 'https://adsb.lol',
+  attribution: 'Route data from adsb.lol (ODbL) — plausible, inferred from the callsign',
+  callsign: 'UAL328',
+  origin: { code: 'KSFO', name: 'San Francisco International', lat: 37.6188, lon: -122.3754 },
+  destination: { code: 'KJFK', name: 'John F Kennedy International', lat: 40.6398, lon: -73.7789 },
+  via: [],
+  plausible: true,
+  probe: { status: 200, topLevelKeys: ['routes'], entryKeys: ['callsign', 'airport_codes', '_airports'], entries: 1 },
+};
+
 const TRAFFIC_FIXTURE = {
   ok: true,
   source: 'adsb.lol',
@@ -1406,6 +1426,13 @@ async function checkRadarTap(browser, base) {
   await context.route('**/api/traffic**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) }),
   );
+  // Counted, because "asked once per flight" is a promise made to a volunteer
+  // service and a promise nobody measures is a hope.
+  let routeAsks = 0;
+  await context.route('**/api/route**', (route) => {
+    routeAsks += 1;
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ROUTE_FIXTURE) });
+  });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -1457,6 +1484,57 @@ async function checkRadarTap(browser, base) {
     fail(where, `tapping an aircraft did not start following it (banner hidden, input "${after.input}")`);
   } else if (!/UAL328/.test(`${after.what} ${after.input}`)) {
     fail(where, `tapped UAL328 but the panel is following "${after.what}"`);
+  }
+
+  /**
+   * THE ROUTE, AND THE WORD THAT QUALIFIES IT, BOTH PAINTED.
+   *
+   * MEASURED, not read off the DOM. The first draft of this feature put the
+   * caveat in a `title` attribute, where `textContent` would have found it and
+   * a phone would not — there is no hover on a touch screen, and this app is
+   * built for one. So the assertion is a bounding box with real area plus text
+   * that is really there, which is the only form of "on screen" that survives
+   * someone deciding the banner looks cramped.
+   *
+   * The route without the caveat is the failure that matters. An inferred
+   * route presented bare reads as a filed flight plan to someone who is not a
+   * pilot, which is the exact misreading this app is not allowed to cause.
+   */
+  // BACK TO THE PANEL FIRST. The banner lives inside `#page-pfd`, which is
+  // `[hidden]` while the scope is up — so measuring here without switching
+  // reads 0x0 for a perfectly visible element and would have to be "fixed" by
+  // weakening the check. This is the reader's own path: tap an aircraft on the
+  // scope, then go and look at the panel it is now driving.
+  await page.evaluate(() => document.querySelector('[data-page="pfd"]').click());
+  await page.waitForTimeout(300);
+
+  const shown = await page.evaluate(() => {
+    const seen = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return { present: false };
+      const r = el.getBoundingClientRect();
+      return { present: true, hidden: el.hidden, text: el.textContent.trim(), w: r.width, h: r.height };
+    };
+    return { route: seen('follow-route'), caveat: seen('follow-route-caveat') };
+  });
+
+  for (const [what, got] of [['route', shown.route], ['caveat', shown.caveat]]) {
+    if (!got.present) fail(where, `the follow banner has no ${what} element at all`);
+    else if (got.hidden || got.w < 1 || got.h < 1) {
+      fail(where, `the ${what} is not painted (hidden ${got.hidden}, ${Math.round(got.w)}x${Math.round(got.h)}) — a route the reader cannot see is not shown`);
+    } else if (!got.text) fail(where, `the ${what} element is painted but empty`);
+  }
+  if (shown.route.text && !/KSFO/.test(shown.route.text)) {
+    fail(where, `the route reads "${shown.route.text}" — the followed flight's origin is missing`);
+  }
+  if (shown.caveat.text && !/plausible/i.test(shown.caveat.text)) {
+    fail(where, `the caveat reads "${shown.caveat.text}" — adsb.lol's own word PLAUSIBLE has to be the one on screen`);
+  }
+  if (shown.caveat.text && !/not a filed flight plan/i.test(shown.caveat.text)) {
+    fail(where, `the caveat reads "${shown.caveat.text}" — it must say this is not a filed flight plan`);
+  }
+  if (routeAsks > 1) {
+    fail(where, `the route feed was asked ${routeAsks} times for one flight — it must be asked once per flight, not once per sweep`);
   }
 
   await context.close();
@@ -1700,13 +1778,38 @@ async function checkUpdateStrip(browser) {
       const reg = await navigator.serviceWorker.getRegistration();
       await reg.update();
     });
-    await page.waitForTimeout(1200);
+    /**
+     * POLLED FOR THE STATE, NOT SLEPT FOR A GUESS.
+     *
+     * This was `waitForTimeout(1200)`, and 1200 ms is an opinion about how long
+     * a browser takes to install a worker that precaches forty-nine shell files
+     * and a 317 KB airport database. It is plenty on an idle machine. It is not
+     * plenty on the forty-ninth browser of a plant sweep — where this check
+     * announced "the browser did not see it as an update" about a worker that
+     * was, at that moment, still installing.
+     *
+     * The plant running underneath came back UNPROVEN, which is the harness
+     * doing its job: a check that goes red for the wrong reason is not
+     * evidence, and a check that does it INTERMITTENTLY is worse than one that
+     * never worked, because the green reads as coverage.
+     *
+     * Both exits below are real answers rather than expiries: something is
+     * waiting, or a worker seized the page. Reaching the deadline after this
+     * long is a genuine failure, not a slow machine — which is the property a
+     * fixed sleep can never have.
+     */
+    const deadlineAt = Date.now() + 20_000;
+    let sawWaiting = false;
+    let sawSeized = false;
+    while (Date.now() < deadlineAt) {
+      sawWaiting = !!(await settle(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting)));
+      sawSeized = !!(await seized());
+      if (sawWaiting || sawSeized) break;
+      await page.waitForTimeout(150);
+    }
 
     /* ---- §7h.1: it WAITS ------------------------------------------------ */
-    const state = {
-      waiting: await settle(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting)),
-      seized: await seized(),
-    };
+    const state = { waiting: sawWaiting, seized: sawSeized };
     /**
      * TWO WAYS FOR `waiting` TO BE FALSE, AND THEY ARE OPPOSITE FAULTS. The
      * first draft of this check reported both as "the browser did not see it as

@@ -29,6 +29,23 @@
  */
 export const RELEASES = [
   {
+    version: '1.21.0',
+    date: '2026-08-04',
+    headline: 'The flight you are following says where it is going.',
+    changed: [
+      'Follow an aircraft and the banner now shows its route — KSFO → KJFK, and every stop in between if it has any. This is the flight-plan idea you asked for, in the smallest form that is honest.',
+      'It says PLAUSIBLE right next to it, and that word is not decoration. adsb.lol work the route out from the callsign — UAL328 flies the sector United usually fly it on — which is a good guess and is not a filed flight plan. The aircraft could be diverting, repositioning, or flying something else entirely under a reused callsign. The panel will not present a guess as a clearance.',
+      'It is asked once per flight, not once per sweep. Following one aeroplane for an hour costs the volunteers who run this service a single request.',
+      'The (i) menu now lists the route feed alongside every other source, with its licence and a link to its terms.',
+    ],
+    broken: [
+      'THE ROUTE MAY NOT APPEAR AT ALL ON THIS RELEASE, and if it does not, that is expected rather than a fault. The exact shape of the request this feed wants is not published anywhere this session could read, so the panel sends its best-reasoned guess. If the guess is wrong the route simply reads as unavailable — it will never show a made-up one.',
+      'That is what the diagnostics report behind the version stamp is for. Follow a flight, then open it: a block called WHAT THE ROUTE FEED ACTUALLY SENT records exactly what came back, including the field the feed rejected if it rejected one. Send me that and the next release is a correction rather than another guess.',
+      'There is still no map. The route is two airport codes, not a drawn line — that comes after the shape above is confirmed.',
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+    ],
+  },
+  {
     version: '1.20.0',
     date: '2026-08-04',
     headline: 'The radar explains itself in English when the feed says no.',

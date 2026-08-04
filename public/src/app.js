@@ -40,6 +40,7 @@ import { RADAR_RANGE_NM, createTrafficSource, lastKnownFix, radarCentre, remembe
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
+import { createRouteSource, routeCaveat, routeLine } from './data/route.js';
 import { loadModel, magneticField } from './data/wmm.js';
 
 import { createSurface } from './render/canvas.js';
@@ -121,6 +122,15 @@ async function boot() {
   // rather than to a fifth tab because it is a diagnostic, not an instrument,
   // and the tab row is for things a pilot scans.
   const stamp = $('build-stamp');
+  /**
+   * CONSTRUCTED HERE, above the report that reads it, and that ordering is the
+   * point. `build` is a closure the dialog only calls on open, so a declaration
+   * further down would *work* — right up until something opens the diagnostics
+   * during boot, at which point it throws in the temporal dead zone, inside the
+   * one surface whose job is to explain what went wrong. It costs nothing to
+   * not have that trap.
+   */
+  const route = createRouteSource({ clock: now });
   const diagnostics = createDiagnostics({
     trigger: stamp,
     build: ({ precisePosition }) =>
@@ -128,6 +138,10 @@ async function boot() {
         snapshot: state.snapshot,
         fusion,
         traffic,
+        // The route source, not the route: the report wants BOTH its current
+        // state and its last probe, and the probe is the answer to what shape
+        // `POST /api/0/routeset` actually takes.
+        route,
         metar,
         bootAt: BOOT_AT,
         // The filter is read at the moment the report is asked for, not at the
@@ -333,11 +347,55 @@ async function boot() {
   // The standing FOLLOW indicator, wired before the panel that can turn it on.
   const followBanner = $('follow-banner');
   const followWhat = $('follow-what');
+  const followRoute = $('follow-route');
+  const followRouteCaveat = $('follow-route-caveat');
+  /** The last route put on screen, so a repeated sweep is not a repeated announcement. */
+  let routeShown = null;
+  const showRoute = (line, caveat) => {
+    followRoute.hidden = !line;
+    followRoute.textContent = line ?? '';
+    // THE CAVEAT IS NEVER SEPARATED FROM THE ROUTE — shown with it, cleared
+    // with it. adsb.lol call these PLAUSIBLE and the word travels with the
+    // number, in visible text rather than in a tooltip no touch screen has.
+    followRouteCaveat.hidden = !line || !caveat;
+    followRouteCaveat.textContent = line ? (caveat ?? '') : '';
+  };
   const syncFollowBanner = () => {
     const label = traffic.followLabel;
     followBanner.hidden = !label;
     followWhat.textContent = label ? `${label} — this panel is showing that aircraft's broadcast, not this device` : '';
     document.body.dataset.following = label ? 'true' : 'false';
+    if (!label) {
+      route.clear();
+      routeShown = null;
+      showRoute(null, null);
+    }
+  };
+
+  /**
+   * THE ROUTE, ASKED ONCE PER FLIGHT AND ONLY WITH A REAL POSITION.
+   *
+   * The feed disambiguates a reused callsign by where the aircraft actually is,
+   * so this waits for the followed aircraft's own broadcast rather than sending
+   * a position to satisfy a parameter. `forFlight` guards on the callsign, so
+   * calling it every sweep costs one request per flight.
+   *
+   * THE ANNOUNCEMENT IS GUARDED SEPARATELY, and it has to be. `forFlight`
+   * stopping the REQUEST is not the same as stopping the SPEECH: the cached
+   * answer still came back every sweep, so a screen-reader user following one
+   * flight heard "KSFO to KJFK, plausible route..." every ten seconds for as
+   * long as they followed it. The guard is on what is currently on screen.
+   */
+  const refreshRoute = async () => {
+    const a = traffic.followed;
+    if (!a?.callsign) return;
+    await route.forFlight(a.callsign, { lat: a.lat, lon: a.lon });
+    const line = routeLine(route.current);
+    const caveat = routeCaveat(route.current);
+    showRoute(line, caveat);
+    const spoken = line ? `${line}. ${caveat ?? ''}`.trim() : null;
+    if (spoken && spoken !== routeShown) announcer.say(spoken);
+    routeShown = spoken;
   };
   const radar = createRadar({
     host: $('page-radar'),
@@ -686,7 +744,11 @@ async function boot() {
   }
   async function refreshFollowed() {
     if (now() < trafficAllowedAt) return;
-    if (traffic.isFollowing) noteTrafficResult(await traffic.refreshFollowed());
+    if (!traffic.isFollowing) return;
+    noteTrafficResult(await traffic.refreshFollowed());
+    // AFTER the position arrives, never before: the route feed needs a real
+    // one and this is the moment there is one.
+    refreshRoute();
   }
 
   // ---- page switching ------------------------------------------------------

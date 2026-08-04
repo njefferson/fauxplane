@@ -98,7 +98,7 @@ function chunkList(items, width) {
   return out;
 }
 
-export function buildReport({ snapshot, fusion, traffic, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
+export function buildReport({ snapshot, fusion, traffic, route = null, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
   // FIELD AGES are measured against the snapshot, which is when those values
   // were true. THE FILTER IS NOT A FIELD — it is live, and it keeps accepting
   // samples after a snapshot is taken. Reading it at `snapshot.t` is what put
@@ -230,6 +230,21 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
     const a = traffic.followed;
     if (a) line(`             ${a.hex} ${a.registration ?? ''} ${a.type ?? ''}  seen_pos ${a.seenPosS}s ago`);
   }
+  // THE ROUTE IS A FEED AND REPORTS LIKE ONE. Its three states are different
+  // facts and the report has to keep them apart: nothing asked yet, asked and
+  // there is no route, asked and here is a guess. A blank line for all three
+  // would make a broken request indistinguishable from a quiet flight.
+  const rt = route?.current ?? route ?? null;
+  if (rt?.callsign || rt?.state === 'known') {
+    const codes = rt.state === 'known' ? `${rt.origin?.code ?? '?'} → ${rt.destination?.code ?? '?'}` : null;
+    line(
+      `  route      ${
+        rt.state === 'known'
+          ? `${codes}${(rt.via ?? []).length ? ` via ${rt.via.map((v) => v.code).join(', ')}` : ''} — ${rt.plausible ? 'PLAUSIBLE (inferred from the callsign)' : 'reported confirmed'}, ${rt.source ?? 'adsb.lol'}`
+          : `none — ${rt.reason ?? 'not asked yet'}`
+      }`,
+    );
+  }
   line();
 
   // ---- WHAT THE FEED ACTUALLY SENT -------------------------------------------
@@ -253,6 +268,33 @@ export function buildReport({ snapshot, fusion, traffic, metar, bootAt, preciseP
     // Every key the provider sent, including ones this app does not read — a
     // field we could be using and are not is invisible any other way.
     for (const chunk of chunkList(o.keys ?? [], 74)) line(`  keys  ${chunk}`);
+    line();
+  }
+
+  // ---- WHAT THE ROUTE FEED ACTUALLY SENT -------------------------------------
+  //
+  // THE REQUEST SHAPE FOR `POST /api/0/routeset` IS A HYPOTHESIS, and this
+  // block is how it stops being one. adsb.lol's OpenAPI page names the schemas
+  // `PlaneList` and `PlaneInstance` without expanding them in any capture we
+  // have, and this sandbox cannot reach api.adsb.lol at all — so the Function
+  // sends the shape the tar1090 family uses and the answer comes back HERE,
+  // from Noah's device, on the first real follow.
+  //
+  // `validation` is the line that matters. FastAPI answers a wrong body with a
+  // 422 and a `detail` array naming the exact field it rejected, so a wrong
+  // guess diagnoses itself and the next release is a correction rather than
+  // another guess. A block that says `422  at: body.planes.0.lat  says: field
+  // required` is worth more than four screenshots.
+  const rp = route?.probe ?? null;
+  if (rp) {
+    line('WHAT THE ROUTE FEED ACTUALLY SENT');
+    line(`  callsign ${rp.callsign ?? '—'}   HTTP ${rp.status ?? '—'}   entries ${rp.entries ?? '—'}`);
+    if (rp.topLevelKeys?.length) for (const chunk of chunkList(rp.topLevelKeys, 74)) line(`  top   ${chunk}`);
+    if (rp.entryKeys?.length) for (const chunk of chunkList(rp.entryKeys, 74)) line(`  entry ${chunk}`);
+    for (const v of rp.validation ?? []) line(`  REJECTED  at: ${v.at ?? '?'}   says: ${v.says ?? '?'}   (${v.kind ?? '?'})`);
+    if (!rp.topLevelKeys?.length && !rp.entryKeys?.length && !rp.validation?.length) {
+      line('  the reply carried no readable keys — see the HTTP status above');
+    }
     line();
   }
 
