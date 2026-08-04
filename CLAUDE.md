@@ -129,6 +129,15 @@ Every gate, and each one exits non-zero:
   `palettes/fauxplane.json`. The gate is never forked; it is run from the hub.
 - `node scripts/plant.mjs` — breaks one thing at a time and proves the gate
   goes red **about that thing**. A check nobody has watched fail is not evidence.
+  **The plants are DATA in `scripts/plants.data.mjs`; the harness is CODE in
+  `plant.mjs`**, and the split is load-bearing rather than cosmetic — see below.
+  `--changed=<ref>` runs only the plants whose target file moved, which on a
+  typical release is about twenty rather than fifty-seven; `--dry` shows the
+  selection without paying for a browser. It ESCALATES to the whole sweep on any
+  file that can blunt a plant that does not name it (the gates, the store,
+  provenance, the renderers, `styles.css`, `index.html`) and PRINTS what it did
+  not run. **A plant new or edited in the data file always runs**, whatever it
+  targets. Sweep WHOLE before any promote — hub LESSONS §51.
   Each plant names the gate that should catch it: `a11y` (the default) or
   `tests`. Sensor-logic plants MUST use `tests` — a headless browser has no
   accelerometer, so the accessibility gate is structurally blind to them and
