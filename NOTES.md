@@ -4931,9 +4931,23 @@ separating the app's own licence from OurAirports data and runtime METAR),
 `NOTES.md`, `ACCESSIBILITY.md`, the on-screen build stamp (§7b — written at
 boot, dimmed with a colour token, its contrast pair in the gate), branches.
 
+**Hub wiring (§13.6) — DONE, 2026-08-04, on Noah's instruction.** All three
+wires are live. The app links back to `noahjefferson.pages.dev` from the (i)
+menu and the footer, and to `/accessibility` from both; those two were already
+built. The hub's outbound half landed on its `main` as `5ae9e87` — an app row
+and icon on the front page, the same row in the noscript list, and an entry in
+the shared accessibility statement's app list — and deployed at 19:01 UTC
+(3 files uploaded, run 30941323237).
+
+The reason recorded here before — "waits on a deploy; there is no URL to point
+at yet" — had been stale for a day. `fauxplane.pages.dev` has been this repo's
+website in the hub's `METADATA.md`, applied and verified, since 2026-08-03.
+
+**What it actually waited on was Noah, and that is now a doctrine rule.** He
+decides what goes on the hub; a session does not add an app there, propose one,
+restore one, or name an unlisted one as a candidate. Doctrine §0c, written the
+same day (hub `2ae05bf`), and §13's checklist changed with it — the app's links
+BACK are a session's to build, the hub's link OUT is not.
+
 Not done, and why:
-- **Hub wiring (§13.6)** — the hub links out to the app, the app links back, and
-  its About links the shared accessibility statement. The app already links to
-  `noahjefferson.pages.dev/accessibility` in its footer. The hub's outbound link
-  waits on a deploy; there is no URL to point at yet.
 - **Repo metadata** — item 6 above.
