@@ -11,17 +11,16 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ## STAGED NOW — waiting on Noah
 
-**1.19.1 is on staging: https://staging.fauxplane.pages.dev**
+**1.19.2 is on staging: https://staging.fauxplane.pages.dev**
 
-**The horizon is the thing to test.** 1.19.0 found and fixed the root cause of
-"gentle rotation errors the horizon" — the gyro propagation was using a
-small-angle shortcut that is only exact when the panel is bolt upright. Put it
-in the cradle, level it, and turn it. It should stay put.
+**The horizon is still the thing to test.** 1.19.0 found and fixed the root
+cause of "gentle rotation errors the horizon" — the gyro propagation was using
+a small-angle shortcut only exact when the panel is bolt upright. Put it in the
+cradle, level it, and turn it. It should stay put.
 
-Also in it: runways drawn at airports, ground traffic no longer shown as traffic
-below you, and 1.19.1's landscape fix — the value strip was taking a third of an
-iPad and is now a fifth, so the horizon and the radar are each about twenty
-percent bigger.
+Also since main: runways drawn at airports, ground traffic no longer shown as
+traffic below you, landscape giving the instruments their height back, and
+1.19.2's provider stand-off.
 
 `main` is on 1.15.0 until you say promote. This block is rewritten by whichever
 session stages the next candidate; a staged build nobody can see is the failure
@@ -2214,6 +2213,105 @@ view is checked WITH aircraft on it rather than empty.
 
 ---
 
+## 1.19.2 — the provider terms, read properly, and what they changed, 2026-08-04
+
+Noah sent adsb.fi's terms page as a screenshot after asking for the providers'
+terms. Two of the three sources are now READ FROM THE PUBLISHER, and one is
+still not, which is stated rather than papered over.
+
+### adsb.fi — read, from their own repository
+
+`github.com/adsbfi/opendata`, and the screenshot of the rendered page agrees
+with it word for word:
+
+- "adsb.fi open data is for personal, non-commercial use only. You may not
+  license, sell, rent, or lease any part of the data or the service."
+- "The data and the service are provided as-is, without any warranty. You must
+  cite adsb.fi and include a link to our home page."
+- "The public endpoints are rate limited to 1 request per second, and the feeder
+  endpoint to 1 request every 30 seconds."
+- "Please contact us if you have commercial or higher request rate requirements."
+- "These endpoints are publicly accessible, but we kindly ask you to support
+  adsb.fi by setting up a receiver."
+
+**And the sentence that changed the code:** "Making excessive invalid HTTP
+requests results in a temporary IP address restriction. Requests returning a
+400, 401, 403, 404, or 429 status code count toward the limit."
+
+The panel already validated every parameter before sending, for exactly that
+reason. What it did NOT do was stop asking a provider that had just refused —
+and adsb.fi's refusal is a 403 from their firewall, returned on every single
+attempt, before their API sees the request. So the failover was spending a
+strike against an abuse threshold on every fetch, for a call that could not
+succeed, from an egress address shared with every other Cloudflare tenant.
+
+Retrying a refusal you can predict is not persistence. It is the thing that
+sentence describes.
+
+**The stand-off** lives in the edge cache rather than in a variable, because a
+Worker isolate is short-lived and a per-isolate memo forgets between requests. A
+403 gets ten minutes — a firewall block is a decision about who we are and will
+not have changed in thirty seconds — and a 429 gets whatever `Retry-After` said,
+because a 429 is an instruction (§15.3). Bounded at fifteen minutes so nothing
+here can blind the panel, and the marker expires on its own.
+
+**The skip is REPORTED.** "not asked — refused us (HTTP 403), standing off for
+up to 600s" is a different fact from "they said no", and a reader deserves to
+know which. The panel's contract is that a failure explains itself; that has to
+include failures we chose not to incur.
+
+**Also checked against the page and already correct:** adsb.fi's v2
+`/lat/lon/dist` is deprecated in favour of v3, and this repo is already on
+`/v3/lat/lon/dist`.
+
+### adsb.lol — read, and it names the real fix
+
+`github.com/adsblol/api`: "Rate limits are dynamic based on the environment
+load." "If you get 4xx errors, you are doing something wrong." And:
+
+> "In the future, you will require an API key which you can obtain by feeding
+> adsb.lol. This will be a way to ensure that the API is being used responsibly
+> and by people who are willing to contribute to the project."
+
+**Both providers converge on the same answer, and it is not a third provider.**
+The 429-on-first-request is a shared-IP problem: adsb.fi is 1 req/sec per
+address and ours is shared, so a stranger's traffic spends our allowance. A key
+is per-account, which is exactly what defeats that — and both services issue
+access to feeders. adsb.fi go further and give feeder IPs automatic access to a
+snapshot endpoint that is otherwise closed.
+
+So the open item has moved from "find a better provider" to "run a receiver",
+which is hardware and therefore Noah's call. It is in Open — needs Noah.
+
+### airplanes.live — NOT read, and this is the honest part
+
+Their site returns 403 to every automated fetch. That is the same Cloudflare bot
+rule that blocks our own Pages Function from adsb.fi, and getting past it means
+sending browser-shaped headers — which this repo forbids on principle, for a
+service whose data we are asking for as a favour.
+
+A web search summarises them as 1 req/sec, non-commercial and educational only.
+**That is a paraphrase, not the publisher's words, and it is not enough.** This
+repo has already made that mistake once: OurAirports' README called the files
+"open-data downloads", an earlier session correctly rejected that as
+insufficient, and what actually settled it was an Unlicense committed to the
+data repository. A search snippet is weaker than the README that was rejected.
+
+So airplanes.live remains unread and unused, and the URLs to open in a real
+browser are in Open — needs Noah.
+
+### Verified
+
+**321 unit tests, 46/46 planted faults caught, the accessibility gate green
+across 3 viewports x 2 palettes x 5 pages, both palettes clearing every hard
+floor, `pwa-check.mjs` green.**
+
+The cooldown's pure parts take an injectable cache, so the stand-off, its
+bounds, the Retry-After precedence and the per-provider isolation are all tested
+in Node rather than asserted about a Worker nobody can run here.
+
+---
+
 ## 1.19.1 — landscape gets its instruments back, 2026-08-03
 
 Noah, on a landscape iPad: "Landscape is too cramped now." 1.18.0 moved the
@@ -3896,6 +3994,40 @@ working until he has looked.
 ---
 
 ## Open — needs Noah
+
+0. **THE RATE LIMITING NEEDS HARDWARE, not a code change.** Both providers say
+   the same thing and 1.19.2 is the last thing the code can do about it.
+
+   The failure is a SHARED ADDRESS. adsb.fi rate limit to one request per second
+   per IP; this panel reaches them through a Cloudflare Pages Function, whose
+   egress address is shared with an enormous number of unrelated sites, so the
+   allowance is routinely spent before the panel asks — which is why a 429 can
+   land on the very first request of a session. No amount of pacing on our side
+   fixes somebody else's traffic.
+
+   **adsb.lol, in their own words:** "In the future, you will require an API key
+   which you can obtain by feeding adsb.lol." A key is per-account rather than
+   per-address, which is precisely what a shared egress defeats.
+
+   **adsb.fi, in theirs:** "we kindly ask you to support adsb.fi by setting up a
+   receiver", and feeder IPs are "automatically given access" to a snapshot
+   endpoint that is otherwise closed. Also: "Please contact us if you have
+   commercial or higher request rate requirements."
+
+   So the two routes are FEED ONE OF THEM — an RTL-SDR dongle and an antenna,
+   roughly £25 to £35, running at the house — or write to adsb.fi and ask. The
+   first is the one both services actually want, and it would make part of the
+   panel's data come from Noah's own receiver, which is a better story anyway.
+
+   **And airplanes.live's terms are still unread.** Their site 403s every
+   automated fetch, and getting past it means browser-shaped headers, which this
+   repo forbids. A browser on an iPad is not a bot, so Noah can read what no
+   session here can:
+
+   - https://adsb.lol/feed
+   - https://adsb.fi/contact and https://github.com/adsbfi/opendata
+   - https://airplanes.live/api-guide/
+   - https://airplanes.live/rest-api-adsb-data-field-descriptions/
 
 1. **Two repo secrets, and then it deploys itself.**
    `.github/workflows/deploy.yml` now builds and deploys on every push to

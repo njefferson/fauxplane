@@ -221,3 +221,71 @@ export async function cached(request, key, ttlSeconds, produce) {
   }
   return fresh;
 }
+
+/* ------------------------------------------------------- provider cooldown */
+
+/**
+ * A PROVIDER THAT HAS JUST REFUSED IS NOT ASKED AGAIN FOR A WHILE.
+ *
+ * adsb.fi's own terms, read 2026-08-03 from the page Noah sent:
+ *
+ *   "Making excessive invalid HTTP requests results in a temporary IP address
+ *    restriction. Requests returning a 400, 401, 403, 404, or 429 status code
+ *    count toward the limit."
+ *
+ * Every one of our adsb.fi attempts returns 403 — their Cloudflare edge blocks
+ * a Pages Function before their API ever sees it. So the failover was spending
+ * a strike against an abuse threshold on EVERY request, for a call that cannot
+ * possibly succeed, on an egress address shared with every other Cloudflare
+ * tenant. Retrying a refusal we can predict is not persistence, it is exactly
+ * the "excessive invalid requests" the sentence describes.
+ *
+ * The marker lives in the edge cache rather than in a variable, because a
+ * Worker isolate is short-lived and a per-isolate memo would forget between
+ * requests — which is the same as not having one.
+ *
+ * IT EXPIRES ON ITS OWN. Nothing here can make the panel permanently blind: the
+ * cache entry ages out, and the reason travels with it so the gauge can say why
+ * a source was skipped rather than merely that it failed.
+ */
+const COOLDOWN_MAX_S = 900;
+
+const cooldownKey = (request, id) => new Request(new URL(`/__cooldown/${encodeURIComponent(id)}`, request.url).toString());
+
+/**
+ * How long to stand off, by what the provider actually said.
+ *
+ * A 403 from a firewall is STRUCTURAL — it is a decision about who we are, and
+ * it will not have changed in thirty seconds. A 429 is a rate limit and carries
+ * its own instruction (Doctrine §15.3), so the service's own number wins over
+ * any guess of ours.
+ */
+export function cooldownSeconds(status, retryAfterS = null) {
+  if (Number.isFinite(retryAfterS) && retryAfterS > 0) return Math.min(retryAfterS, COOLDOWN_MAX_S);
+  if (status === 403) return 600;
+  if (status === 429) return 60;
+  return 0;
+}
+
+export async function noteRefusal(request, id, seconds, reason, cache = caches.default) {
+  if (!(seconds > 0)) return false;
+  const ttl = Math.min(Math.round(seconds), COOLDOWN_MAX_S);
+  await cache.put(
+    cooldownKey(request, id),
+    new Response(JSON.stringify({ id, reason, seconds: ttl }), {
+      headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=${ttl}` },
+    }),
+  );
+  return true;
+}
+
+/** The standing refusal for a provider, or null if it may be asked again. */
+export async function inCooldown(request, id, cache = caches.default) {
+  const hit = await cache.match(cooldownKey(request, id));
+  if (!hit) return null;
+  try {
+    return await hit.json();
+  } catch {
+    return { id, reason: 'refused recently', seconds: null };
+  }
+}

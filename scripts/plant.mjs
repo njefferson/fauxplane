@@ -573,6 +573,20 @@ const PLANTS = [
     expect: /moved the horizon|from level|drifted/,
   },
   {
+    // adsb.fi's terms: "Requests returning a 400, 401, 403, 404, or 429 status
+    // code count toward the limit" for a temporary IP restriction. Ours 403s
+    // every single time, so asking on every request spends a strike on a call
+    // that cannot succeed, from an address shared with every other Cloudflare
+    // tenant. Removing the stand-off puts that back.
+    name: 'etiquette: a provider that refused is asked again immediately',
+    check: 'a refusal is remembered and the provider is not re-asked',
+    gate: 'tests',
+    file: 'functions/api/_lib.js',
+    find: '  if (status === 403) return 600;',
+    replace: '  if (status === 403) return 0;',
+    expect: /stands off far longer than a 429|cooldown/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

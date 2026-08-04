@@ -29,6 +29,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.19.2',
+    date: '2026-08-04',
+    headline: 'The panel stops knocking on a door it knows is locked.',
+    changed: [
+      'When an aircraft source refuses us, the panel now waits before asking it again instead of trying on every single request. adsb.fi has been refusing every attempt — their firewall blocks us before their servers ever see it — and their published terms say a refused request counts toward getting the address temporarily banned. So every fetch was spending a strike on a call that could never work.',
+      'The wait is as long as the service asks for. A rate limit that says "come back in five minutes" gets five minutes; a firewall block gets ten, because that is a decision about who we are and will not have changed in thirty seconds.',
+      'The radar says "not asked — standing off" rather than pretending it tried. Being turned away and choosing not to ask are different facts and you should be able to tell which happened.',
+    ],
+    broken: [
+      'This is politeness, not a fix. The first-request rate limiting is still there: the panel reaches these services through Cloudflare, whose address is shared with an enormous number of other sites, so the allowance can already be spent by traffic that has nothing to do with you.',
+      'Both services say the same thing about the real answer — feed them. A receiver at your house earns an API key tied to you rather than to a shared address, and that is the thing that would actually fix it.',
+    ],
+  },
+  {
     version: '1.19.1',
     date: '2026-08-03',
     headline: 'Landscape gets its instruments back.',

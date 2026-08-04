@@ -34,7 +34,7 @@
  * coincidence, makes every user within the same six miles share one cache entry.
  */
 
-import { POLICIES, TRAFFIC_PROVIDERS, USER_AGENT, cached, json, politeFetch, problem } from './_lib.js';
+import { POLICIES, TRAFFIC_PROVIDERS, USER_AGENT, cached, cooldownSeconds, inCooldown, json, noteRefusal, politeFetch, problem } from './_lib.js';
 
 /** Home reference, used only until the client has a fix (NOTES.md, settled). */
 const HOME = { lat: 38.68, lon: -121.0 };
@@ -261,7 +261,7 @@ export async function describeUpstreamFailure(res) {
  * flight is not being heard) and must NOT cause a fallback, while a 403 from a
  * CDN is that provider refusing us and must.
  */
-async function tryProvider(provider, pathname, meta, cacheSeconds) {
+async function tryProvider(provider, pathname, meta, cacheSeconds, request = null) {
   const upstreamUrl = `${provider.base}${pathname}`;
   let res;
   try {
@@ -286,6 +286,11 @@ async function tryProvider(provider, pathname, meta, cacheSeconds) {
     for (const h of ['retry-after', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'ratelimit-reset', 'cf-ray']) {
       const v = res.headers?.get?.(h);
       if (v) said.push(`${h} ${v}`);
+    }
+    // STAND OFF, and for as long as they asked. A 429 is an instruction.
+    if (request) {
+      const after = Number(res.headers?.get?.('retry-after'));
+      await noteRefusal(request, provider.id, cooldownSeconds(429, after), 'rate limited (HTTP 429)').catch(() => {});
     }
     return {
       retry: `${provider.id} rate limited us (HTTP 429${said.length ? `; ${said.join(', ')}` : '; it sent no retry guidance'})`,
@@ -318,6 +323,19 @@ async function tryProvider(provider, pathname, meta, cacheSeconds) {
     // just before the only part that means anything. Relaying MORE was not the
     // answer; relaying the RIGHT part was.
     const detail = await describeUpstreamFailure(res);
+    /**
+     * A 403 IS STRUCTURAL, so stop asking for a while.
+     *
+     * This is the branch adsb.fi takes on every single request — their firewall
+     * refuses a Pages Function before their API sees it — and their terms say
+     * such a reply counts toward a temporary IP restriction. Retrying a refusal
+     * we can predict is the "excessive invalid requests" that sentence is about,
+     * and the address it would be charged against is shared with every other
+     * Cloudflare tenant.
+     */
+    if (request) {
+      await noteRefusal(request, provider.id, cooldownSeconds(res.status), `refused us (HTTP ${res.status})`).catch(() => {});
+    }
     return { retry: `${provider.id} returned HTTP ${res.status}${detail}` };
   }
 
@@ -361,10 +379,30 @@ async function tryProvider(provider, pathname, meta, cacheSeconds) {
  * returned HTTP 403" alone would send the next reader to look at adsb.lol; the
  * useful fact is usually that BOTH refused, and how each one phrased it.
  */
-async function relay(pick, meta, cacheSeconds) {
+async function relay(pick, meta, cacheSeconds, request = null) {
   const refusals = [];
   for (const provider of TRAFFIC_PROVIDERS) {
-    const out = await tryProvider(provider, pick(provider), meta, cacheSeconds);
+    /**
+     * A PROVIDER THAT REFUSED RECENTLY IS SKIPPED, not retried.
+     *
+     * adsb.fi's terms say a 403 counts toward a temporary IP restriction, and
+     * ours 403s every single time — their firewall blocks a Pages Function
+     * before their API sees it. Asking anyway spends a strike on a call that
+     * cannot succeed, from an address shared with every other Cloudflare
+     * tenant. See noteRefusal in _lib.js.
+     *
+     * The skip is REPORTED, not silent: the panel's contract is that a failure
+     * explains itself, and "we did not ask" is a different fact from "they said
+     * no" — a reader deserves to know which.
+     */
+    if (request) {
+      const cool = await inCooldown(request, provider.id).catch(() => null);
+      if (cool) {
+        refusals.push(`${provider.id} not asked — ${cool.reason}, standing off for up to ${cool.seconds ?? '?'}s`);
+        continue;
+      }
+    }
+    const out = await tryProvider(provider, pick(provider), meta, cacheSeconds, request);
     if (!out?.retry) return out;
     refusals.push(out.retry);
   }
@@ -385,7 +423,7 @@ export async function onRequestGet({ request }) {
       return problem('callsign must be 2 to 8 letters or digits, e.g. UAL328 or N172SP', { status: 400 });
     }
     return cached(request, `/api/traffic?callsign=${cs}`, POLICIES.traffic.callsignCacheSeconds, () =>
-      relay((p) => p.callsign(encodeURIComponent(cs)), { query: { callsign: cs } }, POLICIES.traffic.callsignCacheSeconds),
+      relay((p) => p.callsign(encodeURIComponent(cs)), { query: { callsign: cs } }, POLICIES.traffic.callsignCacheSeconds, request),
     );
   }
 
@@ -397,7 +435,7 @@ export async function onRequestGet({ request }) {
     // the callsign above: a 404 counts against our rate limit too.
     if (!/^[0-9a-f]{6}$/.test(h)) return problem('hex must be six hexadecimal digits, e.g. a1b2c3', { status: 400 });
     return cached(request, `/api/traffic?hex=${h}`, POLICIES.traffic.callsignCacheSeconds, () =>
-      relay((p) => p.hex(h), { query: { hex: h } }, POLICIES.traffic.callsignCacheSeconds),
+      relay((p) => p.hex(h), { query: { hex: h } }, POLICIES.traffic.callsignCacheSeconds, request),
     );
   }
 
@@ -437,6 +475,7 @@ export async function onRequestGet({ request }) {
         centreQuantisedDeg: POSITION_QUANTUM,
       },
       POLICIES.traffic.cacheSeconds,
+      request,
     ),
   );
 }

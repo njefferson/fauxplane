@@ -81,7 +81,7 @@ test('UPSTREAM: nothing to say produces nothing, not an empty dash', async () =>
 
 /* ---------------------------------------------------------------- providers */
 
-import { TRAFFIC_PROVIDERS } from '../functions/api/_lib.js';
+import { TRAFFIC_PROVIDERS, cooldownSeconds, inCooldown, noteRefusal } from '../functions/api/_lib.js';
 
 test('PROVIDERS: there is more than one, and adsb.lol is tried first', () => {
   // adsb.fi's edge refuses a Pages Function outright, so it cannot be the only
@@ -112,4 +112,70 @@ test('PROVIDERS: each builds all three query paths', () => {
 test('PROVIDERS: no two share a base, or the fallback is not a fallback', () => {
   const bases = TRAFFIC_PROVIDERS.map((p) => p.base);
   assert.equal(new Set(bases).size, bases.length);
+});
+
+/**
+ * THE PROVIDER COOLDOWN.
+ *
+ * adsb.fi's terms, from the page Noah sent on 2026-08-03: "Making excessive
+ * invalid HTTP requests results in a temporary IP address restriction. Requests
+ * returning a 400, 401, 403, 404, or 429 status code count toward the limit."
+ *
+ * Every adsb.fi attempt returns 403 — their firewall blocks a Pages Function
+ * before their API sees it — so the failover was spending a strike on every
+ * request, for a call that cannot succeed, from an address shared with every
+ * other Cloudflare tenant.
+ */
+test('cooldown: a 403 stands off far longer than a 429', () => {
+  // A firewall block is a decision about who we are and will not have changed
+  // in thirty seconds. A rate limit is about how often, and lifts.
+  assert.ok(cooldownSeconds(403) > cooldownSeconds(429));
+  assert.ok(cooldownSeconds(429) > 0);
+});
+
+test('cooldown: the provider’s own Retry-After wins over our guess', () => {
+  // Doctrine §15.3 — a 429 is an instruction, not a hint.
+  assert.equal(cooldownSeconds(429, 300), 300);
+  assert.equal(cooldownSeconds(403, 120), 120);
+});
+
+test('cooldown: it is bounded, so nothing can blind the panel for ever', () => {
+  // A provider sending an absurd Retry-After must not take the radar out for
+  // the rest of the day.
+  assert.ok(cooldownSeconds(429, 86400) <= 900);
+});
+
+test('cooldown: a status that is not a refusal earns no stand-off', () => {
+  // 200s and 404s must not silence a provider: a 404 from the callsign endpoint
+  // is an ANSWER (that flight is not being heard), not a refusal.
+  assert.equal(cooldownSeconds(200), 0);
+  assert.equal(cooldownSeconds(404), 0);
+  assert.equal(cooldownSeconds(500), 0);
+});
+
+test('cooldown: a recorded refusal is found again, and says why', async () => {
+  const store = new Map();
+  const cache = {
+    put: async (req, res) => store.set(req.url, res),
+    match: async (req) => store.get(req.url) ?? null,
+  };
+  const request = new Request('https://example.test/api/traffic?lat=1&lon=2&dist=40');
+
+  assert.equal(await inCooldown(request, 'adsb.fi', cache), null, 'nothing recorded yet');
+  await noteRefusal(request, 'adsb.fi', 600, 'refused us (HTTP 403)', cache);
+
+  const back = await inCooldown(request, 'adsb.fi', cache);
+  assert.equal(back.id, 'adsb.fi');
+  assert.equal(back.seconds, 600);
+  assert.match(back.reason, /403/);
+  // One provider standing off must not silence the other.
+  assert.equal(await inCooldown(request, 'adsb.lol', cache), null);
+});
+
+test('cooldown: a zero-second stand-off records nothing', async () => {
+  const store = new Map();
+  const cache = { put: async (r, v) => store.set(r.url, v), match: async (r) => store.get(r.url) ?? null };
+  const request = new Request('https://example.test/api/traffic');
+  assert.equal(await noteRefusal(request, 'adsb.lol', 0, 'fine', cache), false);
+  assert.equal(store.size, 0);
 });
