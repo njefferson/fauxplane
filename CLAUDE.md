@@ -67,6 +67,25 @@ Data the app bundles is generated, never hand-written:
   silent fallback. A bundled dataset also cannot be rate limited, which is why
   the picker keeps working on a day the live feed does not.
 
+**Text reports — PIREPs, SIGMETs/AIRMETs and TAFs — come from the SAME service
+as METAR**, so there is no new licensing question: a US Government work whose
+terms are already read. `POLICIES.wxtext` is a separate entry only because the
+pacing differs, and pacing is what those declarations are for.
+
+**Their response shape has never been seen** — this sandbox cannot reach
+aviationweather.gov any more than it can reach adsb.lol. So `/api/wxtext` asks
+for `format=raw` rather than JSON, which is what a flight deck shows anyway:
+there is no field mapping to be wrong about, and the one remaining assumption
+(the body is text that splits into reports) is CHECKED — a body opening with
+`<!doctype` is refused rather than displayed, and what actually came back is
+reported on every response. `route.js` is the cautionary precedent for building
+blind; the difference is that there the REQUEST shape was the hypothesis.
+
+**A quiet sky and a service that did not answer must never produce the same
+words.** Both render an empty block, and "no pilot reports" from a feed nobody
+reached is an observation nobody made. `wxSummary` has four states and both the
+unit suite and the a11y gate hold them apart.
+
 Live traffic comes from a **LIST** of providers, tried in order and declared in
 `TRAFFIC_PROVIDERS` (`functions/api/_lib.js`): **adsb.lol** first, then
 **adsb.fi**. There is more than one because adsb.fi's Cloudflare edge answers a
