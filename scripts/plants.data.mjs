@@ -843,6 +843,36 @@ export const PLANTS = [
     expect: /did not start following|tappable-looking marks that answer nothing/i,
   },
   {
+    // THE FAILURE THIS GATE EXISTS FOR, and it is the one that already happened:
+    // a defect that is still true stops being carried into the next release's
+    // `broken` list. Nothing fixed it and no note claimed a fix — it just
+    // stopped being mentioned, for sixteen consecutive releases, because
+    // carrying it forward was a thing somebody had to remember.
+    name: 'notes: a standing defect drops out of the published broken list',
+    check: 'every defect that is still true is in the current release notes',
+    gate: 'tests',
+    file: 'public/src/data/releases.js',
+    // REMOVES the line, rather than prefixing it. The first version of this
+    // plant prefixed it and stayed GREEN — correctly, because the entry was
+    // still in the list and still matched. A plant that does not actually
+    // produce the defect proves nothing, and the sweep said so.
+    find: "      'At the largest text size on a small phone, the radar scope starts below the bottom of the screen and you have to scroll before any of it is visible. The radar page is not the cause and cannot fix it \\u2014 the header and tab strip alone take about two thirds of the screen at that setting. Fixing it means shrinking the chrome at large text, which changes every page.',\n",
+    replace: "",
+    expect: /does not tell the reader about|scope-below-fold|STANDING/i,
+  },
+  {
+    // The other half: a registry entry with no explanation is a pattern nobody
+    // can evaluate a year later, so "is this still true?" becomes unanswerable
+    // and the entry survives on inertia instead of on evidence.
+    name: 'notes: a standing defect stops explaining what it actually is',
+    check: 'a standing defect is described, not just matched',
+    gate: 'tests',
+    file: 'public/src/data/releases.js',
+    find: "    why: 'At 200% text on a small phone the RADAR scope starts below the fold.",
+    replace: "    why: 'see notes.', unusedWhy: 'At 200% text on a small phone the RADAR scope starts below the fold.",
+    expect: /no explanation of what the defect actually is|described, not just matched/i,
+  },
+  {
     // THE DEFECT THAT SHIPPED IN 1.34.0. Splitting a bulletin on its blank lines
     // tears one advisory into five, so a lone "AREA 3...FROM END-ARG-LIT-MCB"
     // appears with no header saying which SIGMET or which hazard it belongs to.

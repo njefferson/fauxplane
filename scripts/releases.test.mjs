@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CURRENT_RELEASE, RELEASES, releasesSince, updateNotice } from '../public/src/data/releases.js';
+import { CURRENT_RELEASE, RELEASES, STANDING, releasesSince, updateNotice } from '../public/src/data/releases.js';
 import { VERSION } from '../public/src/core/version.js';
 import { SEEN_KEY, loadSeen, saveSeen } from '../public/src/panels/whatsnew.js';
 
@@ -36,6 +36,45 @@ test('the newest release entry IS the running version', () => {
   // the reader has no way to tell which is lying.
   assert.equal(RELEASES[0].version, VERSION);
   assert.equal(CURRENT_RELEASE.version, VERSION);
+});
+
+/**
+ * THE DEFECT THAT STOPPED BEING PUBLISHED.
+ *
+ * A true defect fell out of `broken` for sixteen consecutive releases — never
+ * fixed, never claimed fixed, just no longer carried forward, because carrying
+ * it forward was a thing somebody had to remember. `broken` is this app's own
+ * promise about what is still wrong; a defect that quietly stops being listed
+ * turns that promise into a decoration, and the reader cannot tell.
+ *
+ * It is data now. The gate is what makes removing one an ACT rather than an
+ * omission — a deliberate line in a diff saying "this is fixed", which somebody
+ * can then disagree with.
+ */
+test('EVERY STANDING DEFECT IS IN THE CURRENT RELEASE\'S broken LIST', () => {
+  const missing = [];
+  for (const d of STANDING) {
+    if (!CURRENT_RELEASE.broken.some((line) => d.must.test(line))) {
+      missing.push(`  ${d.id} — ${d.why}`);
+    }
+  }
+  assert.deepEqual(
+    missing,
+    [],
+    `${CURRENT_RELEASE.version} does not tell the reader about ${missing.length} defect(s) that are still true:\n\n${missing.join('\n\n')}\n\n`
+      + 'Either carry it forward, or delete it from STANDING — and if you delete it, the release note has to say it is fixed.\n',
+  );
+});
+
+test('a standing defect is described, not just matched', () => {
+  // A registry entry with no `why` is a pattern nobody can evaluate later.
+  const seen = new Set();
+  for (const d of STANDING) {
+    assert.ok(d.id && !seen.has(d.id), `duplicate or missing id: ${d.id}`);
+    seen.add(d.id);
+    assert.ok(d.must instanceof RegExp, `${d.id}: must is not a pattern`);
+    assert.ok(d.why && d.why.length > 40, `${d.id}: no explanation of what the defect actually is`);
+  }
 });
 
 test('every release carries a headline, changes, and a broken list', () => {

@@ -27,10 +27,85 @@ on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.35.0, what a real device found, 2026-08-05
+## PROMOTED — main is on 1.35.0, and staging is on 1.36.0, 2026-08-05
 
-**1.35.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
-1.29.0.
+`main` moved 1.29.0 → 1.35.0 in one fast-forward: 14 commits, 8 releases
+(1.29.1 through 1.35.0). A reader on the old build gets an update banner saying
+eight releases missed, and What's New carries all eight.
+
+---
+
+## STAGED NOW — 1.36.0, the fault that stopped being published, 2026-08-05
+
+**1.36.0 is on staging: https://staging.fauxplane.pages.dev**
+
+### A defect that was still true fell out of the app's own broken list
+
+At 200% text on a small phone the RADAR scope starts below the fold. It was
+published in `broken` for 1.28.0, 1.28.1 and 1.28.2 — and then **absent from
+every release from 1.28.3 to 1.35.0**. Sixteen releases. Nothing fixed it and no
+note ever claimed a fix. It stopped being carried forward, because carrying it
+forward was a thing somebody had to remember while writing the next notes.
+
+**RE-MEASURED RATHER THAN RECALLED**, at 390x640 with 200% text, because three
+releases had changed the header and removed the value strip and it might have
+been fixed by accident:
+
+- chrome before the panel: **406px of a 640px screen** (was 407)
+- the scope canvas starts at **707** (was 812)
+- so the card's own stack really did shrink by a hundred pixels, and the scope
+  is still entirely off screen
+
+`releases.js`'s own header calls `broken` *"what is still wrong, that he might
+hit"*, and this file insists an empty array claims nothing is outstanding while a
+missing key is an author who never considered the question. **A true defect that
+quietly stops being listed is the same failure with a longer fuse** — and it is a
+slower, quieter version of inventing a number, because the reader cannot tell the
+difference either way.
+
+### So it is DATA now, not diligence
+
+`STANDING` in `releases.js` lists the defects that are still true, each with the
+pattern the CURRENT release's `broken` must match and a sentence saying what the
+defect actually is. `releases.test.mjs` fails the build when one is missing.
+
+**The gate went red on the real repo, not on a plant** — 1.35.0 genuinely did not
+tell the reader about it.
+
+Removing an entry is now a deliberate act that says "this is fixed", in a diff
+where somebody can disagree with it. Four entries today: the rate-limited feed,
+the missing route, the 200% scope, and the nationwide advisories.
+
+**The first plant for it stayed GREEN and the sweep said so.** It prefixed the
+line rather than removing it, so the entry was still in the list and still
+matched — a plant that does not produce the defect proves nothing. Same shape as
+the map-tap check one release earlier.
+
+### The diagnostics report can now settle the backgrounded-sensor question
+
+This file has had it open as *"not fixed here, because it is not yet understood"*,
+with the remedy stated: *"it needs a report taken immediately after returning to
+the app."*
+
+**That report arrived** — 28 seconds after a return to the foreground, three
+minutes into a session with METAR and traffic live, and both raw sensor lines
+reading `no event received`. **And it still could not settle it**, because two
+causes produce identical output: the listeners did not resume, or the permission
+was refused on that load and nothing ever attached.
+
+So the fix went to the REPORT rather than to a guess about the cause. It now
+carries what each permission prompt actually returned — which `app.js` has always
+learned at power-on and threw away one line later after a single spoken
+announcement — plus whether each listener is currently attached. **Attached and
+silent is a different fault from never attached**, and the report now says which
+in words.
+
+That is the §7f move: when the shape is unknown, make the next observation
+decisive instead of reasoning from the one that was not.
+
+---
+
+## Previously staged — 1.35.0, what a real device found, 2026-08-05
 
 Two diagnostics reports and three screenshots from an iPad, and between them
 they found more than every gate in the repo had. Recorded in the order they
@@ -6358,6 +6433,22 @@ working until he has looked.
 
 ## Open — needs the owner
 
+**THREE OF THESE WERE STALE ON 2026-08-05 and are marked CLOSED in place rather
+than deleted.** Navdata was recorded as the only absent bundle two days after it
+shipped; repo metadata was recorded as unset two days after he set it; and a
+paragraph asked for OpenSky credentials and a KV binding that no code path has
+wanted since the feed was repointed.
+
+None of that was a small thing. **This is the file every session is told to read
+FIRST**, so a stale entry here does not sit quietly — it sends the next session
+to do work that is already done, or to ask him for something he has already
+given. `CLAUDE.md` said the opposite in all three cases, which means the two
+files a session reads at the start of every session disagreed with each other for
+days and nothing noticed.
+
+Closed entries are struck through and keep their reason, because the shape of the
+mistake is worth more than a tidy list.
+
 0. **SETTLED 2026-08-04: NO RECEIVER.**
    That closes this, and it closes it as a PERMANENT CONDITION rather than an
    open problem — which changes what the app should do about it. 1.20.0 is that
@@ -6417,11 +6508,18 @@ working until he has looked.
    them the workflow skips the deploy and still runs the tests, rather than
    failing red.
 
-   `/api/metar` and `/api/winds` need NO key and no KV — the weather works from
-   the first deploy. `/api/traffic` alone wants `OPENSKY_CLIENT_ID`,
-   `OPENSKY_CLIENT_SECRET` and a KV namespace bound as `FAUXPLANE_KV`, and it
-   reports itself unconfigured on the BITE page until it has them. No v1 panel
-   consumes traffic, so that can wait indefinitely.
+   **CLOSED — the two secrets are evidently set**, because every deploy since
+   has concluded green and the site is live at that address. This entry stays
+   only for the next repo that needs the same two.
+
+   ~~`/api/traffic` wants `OPENSKY_CLIENT_ID`, `OPENSKY_CLIENT_SECRET` and a KV
+   namespace bound as `FAUXPLANE_KV`.~~ **DEAD, and stale for days.** Traffic has
+   not come from OpenSky since it was repointed: it comes from `TRAFFIC_PROVIDERS`
+   in `functions/api/_lib.js` — adsb.lol, then adsb.fi — **neither of which takes
+   a key**, and there is no KV binding anywhere in the app. A session reading this
+   would have gone looking for credentials that no code path asks for. The
+   sentence "no v1 panel consumes traffic" was overtaken too: RADAR shipped in
+   1.0.0 and the PFD's navigation display reads the same feed.
 
 2. **THE JOY QUESTION, and it is the one that matters most now that the
    audience is known.** On a stationary desk cockpit, the speed tape, altitude
@@ -6535,37 +6633,40 @@ read; this came from a third-party package instead. Check it before building.
 changes — it writes through the same public `write` as every sensor, and gets
 provenance, ageing and STALE-then-FAIL for free when the sim pauses.
 
-3. **Navdata is the only bundle still absent, and it needs nothing from you
-   right now.** The geoid and the magnetic model are both bundled and verified
-   (below). Navdata backs the HSI and nav pages, which are v2, so nothing on
-   screen depends on it.
+3. ~~**Navdata is the only bundle still absent.**~~ **CLOSED 2026-08-03 and
+   this entry was stale for two days.** The licence question was settled — the
+   publisher commits an Unlicense to the data repository the CSVs come from,
+   which is a grant on the artifact rather than a README describing the files —
+   and `npm run navdata` shipped **702 Northern California airports, 407 runways
+   and 44 navaids** in `public/data/navdata.json`. It backs the RADAR page's
+   centre picker and the runways drawn on every scope. A basemap followed in
+   1.33.0.
 
-   Its reason CHANGED and the old one was recorded as false: the CSVs *are*
-   reachable, from `raw.githubusercontent.com`, which is noted in
-   `scripts/build-navdata.mjs` as `MIRRORS`. What is not reachable is
-   `ourairports.com/data/`, the page carrying the published terms — so
-   `SOURCE_POLICY.policyReadOn` stays null and the fetch path still refuses.
-   Pulling 18 MB from a volunteer-run project for a file nothing displays is
-   also the wrong shape (§15.5). Read the terms, then `npm run navdata`.
+   Recorded rather than deleted because the failure is the interesting part:
+   this file is the one every session is told to read FIRST, and it went on
+   saying a shipped bundle was absent while `CLAUDE.md` said the opposite. A
+   source of truth that contradicts the file beside it is worse than either.
 
-4. **The attitude stability test, which gates all of v2.** The spec sets it at
-   "fusion holds attitude within 2 degrees over a 60 s static test". That needs
-   a real device sitting still for a minute; it cannot be run here. Until it
-   passes, HSI, traffic and EICAS stay unbuilt.
+4. **The attitude stability test.** The spec sets it at "fusion holds attitude
+   within 2 degrees over a 60 s static test". That needs a real device sitting
+   still for a minute; it cannot be run here.
+
+   **Its gate sentence was stale too.** It said the test blocks "HSI, traffic and
+   EICAS". Traffic shipped in 1.0.0 and EICAS in 1.31.0 — both were built anyway,
+   and neither turned out to depend on the filter holding still. **Only the HSI
+   is still behind it**, and the verification is genuinely still owed.
 
 5. **Branches.** `staging` and `main` are the only branches, as instructed. See
    the branch note below for what happened to the old ones.
 
-6. **Repo metadata** (manual, GitHub UI — Doctrine §10). None of it is set.
-   Proposed values, each needing a yes:
-   - Description, written for what the app IS and naming no current feature:
-     *"A glass-cockpit instrument panel for a phone or tablet, driven by the
-     device's own sensors and live aviation data. Free, offline-first, no
-     account."*
-   - Website: nothing to set until it is deployed. Revisit at first deploy.
-   - Topics: `pwa`, `aviation`, `offline-first`, `glass-cockpit`, `no-account`.
-   - Social preview: not made yet. Doctrine §10 requires the tile carry the
-     app's NAME in real type, with measured contrast.
+6. ~~**Repo metadata.**~~ **DONE 2026-08-03, and this entry was stale.** All
+   five rows — description, website, topics, social preview and default branch —
+   were applied by the owner and verified against GitHub. The values live in the
+   hub's `METADATA.md`, which is where they are proposed and where the per-item
+   status flips to `set`. Nothing is outstanding.
+
+   Same failure as item 3: a session reading this file would have gone and asked
+   him to do work he had already done.
 
 7. **A day palette, if the panel proves unreadable in sunlight.** v1 ships two
    measured dark palettes because a glass cockpit is a dark instrument. That is

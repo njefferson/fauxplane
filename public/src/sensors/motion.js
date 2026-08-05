@@ -123,6 +123,13 @@ export function createMotionSensor({ state, fusion, vsi, screenAngle, owns = () 
     },
 
     /** Raw accelerometer axes, exactly as the platform delivered them. */
+    /** Whether a listener is currently attached. `lastRaw` being null with
+     *  this TRUE means the events are not arriving; with this FALSE it means
+     *  nothing was ever listening. The diagnostics report needs both to tell a
+     *  refused permission from a listener that did not resume. */
+    get listening() {
+      return listening;
+    },
     get lastRaw() {
       return lastRaw;
     },

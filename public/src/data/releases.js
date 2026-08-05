@@ -61,6 +61,51 @@
  */
 
 /**
+ * STANDING DEFECTS — the ones that are still true, and must appear in EVERY
+ * release's `broken` list until they are fixed.
+ *
+ * THIS EXISTS BECAUSE ONE QUIETLY STOPPED APPEARING. The 200%-text scope defect
+ * was published for 1.28.0, 1.28.1 and 1.28.2 and then fell out of `broken` for
+ * SIXTEEN consecutive releases. It was never fixed and no note ever claimed it
+ * was; it simply stopped being carried forward, because carrying it forward was
+ * a thing somebody had to remember while writing the next release's notes.
+ *
+ * `broken` is the app's own promise: this file's header calls it "what is still
+ * wrong, that he might hit", and an empty array is a claim that nothing is
+ * outstanding. A true defect that silently stops being listed turns that promise
+ * into a decoration — and it is a slower, quieter version of the same failure as
+ * inventing a number, because the reader has no way to tell the difference.
+ *
+ * So it is DATA now rather than diligence. Each entry names the defect and the
+ * pattern the current release's `broken` must match. `releases.test.mjs` fails
+ * the build when one is missing, which means removing a defect from this list is
+ * a deliberate act that says "this is fixed" — and that claim is then in the
+ * diff where somebody can disagree with it.
+ */
+export const STANDING = [
+  {
+    id: 'traffic-rate-limited',
+    must: /turned away|rate limit/i,
+    why: 'The volunteer aircraft feeds refuse a shared Cloudflare address. Settled 2026-08-04: no receiver, no code fix.',
+  },
+  {
+    id: 'no-route',
+    must: /no route|shows no route/i,
+    why: "adsb.lol's edge answers the routes endpoint with an empty page before their API sees it. Upstream call is off behind a flag.",
+  },
+  {
+    id: 'scope-below-fold-200pct',
+    must: /200%|large text/i,
+    why: 'At 200% text on a small phone the RADAR scope starts below the fold. Re-measured 2026-08-05 at 390x640: chrome takes 406px of 640 and the scope canvas starts at 707. Improved from 812 in 1.28.0 and still entirely off screen.',
+  },
+  {
+    id: 'advisories-nationwide',
+    must: /whole country|nationwide|not narrow/i,
+    why: 'The advisories feed does not apply the area box. Narrowing them needs the FROM line resolved against a navaid database the app does not carry yet.',
+  },
+];
+
+/**
  * Newest FIRST. Each entry:
  *   version  the release, matching version.js for the newest
  *   date     ISO day it shipped
@@ -69,6 +114,23 @@
  *   broken   what is still wrong, that he might hit
  */
 export const RELEASES = [
+  {
+    version: '1.36.0',
+    date: '2026-08-05',
+    headline: 'A fault that was still real quietly stopped being listed. It is back, and it cannot fall out again.',
+    changed: [
+      'Every release here carries a "Still not right" list, and one of the things on it disappeared without ever being fixed. At 200% text on a small phone the radar scope starts below the bottom of the screen — it was listed for three releases in February and then, for sixteen releases after that, it simply was not mentioned again. Nothing fixed it. It stopped being carried forward.',
+      'It was re-measured rather than remembered, on a small phone at the largest text setting. It has improved since it was last listed \u2014 the radar card itself takes far less room than it did \u2014 and the scope still begins past the bottom of the screen, because the header and tab strip alone take roughly two thirds of it at that text size.',
+      'The list of standing faults is now data the app checks itself against, so a release that leaves one out fails to build. Taking one off that list is now a deliberate act that has to say it is fixed, rather than something that can happen by forgetting.',
+      'The diagnostics report says what the sensor permission prompts actually answered, and whether a listener is attached. "No event received" has two completely different causes that look identical — the permission was refused, or the listeners went quiet after the app was in the background — and the report could not tell them apart. It can now, and it says which in words.',
+    ],
+    broken: [
+      'At the largest text size on a small phone, the radar scope starts below the bottom of the screen and you have to scroll before any of it is visible. The radar page is not the cause and cannot fix it \u2014 the header and tab strip alone take about two thirds of the screen at that setting. Fixing it means shrinking the chrome at large text, which changes every page.',
+      'The advisories still cover the whole country, and that is the service, not the app. Narrowing them needs a way to work out where each one actually is.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
   {
     version: '1.35.0',
     date: '2026-08-05',

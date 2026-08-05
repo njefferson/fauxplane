@@ -173,6 +173,18 @@ async function boot() {
         mount: fusion.mountOffset,
         mountApplies: fusion.mountOffset ? fusion.mountOffset.capturedAtScreenAngle === orientation.screenAngle() : null,
         raw: { accel: motion.lastRaw, orientation: orientation.lastRaw },
+        /**
+         * WHAT THE PERMISSION PROMPTS RETURNED, and whether the sensors were
+         * ever started. Without these, "no event received" is unattributable —
+         * it is the same output for a refused permission and for a listener
+         * that did not resume after backgrounding.
+         */
+        sensors: {
+          started,
+          permissions: sensorPermissions,
+          motionListening: motion.listening ?? null,
+          orientationListening: orientation.listening ?? null,
+        },
       }),
   });
 
@@ -264,6 +276,10 @@ async function boot() {
   /** PLAN or MAP for the navigation display beside the horizon. Declared here
    *  because the PFD's traffic getter reads it and is built below. */
   let ndMode = 'plan';
+
+  /** What each sensor permission prompt actually returned, kept for the
+   *  diagnostics report. Null until the panel is powered on. */
+  let sensorPermissions = null;
 
   /**
    * ONE VIEW OF THE TRAFFIC WORLD, READ BY BOTH SURFACES THAT DRAW IT.
@@ -1265,7 +1281,22 @@ async function boot() {
      * at all — then had a horizon reading ATT FAIL with no way to learn that the
      * cause was a permission they declined, which is the one failure on this
      * panel they can undo. EICAS says so, from this.
+     *
+     * AND THE WHOLE RECORD GOES IN THE DIAGNOSTICS REPORT, because EICAS's one
+     * sentence cannot settle the question NOTES has open. A report taken after
+     * returning from the background showed no sensor event had ever arrived —
+     * and that has two causes which look identical from outside: the listeners
+     * did not resume, or the permission was refused on this load and nothing
+     * ever attached. Only the verdict tells them apart, and it was being thrown
+     * away one line after it was learned.
      */
+    sensorPermissions = {
+      askedAt: now(),
+      // Whether the platform required a prompt at all. On a desktop browser it
+      // does not, and "not asked" is a different fact from "granted".
+      asked: results.map(([what]) => what),
+      verdicts: Object.fromEntries(results),
+    };
     const refused = results.filter(([, verdict]) => verdict !== 'granted').map(([what]) => what);
     // Terse on purpose: it goes in a flight-deck message strip a column wide,
     // not in a paragraph. "Motion denied", not "Motion access was denied."

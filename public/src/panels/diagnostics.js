@@ -99,7 +99,7 @@ function chunkList(items, width) {
   return out;
 }
 
-export function buildReport({ snapshot, fusion, traffic, route = null, selfTest = null, visibility = null, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
+export function buildReport({ snapshot, fusion, traffic, route = null, selfTest = null, visibility = null, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, sensors = null, now = null }) {
   // FIELD AGES are measured against the snapshot, which is when those values
   // were true. THE FILTER IS NOT A FIELD — it is live, and it keeps accepting
   // samples after a snapshot is taken. Reading it at `snapshot.t` is what put
@@ -366,6 +366,48 @@ export function buildReport({ snapshot, fusion, traffic, route = null, selfTest 
   // convention cannot be diagnosed from a photograph of a horizon — an iPad
   // reading roll -90 in BOTH orientations and an iPad with a missing screen
   // rotation look identical on screen and are different bugs.
+  /**
+   * WHY THE SENSORS ARE OR ARE NOT TALKING — before the axes, because it is the
+   * question the axes cannot answer.
+   *
+   * "no event received" has two completely different causes and they produce
+   * identical output: the permission was refused on this load so nothing ever
+   * attached, or a listener was attached and stopped delivering — which is what
+   * backgrounding does on iOS. A report taken 28 seconds after returning to the
+   * app showed exactly that line and could not settle which, and NOTES has the
+   * question open with the words "it needs a report taken immediately after
+   * returning to the app". That report arrived and was still not decisive.
+   *
+   * So the verdict is printed. `app.js` has always learned it at power-on and
+   * threw it away one line later, after a single spoken announcement.
+   */
+  const sen = sensors ?? {};
+  line('SENSOR PERMISSIONS AND LISTENERS');
+  if (!sen.started) {
+    line('  the panel has not been powered on — nothing has been asked for or attached');
+  } else {
+    const perms = sen.permissions;
+    if (!perms) {
+      line('  no permission prompt was needed on this platform (not iOS-style gating)');
+    } else if (!perms.asked?.length) {
+      line('  powered on, and the platform required no permission prompt');
+    } else {
+      for (const what of perms.asked) {
+        line(`  ${what.padEnd(28)}${perms.verdicts?.[what] ?? 'no verdict recorded'}`);
+      }
+    }
+    // The pair that separates the two causes. Attached and silent is a
+    // different fault from never attached.
+    const say = (v) => (v === null ? 'unknown' : v ? 'attached' : 'NOT attached');
+    line(`  devicemotion listener       ${say(sen.motionListening)}`);
+    line(`  deviceorientation listener  ${say(sen.orientationListening)}`);
+    if (sen.motionListening && !raw.accel) {
+      line('  ^ ATTACHED AND SILENT — the listener is on and no event has arrived.');
+      line('    That is the backgrounding case, not a refused permission.');
+    }
+  }
+  line();
+
   line('RAW SENSOR AXES  (before any correction)');
   const a = raw.accel;
   line(
