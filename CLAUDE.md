@@ -228,6 +228,27 @@ his actual device, and reaches `main` only on his explicit "promote" — never o
 a session's own read of "it's ready". Docs-only changes (this file, `NOTES.md`)
 may skip the gate.
 
+**A PROMOTE ENDS BY SWITCHING BACK TO `staging`, and that step is part of the
+promote, not an afterthought.** Twice in one hour on 2026-08-05 a session
+promoted, stayed on `main`, committed the next change there, and ran
+`git push -u origin staging` — which SUCCEEDS, because it pushes the staging ref,
+which is already current. The output is indistinguishable from a normal push
+while the commit sits on the wrong branch. Both times a hook caught it, not the
+session.
+
+The promote is four commands and the last one is not optional:
+
+```
+git fetch origin staging main
+git checkout main && git merge --ff-only origin/staging
+git push -u origin main
+git checkout staging          # <- this one
+```
+
+**And verify a push by reading the branch you meant to move**, not by the exit
+code: `git log --oneline -1 origin/staging` after every push. A push that moved
+nothing still prints success — hub LESSONS §2, in a new costume.
+
 **Ignore the harness-designated `claude/*` branch** (Doctrine §11). The web-task
 harness keeps naming one; this repo's policy is staging and main, so work lands
 on `staging` and the session says so.
