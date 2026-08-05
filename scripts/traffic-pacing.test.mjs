@@ -126,7 +126,7 @@ test('every field the followed aircraft owns is aged on the FEED’s window', as
 test('the edge cache outlives the poll interval, or it does nothing', async () => {
   // THE DEFECT THIS EXISTS FOR. The TTLs were 8 s and 5 s against polls of 10 s
   // and 5 s: every entry expired just before the poll that would have used it,
-  // so every request went upstream and Noah was rate limited off the radar
+  // so every request went upstream and the owner was rate limited off the radar
   // repeatedly. Both files' comments claimed the caching worked. Prose did not
   // catch it; arithmetic does.
   const { traffic, follow } = await clientIntervals();
@@ -207,9 +207,8 @@ test('every provider is asked for a radius the Function will accept', async () =
 /**
  * THE REFUSAL, IN WORDS THE READER CAN USE.
  *
- * What was on Noah's phone: "No traffic: adsb.lol rate limited us (HTTP 429;
- * cf-ray a258e8a82ff1fa4e-SJC) | adsb.fi returned HTTP 403 — server:
- * cloudflare; ray a258e8a9483dfa4e-SJC; Attention Required! | Cloudflare".
+ * What was on
+ *
  * True, and written for whoever is debugging the Pages Function.
  */
 test('refusal: a rate limit is named as one, and the cause is given', () => {
@@ -256,7 +255,7 @@ test('refusal: an empty or unknown reason still produces a sentence', () => {
 });
 
 /**
- * THE SCOPE'S STATE, IN WORDS (Noah, 2026-08-04).
+ * THE SCOPE'S STATE, IN WORDS (the owner, 2026-08-04).
  *
  * *"It would be nice to have an indicator that shows when the radar is
  * populated and another for any other states like being ready to tap."*
@@ -340,7 +339,7 @@ test('readiness: while following, the chip says whose aircraft the panel is show
 /**
  * THE FOLLOW BANNER MUST NOT CLAIM DATA IT DOES NOT HAVE.
  *
- * From Noah's 1.21.1 report: following PXT466 with the traffic feed rate
+ * From the owner's 1.21.1 report: following PXT466 with the traffic feed rate
  * limited, every followed field reading "waiting for the first report from
  * PXT466" — under a banner saying "this panel is showing that aircraft's
  * broadcast, not this device". It was showing nothing at all.
@@ -381,7 +380,7 @@ test('follow banner: not following says nothing at all', () => {
 });
 
 /**
- * THE COUNTDOWN (Noah, 2026-08-04).
+ * THE COUNTDOWN (the owner, 2026-08-04).
  *
  * *"No indication of how long I'll wait before the radar will work…like the
  * delay countdown, maybe?…. Just looks broken."* He was looking at NO CONTACT
@@ -459,7 +458,7 @@ test('standoff: a record with no expiry says so rather than guessing zero', () =
 /**
  * NO FIELD MAY NAME AN AIRCRAFT THE PANEL IS NOT FOLLOWING.
  *
- * Noah's 1.23.1 report: following N81AB, every field reading "waiting for the
+ * The owner's 1.23.1 report: following N81AB, every field reading "waiting for the
  * first report from N81AB" — and `attitude.heading` still reading "N460DF is
  * not broadcasting a heading". Heading is written outside FOLLOW_WRITES because
  * it has its own two-case message, and that write only happens where a report

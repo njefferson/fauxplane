@@ -6,7 +6,7 @@
  * it had been parked on the SETUP page (filed under levelling), the release
  * notes sat under "Built-in test", the diagnostics report hid behind a tap on
  * the version stamp, the accessibility statement was a footer link, and who
- * supplied the traffic was at the bottom of RADAR. Noah asked where the (i)
+ * supplied the traffic was at the bottom of RADAR. The owner asked where the (i)
  * menu was; there wasn't one.
  *
  * IT MOVES CONTENT, IT DOES NOT COPY IT. The first-run instructions are the
@@ -16,7 +16,7 @@
  * they were on BITE.
  *
  * A DIALOG RATHER THAN A SIXTH TAB, for the same reason diagnostics is one: the
- * tab strip is for instruments, and Noah has already said the header must not
+ * tab strip is for instruments, and the owner has already said the header must not
  * push the panel down. `<dialog>` also brings focus containment, Escape, and a
  * backdrop without this file implementing any of them.
  */
@@ -163,7 +163,7 @@ export function createInfo({ trigger, onDiagnostics }) {
     ]),
 
     /**
-     * THE LINK BACK TO THE HUB (Noah, 2026-08-03: "Link out to the hub.")
+     * THE LINK BACK TO THE HUB ( )
      *
      * The hub's own rule: "This hub links OUT to every sibling app, and each
      * app links back." Only the accessibility statement pointed there, buried
@@ -174,7 +174,7 @@ export function createInfo({ trigger, onDiagnostics }) {
      * Its own section rather than a line in the small print, because it is an
      * offer and the small print is the disclaimers.
      */
-    section('More of Noah’s apps', [
+    section('More of the owner’s apps', [
       el('p', { class: 'info-body' }, [
         el('span', { text: 'This is one of several free apps. They all live in one place: ' }),
         el('a', {

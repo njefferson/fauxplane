@@ -1,14 +1,14 @@
 # Changelog — fauxplane
 
 Newest first. Every entry says which KIND of release it is: VERSION (changes
-what the app IS — Noah's call), CAPABILITY (it can do something it could not),
+what the app IS — the owner's call), CAPABILITY (it can do something it could not),
 or ITERATION (a refinement or fix). The number is
 `version.capability.iteration`, and it is the same triplet shown on screen and
 used for the offline cache.
 
 ## 1.7.4 — ITERATION — 2026-08-03
 
-**The icon-art card is the share card.** Noah picked it, so shared links now
+**The icon-art card is the share card.** the owner picked it, so shared links now
 carry the card drawn entirely from the app's own artwork.
 
 ## 1.7.3 — ITERATION — 2026-08-03
@@ -22,7 +22,7 @@ artwork.
 ## 1.7.2 — ITERATION — 2026-08-03
 
 **The share card leads with the app's own icon** — the attitude-indicator face
-— in place of the colour bars. Noah's call: he really likes the icon, and a
+— in place of the colour bars. The owner's call: he really likes the icon, and a
 mark that is also the home-screen tile is a better signature than borrowed
 bars.
 
@@ -108,7 +108,7 @@ and is still the best way to run it.
 
 ## 0.2.1 — ITERATION — 2026-08-02
 
-Four fixes, all found by Noah opening 0.2.0 on his phone. Nothing here is new;
+Four fixes, all found by the owner opening 0.2.0 on his phone. Nothing here is new;
 it is things that were supposed to work.
 
 **The altimeter could never show a number.** Indicated and pressure altitude

@@ -3,7 +3,7 @@
  *
  * This path cannot be exercised against the real service from here: the
  * sandbox proxy refuses CONNECT to adsb.fi entirely. So it is tested against
- * the response Noah's device actually received, captured from his diagnostics
+ * the response the owner's device actually received, captured from his diagnostics
  * report — which is the only real evidence available and is better evidence
  * than a live call would have been anyway, because it is the failing case.
  */
@@ -117,9 +117,7 @@ test('PROVIDERS: no two share a base, or the fallback is not a fallback', () => 
 /**
  * THE PROVIDER COOLDOWN.
  *
- * adsb.fi's terms, from the page Noah sent on 2026-08-03: "Making excessive
- * invalid HTTP requests results in a temporary IP address restriction. Requests
- * returning a 400, 401, 403, 404, or 429 status code count toward the limit."
+ * adsb.fi's terms, from the page
  *
  * Every adsb.fi attempt returns 403 — their firewall blocks a Pages Function
  * before their API sees it — so the failover was spending a strike on every

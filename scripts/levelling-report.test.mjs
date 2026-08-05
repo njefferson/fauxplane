@@ -2,8 +2,7 @@
  * levelling-report.test.mjs — the panel must not contradict itself about
  * whether it is levelled.
  *
- * Noah, from his iPad: "On reload, the app lies and says level is not set when
- * it is actually using a previously stored level." His diagnostics agreed with
+ * His diagnostics agreed with
  * the ADI badge and both disagreed with the PFD: MOUNT LEVELLING cradle -46.0
  * deg pitch, 3.2 deg roll — being subtracted from every reading, LVL -46 +3 on
  * the horizon, and "Not levelled — the horizon shows the device's own angle"
@@ -85,7 +84,7 @@ test('with NO calibration it says so', () => {
 });
 
 test('with a calibration applied it NEVER says "not levelled"', () => {
-  // THE BUG, as a single assertion. Noah's exact numbers.
+  // THE BUG, as a single assertion. The owner's exact numbers.
   const { describeLevelling } = setupWith({ pitchDeg: -46, rollDeg: 3.2, capturedAtScreenAngle: 90 }, 90);
   const d = describeLevelling();
   assert.equal(d.state, 'on');

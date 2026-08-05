@@ -245,7 +245,7 @@ export async function cached(request, key, ttlSeconds, produce) {
 /**
  * A PROVIDER THAT HAS JUST REFUSED IS NOT ASKED AGAIN FOR A WHILE.
  *
- * adsb.fi's own terms, read 2026-08-03 from the page Noah sent:
+ * adsb.fi's own terms, read 2026-08-03 from the page the owner sent:
  *
  *   "Making excessive invalid HTTP requests results in a temporary IP address
  *    restriction. Requests returning a 400, 401, 403, 404, or 429 status code
@@ -295,8 +295,7 @@ export async function noteRefusal(request, id, seconds, reason, cache = caches.d
      *
      * `seconds` is the length of the stand-off as recorded — it never shrinks,
      * so a panel reading it says "standing off for up to 600s" nine minutes
-     * into a ten-minute wait. Noah: "No indication of how long I'll wait before
-     * the radar will work… Just looks broken."
+     * into a ten-minute wait.
      *
      * Storing when it ENDS lets `inCooldown` return what is actually left, and
      * a number that ticks down is the difference between a panel that is

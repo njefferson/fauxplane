@@ -108,7 +108,7 @@ function feedEntries(fields, extra, details = {}) {
  *
  * The static probe answers "does this browser implement the API" and the async
  * live probe answers "what is it actually reporting" — both legitimately
- * describe the same capability, and both were being rendered. Noah's BITE page
+ * describe the same capability, and both were being rendered. The owner's BITE page
  * showed "Battery status (BITE entry only)" twice with two different reasons,
  * and Network twice. A page whose whole job is to be an honest inventory must
  * not list anything twice.
@@ -132,9 +132,8 @@ export function createBite({ host, announcer, selfTestContext = () => ({}), onSe
   // changelog to reach the answer. They now live in the (i) menu with the rest
   // of the material that is information rather than instrumentation.
   /**
-   * THE ACTIVE HALF OF BUILT-IN TEST (Noah, 2026-08-04: "You could build a
-   * simple test that I run, like the debug sheet, instead of redoing the whole
-   * app every fucking time.")
+   * THE ACTIVE HALF OF BUILT-IN TEST (
+   * )
    *
    * Everything above reports what HAPPENED to arrive. This goes and asks. It
    * belongs here rather than as a sixth page because BITE is already the

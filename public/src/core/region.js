@@ -11,7 +11,7 @@
  * home reference, the navdata bbox, the METAR box or the traffic cold-start box
  * imports it from here and never retypes it.
  *
- * Settled by Noah, 2026-08-02 (see NOTES.md).
+ * Settled by the owner, 2026-08-02 (see NOTES.md).
  */
 
 export const REGION = Object.freeze({

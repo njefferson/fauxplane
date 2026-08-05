@@ -1,8 +1,7 @@
 /**
- * selftest.js — the checks only Noah's device can run, on one press.
+ * selftest.js — the checks only the owner's device can run, on one press.
  *
- * WHY THIS EXISTS. Noah, 2026-08-04: *"You could build a simple test that I run,
- * like the debug sheet, instead of redoing the whole app every fucking time."*
+ * WHY THIS EXISTS.
  *
  * He was describing the actual cost of how this was being worked. Learning one
  * fact about a live feed took a release, a follow, a report and a wait — three

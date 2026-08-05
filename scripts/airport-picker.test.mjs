@@ -1,7 +1,7 @@
 /**
  * airport-picker.test.mjs — "Airports should be easy to pick."
  *
- * Noah asked for this on 2026-08-03: set the radar's centre to an airport, or
+ * The owner asked for this on 2026-08-03: set the radar's centre to an airport, or
  * to any other location. The data is OurAirports, bundled — which matters
  * beyond convenience: a dataset in the repo is immune to the rate limiting that
  * has been breaking the live feed, and that is the shape Doctrine §15.1b now
@@ -94,7 +94,7 @@ test('a coordinate off the globe is refused', () => {
 });
 
 /**
- * RUNWAYS ON THE SCOPE (Noah, 2026-08-03: "Show the runway at airports.")
+ * RUNWAYS ON THE SCOPE ( )
  *
  * The bundle has carried 407 of them since 1.16.0 and nothing drew any. These
  * hold the selection honest: real thresholds only, nothing closed, nothing

@@ -199,7 +199,7 @@ const REGISTRY = [
   { selector: '.dim-note', label: 'brightness note', min: 4.6, page: 'setup' },
   { selector: '.foot-item', label: 'footer text', min: 4.6 },
   { selector: '.foot-link', label: 'footer link', min: 4.6 },
-  // THE READOUTS ARE NOT PAINTED ANY MORE (Noah, 2026-08-05), so there is no
+  // THE READOUTS ARE NOT PAINTED ANY MORE (the owner, 2026-08-05), so there is no
   // contrast to measure on them — a colour ratio on clipped 1px text is a
   // number about nothing. They are still asserted, harder than before, by
   // `checkValuesAreScreenReaderOnly` and by acceptance criterion 4: the text
@@ -253,8 +253,8 @@ const REGISTRY = [
  * The (i) menu's text, measured WHERE IT NOW LIVES.
  *
  * These rows used to be the power gate's, because the first-run text was on a
- * modal. The modal is gone — Noah: "'Switch the panel on' still takes all
- * attention on the initial pop-up and reads like 'accept the terms'" — and the
+ * modal. The modal is gone —
+ * — and the
  * text moved into the (i) dialog. The rows moved with it rather than being
  * deleted, which is the difference between relocating coverage and losing it.
  */
@@ -602,7 +602,7 @@ async function seenIntro(context) {
 /**
  * THE (i) IS IN THE CHROME, ON THE TAB ROW, AND IS NOT A TAB.
  *
- * Noah, 2026-08-05: "brightness can go in setup, and then (i) moved up?" It
+ * It
  * shared a `.bar-right` box with the brightness control; brightness moved to
  * SETUP and this stayed, beside the tabs rather than under them.
  *
@@ -620,10 +620,6 @@ async function seenIntro(context) {
  */
 /**
  * THE VALUES EXIST AS TEXT, IN THE ACCESSIBILITY TREE, AND ARE NOT PAINTED.
- *
- * Noah, 2026-08-05: "I don't want to SEE all the words that are at the bottom
- * for no other reason than for a screen reader to have access. I DO NOT NEED
- * THEM BECAUSE I CAN FUCKING SEE THE GUAGES."
  *
  * A canvas is non-text content, so SC 1.1.1 requires a text alternative — it
  * does NOT require that alternative to be painted. This check is what makes
@@ -682,10 +678,6 @@ async function checkValuesAreScreenReaderOnly(page, where) {
 /**
  * THE POWER SWITCH IS ON SCREEN, AND NOTHING IS DRAWN OVER IT.
  *
- * Noah, 2026-08-05, with an iPad both ways up: "Now the power button is too low
- * in portrait mode, and cannot be seen in landscape because it's covered by the
- * Text info."
- *
  * BOTH FAULTS WERE MINE, ONE RELEASE OLD, and both are about the same move —
  * lifting the controls out of the horizon's column so the two instruments could
  * be equal. Side by side that is right. Stacked, "under both instruments" means
@@ -735,7 +727,7 @@ async function checkPowerIsReachable(page, where) {
    * the floor that makes it usable. A check nobody can satisfy gets deleted by
    * the next person, so it is not written.
    *
-   * This is the invariant behind BOTH of Noah's complaints and it holds at every
+   * This is the invariant behind BOTH of the owner's complaints and it holds at every
    * size: PWR sits with the instrument it powers, never after the radar. Stacked
    * or side by side, it is the same sentence.
    */
@@ -764,8 +756,7 @@ async function checkPowerIsReachable(page, where) {
 /**
  * THE "HEARD RIGHT NOW" LIST COUNTS WHAT IS ACTUALLY HIDDEN, AND ENDS ON A ROW.
  *
- * Noah, 2026-08-05, with a screenshot: "The list of aircraft is not looking
- * correctly due to text alignment on the background or something." Two faults
+ * Two faults
  * behind that, and the first is what made the second so hard to look at.
  *
  * IT SAID "19 more below" WITH NINETEEN AIRCRAFT IN TOTAL AND SEVEN ON SCREEN.
@@ -796,7 +787,7 @@ async function checkHeardList(browser, base) {
    * A check whose FIXTURE cannot produce the condition is the same defect as a
    * check measured on a viewport where the defect cannot appear, and this is
    * the third shape of it in one session (hub LESSONS §54). Nineteen, because
-   * that is what Noah had on screen when he reported it.
+   * that is what the owner had on screen when he reported it.
    */
   const many = {
     ...TRAFFIC_FIXTURE,
@@ -881,7 +872,7 @@ async function checkHeardList(browser, base) {
  * So both pin their own contexts, like `checkRadarTap` does, and run whatever
  * the sweep is doing:
  *
- *   · 874x402 — an iPhone 16 Pro in landscape, which is the device Noah sent a
+ *   · 874x402 — an iPhone 16 Pro in landscape, which is the device the owner sent a
  *     photograph of. Short enough for the panel rules and tall enough for the
  *     stacked range column, which no viewport in the sweep exercises.
  *   · 390x640 at 200% text — where the tab strip wraps to three rows and the
@@ -934,8 +925,7 @@ async function checkChromeLayout(browser, base) {
 /**
  * ON A SHORT SCREEN THE INSTRUMENTS GET THE PANEL AND THE VALUES START BELOW IT.
  *
- * Noah, 2026-08-05, on a photograph of the PFD in landscape: "This layout is
- * unacceptable" — and then, when the fix was still trying to fit one row of
+ * — and then, when the fix was still trying to fit one row of
  * values on screen: "Why are you bounding everything to the circle inside the
  * radar instead of pushing everything down so I don't have to see all the
  * diagnostics?"
@@ -978,9 +968,8 @@ async function checkInstrumentsOwnTheScreen(page, where) {
   if (!m) return fail(where, 'the PFD row, value strip, footer or page is missing — the layout cannot be judged');
   // THE STRIP IS NOT PAINTED AT ALL NOW, so "does it start below the fold" is
   // no longer the question — `checkValuesAreScreenReaderOnly` asks the one that
-  // replaced it. Noah, 2026-08-05: "I don't want to SEE all the words that are
-  // at the bottom... I DO NOT NEED THEM BECAUSE I CAN FUCKING SEE THE GUAGES."
-
+  // replaced it.
+  //
   // A few pixels of slack: the row is a flex child among siblings with gaps,
   // and this is about a panel that is visibly short, not about sub-pixel maths.
   if (m.rowH < m.visibleH - 20) {
@@ -991,8 +980,7 @@ async function checkInstrumentsOwnTheScreen(page, where) {
 /**
  * THE HORIZON IS NEVER SMALLER THAN THE NAVIGATION DISPLAY.
  *
- * Noah, 2026-08-05: "The PFD still looks wrong because you insist on trying to
- * make the horizon and the radar the same height." Measured, it was worse than
+ * Measured, it was worse than
  * a coupling — the RADAR WAS BIGGER. 520x217 against 269x269 on a landscape
  * phone, 613x387 against 326x437 on a tablet, because the controls sat inside
  * the horizon's column and the radar's column stretched past them. The horizon
@@ -1141,7 +1129,7 @@ async function checkBrightnessOnSetup(page, where) {
 /**
  * THE SCOPE IS NOT BURIED UNDER ITS OWN CONTROLS.
  *
- * Noah, 2026-08-05: "The radar is pushed down by the airport picker." The
+ * The
  * centre picker — a label, a field and a two-line hint — sat ABOVE the
  * instrument, and the range and band buttons flex-wrapped onto two rows each on
  * a phone. Every check on this page was green throughout, because they all ask
@@ -1622,7 +1610,7 @@ async function main() {
                 const r = el.getBoundingClientRect();
                 return r.width > 1 && r.height > 1 ? { sel, ...r.toJSON() } : null;
               };
-              // `.pfd-controls` IS IN THIS LIST NOW. Noah found the value strip
+              // `.pfd-controls` IS IN THIS LIST NOW. The owner found the value strip
               // drawn straight over the PWR switch on an iPad in landscape —
               // "cannot be seen in landscape because it's covered by the Text
               // info" — and this check, which exists to catch exactly that,
@@ -1713,7 +1701,7 @@ async function main() {
     /* ---- 3. acceptance criterion 4: every readout traces to a field ----- */
     await checkProvenanceCoverage(browser, base);
     await checkStoredLevelling(browser, base);
-    // BOTH INPUT MODES. Noah reported tap-to-follow broken on his iPad while
+    // BOTH INPUT MODES. The owner reported tap-to-follow broken on his iPad while
     // this check — which only ever drove a MOUSE — was green. A mouse click
     // and a touch tap are different event paths, and the device this app is
     // built for only has one of them.
@@ -1874,7 +1862,7 @@ async function checkInfoMenu(page, base) {
        * THE MARK AT THE TOP OF THE PANEL IS THE SAME FILE the manifest
        * declares, not a redrawn approximation.
        *
-       * Noah, 2026-08-04, with his home screen beside it: it "does not match the
+       * The owner, 2026-08-04, with his home screen beside it: it "does not match the
        * app's icon close enough, and looks like an error because it is
        * different." It was a hand-drawn SVG — no plate, level horizon rather
        * than the icon's 12-degree bank, no pitch ladder, palette tokens instead
@@ -1980,7 +1968,7 @@ async function checkDeniedState(page) {
   if (bite.length < 8) fail(where, `BITE listed only ${bite.length} entries — it must cover every sensor and feed`);
 
   // ONE ROW PER CAPABILITY. The static probe and the async live probe both
-  // legitimately describe the same thing, and both were being rendered: Noah's
+  // legitimately describe the same thing, and both were being rendered: the owner's
   // page listed battery twice and network twice, with different reasons. A page
   // whose whole job is to be an honest inventory must not list anything twice.
   const seenIds = new Map();
@@ -2108,8 +2096,7 @@ async function checkNoSecrets(base) {
 /**
  * A STORED CALIBRATION MUST NOT BE DENIED BY THE PANEL THAT IS USING IT.
  *
- * Noah, from his iPad: "On reload, the app lies and says level is not set when
- * it is actually using a previously stored level." The offset was loaded and
+ * The offset was loaded and
  * being subtracted from every reading — the ADI badge said LVL -46 +3 and the
  * diagnostics agreed — while the line under the horizon said "Not levelled".
  *
@@ -2184,7 +2171,7 @@ async function checkRadarTap(browser, base, { touch = false } = {}) {
   /**
    * THE INDICATOR AGREES WITH THE SCOPE BEFORE THE TAP, AND AFTER IT.
    *
-   * Noah asked for a state indicator because he could not tell a filling scope
+   * The owner asked for a state indicator because he could not tell a filling scope
    * from a finished one. An indicator that says CONTACT over a scope that
    * ignores taps would be worse than none — so this asserts the chip claims
    * tappable at the moment a tap is about to succeed.
@@ -2288,8 +2275,7 @@ async function checkRadarTap(browser, base, { touch = false } = {}) {
 /**
  * THE CENTRE PICKER, asserted end to end.
  *
- * Noah: "I want to be able to set an airport on the radar page? Or another
- * location. Airports should be easy to pick." Three things have to be true and
+ * Three things have to be true and
  * only one of them is visible: the matches appear, pressing one moves the
  * label, AND THE NEXT FETCH ASKS ABOUT SOMEWHERE ELSE. The third is the one
  * that makes the feature real — a picker that relabels the scope without moving
@@ -2630,7 +2616,6 @@ async function checkUpdateStrip(browser) {
 /**
  * THE FIRST-RUN ORIENTATION IS SHOWN, ONCE (Doctrine §7e).
  *
- * Noah, 2026-08-03: "Why am I not seeing my first-time-run pop-up anymore?"
  * Because 1.12.0 moved it into the (i) menu at boot and nothing opened it. The
  * text SURVIVED — which is the half `plant.mjs` already proves — and was never
  * PRESENTED, which is the half that makes it orientation instead of reference
@@ -2661,7 +2646,7 @@ async function checkFirstRunIntro(browser, base) {
       introVisible: !!introBox && introBox.width > 0 && introBox.height > 0,
       introInDialog: !!intro && !!intro.closest('dialog.info'),
       // §7e: the panel is live BEHIND it. This is not a gate and not a consent
-      // screen — Noah rejected one that read "like accept the terms".
+      // screen — the owner rejected one that read "like accept the terms".
       panelPainted: !!panel && panel.width > 100 && panel.height > 60,
       closes: !!document.querySelector('dialog.info .info-close'),
     };
@@ -2701,7 +2686,7 @@ async function checkStoredLevelling(browser, base) {
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });
   await seenIntro(context);
 
-  // A real gravity reference, normalised: Noah's own raw axes from the report
+  // A real gravity reference, normalised: the owner's own raw axes from the report
   // that exposed this, so the numbers on screen are the ones he saw.
   await context.addInitScript(() => {
     const m = Math.hypot(6.893, 0.451, 7.199);

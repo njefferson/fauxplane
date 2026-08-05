@@ -62,7 +62,7 @@ const fmt = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}°`;
 /**
  * `brightness` is the panel-dimming control, BUILT BY app.js AND PASSED IN.
  *
- * Noah, 2026-08-05: "brightness can go in setup, and then (i) moved up?" It was
+ * It was
  * in the header beside the (i), in a box that wrapped onto its own row on every
  * phone — a full row of chrome above every instrument, for a control chosen once
  * for wherever the panel is standing.
@@ -153,7 +153,7 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, brigh
     //
     // This used to read stillness at the instant of the click and refuse if the
     // device was moving — which, on a tablet held in two hands, it always was.
-    // Noah: "when I tap the button, it wiggles too much to work." The check was
+    // The check was
     // right and the moment was wrong.
     //
     // A device in a cradle is still right up until a finger reaches it, so the
@@ -209,8 +209,8 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, brigh
   };
 
   levelBtn.addEventListener('click', capture);
-  // POWER OFF AND ON. Noah, mid-wedged-follow: "It needs a reset/reload, or
-  // power off/on." A reload IS the power cycle for this app: the worker serves
+  // POWER OFF AND ON.
+  // A reload IS the power cycle for this app: the worker serves
   // the shell offline, boot starts clean, and the PANEL POWER gate re-asks for
   // the sensors. One honest control beats a panel that can only be unwedged
   // from the browser chrome.
@@ -308,8 +308,8 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, brigh
     /**
      * The two actions, exposed so the PFD can carry them.
      *
-     * LEVELLING BELONGS WHERE THE CROOKED HORIZON IS. Noah: "move the level
-     * function out of setup so it's intuitive" — and he is right, because the
+     * LEVELLING BELONGS WHERE THE CROOKED HORIZON IS.
+     * — and he is right, because the
      * moment a reader wants it is the moment they are looking at a horizon that
      * is wrong, which is never the moment they are on a settings page. The
      * BEHAVIOUR stays here, in one implementation, and the PFD calls it: two

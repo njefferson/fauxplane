@@ -2,7 +2,7 @@
 
 > **Inherits the Universal App Doctrine** — the canonical copy lives in the
 > **noahjefferson** hub at [`DOCTRINE.md`](https://github.com/njefferson/noahjefferson/blob/main/DOCTRINE.md).
-> It is the single source of truth for the rules shared across all of Noah's
+> It is the single source of truth for the rules shared across all of the owner's
 > apps: product values, taste, accessibility, honesty, verification, release
 > discipline & taxonomy, licensing (PolyForm Noncommercial), privacy, the
 > permanent **AskUserQuestion ban** (§0), and the **repo-metadata confirm rule**
@@ -106,13 +106,13 @@ without a reason, because it would not help: they are 1 req/sec per IP like
 everyone else, and this app's problem is a shared Cloudflare egress address.
 
 **The first ruling here was written from the Legal Terms alone and said "ruled
-out, and it is not an open question".** Noah supplied the API guide and it was
+out, and it is not an open question".** the owner supplied the API guide and it was
 wrong. A verdict from one of two documents is a guess in a verdict's clothes;
 NOTES keeps the whole story.
 
 **adsb.lol's terms and licence are READ and settled** (2026-08-04, from their
-OpenAPI page, which this sandbox cannot fetch — Noah screenshotted it): "You can
-use the API for free", an API key will be required "in the future" and is earned
+OpenAPI page, which this sandbox cannot fetch —
+, an API key will be required "in the future" and is earned
 by feeding them, and **"The license for the API as well as all data ADSB.lol
 makes public is ODbL"**. A blanket grant with no non-commercial restriction. The
 routes endpoint is `POST /api/0/routeset` and is covered by the same grant; its
@@ -148,11 +148,11 @@ Every gate, and each one exits non-zero:
   scratch directory and re-runs itself there. Keep editing, keep committing,
   keep pushing while it runs. This used to inject into the real tree, and the
   "do not edit or commit while it runs" rule that followed was an implementation
-  detail promoted into a law that made Noah wait for permission to work
+  detail promoted into a law that made the owner wait for permission to work
   (2026-08-04, and he was blunt about it). `--here` forces the old in-place
   behaviour and is for debugging this harness, never for verifying a release.
 
-  **IT NEVER GATES A PUSH TO STAGING.** Staging exists so Noah can try the
+  **IT NEVER GATES A PUSH TO STAGING.** Staging exists so the owner can try the
   thing; holding a fix back for a forty-five-minute meta-check inverts the whole
   point of having a staging branch. Push on the FAST gates — `npm test`,
   palette, docs, and `a11y` — and let the sweep run after, or before a promote.
@@ -160,13 +160,13 @@ Every gate, and each one exits non-zero:
   gates it just ran. Sweep whole before a promote to `main`, and whenever the
   measuring instrument itself moved (hub LESSONS §51).
 - **`node ../noahjefferson/privacy-check.mjs --repo .`** — Doctrine §9b: nothing
-  personal about Noah lands in this repo, and it is a **HARD CI gate** rather
+  personal about the owner lands in this repo, and it is a **HARD CI gate** rather
   than a lint. It runs in `deploy.yml` on every push to staging and main, from a
   checkout of the hub — the gate is NEVER forked here, because five divergent
   copies of a privacy rule is worse than none. The hub is public so it needs no
   token, and the checkout is untracked so `git ls-files` cannot see it.
   **It reads the working TREE only**; git history is out of its reach and
-  rewriting public history is Noah's call, never a session's. Wired 2026-08-04,
+  rewriting public history is the owner's call, never a session's. Wired 2026-08-04,
   and "wired" means the exact CI command was watched going red on a LOCAL plant
   — never a pushed one, because a pushed plant IS the violation.
 - `node scripts/preview.mjs` — renders the panel in live states a sandbox cannot
@@ -174,7 +174,7 @@ Every gate, and each one exits non-zero:
   through the same public write the sensors use.
 
 ## Who this is for
-A friend of Noah's who is 3-D printing his own **747 cockpit** at home, for
+A friend of the owner's who is 3-D printing his own **747 cockpit** at home, for
 simulation. **He is not a pilot.** He loves planes and jets.
 
 **Design questions resolve toward giving him the most JOY.** That is the
@@ -207,7 +207,7 @@ stop it forcing a reload it should not.
 — 1.24.1 through 1.26.0 — were pushed, reported as shipped, and never deployed.
 Every push was verified against the remote, correctly; every deploy had failed on
 the privacy gate wired that same afternoon, on the phrase *"they are still not
-diagnosed"* in a release note. Noah stayed on 1.24.0 through all four and found
+diagnosed"* in a release note. The owner stayed on 1.24.0 through all four and found
 out by asking *"What. Button."* about a feature that had never left the branch.
 
 The trap generalises: **a session that adds a hard gate to this pipeline has just
@@ -222,8 +222,8 @@ before every push and its result is reported in the handoff. Do not describe CI
 as covering it.
 
 ## Branches
-`staging` and `main` only (Noah, 2026-08-02). Staging is a **hard release gate**
-(Doctrine §7): every product change lands on `staging`, waits for Noah's pass on
+`staging` and `main` only (the owner, 2026-08-02). Staging is a **hard release gate**
+(Doctrine §7): every product change lands on `staging`, waits for the owner's pass on
 his actual device, and reaches `main` only on his explicit "promote" — never on
 a session's own read of "it's ready". Docs-only changes (this file, `NOTES.md`)
 may skip the gate.
@@ -250,7 +250,7 @@ from what they knocked over), then the attitude filter's internals including the
 learned gyro zero-offset, then every field, then console errors captured since
 boot. Position is rounded to ~1 km unless the box is ticked.
 
-**Ask Noah for that report, not for a photograph.** Reading pixels off a phone
+**Ask the owner for that report, not for a photograph.** Reading pixels off a phone
 loses every reason string and cannot show the filter at all.
 
 ## Standards, and where this app knowingly departs
@@ -294,4 +294,4 @@ token cannot perform. **The values live in the hub's
 [`METADATA.md`](https://github.com/njefferson/noahjefferson/blob/main/METADATA.md)** —
 propose there, never fresh in chat where they evaporate. All five rows —
 description, website, topics, social preview and default branch — were applied
-by Noah and verified against GitHub on 2026-08-03. Nothing is outstanding.
+by the owner and verified against GitHub on 2026-08-03. Nothing is outstanding.

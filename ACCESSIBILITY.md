@@ -157,7 +157,7 @@ as coverage it has not earned.
   only**, never on a value every frame — a live region updated at 25 Hz is a
   denial-of-service on a screen reader dressed as compliance. Verified by
   reading the code and the transition log; **not** verified with a real screen
-  reader. **Needs Noah's device: VoiceOver.**
+  reader. **Needs the owner's device: VoiceOver.**
 - **The canvas text alternative** is rewritten about once a second from the
   current readings and asserted by the gate to be present, substantial, and to
   report unavailable values. Whether it *reads well* aloud has not been checked

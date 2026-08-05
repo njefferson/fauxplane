@@ -60,7 +60,6 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
 const file = (p) => path.join(REPO, p);
 
-
 const BACKUP_DIR = path.join(REPO, '.plant-backup');
 const backupPath = (rel) => path.join(BACKUP_DIR, rel.replace(/[/\\]/g, '__'));
 
@@ -184,8 +183,7 @@ const { values: argv } = parseArgs({
 /**
  * `--changed=<git-ref>` runs only the plants whose target file actually moved.
  *
- * Noah, 2026-08-04: *"you make a small change and then rescan everything else
- * that has no relationship and could not have changed."* He is right, and the
+ * He is right, and the
  * arithmetic says so: 24 of these plants are gated by the ACCESSIBILITY gate,
  * each one a full browser run, and they are ~95% of a sweep's wall-clock. The
  * other 33 are unit-gated and cost about a second each.
@@ -299,10 +297,6 @@ if (!selected.length) {
 
 /**
  * THE SWEEP RUNS IN A COPY, SO IT NEVER TAKES THE WORKING TREE HOSTAGE.
- *
- * Noah, 2026-08-04: "WHY THE FUCK DO YOU RUN SWEEPS THAT DELAY EVERY FUCKING
- * THING WHEN *I* AM NOT FUCKING DONE WORKING... WHY AM I WAITING ON YOU TO TELL
- * ME IT'S OK TO WORK, WHEN NO ONE TOLD YOU TO DELAY"
  *
  * He is right, and the blocking was self-inflicted. This harness injected
  * faults into the REAL tree, so for forty-five minutes nobody could edit or

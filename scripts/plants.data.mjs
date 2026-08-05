@@ -12,8 +12,8 @@
  *
  * But almost every release ADDS a plant, so almost every release touched the
  * harness file and escalated, and the selector saved nothing on exactly the
- * changes it was built for. Noah, 2026-08-04: "I think you are wasting a lot of
- * time." He was right twice — once about the sweeps, and once about a fix that
+ * changes it was built for.
+ * He was right twice — once about the sweeps, and once about a fix that
  * did not reach the common case.
  *
  * So: this file is DATA. Adding or editing a plant here cannot change how any
@@ -177,7 +177,7 @@ export const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
-    // The self test exists so Noah stops paying a release per fact. A
+    // The self test exists so the owner stops paying a release per fact. A
     // diagnostic that LIES is worse than none, because it is believed — and the
     // specific lie worth guarding is calling a check that never ran a pass.
     name: 'selftest: a check that was skipped is reported as a pass',
@@ -189,8 +189,8 @@ export const PLANTS = [
     expect: /skipped|follow a flight first/i,
   },
   {
-    // Noah, 2026-08-04: "Why does every runway look exactly the same even at
-    // different scales?" The width was `max(1.5, min(5, len * 0.06))` and
+    //
+    // The width was `max(1.5, min(5, len * 0.06))` and
     // `len * 0.06` never reaches 1.5 at any size a real runway draws — so it
     // was pinned at 1.5 for every runway at every range, forever. Putting a
     // constant back is the defect.
@@ -216,7 +216,7 @@ export const PLANTS = [
     expect: /present or imply a different aircraft|answered about/i,
   },
   {
-    // Noah's first real route probe came back HTTP 201 — the shape was
+    // the owner's first real route probe came back HTTP 201 — the shape was
     // ACCEPTED — and the report could only say "no readable keys", which
     // cannot tell an empty body from a non-JSON one from valid JSON of an
     // unexpected shape. A probe that reports a status without the body is half
@@ -243,7 +243,7 @@ export const PLANTS = [
     expect: /switching aircraft clears the previous one/i,
   },
   {
-    // Noah, 2026-08-04: the mark at the top of the (i) panel "does not match
+    // the owner, 2026-08-04: the mark at the top of the (i) panel "does not match
     // the app's icon close enough, and looks like an error because it is
     // different." A LOOKALIKE is the defect — the only version that cannot
     // drift from the icon on his home screen is the identical file, so the
@@ -256,7 +256,7 @@ export const PLANTS = [
     expect: /manifest's icon|lookalike|app mark/i,
   },
   {
-    // Noah, looking at NO CONTACT above "Standing off ... for a moment":
+    // the owner, looking at NO CONTACT above "Standing off ... for a moment":
     // "No indication of how long I'll wait before the radar will work…like the
     // delay countdown, maybe?…. Just looks broken." A wait with no number is
     // indistinguishable from a hang, and the app knew the number all along.
@@ -337,7 +337,7 @@ export const PLANTS = [
   },
   {
     // AN INDICATOR THAT STOPS TRACKING IS WORSE THAN NO INDICATOR, because the
-    // reader now trusts it. Noah asked for this precisely so he could tell a
+    // reader now trusts it. The owner asked for this precisely so he could tell a
     // filling scope from a finished one; a frozen chip answers every question
     // with the same word and looks authoritative doing it.
     //
@@ -419,7 +419,7 @@ export const PLANTS = [
     expect: /quarter turn was applied backwards|held square is not banked/,
   },
   {
-    // The escape hatch that got Noah's iPad off 0.4.1. Its dangerous direction
+    // The escape hatch that got the owner's iPad off 0.4.1. Its dangerous direction
     // is the FALSE POSITIVE: it can force a reload, so a version of it that
     // fires when it should not is a reload loop, which is worse than the stale
     // panel. Planting the loosened condition proves the tests still object.
@@ -457,7 +457,7 @@ export const PLANTS = [
   },
   {
     // Zero is a measurement. Going back to crossing groundspeed out because the
-    // platform handed us null is the exact defect Noah found.
+    // platform handed us null is the exact defect the owner found.
     name: 'stationary: groundspeed goes back to failing instead of reading zero',
     check: 'a receiver sitting still reads zero, not a failure',
     gate: 'tests',
@@ -698,8 +698,8 @@ export const PLANTS = [
     expect: /panel says nothing about it/,
   },
   {
-    // Noah, 2026-08-03: "Why am I not seeing my first-time-run pop-up
-    // anymore?" It was moved into the (i) menu at boot and nothing ever opened
+    //
+    // It was moved into the (i) menu at boot and nothing ever opened
     // it — the text survived, which the plant below already proves, and was
     // never presented, which nothing checked. Passing one half while failing
     // the other is exactly what shipped for five releases.
@@ -733,7 +733,7 @@ export const PLANTS = [
     expect: /carries the hidden attribute and is painted anyway/,
   },
   {
-    // Noah, 2026-08-03: "Gentle rotation errors the horizon", with the ADI
+    // , with the ADI
     // reading `gravity 51° from the gyro — coasting on gyro`. The budget bounds
     // how long a phone gyro is trusted with no absolute reference, and the
     // error a reader sees is roughly linear in it — measured, 4 s of budget
@@ -785,7 +785,7 @@ export const PLANTS = [
     expect: /stands off far longer than a 429|cooldown/,
   },
   {
-    // Noah photographed `cf-ray a258e8a82ff1fa4e-SJC` on the face of a gauge.
+    // the owner photographed `cf-ray a258e8a82ff1fa4e-SJC` on the face of a gauge.
     // Every word of the raw chain is true and it is written for whoever is
     // debugging the Pages Function. Putting it back is the defect.
     name: 'refusal: the raw upstream chain goes back on the gauge',
@@ -797,7 +797,7 @@ export const PLANTS = [
     expect: /cf-ray|rate limiting us/,
   },
   {
-    // Noah, 2026-08-05: "The ranges still need to be made right." `Math.round`
+    // `Math.round`
     // labelled the 2.5 and 7.5 nm rings "3" and "8". 20, 40 and 80 all divide
     // evenly by four, so three of the four ranges were right by accident and
     // the fourth was the only witness. The test imports `ringLabelFor` rather
@@ -811,8 +811,8 @@ export const PLANTS = [
     expect: /the 0\.25 ring reads 3 and sits at 2\.5|old code rounded these/,
   },
   {
-    // Noah, 2026-08-05: "Tapping the planes on top is still inconsistent in
-    // whether they will respond or not." `placeLabels` puts the label 20-28px
+    //
+    // `placeLabels` puts the label 20-28px
     // from the mark and the radius was 24, so the biggest, most inviting part
     // of the target was half outside it. Not flakiness — geometry.
     name: 'tap: the aircraft target shrinks back inside its own label',
@@ -824,7 +824,7 @@ export const PLANTS = [
     expect: /a tap 28px away — where the label is — must hit/,
   },
   {
-    // Noah, 2026-08-05: "The radar is pushed down by the airport picker."
+    //
     // Putting the picker back above the scope is the exact regression. `el`
     // returns nodes, so appending them earlier MOVES them — the picker really
     // does end up back on top, and the `.radar-centre` box below is left empty.
@@ -876,7 +876,7 @@ export const PLANTS = [
     expect: /inside the tablist — that makes it a sixth tab/,
   },
   {
-    // Noah, 2026-08-05, on a landscape phone: "This layout is unacceptable",
+    // ,
     // and then "why are you bounding everything to the circle inside the radar
     // instead of pushing everything down so I don't have to see all the
     // diagnostics?" `auto` is what the rule held before, and it puts a sliced
@@ -899,7 +899,7 @@ export const PLANTS = [
     expect: /did not take a manual mode|is not driving the panel/,
   },
   {
-    // Noah photographed `ADS-B carries no attitude — pitch is n…` on the ADI.
+    // the owner photographed `ADS-B carries no attitude — pitch is n…` on the ADI.
     // The identical fix already existed twenty lines away in the ATT FAIL
     // branch; this branch is only reachable by following a real aircraft, so it
     // was never on screen while the other one was being fixed.
@@ -941,8 +941,8 @@ export const PLANTS = [
     expect: /row\(s\) are cut through the middle by the list/,
   },
   {
-    // Noah, 2026-08-05: "The PFD still looks wrong because you insist on trying
-    // to make the horizon and the radar the same height." Measured, the radar
+    //
+    // Measured, the radar
     // was BIGGER: 520x217 against 269x269. Narrowing the horizon's share puts
     // that back.
     name: 'PFD: the navigation display out-sizes the horizon again',
@@ -970,7 +970,7 @@ export const PLANTS = [
     expect: /under half the screen it is on/,
   },
   {
-    // Noah, 2026-08-05, iPad portrait: "the power button is too low." Removing
+    // Removing
     // the order puts the controls after BOTH stacked instruments again, which
     // is most of a screen below the horizon they belong to.
     name: 'PFD: the power switch drops below the radar in portrait',
@@ -984,7 +984,7 @@ export const PLANTS = [
    * NO PLANT FOR "the value strip is drawn over the power switch", DELIBERATELY,
    * and this comment is the record of why.
    *
-   * The defect was real — Noah photographed it on an iPad in landscape at
+   * The defect was real — the owner photographed it on an iPad in landscape at
    * 1.28.6 — and it is fixed. But THREE attempts at a single-edit plant came
    * back green: reverting the wrapper's `flex`, reverting the range column, and
    * both together. Each was written from a confident story about the mechanism,
@@ -1007,8 +1007,8 @@ export const PLANTS = [
    * cannot be written, say so here rather than leaving the check unmentioned.
    */
   {
-    // Noah, 2026-08-05: "I DO NOT NEED THEM BECAUSE I CAN FUCKING SEE THE
-    // GUAGES." Un-hiding the strip gives the duplicate its band of glass back.
+    //
+    // Un-hiding the strip gives the duplicate its band of glass back.
     name: 'values: the screen-reader strip is painted on the panel again',
     check: 'the values are read, not seen',
     file: 'public/styles.css',

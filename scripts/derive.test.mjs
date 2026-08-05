@@ -695,8 +695,7 @@ test('an ordinary climb is nowhere near the absurd threshold', () => {
 /**
  * FOLLOWING AN AIRCRAFT MOVES THE SCOPE CENTRE TO IT.
  *
- * Noah: "Following a flight doesn't center it in the radar like I imagine it
- * should?" — with a screenshot showing the scope centred on his desk, the
+ * — with a screenshot showing the scope centred on his desk, the
  * followed 737 circled near the edge, and the caption "56 aircraft within 40 nm
  * of this device". Every other instrument had already switched to that
  * aircraft; the scope was the last thing still showing Cameron Park.
@@ -783,8 +782,7 @@ test('RADAR: a chosen place outranks the fix but yields to a followed aircraft',
 /**
  * THE HOME REFERENCE STOPS BEING A CONSTANT NOBODY MEASURED.
  *
- * Noah: "Why is home reference hard coded and not matched to user location and
- * requesting it??" The constant exists for a real reason — the panel must come
+ * The constant exists for a real reason — the panel must come
  * up with every permission denied, so something has to be the centre before a
  * fix — but it never learned, so a reader anywhere else was anchored to a town
  * in California for ever.
@@ -847,7 +845,7 @@ test('RADAR: a refused storage is not an error, it is just no memory', () => {
 /**
  * AN AIRCRAFT ON THE GROUND IS NOT TRAFFIC.
  *
- * Noah, 2026-08-03: "The radar says things are below me at ground level." The
+ * The
  * arithmetic was right — a desk at 200 ft is above a ramp at 20 ft — and it is
  * still not what a traffic display is for. Real TCAS suppresses on-ground
  * traffic, and Sacramento's ramp was filling the BELOW band with parked

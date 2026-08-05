@@ -2,7 +2,7 @@
  * diagnostics.js — one tap on the version stamp, and the whole panel's state as
  * text you can paste.
  *
- * WHY THIS EXISTS. Every defect this app has had was found by Noah
+ * WHY THIS EXISTS. Every defect this app has had was found by the owner
  * photographing his phone and me reading pixels: a residual figure, a flag, a
  * reason clipped at the edge of a tape. That is a terrible channel. It loses
  * the reason strings, it cannot show a field that is off screen, it cannot show
@@ -103,7 +103,7 @@ export function buildReport({ snapshot, fusion, traffic, route = null, selfTest 
   // FIELD AGES are measured against the snapshot, which is when those values
   // were true. THE FILTER IS NOT A FIELD — it is live, and it keeps accepting
   // samples after a snapshot is taken. Reading it at `snapshot.t` is what put
-  // `coasting -9ms`, `-21ms`, `-34ms` in every report Noah ever sent: the last
+  // `coasting -9ms`, `-21ms`, `-34ms` in every report the owner ever sent: the last
   // publish was up to a frame old, the filter had moved on, and the subtraction
   // ran backwards. It was never a clock mismatch, which is why making the app
   // use one clock did not fix it.
@@ -251,7 +251,7 @@ export function buildReport({ snapshot, fusion, traffic, route = null, selfTest 
   // ---- WHAT THE FEED ACTUALLY SENT -------------------------------------------
   //
   // Doctrine §7f: a sandbox cannot reach the provider, so the check is built
-  // into the surface that Noah's device can run. This costs no extra request —
+  // into the surface that the owner's device can run. This costs no extra request —
   // the Function computes it from the raw payload it already fetched, because
   // that is the only place the raw payload exists. By the time the client sees
   // an aircraft, a missing field and a misspelt key look identical.
@@ -279,7 +279,7 @@ export function buildReport({ snapshot, fusion, traffic, route = null, selfTest 
   // `PlaneList` and `PlaneInstance` without expanding them in any capture we
   // have, and this sandbox cannot reach api.adsb.lol at all — so the Function
   // sends the shape the tar1090 family uses and the answer comes back HERE,
-  // from Noah's device, on the first real follow.
+  // from the owner's device, on the first real follow.
   //
   // `validation` is the line that matters. FastAPI answers a wrong body with a
   // 422 and a `detail` array naming the exact field it rejected, so a wrong
@@ -293,7 +293,7 @@ export function buildReport({ snapshot, fusion, traffic, route = null, selfTest 
     /**
      * SAY SO WHEN THE PROBE IS ABOUT A DIFFERENT AIRCRAFT.
      *
-     * Noah's 1.23.1 report has this block reading `callsign N460DF` while the
+     * The owner's 1.23.1 report has this block reading `callsign N460DF` while the
      * panel was following N81AB — the last probe, correctly retained, sitting
      * under a heading that never said it was stale. A block of evidence that
      * does not say which question it answers is a trap for whoever reads it
@@ -327,7 +327,7 @@ export function buildReport({ snapshot, fusion, traffic, route = null, selfTest 
 
   // ---- THE SELF TEST, if it has been run ------------------------------------
   //
-  // Folded in so ONE paste carries everything. Noah should not have to assemble
+  // Folded in so ONE paste carries everything. The owner should not have to assemble
   // evidence from two screens, and a result that lives only on the BITE page is
   // a result that arrives in a screenshot.
   if (selfTest) {

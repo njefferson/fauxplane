@@ -42,8 +42,7 @@ import { bearingDeg, greatCircleNm } from '../core/units.js';
  *  400 that would count against adsb.fi's rate limit, so it is clamped here. */
 /**
  * REAL BOEING RANGE STEPS. An EFIS control panel offers 10, 20, 40, 80, 160,
- * 320 and 640 nm — never 25, which is what this had. Noah: "What are the real
- * life ranges? My desired fix is ALWAYS more like a regular aircraft."
+ * 320 and 640 nm — never 25, which is what this had.
  *
  * It stops at 80 because the Function caps a query at 120 nm (§15.5 — a plan
  * view of half a state is not a panel instrument), and one fetch covers every
@@ -56,7 +55,7 @@ export const RADAR_RANGE_NM = [10, 20, 40, 80];
  *
  * THE REAL DE-CLUTTER, and the thing this scope was missing entirely. A flight
  * deck does not show every aircraft it can hear: the crew select a band, and
- * everything outside it is simply not displayed. Noah's screenshot had 56
+ * everything outside it is simply not displayed. The owner's screenshot had 56
  * aircraft on one scope; most of them would not be on a real ND at all.
  *
  * The names and the numbers are the real ones. NORM is what a crew fly with,
@@ -102,7 +101,7 @@ export function withinBand(aircraft, ownAltFt, bandId) {
 
   /**
    * AN AIRCRAFT ON THE GROUND IS NOT TRAFFIC, and a real TCAS does not display
-   * one. Noah, 2026-08-03: "The radar says things are below me at ground level."
+   * one.
    *
    * It was right arithmetically and wrong as an instrument. This panel sits at
    * a few hundred feet on a desk; an airliner parked at an airport 700 ft lower
@@ -140,7 +139,7 @@ export function withinBand(aircraft, ownAltFt, bandId) {
  * Heading is the case that proved it: the registry gives `attitude.heading` a
  * 5 s staleMs, and following an aircraft fills that field from THIS poll. The
  * limit was half the cadence, so HDG could not be anything but FAIL — the panel
- * declared its own freshest possible data dead. Noah photographed the result:
+ * declared its own freshest possible data dead. The owner photographed the result:
  * every instrument crossed out, on a feed that was working, with PWR ON.
  *
  * `traffic-pacing.test.mjs` holds the relationship rather than the numbers, so
@@ -159,9 +158,7 @@ export const FOLLOW_WINDOWS = Object.freeze({ freshMs: 2 * FOLLOW_POLL_MS, stale
 /**
  * WHAT STATE THE SCOPE IS IN, AND WHETHER A TAP WOULD DO ANYTHING.
  *
- * Noah, 2026-08-04: *"It would be nice to have an indicator that shows when the
- * radar is populated and another for any other states like being ready to
- * tap."* He asked because he could not tell a scope that was still filling from
+ * He asked because he could not tell a scope that was still filling from
  * one that was finished, and could not tell either from one whose aircraft were
  * drawn but not yet tappable.
  *
@@ -177,8 +174,7 @@ export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0
   /**
    * THE COUNTDOWN, AND IT IS ABOUT THE ATTEMPT — NEVER ABOUT THE RESULT.
    *
-   * Noah: *"No indication of how long I'll wait before the radar will work…
-   * like the delay countdown, maybe?…. Just looks broken."* He was looking at
+   * He was looking at
    * NO CONTACT above the sentence "Standing off from the aircraft feeds for a
    * moment", and "a moment" is not a number.
    *
@@ -250,7 +246,7 @@ export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0
  * WHAT THE FOLLOW BANNER SAYS, AND IT MUST NOT CLAIM DATA IT DOES NOT HAVE.
  *
  * The banner read "this panel is showing that aircraft's broadcast, not this
- * device" from the instant FOLLOW was pressed. Noah's 1.21.1 diagnostics report
+ * device" from the instant FOLLOW was pressed. The owner's 1.21.1 diagnostics report
  * shows what that meant when the feed was rate limited: every followed field
  * reading "waiting for the first report from PXT466", under a banner asserting
  * their broadcast was on screen. Nothing was.
@@ -348,8 +344,8 @@ export const UNTYPED = 'UNTYPED';
 /**
  * Which airframes are up there RIGHT NOW, with how many of each.
  *
- * Built from the aircraft actually in range at this moment (Noah: "types
- * currently in range only") — not accumulated, so a type that has flown out of
+ * Built from the aircraft actually in range at this moment (
+ * ) — not accumulated, so a type that has flown out of
  * range stops being offered rather than becoming a button that finds nothing.
  *
  * The LABEL prefers the broadcast description over the code, because "Boeing
@@ -434,8 +430,8 @@ export function appendTrail(trail, point, { maxPoints = 240, maxAgeMs = 45 * 60_
 /**
  * What the scope is centred on.
  *
- * FOLLOWING AN AIRCRAFT MOVES THE CENTRE TO IT, EXPLICITLY. Noah: "Following a
- * flight doesn't center it in the radar like I imagine it should?" — and he is
+ * FOLLOWING AN AIRCRAFT MOVES THE CENTRE TO IT, EXPLICITLY.
+ * — and he is
  * right, because by then every other instrument has already switched: the
  * horizon, the tapes, the altitude and the speed are all that aircraft's. The
  * scope was the last thing still showing the desk, which made the panel show
@@ -493,8 +489,7 @@ export function radarCentre(fields, followed = null, chosen = null) {
   /**
    * THE LAST PLACE THIS DEVICE ACTUALLY WAS, ahead of the built-in constant.
    *
-   * Noah: "Why is home reference hard coded and not matched to user location
-   * and requesting it??" The constant is Cameron Park because that is where the
+   * The constant is Cameron Park because that is where the
    * app was written, and it exists for a real reason — the panel must come up
    * and be useful with every permission denied, so SOMETHING has to be the
    * centre before a fix exists. What was wrong is that it never learned. A
@@ -856,7 +851,7 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
          * switching aircraft before the first report arrives, this field kept
          * the PREVIOUS aircraft's sentence.
          *
-         * Noah's 1.23.1 report caught it exactly: following N81AB, with every
+         * The owner's 1.23.1 report caught it exactly: following N81AB, with every
          * other field reading "waiting for the first report from N81AB", while
          * heading still read "N460DF is not broadcasting a heading". The panel
          * was naming an aircraft it was no longer following.
@@ -978,7 +973,7 @@ function writeDerived(state, path, field, at, windows = null) {
 /**
  * Turn a chain of upstream refusals into a sentence for the READER.
  *
- * What was on Noah's phone, on the face of a gauge:
+ * What was on the owner's phone, on the face of a gauge:
  *
  *   No traffic: adsb.lol rate limited us (HTTP 429; cf-ray a258e8a82ff1fa4e-SJC)
  *   | adsb.fi returned HTTP 403 — server: cloudflare; ray a258e8a9483dfa4e-SJC;
@@ -997,7 +992,7 @@ function writeDerived(state, path, field, at, windows = null) {
  * The cause is stated because it is structural and settled (NOTES, Open §0):
  * the panel reaches these services through Cloudflare, whose egress address is
  * shared with an enormous number of unrelated sites, so the per-address
- * allowance can be spent by traffic that has nothing to do with this app. Noah
+ * allowance can be spent by traffic that has nothing to do with this app. The owner
  * decided on 2026-08-04 not to run a receiver, which is the only thing that
  * would fix it — so this is now a permanent condition the panel lives with
  * rather than a fault it is waiting to have fixed.

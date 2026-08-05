@@ -54,9 +54,6 @@ export async function loadNavdata(fetchImpl = fetch) {
 /**
  * Search the bundled airports for a type-ahead.
  *
- * Noah: "I want to be able to set an airport on the radar page? Or another
- * location. Airports should be easy to pick."
- *
  * EASY TO PICK means matching what someone actually types. A reader looking for
  * Sacramento Executive types "sacramento", or "KSAC", or "SAC" — so identifier,
  * name and municipality are all searched, and an identifier match outranks a
@@ -122,7 +119,7 @@ export function parseLatLon(text) {
 /**
  * The runways close enough to the scope's centre to be worth drawing.
  *
- * Noah, 2026-08-03: "Show the runway at airports." The bundle has carried 407
+ * The bundle has carried 407
  * of them since 1.16.0 and nothing drew any — the airports were only ever a
  * type-ahead for the centre picker.
  *

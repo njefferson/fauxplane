@@ -63,7 +63,7 @@ const $ = (id) => document.getElementById(id);
  * `performance.timeOrigin + performance.now()`. The sensors were being handed
  * `Date.now()` instead, so a reading could be stamped a millisecond or two
  * AFTER the publish that measured its age — which is where the "coasting -21ms"
- * in Noah's reports came from. Two clocks that agree to within a few
+ * in the owner's reports came from. Two clocks that agree to within a few
  * milliseconds still disagree, and a negative age is a small lie about a
  * timestamp in an app whose entire contract is timestamps.
  */
@@ -84,7 +84,7 @@ const WINDS_INTERVAL_MS = 15 * 60_000;
  * These were 10 s and 5 s against caches of 8 s and 5 s — every entry expired
  * just before the poll that would have used it, so the cache never once served
  * a single user and every poll reached adsb.lol. The old comment right here
- * claimed the opposite. Noah was rate limited off the radar repeatedly, which
+ * claimed the opposite. The owner was rate limited off the radar repeatedly, which
  * is what a false claim about pacing buys.
  *
  * A plan view fifteen seconds old is still a useful plan view; provenance ages
@@ -217,7 +217,7 @@ async function boot() {
         // 25 Hz loop has published the fix, so `state.snapshot` still says
         // there is no position — and the winds fetch, which correctly refuses
         // to ask for a surrogate position, then declined and waited fifteen
-        // minutes for its next interval. Noah's screenshot showed exactly that:
+        // minutes for its next interval. The owner's screenshot showed exactly that:
         // GPS PASS on the BITE page, "no position fix" on the winds row.
         state.publishNow();
         // The cold-start boxes stop being used the moment a fix exists, and the
@@ -293,7 +293,7 @@ async function boot() {
   /**
    * THE BRIGHTNESS CONTROL, built here and MOUNTED on SETUP.
    *
-   * It was markup in index.html inside a `.bar-right` box beside the (i). Noah,
+   * It was markup in index.html inside a `.bar-right` box beside the (i). The owner,
    * 2026-08-05: "brightness can go in setup, and then (i) moved up?" That box
    * wrapped onto a second row on every phone, costing a full row of chrome
    * above every instrument.
@@ -321,8 +321,8 @@ async function boot() {
   // LEVELLING, ON THE PFD, WHERE THE CROOKED HORIZON IS.
   //
   // It lived only on SETUP — which is the one page a reader is NOT looking at
-  // when they notice the horizon is wrong. Noah: "move the level function out
-  // of setup so it's intuitive." These buttons call setup's own capture and
+  // when they notice the horizon is wrong.
+  // These buttons call setup's own capture and
   // clear, so there is still exactly ONE implementation of the procedure and
   // one place the refusals are worded; only the reach changed.
   const levelBtn = $('pfd-level');
@@ -336,7 +336,7 @@ async function boot() {
    * at boot — before a stored calibration had been re-applied. So a reader who
    * reloaded saw "Not levelled — the horizon shows the device's own angle"
    * while the offset was being subtracted from every reading, the ADI badge
-   * said LVL −46° +3°, and the diagnostics agreed with the badge. Noah caught
+   * said LVL −46° +3°, and the diagnostics agreed with the badge. The owner caught
    * it: "on reload, the app lies and says level is not set when it is actually
    * using a previously stored level."
    *
@@ -474,15 +474,14 @@ async function boot() {
   /**
    * WHEN THE NEXT SWEEP ACTUALLY FIRES, so the panel can COUNT DOWN to it.
    *
-   * Noah: "No indication of how long I'll wait before the radar will work…
-   * like the delay countdown, maybe?…. Just looks broken." The app has always
+   * The app has always
    * known this exactly and never said it.
    *
    * It is the next TICK, not `trafficAllowedAt`. The interval fires every
    * TRAFFIC_INTERVAL_MS regardless and returns early while the backoff is in
    * force, so the moment the backoff expires is NOT when a request happens —
    * the first tick at or after it is. Counting down to the wrong one would
-   * reach zero and then sit there, which is the failure mode Noah is already
+   * reach zero and then sit there, which is the failure mode the owner is already
    * describing.
    */
   let nextSweepAt = 0;
@@ -815,7 +814,7 @@ async function boot() {
   async function refreshWinds() {
     await winds.refresh(state.snapshot.fields);
   }
-  // A 429 IS AN INSTRUCTION, NOT AN OBSTACLE (Doctrine §15.3). Noah's report
+  // A 429 IS AN INSTRUCTION, NOT AN OBSTACLE (Doctrine §15.3). The owner's report
   // showed the follow poll asking every five seconds THROUGH a rate limit for
   // over a minute: adsb.lol said slow down and the panel did not. Each
   // rate-limited round now doubles the wait before traffic is asked again —
@@ -1002,7 +1001,7 @@ async function boot() {
       visibility.lastHiddenAt = now();
       /**
        * ORIENTATION IS IN THIS LIST NOW, and it was the omission that kept a
-       * question open across two of Noah's reports.
+       * question open across two of the owner's reports.
        *
        * Both showed `orientation.beta`, `.gamma` and `.compass` FAILING with
        * "no update for 3s (limit 3s)" while the raw block still held a perfectly
@@ -1031,8 +1030,8 @@ async function boot() {
 
   // ---- PANEL POWER ---------------------------------------------------------
   //
-  // A SWITCH ON THE PANEL, NOT A DIALOG IN FRONT OF IT. Noah: "Should there
-  // just be a 'power' button on the display?" — after reporting that the modal
+  // A SWITCH ON THE PANEL, NOT A DIALOG IN FRONT OF IT.
+  // — after reporting that the modal
   // "takes all attention... and reads like 'accept the terms' and even *I*
   // don't read the panel then."
   //
@@ -1057,7 +1056,6 @@ async function boot() {
   /**
    * AND IT IS SHOWN TO SOMEONE WHO HAS NOT SEEN IT (Doctrine §7e).
    *
-   * Noah, 2026-08-03: "Why am I not seeing my first-time-run pop-up anymore?"
    * Because 1.12.0 moved it into the (i) menu at boot and nothing ever opened
    * it — the orientation SURVIVED, which is the half §7e gates, and was never
    * PRESENTED, which is the half that makes it orientation rather than
@@ -1341,7 +1339,7 @@ async function boot() {
   setInterval(refreshFollowed, FOLLOW_INTERVAL_MS);
   // ASK ONCE AT BOOT, not only on the first interval tick. The PFD carries a
   // navigation display and is the page a reader lands on, so waiting a full
-  // interval left it empty for fifteen seconds for no reason — Noah's report
+  // interval left it empty for fifteen seconds for no reason — the owner's report
   // was captured at nine seconds and said "traffic: not asked yet". Opening
   // RADAR already re-asks immediately; the page that is ALREADY open should
   // not be the one that waits.
@@ -1351,7 +1349,7 @@ async function boot() {
    * THE FOOTER NAMES WHAT IS ACTUALLY IN FORCE, and it used to name the
    * constant unconditionally.
    *
-   * Noah's screenshot: "Home reference Cameron Park, CA 38.68, -121.00" along
+   * along
    * the bottom, while GPS altitude read 88 ft from a live fix a few inches
    * above it. Both sentences were on screen and only one was true of the panel
    * he was looking at. The line exists so nobody reads a pre-fix distance as a

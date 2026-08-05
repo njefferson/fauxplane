@@ -2,8 +2,7 @@
  * invariants.test.mjs — properties that must hold in EVERY state, checked by
  * walking the states rather than by inspecting one function.
  *
- * WHY THIS FILE EXISTS. Noah, 2026-08-04: *"Can you not just build simple tests
- * for some of this shit??"*
+ * WHY THIS FILE EXISTS.
  *
  * He was right, and the audit is unflattering. Of the last five defects HE
  * found on his own device, four were reachable by a unit test:
@@ -25,7 +24,7 @@
  *
  * So these are INVARIANTS, not examples. Each one is a sentence that must be
  * true of every field in every state, and the test drives the app through the
- * states Noah actually puts it in and checks all of them at each step. A new
+ * states the owner actually puts it in and checks all of them at each step. A new
  * defect of the same SHAPE gets caught without anyone having predicted it.
  *
  * The fifth defect — the route feed answering 201/text/html/0 bytes — needs the

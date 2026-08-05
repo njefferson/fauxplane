@@ -306,7 +306,7 @@ test('the gyro and the accelerometer agree through a pitch change', () => {
 
 test('IT CONVERGES IN A SHAKY HAND — the old check measured hand-shake, not convergence', () => {
   // Four degrees of continuous wobble is roughly what holding a phone produces,
-  // and it is what left Noah's device reporting "converging (residual 3.9 deg)"
+  // and it is what left the owner's device reporting "converging (residual 3.9 deg)"
   // thirteen minutes after boot.
   const { read } = flyRotation({ seconds: 4, jitterDeg: 4 });
   assert.equal(read.converged, true, `a hand-held device never converged: ${read.reason}`);
@@ -346,7 +346,7 @@ test('a device rotated in landscape still converges — the screen angle reaches
  * iOS Safari reports accelerationIncludingGravity NEGATED relative to the W3C
  * convention that Chrome follows. Unhandled, the artificial horizon renders
  * rotated 180 degrees — ground on top, sky underneath — which is exactly what
- * Noah's iPhone showed. Every test above used the W3C convention, so not one of
+ * The owner's iPhone showed. Every test above used the W3C convention, so not one of
  * them could see it.
  * ------------------------------------------------------------------------- */
 
@@ -417,7 +417,7 @@ test('the sign is not latched from an ambiguous sample', () => {
 // zero when the device is not turning. No real gyroscope does that. They read a
 // degree or two per second while sitting on a desk, and the filter integrates
 // it. That single missing property is why twenty-three passing tests coexisted
-// with a horizon that Noah watched stay crossed out.
+// with a horizon that the owner watched stay crossed out.
 
 /** Drive the filter with a level device whose gyro has a constant zero-offset.
  *  `biasDegS` is what the gyro reports while nothing is actually rotating. */
@@ -491,7 +491,7 @@ test('the offset is learned in DEVICE axes, so a landscape clamp gets it right t
   // The accelerometer reports in DEVICE axes, so a device level at a 90 degree
   // screen angle reads earth-up along +x: the screen's top edge is the device's
   // +x when the device is turned a quarter turn. Derived, not guessed — and it
-  // changed sign when the screen rotation was corrected against Noah's iPad.
+  // changed sign when the screen rotation was corrected against the owner's iPad.
   const levelInLandscape = { x: G0, y: 0, z: 0 };
   let t = 0;
   for (let i = 0; i < 2000; i += 1) {
@@ -760,7 +760,7 @@ test('the gyro is rotated by the mount too, or the two halves fight again', () =
 // tests, which passed while the Schmidt normalisation was wrong at every degree
 // above one.
 //
-// So these assert against MEASURED NUMBERS from Noah's iPad, taken from its own
+// So these assert against MEASURED NUMBERS from the owner's iPad, taken from its own
 // diagnostics report while it was held square in landscape.
 
 test('NOAH’S IPAD: an iPad held square in landscape reads roll near zero', () => {
@@ -868,7 +868,7 @@ test('with no orientation API at all, it assumes unrotated and SAYS so', () => {
 });
 
 test('ANTI-WINDUP: a badly diverged filter does not learn a fake gyro offset', () => {
-  // Noah's iPhone in landscape reported the alpha offset pegged at exactly
+  // the owner's iPhone in landscape reported the alpha offset pegged at exactly
   // -10.00 deg/s — dead on the clamp. That is not a gyroscope's zero-offset,
   // which is a degree or two; it was the integrator eating a fifty-degree
   // residual caused by the mis-signed screen rotation.
@@ -909,7 +909,7 @@ test('anti-windup does NOT stop a real offset being learned', () => {
 });
 
 test('LEVELLING: the filter remembers the last still moment, so the press is not the measurement', () => {
-  // Noah: "when I tap the button, it wiggles too much to work." Levelling read
+  // Levelling read
   // stillness at the instant of the click, which is the one instant guaranteed
   // to be disturbed — the press IS the disturbance. On a hand-held tablet it
   // could never succeed.
@@ -966,7 +966,7 @@ test('LEVELLING: a device that has never been still offers no reference to fake'
 });
 
 test('JITTER: an ALIGNED, still filter applies far less of each noisy sample', () => {
-  // Noah: "Settle the horizon jitter." The static gain is a deliberately fast
+  // The static gain is a deliberately fast
   // pull toward gravity so a device set down levels in a fraction of a second —
   // but keeping it afterwards applies a quarter of EVERY accelerometer sample,
   // sixty times a second, which is a horizon that visibly trembles on a desk.
@@ -1047,7 +1047,7 @@ const leanScenario = (cfg = {}) => {
   // The lean: 50 samples at 20 ms. Gyro says +20°/s pitch (the truth); the
   // accelerometer's direction is yanked to 60° by the hand's acceleration
   // while its magnitude stays exactly 1 g — the case the magnitude gate is
-  // structurally blind to. Noah's report: 1.01 g beside a 26.7° residual.
+  // structurally blind to. The owner's report: 1.01 g beside a 26.7° residual.
   const corrupted = upVectorScreenFrame(60, 0);
   const corruptedG = { x: corrupted.x * G0, y: corrupted.y * G0, z: corrupted.z * G0 };
   for (let i = 0; i < 50; i += 1) {
@@ -1366,7 +1366,7 @@ const divergedScenario = (cfg = {}, recoverSamples = 100) => {
    * That matters more than it looks: a device that goes genuinely STILL is
    * rescued by the static-alignment path, which bypasses this gate entirely —
    * so a scenario that lets the device settle proves nothing about the gate and
-   * everything about a path Noah's hand-held phone never reaches. This is the
+   * everything about a path the owner's hand-held phone never reaches. This is the
    * case that has only the coast budget to rescue it.
    */
   for (let i = 0; i < recoverSamples; i += 1) {
@@ -1409,13 +1409,13 @@ test('DIVERGENCE: the coast budget is what lets gravity back in at all', () => {
 });
 
 /**
- * THE ROOT CAUSE OF "GENTLE ROTATION ERRORS THE HORIZON" (Noah, 2026-08-03).
+ * THE ROOT CAUSE OF "GENTLE ROTATION ERRORS THE HORIZON" (the owner, 2026-08-03).
  *
  * Turning a TILTED device about true vertical changes neither its pitch nor its
  * roll — it is only turning. The old propagation integrated φ̇ = p, the
  * small-angle shortcut, and so invented roll in proportion to tan θ: measured,
  * 10° of false roll at a 10° tilt and 52° at 60°, from three seconds of gentle
- * turning. Noah's ADI read `gravity 51° from the gyro`.
+ * turning. The owner's ADI read `gravity 51° from the gyro`.
  *
  * Driven through updateGyro ALONE, with no accelerometer corrections, so this
  * measures the propagation itself rather than how fast the filter recovers from
@@ -1495,7 +1495,7 @@ test('KINEMATICS: the error the small-angle form makes grows with tan of the til
  * A REASON STRING IS A VALUE, AND INVENTING ONE IS THE SAME DEFECT AS INVENTING
  * A NUMBER.
  *
- * Noah's 1.21.1 diagnostics report said `attitude.heading` had failed because
+ * The owner's 1.21.1 diagnostics report said `attitude.heading` had failed because
  * "this device reports no magnetic heading". Three lines below, the raw block
  * read `webkitCompassHeading 278.3`, and the filter itself reported
  * `heading 279.5`. His iPhone has a compass; it had simply stopped sending

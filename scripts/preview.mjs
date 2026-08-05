@@ -120,7 +120,7 @@ const SCENES = [
       ['position.altitudeGeometric', 1533],
     ],
     // The caveat rides on the FIELD, so it reaches the horizon as a caption
-    // rather than living only in a log. This is the case Noah photographed.
+    // rather than living only in a log. This is the case the owner photographed.
     reasons: {
       'attitude.pitch': 'gravity reference only — gyro settling (3.2°)',
       'attitude.roll': 'gravity reference only — gyro settling (3.2°)',

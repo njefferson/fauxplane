@@ -1,7 +1,7 @@
 /**
  * plan.test.mjs — labels on a busy plan view.
  *
- * Noah's 40 nm screenshot at 1.0.0 had nineteen aircraft, about a dozen of them
+ * The owner's 40 nm screenshot at 1.0.0 had nineteen aircraft, about a dozen of them
  * in one quadrant, and their labels overprinted into a smear that read as
  * corruption rather than as density. Every label was drawn at a fixed offset
  * below its symbol, so a cluster put several lines of text in the same pixels.
@@ -41,7 +41,7 @@ test('PLAN: two aircraft far apart both keep their labels, below the symbol', ()
 });
 
 test('PLAN: NO TWO LABELS EVER OVERLAP — the defect, directly', () => {
-  // A dozen aircraft crammed into one small area, which is Noah's screenshot.
+  // A dozen aircraft crammed into one small area, which is the owner's screenshot.
   const items = [];
   for (let i = 0; i < 12; i += 1) {
     items.push({ key: `k${i}`, x: 200 + (i % 4) * 6, y: 200 + Math.floor(i / 4) * 6, size: 5, text: `FLT${i}00 FL${300 + i}`, priority: -i });
@@ -120,8 +120,7 @@ test('TAP: the NEAREST of two close symbols wins — a tap is not a lottery', ()
 /**
  * RUNWAY WIDTH, WHICH WAS DEAD CODE FOR EVERY RUNWAY AT EVERY RANGE.
  *
- * Noah, 2026-08-04: "Why does every runway look exactly the same even at
- * different scales?" The formula was `max(1.5, min(5, len * 0.06))`, and
+ * The formula was `max(1.5, min(5, len * 0.06))`, and
  * `len * 0.06` never reaches 1.5 at any drawn length a real runway produces —
  * a 24px runway gives 1.44 — so the `max` pinned it at 1.5 permanently. Every
  * runway, every range, one width, forever.
@@ -186,7 +185,7 @@ test('runway threshold: real runways fall the right side of it at each range', (
 /**
  * THE RING LABEL MUST NAME THE RING'S ACTUAL DISTANCE.
  *
- * Noah, 2026-08-05: "The ranges still need to be made right." At 10 nm the
+ * At 10 nm the
  * quarter and three-quarter rings sit at 2.5 and 7.5 nm and were labelled "3"
  * and "8" — a scope whose entire contract is distance, printing a distance the
  * circle is not at. The other ranges divide evenly and hid it.
@@ -219,8 +218,8 @@ test('range rings: whole numbers do not grow a decimal point', () => {
  * THE TAP TARGET MUST INCLUDE THE LABEL, because that is what a finger goes for.
  *
  * `placeLabels` offsets a label by `size + lineHeight * 0.9` — about 20px — and
- * the label has its own height on top of that. Noah: "Tapping the planes on top
- * is still inconsistent in whether they will respond or not." It was not flaky;
+ * the label has its own height on top of that.
+ * It was not flaky;
  * the biggest thing on the scope was outside the target.
  */
 test('tap slop: a tap on the altitude label still finds its aircraft', () => {

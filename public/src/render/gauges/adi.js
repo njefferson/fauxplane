@@ -89,7 +89,7 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate, mou
      * WRAPPED, NOT TRUNCATED — the same fix as the full ATT FAIL branch above,
      * which this branch never got.
      *
-     * Noah, 2026-08-05, photographing the ADI while following an aircraft:
+     * The owner, 2026-08-05, photographing the ADI while following an aircraft:
      * "The red text is cutoff on the PFD when following an aircraft." It read
      * `ADS-B carries no attitude — pitch is n…`, severed mid-word.
      *
@@ -150,7 +150,7 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate, mou
   //
   // TO ±90, NOT ±30. The ladder stopped at thirty for its first fifteen
   // releases, so a device pitched past it showed featureless sky with no scale
-  // at all — Noah, holding one at −32°: "The horizon degrees stop at 30?" A
+  // at all — A
   // real PFD keeps drawing rungs all the way to vertical, spaced 5° near level
   // where a pilot flies and 10° beyond thirty where nobody holds an aeroplane
   // for long; same here. The clamp in fusion caps pitch at ±90, so ±90 rungs

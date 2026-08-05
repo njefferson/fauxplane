@@ -36,8 +36,6 @@ export function project({ lat, lon }, { centre, pxPerNm, cx, cy }) {
  *
  * This is what a real ND shows beside a traffic symbol and it is ALL it shows —
  * no callsign, no registration, no type. `+03` is three hundred feet above you.
- * Noah: "What info is shown for each object? ... My desired fix is ALWAYS more
- * like a regular aircraft."
  *
  * Two digits, because TCAS uses two: anything beyond ±99 hundred feet is far
  * outside any band a crew would select, and a third digit is a number nobody
@@ -142,8 +140,7 @@ export function placeLabels(items, { measure, lineHeight, bounds }) {
 /**
  * HOW FAR A TAP MAY LAND FROM THE SYMBOL AND STILL COUNT.
  *
- * Noah, 2026-08-05: "Tapping the planes on top is still inconsistent in whether
- * they will respond or not." Measured against `placeLabels`, which offsets a
+ * Measured against `placeLabels`, which offsets a
  * label by `size + lineHeight * 0.9` — about 20px — plus the label's own height:
  * **a finger going for the altitude readout lands 20 to 28 px from the mark.**
  *
@@ -163,7 +160,7 @@ export const TAP_SLOP_PX = 34;
  * It used to round away from it: `Math.round(rangeNm * frac)`. At 10 nm the
  * quarter and three-quarter rings sit at 2.5 and 7.5 nm and read "3" and "8" —
  * a display whose entire contract is distance, printing a distance the circle
- * is not at. Noah, 2026-08-05: "The ranges still need to be made right."
+ * is not at.
  *
  * 20, 40 and 80 all divide evenly by four, which is how it stayed hidden: three
  * of the four ranges were correct by arithmetic accident.
@@ -257,9 +254,9 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   }
 
   /**
-   * --- RUNWAYS AND AIRPORTS (Noah, 2026-08-03: "Show the runway at airports.")
+   * --- RUNWAYS AND AIRPORTS ( )
    *
-   * TWO MARKS, AND THE CHOICE BETWEEN THEM IS THE WHOLE FIX. Noah,
+   * TWO MARKS, AND THE CHOICE BETWEEN THEM IS THE WHOLE FIX. The owner,
    * 2026-08-04: "Why does every runway look exactly the same even at different
    * scales?" Measured against the real navdata at a 350px scope radius, he was
    * exactly right and for two compounding reasons:

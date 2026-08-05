@@ -154,7 +154,7 @@ export function text(ctx, str, x, y, { size = 14, weight = 500, align = 'center'
  *
  * ELLIPSISING A SENTENCE THAT HAD ROOM TO WRAP IS NOT A TRUNCATION, IT LOOKS
  * LIKE A CRASH. The horizon caption read "gravity reference only — gyro
- * settling (…" on Noah's iPad: cut inside a parenthesis, so the one number the
+ * settling (…" on the owner's iPad: cut inside a parenthesis, so the one number the
  * sentence existed to deliver was the part thrown away, and the panel looked
  * broken while working correctly.
  *

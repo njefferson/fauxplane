@@ -37,7 +37,7 @@ export const DEFAULTS = Object.freeze({
    * accelerometer wins anyway. Deliberately under maxCoastMs, so this gate
    * alone can never cross the horizon out.
    *
-   * HALVED FROM 4000 ON 2026-08-03. Noah: "Gentle rotation errors the horizon",
+   * HALVED FROM 4000 ON 2026-08-03. ,
    * photographed at `gravity 51° from the gyro — coasting on gyro`. The budget
    * is a bound on how far a phone gyro is trusted with no absolute reference,
    * and four seconds was too generous for one: measured on a filter driven into
@@ -129,7 +129,7 @@ export const DEFAULTS = Object.freeze({
    * filter was badly diverged — the mis-signed screen rotation put it fifty
    * degrees out — the residual was enormous and PERSISTENT, which is exactly
    * the input an ungated integrator reads as "an enormous constant offset".
-   * Noah's iPhone reported the alpha offset pegged at -10.00 deg/s, dead on the
+   * The owner's iPhone reported the alpha offset pegged at -10.00 deg/s, dead on the
    * clamp. That is not a gyroscope's zero-offset, which is a degree or two; it
    * is the loop eating its own error.
    *
@@ -248,7 +248,7 @@ export function attitudeFromGravity({ x, y, z }, screenAngleDeg = 0, mount = nul
   // this, so the pair agreed with each other while both disagreed with the
   // world — the same structural blindness as the degree-1 magnetic tests.
   //
-  // Derived from Noah's iPad, held square in landscape, from the raw axes in
+  // Derived from the owner's iPad, held square in landscape, from the raw axes in
   // its own diagnostics report: earth-up in device coords (0.610, 0.031, 0.792)
   // at a reported angle of 90. Rz(-90) gives roll -177; Rz(+90) gives roll
   // +2.9, which is what an iPad held square actually is.
@@ -477,7 +477,7 @@ export function upFromTilt(betaDeg, gammaDeg) {
  * detectable from a feature test.
  *
  * Unhandled, it rotates the artificial horizon by 180 degrees: ground on top,
- * sky underneath, roll pointer at the bottom. That is precisely what Noah's
+ * sky underneath, roll pointer at the bottom. That is precisely what the owner's
  * iPhone showed — an upright phone in portrait reporting roll = -180.
  *
  * DETECTED FROM DATA, NOT FROM THE USER AGENT. The orientation event's beta and
@@ -578,7 +578,7 @@ export function createFusion(options = {}) {
    * Integrate the body rates forward. Short-term truth, drifts over minutes.
    *
    * THE SIGNS, DERIVED RATHER THAN GUESSED, because guessing them is what put a
-   * persistent 3.9-degree residual on Noah's device and stopped the filter ever
+   * persistent 3.9-degree residual on the owner's device and stopped the filter ever
    * converging — the gyro was pushing one way while the accelerometer dragged
    * it back, for ever.
    *
@@ -634,7 +634,7 @@ export function createFusion(options = {}) {
 
     /**
      * THE FULL EULER KINEMATICS, AND THIS IS THE ROOT CAUSE OF "GENTLE ROTATION
-     * ERRORS THE HORIZON" (Noah, 2026-08-03).
+     * ERRORS THE HORIZON" (the owner, 2026-08-03).
      *
      * This used to be `pitch += omega.x·dt` and `roll -= omega.z·dt`: the
      * textbook small-angle shortcut, φ̇ = p and θ̇ = q. It is exact at wings-level
@@ -653,7 +653,7 @@ export function createFusion(options = {}) {
      *   tilt   −45°  →  −42.4°           0.0° at every one of them.
      *   tilt   −60°  →  −52.0°
      *
-     * Noah's ADI read `gravity 51° from the gyro`. That is this, at about sixty
+     * The owner's ADI read `gravity 51° from the gyro`. That is this, at about sixty
      * degrees of tilt — a phone in a cradle, on a desk, or in a hand. Gravity
      * was correct throughout; the gyro invented the roll, and the direction
      * gate then rejected the only instrument telling the truth.
@@ -800,7 +800,7 @@ export function createFusion(options = {}) {
     // An accelerometer measures SPECIFIC FORCE: gravity plus every linear
     // acceleration of the hand holding it. Lean a phone back and forth and the
     // measured vector SWINGS while its magnitude stays near one g — the
-    // corruption rotates the vector, it does not stretch it. Noah, hand-held:
+    // corruption rotates the vector, it does not stretch it. The owner, hand-held:
     // "leaning backward and forward make it look like I'm a rocket" — his
     // diagnostics showed 1.01 g beside a 26.7° residual, so the magnitude gate
     // above never fired while the direction was badly wrong.
@@ -826,7 +826,7 @@ export function createFusion(options = {}) {
     const disagreeDeg = Math.max(Math.abs(dPitch), Math.abs(dRoll));
     // Stillness the gate can trust is stillness that has LASTED. The
     // instantaneous flag above is one gyro sample beside one accel sample —
-    // and Noah's exact gesture, rhythmic leaning, crosses zero rate at every
+    // and the owner's exact gesture, rhythmic leaning, crosses zero rate at every
     // reversal, which is precisely where the translational corruption peaks.
     // The corrupted sample presents as "still" for that instant and would
     // bypass the gate at the settled gain, three times the in-motion one.
@@ -870,7 +870,7 @@ export function createFusion(options = {}) {
     /**
      * ONCE THE GATE HAS CONCEDED, IT CONCEDES PROPERLY.
      *
-     * Noah, 2026-08-03: "Gentle rotation errors the horizon", with the ADI
+     * , with the ADI
      * reading `gravity 51° from the gyro — coasting on gyro` and the horizon
      * dozens of degrees over.
      *
@@ -919,7 +919,7 @@ export function createFusion(options = {}) {
     //
     // Without this the two halves of the filter fight to a standoff at
     // residual = offset / (rate x (1 - alpha)) and simply stay there. That is
-    // what Noah's phone was reporting as "converging (residual 14.8 deg)".
+    // what the owner's phone was reporting as "converging (residual 14.8 deg)".
     //
     // Projected back onto the DEVICE axes the gyro actually reports, using the
     // same screen angle the rates were rotated by — an offset learned in screen
@@ -961,7 +961,7 @@ export function createFusion(options = {}) {
     //   1. The INSTANTANEOUS residual. Held in a hand, the accelerometer
     //      solution jitters several degrees continuously, so this never fell
     //      below the threshold and the horizon stayed crossed out for ever. It
-    //      was measuring hand-shake. Noah's device reported "converging
+    //      was measuring hand-shake. The owner's device reported "converging
     //      (residual 3.9 deg)" thirteen minutes after boot.
     //   2. The filter against a SMOOTHED gravity reference. That fixed the
     //      jitter and broke rotation: a smoothed reference lags a turning
@@ -994,7 +994,7 @@ export function createFusion(options = {}) {
       //
       // Levelling used to read stillness at the instant the button was pressed,
       // which is the one instant guaranteed to be disturbed — the press IS the
-      // disturbance. On a tablet it never succeeded: Noah, "when I tap the
+      // disturbance. On a tablet it never succeeded: the owner, "when I tap the
       // button, it wiggles too much to work." A cradled device is still right
       // up until a finger reaches it, so the reference worth capturing is the
       // one from just BEFORE the touch.
@@ -1157,7 +1157,7 @@ export function createFusion(options = {}) {
       // an approximation, it is exact. What fusion adds is steadiness THROUGH
       // MOTION. That is a question of QUALITY, not of existence.
       //
-      // Conflating the two put a permanent red cross over the horizon on Noah's
+      // Conflating the two put a permanent red cross over the horizon on the owner's
       // phone: the smoothed residual never fell under two degrees, so a panel
       // that knew its own attitude to a fraction of a degree refused to draw
       // it, and said "converging" for as long as anyone cared to watch.
@@ -1177,7 +1177,7 @@ export function createFusion(options = {}) {
          * `hasHeading` goes false for two unrelated reasons and the panel used
          * one sentence for both: "this device reports no magnetic heading".
          *
-         * On Noah's iPhone that sentence was FALSE. His diagnostics report
+         * On the owner's iPhone that sentence was FALSE. His diagnostics report
          * carried `webkitCompassHeading 278.3` in the raw block and `heading
          * 279.5` in this filter, three lines above the panel asserting his
          * phone had no compass. The compass had simply stopped sending updates

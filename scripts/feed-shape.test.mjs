@@ -3,7 +3,7 @@
  *
  * Doctrine §7f: a sandbox cannot reach adsb.lol, so the check that answers
  * "does this provider broadcast the autopilot selections at all" is built into
- * the diagnostics report and run by Noah's device. This suite covers the part
+ * the diagnostics report and run by the owner's device. This suite covers the part
  * that CAN be tested here — that the reporter counts honestly.
  *
  * The distinction it exists to protect: a key PRESENT with a null value is not

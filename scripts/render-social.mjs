@@ -13,7 +13,7 @@ const browser = await chromium.launch({
   args: ['--no-sandbox'],
 });
 
-// Both cards, every size. The tiles also DEPLOY (public/) so Noah can save
+// Both cards, every size. The tiles also DEPLOY (public/) so the owner can save
 // them straight off the site — downloading a file out of the GitHub UI on an
 // iPad turned out to be the hard part of the whole feature.
 for (const [card, w, h, out] of [

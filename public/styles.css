@@ -151,7 +151,6 @@ body {
   padding: 0.4rem 0.6rem;
   border-bottom: 1px solid var(--hairline);
   /* DOES NOT WRAP, so the (i) rides the tab row instead of dropping below it.
-     Noah, 2026-08-05: "brightness can go in setup, and then (i) moved up?"
 
      MEASURED BOTH WAYS, because the first attempt at this was justified with a
      saving that does not exist. Header height, 390px screen:
@@ -211,7 +210,7 @@ body {
   border-color: var(--rail);
 }
 
-/* BRIGHTNESS LIVES ON SETUP NOW (Noah, 2026-08-05). It was in the header beside
+/* BRIGHTNESS LIVES ON SETUP NOW (the owner, 2026-08-05). It was in the header beside
    the (i), in a box that wrapped onto its own row on a phone. It is a setup
    action — chosen once for where the panel is standing — so it sits with the
    levelling controls, where there is room to say what it is doing. */
@@ -249,8 +248,8 @@ body {
      no border — because it is primarily an always-visible version label and
      only secondarily the way into diagnostics.
 
-     IT LIVES IN THE FOOTER, not the header (Noah, 2026-08-03: "there is no
-     reason it has to stay there when we are fighting for space"). §7b asks for
+     IT LIVES IN THE FOOTER, not the header (
+     ). §7b asks for
      always on screen and never behind a tap; the footer satisfies both, and the
      header row is the one under real pressure — five tabs, the (i) menu and the
      brightness control had already wrapped it onto two lines on a landscape
@@ -394,7 +393,7 @@ body {
      growth, and the measurement is the only thing that says so. */
   /* `1 0 auto` — grows into spare height, NEVER shrinks below its own content.
      This was fixed in the short-screen block first and left wrong here, and
-     Noah found the result on an iPad in landscape: the wrapper was squeezed, the
+     the owner found the result on an iPad in landscape: the wrapper was squeezed, the
      controls hung out of it, and the value strip was drawn straight over PWR.
      "Cannot be seen in landscape because it's covered by the Text info."
      The same fix, applied to the case in front of me and not the case beside
@@ -502,8 +501,7 @@ body {
 /*
  * WHERE THE RANGE BUTTONS GO, AND IT DEPENDS ON WHICH AXIS IS SCARCE.
  *
- * Noah, 2026-08-05: "Why must the range markers go on the right side instead of
- * the top or bottom of the radar?" Measured both ways, as the diameter of the
+ * Measured both ways, as the diameter of the
  * circle that actually results — the scope is round, so its size is the SMALLER
  * of its box's two sides, and 44px taken off the long side costs nothing at all:
  *
@@ -562,9 +560,6 @@ body {
 /*
  * THE SPACE UNDER THE SCOPE IS NOAH'S, AND IT STAYS EMPTY UNTIL HE FILLS IT.
  *
- * Noah, 2026-08-05: "Yes, there will be fucking space under the radar. I WILL
- * FILL IT WITH SOMETHING ELSE."
- *
  * The scope is a circle in a column that is taller than it is wide, so there is
  * room left over. That is not a defect, it is not slack to reclaim, and it is
  * not an invitation to stretch the plan view, add a caption, move a control into
@@ -590,8 +585,6 @@ body {
  *
  * It used to be `flex: 56` in the right-hand column — a bigger share than the
  * navigation display it sat under, on the axis where the ND had least to spare.
- * Noah, looking at an iPad of it: "All the voice-over data does NOT need to
- * fill MY screen. That space has MUCH more important stuff to hold."
  *
  * WRAPPING, NOT STACKING, is what makes it affordable. Eight one-per-line rows
  * are eight lines high whatever the screen; the same eight as auto-fitting
@@ -601,11 +594,6 @@ body {
  */
 /*
  * THE VALUE STRIP IS FOR WHOEVER CANNOT SEE THE GAUGES, AND ONLY FOR THEM.
- *
- * Noah, 2026-08-05: "Why do you not give the entire fucking height to the
- * horizon?? I don't want to SEE all the words that are at the bottom for no
- * other reason than for a screen reader to have access. I DO NOT NEED THEM
- * BECAUSE I CAN FUCKING SEE THE GUAGES."
  *
  * He is right, and the confusion was in this file's own comments: a canvas is
  * non-text content, so SC 1.1.1 requires a text alternative — it does NOT
@@ -752,7 +740,7 @@ body {
   }
   /* Intrinsic height, never a share of a column that has none to give. */
   /* STACKED, SO THE CONTROLS GO BACK UNDER THE HORIZON.
-     Noah, 2026-08-05: "the power button is too low in portrait mode." It is —
+ It is —
      side by side the controls sit under both instruments, which is what makes
      them cost both the same; stacked, "under both" means under the radar too,
      and PWR ends up most of a screen further down than the horizon it belongs
@@ -865,9 +853,6 @@ body {
      answer, so the row is allowed to be as tall as it needs and the reader
      scrolls to the values. */
   /* THE INSTRUMENTS OWN THE SCREEN. THE VALUES START BELOW IT.
-     Noah, 2026-08-05: "Why are you bounding everything to the circle inside the
-     radar instead of pushing everything down so I don't have to see all the
-     diagnostics?"
 
      THREE ARRANGEMENTS WERE TRIED BEFORE THAT QUESTION AND ALL THREE ANSWERED
      THE WRONG ONE — how to fit a row of values onto a screen with no room for
@@ -926,8 +911,8 @@ body {
      wrapped, cost 51px of header, and the panel paid by overlapping the footer.
      The fix then was to shave tab padding.
 
-     Moving the build stamp to the footer (Noah: "there is no reason it has to
-     stay there when we are fighting for space") took the right-hand group to
+     Moving the build stamp to the footer (
+     ) took the right-hand group to
      216px. Tabs plus controls is now 667px against 740 — 73px of headroom — so
      the padding went back to full size. Undo the compromise when the pressure
      that forced it is gone, rather than leaving a smaller touch target behind
@@ -962,8 +947,7 @@ body {
 }
 
 /* ONE COLUMN OF RANGES WHERE FOUR TARGETS FIT, so the scope gets the width back.
-   Noah, 2026-08-05: "Why are you bounding everything to the circle inside the
-   radar" — the 2x2 block was 94px of a 318px column and the circle is sized by
+   — the 2x2 block was 94px of a 318px column and the circle is sized by
    whatever is left. Stacked, the same four buttons are 44px wide and the scope
    goes from 215px across to 269: a square scope, a quarter wider, for no height
    at all now that the instruments own the panel.
@@ -1507,9 +1491,8 @@ body[data-powered='true'] .gate {
   border-color: var(--rail);
 }
 
-/* THE SCOPE'S STATE, AT A GLANCE (Noah, 2026-08-04: "an indicator that shows
-   when the radar is populated and another for any other states like being
-   ready to tap").
+/* THE SCOPE'S STATE, AT A GLANCE (
+   ).
 
    THE WORD CARRIES THE MEANING AND COLOUR ONLY REINFORCES IT (Doctrine §4).
    CONTACT, AGEING, NO CONTACT, LISTENING and FOLLOWING are distinguishable
@@ -1632,7 +1615,7 @@ body[data-powered='true'] .gate {
      every row reports a page coordinate — 1187px for the first row on a phone —
      which was then compared against the scroller's own height. Every row came
      out "below the fold", so the list said "19 more below" with nineteen
-     aircraft in total and seven on screen (Noah, 2026-08-05), and the row-cap
+     aircraft in total and seven on screen (the owner, 2026-08-05), and the row-cap
      computed from the same offsets was nonsense too.
      One line, and it is load-bearing for two separate numbers. */
   position: relative;
@@ -1661,7 +1644,7 @@ body[data-powered='true'] .gate {
 }
 
 /*
- * THE WELCOME (Noah: "The welcome screen is fucking sterile.")
+ * THE WELCOME ( )
  *
  * The app's own attitude indicator beside the title, in the app's own tokens —
  * so the first thing on screen is an instrument, and the sky/ground colours are
@@ -1802,7 +1785,6 @@ body[data-powered='true'] .gate {
   cursor: pointer;
 }
 
-
 /* --- diagnostics ----------------------------------------------------------
    A dialog, not a fifth tab: it is a diagnostic, not an instrument, and the tab
    row is for things a pilot scans. Every requirement of Doctrine §4 for an
@@ -1911,7 +1893,6 @@ body[data-powered='true'] .gate {
   user-select: text;
   -webkit-user-select: text;
 }
-
 
 /* --- setup ---------------------------------------------------------------- */
 
@@ -2290,9 +2271,7 @@ body[data-powered='true'] .gate {
    (§4) — ON or OFF in real text — so it survives a grayscale render and a
    colour-blind reader, and colour only reinforces it. */
 
-/* IT LOOKS LIKE EQUIPMENT, NOT LIKE A MENU ITEM. Noah: "The power button looks
-   like a menu button rather than equipment button. It hides among the others
-   and draws no attention when it's off."
+/* IT LOOKS LIKE EQUIPMENT, NOT LIKE A MENU ITEM.
 
    THE DARK COCKPIT CONVENTION, which is the answer to "what does it look like
    in a normal jet". There is no power button in an airliner — the nearest
@@ -2302,7 +2281,7 @@ body[data-powered='true'] .gate {
    the panel is dark when all is well, and you never illuminate to say "OK".
 
    So this is inverted from a consumer power lamp, and that inversion is exactly
-   what Noah asked for. OFF is the non-normal state, so OFF is the one that
+   what the owner asked for. OFF is the non-normal state, so OFF is the one that
    lights. Switched on, it goes dark and stops competing with everything else.
 
    AMBER, NOT RED (§4). Red is for a condition needing immediate action; a panel
@@ -2382,7 +2361,7 @@ body[data-powered='true'] .gate {
 }
 
 /* ONE CONTROL STRIP under the horizon: power, then a divider, then levelling.
-   The switch was its own floating row before, tied to nothing (Noah). */
+   The switch was its own floating row before, tied to nothing (the owner). */
 .pfd-controls {
   display: flex;
   flex-wrap: wrap;

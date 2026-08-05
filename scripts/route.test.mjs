@@ -300,7 +300,7 @@ test('the route handler records its refusal against the PROVIDER, through the re
 /**
  * THE FIRST REAL PROBE CAME BACK 201, AND THE PROBE COULD NOT SAY WHAT THAT WAS.
  *
- * adsb.lol answered Noah's device with HTTP 201 — not the 422 a wrong request
+ * adsb.lol answered the owner's device with HTTP 201 — not the 422 a wrong request
  * shape produces, so the shape was ACCEPTED — and the report could only say
  * "the reply carried no readable keys". True, and useless: it cannot tell an
  * empty body from a non-JSON body from valid JSON of an unexpected shape, and

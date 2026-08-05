@@ -1,9 +1,6 @@
 /**
  * route.js — where the followed flight came from and where it is going.
  *
- * Noah asked for this the day the airframe picker landed: *"a 'flight plan'
- * page with a map and details sounds good if that's real and possible?"*
- *
  * IT IS A FEED, HELD TO THE SAME RULE AS EVERY OTHER. adsb.lol serve it under
  * ODbL, the panel credits them, and a route that is not known reads as not
  * known rather than as a blank.
@@ -129,7 +126,7 @@ export function routeLine(route) {
  * The caveat, in adsb.lol's own word. Never omitted while the route is shown.
  *
  * SHORT ON PURPOSE, because it is VISIBLE TEXT in a banner that already carries
- * a callsign and a way out, on a panel whose landscape layout Noah has already
+ * a callsign and a way out, on a panel whose landscape layout the owner has already
  * had to complain was cramped. Every word left in it is load-bearing:
  * "plausible" is the source's own verdict, "from the callsign" is the method
  * that makes it a guess, and "not a filed flight plan" is the sentence that

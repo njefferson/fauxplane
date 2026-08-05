@@ -1,10 +1,6 @@
 /**
  * stationary.test.mjs — zero is a measurement.
  *
- * Noah, holding a panel that crossed out groundspeed on a desk: "Why can you
- * not show ground speed of zero?? Why can't you tell a wiggle isn't vertical
- * acceleration when stationary?"
- *
  * Both were the same defect. A missing reading is a FAIL, and that rule is
  * right — but "the platform handed me null" is not the same fact as "the
  * quantity is unknowable", and this app had been treating them as one. A
@@ -25,7 +21,7 @@ test('DISTANCE: a tenth of a degree of latitude is about 11.1 km', () => {
 });
 
 test('GROUNDSPEED: a receiver sitting still reads ZERO, not a failure', () => {
-  // Noah's own numbers: 5 m accuracy, fixes about 5 s apart, and the position
+  // the owner's own numbers: 5 m accuracy, fixes about 5 s apart, and the position
   // jittering by a couple of metres because that is what GPS does indoors.
   const prev = { lat: 38.69, lon: -120.97, accuracy: 5, at: 0 };
   const next = { lat: 38.690_00002, lon: -120.970_00002, accuracy: 5, at: 5000 };
@@ -130,7 +126,7 @@ test('VSI: once it starts moving again it stops claiming zero', () => {
 
 import { verticalResolutionFpm } from '../public/src/core/derive.js';
 
-test('RESOLUTION: Noah’s iPad indoors cannot resolve a light-aircraft climb', () => {
+test('RESOLUTION: the owner’s iPad indoors cannot resolve a light-aircraft climb', () => {
   // 27 m altitude accuracy, fixes about 5 s apart — his actual reports. The
   // answer is roughly 1,500 fpm, which is most of what a light aircraft ever
   // does, and that is a fact about GPS rather than a defect to hide.

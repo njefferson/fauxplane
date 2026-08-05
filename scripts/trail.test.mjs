@@ -1,8 +1,6 @@
 /**
  * trail.test.mjs — the observed path of a followed aircraft.
  *
- * Noah: "I also want to view the flight path/plan of a followed flight."
- *
  * This is the PATH — where the aircraft has actually been, every point of it a
  * position this panel was told at a time it was told it. It is deliberately not
  * a flight PLAN: ADS-B carries no intent, so where an aircraft means to go is
@@ -109,7 +107,7 @@ const TWO = { ok: true, aircraft: [
 ] };
 
 test('RADAR: a FAILED refresh keeps the aircraft already on the plan view', () => {
-  // Noah: "The radar loses everything when you change range." Each range is a
+  // Each range is a
   // different cache key upstream, so tapping through them issues real requests
   // — and one rate-limited reply used to wipe every aircraft off the screen.
   // The reader sees "no traffic" and believes it, which is the one lie a radar

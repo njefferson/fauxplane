@@ -35,7 +35,7 @@ test('BOOT: the real version.js parses — this is what the fetch actually reads
 });
 
 test('BOOT: a worker from an older release is detected', () => {
-  // Noah's iPad, exactly: stuck on 0.4.1 while the server had 0.4.3.
+  // the owner's iPad, exactly: stuck on 0.4.1 while the server had 0.4.3.
   assert.deepEqual(staleShell(['fauxplane-0.4.1'], '0.4.3'), ['fauxplane-0.4.1']);
 });
 

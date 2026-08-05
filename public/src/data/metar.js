@@ -1,7 +1,7 @@
 /**
  * metar.js — surface observation, and the station-selection rule.
  *
- * THE RULE, settled by Noah (NOTES.md) and implemented exactly:
+ * THE RULE, settled by the owner (NOTES.md) and implemented exactly:
  *   - No hardcoded station identifier, ever.
  *   - Query the box, then choose the NEAREST station REPORTING A VALID
  *     ALTIMETER SETTING, by great-circle distance from the current position —

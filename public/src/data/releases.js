@@ -23,7 +23,7 @@
  * ---------------------------------------------------------------------------
  *
  * Rewritten wholesale on 2026-08-05, because ten releases had drifted into
- * being a support thread published inside the product. Noah, on opening What's
+ * being a support thread published inside the product. The owner, on opening What's
  * New: "WHAT THE *FUCK* ARE THESE RELEASE NOTES?!"
  *
  * Three failures, each of which reads as perfectly reasonable while writing it:
@@ -461,7 +461,7 @@ export const RELEASES = [
       'The aircraft list says how many there are and how many are still further down. It always scrolled; nothing on screen said so.',
       "What's new shows the last three releases and puts the rest behind one press, instead of every version ever, forever.",
       'The welcome screen leads with the instrument instead of a wall of grey text.',
-      "A link to the rest of Noah's apps, in the (i) menu and in the footer.",
+      "A link to the rest of the owner's apps, in the (i) menu and in the footer.",
     ],
     broken: [
       'The horizon fix is verified against the maths rather than against hardware. If it still misbehaves, press the version stamp WHILE it is wrong — that report is what makes a cause findable.',

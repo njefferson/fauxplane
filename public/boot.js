@@ -14,7 +14,7 @@
  * worker serves from its own release's cache. So the old worker served the old
  * app.js, which asked for the old worker, which served the old app.js.
  *
- * Noah's iPad sat on 0.4.1 through two green deploys because of that loop. It
+ * The owner's iPad sat on 0.4.1 through two green deploys because of that loop. It
  * would not have expired on its own; nothing about it was a race or a delay.
  *
  * WHY THIS FILE IS THE FIX. One request escapes a cache-first worker: a
@@ -144,7 +144,7 @@ async function unstick() {
   showUpdateStrip(
     // NAMES BOTH VERSIONS. "An update is available" is true of every app on the
     // device; "you are on 1.15.0 and 1.16.0 is out" is the sentence that lets
-    // Noah tell a stuck panel from a current one without opening anything.
+    // the owner tell a stuck panel from a current one without opening anything.
     `This panel is running an older release. Version ${live} is available.`,
     () => applyUpdate(stale),
   );

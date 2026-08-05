@@ -111,8 +111,7 @@ function releaseNode(release, { open }) {
 /**
  * How many releases are listed before the rest go behind one more disclosure.
  *
- * Noah, 2026-08-03: "Why is there a huge list of version numbers growing
- * forever?" Every release this app has ever cut was listed, each as its own
+ * Every release this app has ever cut was listed, each as its own
  * collapsed row, and by 1.18.0 that was twenty-odd rows of "Version 1.x.y ·
  * 2026-08-03" — the same date on every one, because they all shipped in a day.
  * A reader scrolling that is reading a changelog, not patch notes.
@@ -167,7 +166,7 @@ export function createWhatsNew() {
  * IT IS NOT AN ALERT AND MUST NOT STEAL FOCUS. A release note is the lowest
  * possible urgency — the panel is working, it is simply newer. So it is a
  * `status` region, dismissible, and it never interrupts what the reader was
- * doing (SC 4.1.3). Noah's own report that "turning the panel on closes the
+ * doing (SC 4.1.3). The owner's own report that "turning the panel on closes the
  * initial instructions" is the same failure in the other direction: a surface
  * that appears or vanishes without being asked.
  *

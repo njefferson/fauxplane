@@ -1,9 +1,6 @@
 /**
  * selftest.test.mjs — the checks the self test makes, checked.
  *
- * Noah, 2026-08-04: *"You could build a simple test that I run, like the debug
- * sheet, instead of redoing the whole app every fucking time."*
- *
  * The self test exists to answer questions this sandbox cannot — the real feeds,
  * iOS, the service worker. That does NOT excuse it from being tested itself: a
  * diagnostic that lies is worse than no diagnostic, because it is believed.

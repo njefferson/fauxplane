@@ -117,8 +117,7 @@ export function drawGMeter(ctx, { x, y, w, h, tokens, field, peak }) {
 
   // "LOAD G", not "G", and not in the dimmest token available.
   //
-  // Noah, looking at this gauge on his own panel: "What is the white gauge in
-  // the upper left?" A single letter at the smallest size the palette has, in
+  // A single letter at the smallest size the palette has, in
   // `text-3`, is a label only to somebody who already knows what it says. An
   // instrument nobody can name is not an instrument, it is decoration — and the
   // reader this app is built for is explicitly NOT a pilot.
@@ -147,8 +146,8 @@ export function drawGMeter(ctx, { x, y, w, h, tokens, field, peak }) {
 
   // THE 1 g MARK. The scale runs −1 to +4 because that is what a load factor
   // does — nothing sustained lives below −1, and a hard pull reads +3 — so
-  // normal rest sits at forty percent of the arc, left of the top. Noah: "Why
-  // is the g-gauge always left of center?" The scale is right and the question
+  // normal rest sits at forty percent of the arc, left of the top.
+  // The scale is right and the question
   // is fair; what was missing is the mark that says the resting spot IS
   // normal. A real G-meter carries exactly this reference at 1 g.
   {

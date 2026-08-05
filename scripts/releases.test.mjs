@@ -156,8 +156,7 @@ test('absent storage is handled, not assumed', () => {
 // WHO THESE NOTES ARE ADDRESSED TO — a gate, because the rule was a paragraph
 // at the top of releases.js for ten releases and every one of them broke it.
 //
-// Noah, 2026-08-05, on opening What's New: "WHAT THE *FUCK* ARE THESE RELEASE
-// NOTES?!" They had become a support thread published inside the product:
+// They had become a support thread published inside the product:
 // "You asked why every runway looks the same", "You sent a photo of DAL2229",
 // "I only wrote the test AFTER you found it", "Follow a flight and send the
 // report". The reader is not the person who reported the fault, there is no

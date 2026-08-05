@@ -1,9 +1,7 @@
 /**
  * tcas.test.mjs — the traffic layer, held to what a flight deck actually shows.
  *
- * Noah: "What does the radar look like in a real jet? This crowded? What info
- * is shown for each object? ... My desired fix is ALWAYS more like a regular
- * aircraft." A real ND's traffic layer is TCAS: a symbol, a RELATIVE altitude
+ * A real ND's traffic layer is TCAS: a symbol, a RELATIVE altitude
  * in hundreds of feet, and a vertical trend arrow. No callsign, no
  * registration, no type code, and an altitude band that hides most of the sky.
  */

@@ -1,7 +1,7 @@
 /**
  * reasons.test.mjs — every reason a gauge can show FITS on the gauge.
  *
- * Noah, 2026-08-05, photographing the ADI while following an aircraft: "The red
+ * The owner, 2026-08-05, photographing the ADI while following an aircraft: "The red
  * text is cutoff on the PFD when following an aircraft." It read
  * `ADS-B carries no attitude — pitch is n…`, severed mid-word.
  *
@@ -61,7 +61,7 @@ test('every FOLLOW reason fits the ADI without being cut off', () => {
   assert.deepEqual(cut, [], `reasons cut off on the ADI:\n  ${cut.join('\n  ')}`);
 });
 
-test('the pitch reason is the one Noah photographed, and it wraps rather than truncating', () => {
+test('the pitch reason is the one the owner photographed, and it wraps rather than truncating', () => {
   const reason = FOLLOW_FAILS['attitude.pitch'];
   assert.match(reason, /ADS-B carries no attitude/, 'the reason under test is the one on the gauge');
   const lines = wrapText(ctx, reason, GAUGE_W - 16, { size: SIZE * 0.78, maxLines: 2 });

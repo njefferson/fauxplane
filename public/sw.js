@@ -194,7 +194,7 @@ self.addEventListener('fetch', (event) => {
       // `caches.match(request)` searches EVERY cache in the origin, oldest
       // first — including the previous release's. So after a deploy the old
       // modules kept being served: the page got the new index.html and the old
-      // JavaScript, ran old code, and displayed the old version stamp. Noah
+      // JavaScript, ran old code, and displayed the old version stamp. The owner
       // reloaded, saw the previous build, and reasonably concluded nothing had
       // shipped.
       //

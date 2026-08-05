@@ -18,7 +18,7 @@
     <title>fauxplane — glass panel</title>
     <!--
       Link previews. The image is the icon-art card — drawn entirely from the
-      app's own artwork; Noah picked it over the concept render, 2026-08-03.
+      app's own artwork; the owner picked it over the concept render, 2026-08-03.
       Absolute URL because scrapers resolve nothing.
     -->
     <meta property="og:title" content="fauxplane — a glass cockpit for your desk" />
@@ -93,7 +93,7 @@
         name's first word, so speaking "Information" matches what is on the
         control (SC 2.5.3), and it needs no icon font.
 
-        IT SITS BESIDE THE TABS, NOT ON A ROW OF ITS OWN. Noah, 2026-08-05:
+        IT SITS BESIDE THE TABS, NOT ON A ROW OF ITS OWN. The owner, 2026-08-05:
         "brightness can go in setup, and then (i) moved up?" It used to share a
         `.bar-right` box with the brightness control, and that box wrapped below
         the tab strip on a phone — a whole extra row of chrome above every
@@ -150,8 +150,7 @@
           <span class="follow-badge">FOLLOWING</span>
           <span id="follow-what" class="follow-what"></span>
           <!--
-            THE PLAUSIBLE ROUTE (adsb.lol, ODbL). Noah: "a 'flight plan' page
-            with a map and details sounds good if that's real and possible?"
+            THE PLAUSIBLE ROUTE (adsb.lol, ODbL).
 
             It sits INSIDE the follow banner because it is a fact about the
             aircraft the panel has become, and the banner is the standing
@@ -204,7 +203,7 @@
               beside it, both as big as the glass allows.
 
               THE READOUTS USED TO BE STACKED UNDER IT and took the larger share —
-              `flex: 56` against the plan view's 44. Noah, with an iPad full of
+              `flex: 56` against the plan view's 44. The owner, with an iPad full of
               it: "All the voice-over data does NOT need to fill MY screen. That
               space has MUCH more important stuff to hold."
 
@@ -233,8 +232,7 @@
           </div>
           <!--
             THE CONTROLS SIT UNDER BOTH INSTRUMENTS, NOT INSIDE THE HORIZON'S
-            COLUMN. Noah, 2026-08-05: "The PFD still looks wrong because you
-            insist on trying to make the horizon and the radar the same height."
+            COLUMN.
 
             Measured, and it was worse than a coupling: the RADAR WAS BIGGER THAN
             THE HORIZON. 520x217 against 269x269 on a landscape phone; 613x387
@@ -254,7 +252,7 @@
             -->
             <!--
               ONE CONTROL STRIP, not a switch floating above a pair of buttons.
-              Noah: "Power looks visually tied to nothing." It was its own row
+ It was its own row
               under the left edge of the panel, grouped with nothing and labelled
               by nothing — so it read as a stray chip rather than as one of the
               panel's controls. Power, levelling and clearing are the three
@@ -272,8 +270,8 @@
             </div>
         </div>
         <!--
-          THE VALUES AS TEXT. Noah: "You can push the stuff to the very bottom
-          if needed" — the third time he asked for this space back.
+          THE VALUES AS TEXT.
+          — the third time he asked for this space back.
 
           "THAT PART WAS NEVER OPTIONAL" USED TO BE WRITTEN HERE, about the strip
           being VISIBLE. It was false. What is not optional is that the values
@@ -283,10 +281,7 @@
         -->
         <!--
           THE VALUES AS TEXT, FOR WHOEVER CANNOT SEE THE GAUGES — and only for
-          them. Noah, 2026-08-05: "Why do you not give the entire fucking height
-          to the horizon?? I don't want to SEE all the words that are at the
-          bottom for no other reason than for a screen reader to have access. I
-          DO NOT NEED THEM BECAUSE I CAN FUCKING SEE THE GUAGES."
+          them.
 
           He is right, and the reason they were ever visible was a confusion in
           this file's own comment: a canvas is non-text content, so SC 1.1.1
@@ -370,9 +365,8 @@
       THE FIRST-RUN TEXT LIVES HERE ONLY UNTIL BOOT, when the (i) menu adopts
       the node. It is not a copy — there is one in the markup and it is moved.
 
-      IT IS NO LONGER A GATE. Noah: "'Switch the panel on' still takes all
-      attention on the initial pop-up and reads like 'accept the terms' and
-      even *I* don't read the panel then." He was right, and the fix is not
+      IT IS NO LONGER A GATE.
+      He was right, and the fix is not
       shorter copy — it is not putting a wall of text behind a big primary
       button in the first place. The panel now opens as itself, honestly
       crossed out, with a PWR switch in the chrome; the reading is in the (i)
@@ -382,7 +376,6 @@
     <section class="gate-first" aria-labelledby="gate-first-h">
       <!--
         THE HELLO, and it is the app's own artwork rather than a heading on grey.
-        Noah, 2026-08-03: "The welcome screen is fucking sterile."
 
         It was: a wall of body text opening with housekeeping about where the
         instructions would live afterwards. The first thing a reader met was
@@ -398,9 +391,7 @@
         colours. Same idea, different artwork — and a comment asserting they
         matched is probably why nobody checked.
 
-        Noah, 2026-08-04, holding his home screen beside it: "does not match the
-        app's icon close enough, and looks like an error because it is
-        different." Correct on both counts.
+        Correct on both counts.
 
         A redraw that RESEMBLES the icon is the defect, because it drifts the
         moment either one is touched. The only version that cannot drift is the

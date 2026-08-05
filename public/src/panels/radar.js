@@ -58,7 +58,7 @@ export function createRadar({
 
   const status = el('p', { class: 'radar-status', role: 'status', 'aria-live': 'polite', text: 'Waiting for the first sweep.' });
   /**
-   * THE STATE OF THE SCOPE, AT A GLANCE (Noah, 2026-08-04).
+   * THE STATE OF THE SCOPE, AT A GLANCE (the owner, 2026-08-04).
    *
    * `aria-hidden` because every word in it is already in `status`, which is
    * the live region — announcing both would read the same state twice to a
@@ -73,9 +73,7 @@ export function createRadar({
   const foot = el('p', { class: 'radar-list-foot', role: 'status', hidden: '' });
   const followNote = el('p', { class: 'radar-follow-note' });
   /**
-   * THE AIRFRAME PICKER. Noah: "an airframe picker from all aircraft on the
-   * radar, and he can choose to see what's up there... Types currently in range
-   * only, and filters its own list."
+   * THE AIRFRAME PICKER.
    *
    * So it offers exactly what is overhead AT THIS MOMENT, rebuilt every sweep,
    * and selecting one filters THIS list — the scope keeps drawing every
@@ -99,8 +97,8 @@ export function createRadar({
   const bandHost = el('div', { class: 'radar-band', role: 'group', 'aria-label': 'Traffic altitude band' });
 
   /**
-   * THE CENTRE PICKER (Noah: "I want to be able to set an airport on the radar
-   * page? Or another location. Airports should be easy to pick.").
+   * THE CENTRE PICKER (
+   * ).
    *
    * The airports are BUNDLED — OurAirports, public domain, 702 of them for this
    * region in 317 KB. That is not only convenient: a dataset in the repo cannot
@@ -170,7 +168,7 @@ export function createRadar({
   /**
    * THE FORM ANSWERS BESIDE THE FORM.
    *
-   * Noah, 2026-08-05: "Clicking follow does not indicate it did anything." It
+   * It
    * did — it wrote to `status`, which sits ABOVE THE SCOPE, several hundred
    * pixels off the top of the screen at the moment your thumb is on the button
    * at the bottom. An empty box produced a sentence nobody could see.
@@ -218,8 +216,8 @@ export function createRadar({
     renderFollowNote();
   };
 
-  // TAP AN AIRCRAFT TO FOLLOW IT (Noah: "map tapping the flight add it to the
-  // tracking dialogue box"). The tap fills the follow box AND follows, through
+  // TAP AN AIRCRAFT TO FOLLOW IT (
+  // ). The tap fills the follow box AND follows, through
   // the same startFollowing the form uses — and the "Heard right now" list
   // remains the accessible route to exactly the same action, so the canvas tap
   // is an enhancement rather than the only way.
@@ -256,8 +254,8 @@ export function createRadar({
 
   // --- range ---------------------------------------------------------------
   // ONE implementation, notified everywhere. The PFD's navigation display now
-  // carries its own range buttons (Noah: "put range options on the side of the
-  // radar on the main screen"), and two controls for one value is fine — two
+  // carries its own range buttons (
+  // ), and two controls for one value is fine — two
   // copies of the value is how they disagree. Every surface calls setRange and
   // every surface hears about it.
   const rangeListeners = [];
@@ -405,8 +403,7 @@ export function createRadar({
     el('section', { class: 'card radar-card' }, [
       el('h2', { class: 'card-title', text: 'Traffic' }),
       /**
-       * THE SCOPE COMES FIRST. Noah, 2026-08-05: "The radar is pushed down by
-       * the airport picker."
+       * THE SCOPE COMES FIRST.
        *
        * The centre picker is a label, a text field and a two-line hint — and it
        * sat ABOVE the instrument, so on a phone the scope began past the
@@ -536,8 +533,7 @@ export function createRadar({
     /**
      * THE LIST SAYS IT IS A LIST, AND SAYS WHAT IS BELOW THE FOLD.
      *
-     * Noah, 2026-08-03: "The list of aircraft shows no indication that it's a
-     * list and it looks like it's not scrollable." It always scrolled —
+     * It always scrolled —
      * `max-height: 22rem; overflow-y: auto` — but iOS hides a scrollbar until
      * something is actually scrolling, so a list of fifteen ended mid-row at
      * the container edge with nothing to suggest there was more. The filter
@@ -569,9 +565,8 @@ export function createRadar({
             type: 'button',
             dataset: { hex: a.hex },
             /**
-             * FILLS THE BOX TOO. Noah, 2026-08-05: "Tapping the planes on the
-             * bottom is a different path than pasting their data into the box
-             * above it." He was right — the canvas tap set the input and this
+             * FILLS THE BOX TOO.
+             * He was right — the canvas tap set the input and this
              * one did not, so the same action left the page in two different
              * states depending on which surface you touched it from.
              */
@@ -595,8 +590,7 @@ export function createRadar({
   /**
    * HOW MANY ROWS ARE OFF THE BOTTOM, AND WHERE THE LIST SHOULD END.
    *
-   * Noah, 2026-08-05, with a screenshot: "The list of aircraft is not looking
-   * correctly due to text alignment on the background or something." Two faults,
+   * Two faults,
    * and the first one is why the second was so hard to look at.
    *
    * IT SAID "19 more below" WITH 19 AIRCRAFT IN TOTAL AND SEVEN ON SCREEN. The
@@ -734,7 +728,7 @@ export function createRadar({
       readyChip.textContent = readiness.label;
       readyChip.dataset.state = readiness.state;
       // THE CHIP SAYS WHETHER A TAP WOULD DO ANYTHING, because "populated" and
-      // "ready to tap" are not the same fact and Noah asked for both.
+      // "ready to tap" are not the same fact and the owner asked for both.
       readyChip.dataset.tappable = readiness.tappable ? 'true' : 'false';
 
       if (!result) status.textContent = 'Waiting for the first sweep.';
@@ -742,7 +736,7 @@ export function createRadar({
         /**
          * THE READER GETS A SENTENCE; THE FORENSICS GO WHERE FORENSICS GO.
          *
-         * This used to print the raw refusal chain, so what Noah photographed
+         * This used to print the raw refusal chain, so what the owner photographed
          * on the face of a gauge was `cf-ray a258e8a82ff1fa4e-SJC`. True, and
          * written for whoever is debugging the Pages Function.
          *

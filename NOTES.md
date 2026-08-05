@@ -9,10 +9,7 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## RESERVED — the space under the radar is Noah's
-
-Noah, 2026-08-05: *"Yes, there will be fucking space under the radar. I WILL
-FILL IT WITH SOMETHING ELSE."*
+## RESERVED — the space under the radar is the owner's
 
 The scope is a circle in a column taller than it is wide, so 1.29.0 leaves room
 below it. **That room is reserved and stays empty until he says what goes there.**
@@ -29,11 +26,6 @@ sits on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 **1.29.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.28.3.
-
-Noah: *"Why do you not give the entire fucking height to the horizon?? I don't
-want to SEE all the words that are at the bottom for no other reason than for a
-screen reader to have access. I DO NOT NEED THEM BECAUSE I CAN FUCKING SEE THE
-GUAGES."*
 
 **He is right, and the confusion was in this repo's own comments.** A canvas is
 non-text content, so SC 1.1.1 requires a TEXT ALTERNATIVE — it does not require
@@ -117,9 +109,6 @@ the plant sweep is what refused to agree.
 
 ## 1.28.8 — PWR back where it can be seen and pressed, 2026-08-05
 
-Noah, with an iPad both ways up: *"Now the power button is too low in portrait
-mode, and cannot be seen in landscape because it's covered by the Text info."*
-
 **Both faults were mine, one release old, and both come from the same move** —
 lifting the controls out of the horizon's column in 1.28.6 so the two
 instruments could be equal.
@@ -165,9 +154,6 @@ the correct arrangement rather than the defect.
 
 ## 1.28.7 — the range buttons follow the scarce axis, 2026-08-05
 
-Noah: *"Why must the range markers go on the right side instead of the top or
-bottom of the radar?"*
-
 **Answered with measurement rather than a rationale, and the answer turned out
 to be "it depends, and one of the two cases was wrong".** The scope is a CIRCLE,
 so its size is the smaller side of its box — four buttons take nothing off the
@@ -200,9 +186,6 @@ stylesheet**, so the next session can argue with them instead of re-deriving.
 
 ## 1.28.6 — the horizon is the primary instrument again, 2026-08-05
 
-Noah: *"The PFD still looks wrong because you insist on trying to make the
-horizon and the radar the same height."*
-
 **Measured, it was worse than a coupling — the RADAR WAS BIGGER.**
 
 - 874x402 — horizon **520x217**, radar **269x269**
@@ -233,7 +216,7 @@ that it has the full width rather than the tail of a column.
 ### The invariant is stated as AREA, deliberately
 
 `checkHorizonIsPrimary` asserts the attitude indicator is the biggest instrument
-and that the scope is never taller — not that the two are equal. **Noah asked
+and that the scope is never taller — not that the two are equal. **The owner asked
 for them to stop being forced to the same height**, and a check that pins the
 current arrangement would forbid the thing he actually asked for. The rule is
 which instrument is primary; the arrangement is free to change.
@@ -300,10 +283,6 @@ about airplanes.live's terms from a different direction.
 
 ## 1.28.4 — a cut-off reason, and a list fix that did not work, 2026-08-05
 
-Noah, with two photographs: *"The red text is cutoff on the PFD when following
-an aircraft. The list of aircraft is not looking correctly due to text alignment
-on the background or something."*
-
 ### The reason was truncated, and the fix already existed twenty lines away
 
 The ADI read `ADS-B carries no attitude — pitch is n…`, severed mid-word.
@@ -361,8 +340,7 @@ already set, so the one resize it causes settles on the next notification.
 
 ## 1.28.3 — the instruments get the landscape screen, 2026-08-05
 
-Noah, with a photograph of the PFD on an iPhone in landscape: *"This layout is
-unacceptable."* Reproduced at his exact size — **874x402** — and the numbers
+Reproduced at his exact size — **874x402** — and the numbers
 were damning: the value strip was **354px of a 659px page**, so more than half
 the panel was below the fold and what was visible ended in a sentence sliced
 through the middle, directly above a solid footer bar.
@@ -377,9 +355,8 @@ room for one:
   `.pfd-canvas and .readouts overlap by 436x33px`, by name, at 740x360.
 - `min-content` split the difference and still sliced a sentence.
 
-Then Noah: *"Why are you bounding everything to the circle inside the radar
-instead of pushing everything down so I don't have to see all the
-diagnostics?"* — which is the actual answer. **The instrument row is a full
+Then
+— which is the actual answer. **The instrument row is a full
 panel tall.** The strip begins AT the fold rather than through it, so nothing is
 half on screen and there is nothing to look cut. The values are text because a
 canvas is non-text content and they must exist as text somewhere; nothing
@@ -414,8 +391,6 @@ now measures what the rule actually promises.
 ---
 
 ## 1.28.2 — brightness to SETUP and the (i) up, 2026-08-05
-
-Noah: *"I think brightness can go in setup, and then (i) moved up?"*
 
 Both done. Brightness is a card on SETUP beside the levelling controls, with
 room to say what it is doing — two measured colour schemes rather than a
@@ -465,8 +440,6 @@ said in the release notes.
 
 ## 1.28.1 — the release notes were a support thread, 2026-08-05
 
-Noah, on opening What's New: *"WHAT THE **FUCK** ARE THESE RELEASE NOTES?!"*
-
 He was looking at ten releases of a **development diary published inside the
 product**. Three distinct failures, all of which read as reasonable while being
 written:
@@ -474,12 +447,12 @@ written:
 - **"You" had quietly stopped meaning the reader.** *"You asked why every runway
   looks the same."* *"You held the panel up next to your home screen and said it
   did not match."* *"You sent a photo of DAL2229."* *"Five things you said were
-  wrong with the radar."* The reader is a friend of Noah's building a 747
+  wrong with the radar."* The reader is a friend of the owner's building a 747
   cockpit. He opens the list and is addressed as somebody else, about events he
   was not present for.
 - **"I" appeared at all.** *"I measured both."* *"It covers exactly what I cannot
   reach from here."* *"I only wrote the test AFTER you found it. That is
-  backwards."* A session narrating its own process, under Noah's name, to a
+  backwards."* A session narrating its own process, under the owner's name, to a
   stranger. There is no author character in a patch note.
 - **The reader was given homework, in eight consecutive releases.** *"Send me
   that."* *"Follow a flight and send the report."* *"That is the thing to send
@@ -492,7 +465,7 @@ Plus raw protocol on the face of it — `HTTP 201`, `content-type: text/html`,
 
 **1.0.0 through 1.19.1 are clean.** The rot starts at 1.19.2, is total by 1.24.0,
 and tracks exactly the period when the work became a fast back-and-forth with
-Noah — the notes were being written from the SESSION's memory of the day rather
+The owner — the notes were being written from the SESSION's memory of the day rather
 than from the diff. Every one of them has been rewritten for the reader. No claim
 changed and nothing was dropped; the same releases, described from the other side
 of the screen.
@@ -548,12 +521,6 @@ what it skipped.
 ---
 
 ## 1.28.0 — five things wrong with the RADAR page, 2026-08-05
-
-Noah, 2026-08-05, in one message: *"The radar is pushed down by the airport
-picker. The ranges still need to be made right. Tapping the planes on the bottom
-is a different path than pasting their data into the box above it. Tapping the
-planes on top is still inconsistent in whether they will respond or not.
-Clicking follow does not indicate it did anything."*
 
 Five separate defects. **Every gate on that page was green through all five**,
 and that is the thing worth keeping from this release.
@@ -670,7 +637,7 @@ Recorded here rather than hidden behind a lenient threshold.
 
 ### The route: three probes, three hypotheses killed, one answer
 
-From Noah's 1.26.0 report, the self test's first real run:
+From the owner's 1.26.0 report, the self test's first real run:
 
     callsign SKW3107   HTTP 201
     content-type text/html
@@ -733,7 +700,7 @@ coverage table showing `nav_qnh` on 34 of 60 and `nav_altitude_mcp` on 29 of 60
 
 ## PROMOTED — main is on 1.26.0, and four releases had never deployed, 2026-08-04
 
-**Noah said "Promote to main."** `main` fast-forwarded from 1.23.1 to **1.26.0**
+**The owner said "Promote to main."** `main` fast-forwarded from 1.23.1 to **1.26.0**
 and — this time — **the DEPLOY was verified green for that exact SHA**, not the
 push. Live at https://fauxplane.pages.dev. Staging is the same commit.
 
@@ -782,13 +749,10 @@ loaded every session while LESSONS must be opened.
 
 ---
 
-## STAGED NOW — 1.26.0, a self test Noah runs, 2026-08-04
+## STAGED NOW — 1.26.0, a self test the owner runs, 2026-08-04
 
 **1.26.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.23.1.
-
-Noah: *"You could build a simple test that I run, like the debug sheet, instead
-of redoing the whole app every fucking time."*
 
 He was describing the real cost of how this was being worked. Learning one fact
 about a live feed took a release, a follow, a report and a wait — **three times
@@ -846,8 +810,6 @@ enough on screenshots.
 **1.25.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.23.1.
 
-Noah: *"Why does every runway look exactly the same even at different scales?"*
-
 ### Measured against the real navdata, and he was right twice over
 
 Computed from `navdata.json` at a 350px scope radius, for the runways actually
@@ -897,8 +859,6 @@ now and the test imports it; the plant then goes red as it should.
 
 **1.25.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.23.1.
-
-Noah: *"Can you not just build simple tests for some of this shit??"*
 
 ### The audit, which is not flattering
 
@@ -973,7 +933,7 @@ not the one field that happened to show it.
 
 ### First: it works
 
-Noah's 1.24.0 report is the panel doing the thing it was built for. Following
+The owner's 1.24.0 report is the panel doing the thing it was built for. Following
 **N460DF, a C-130**, `seen_pos 0.13s ago`:
 
 - groundspeed **214 kt LIVE**, GPS altitude **4,325 ft LIVE**, track **127°T
@@ -1047,7 +1007,7 @@ fixed twice elsewhere.
 
 ### HTTP 201 — the request shape is ACCEPTED
 
-Noah's 1.23.1 report carried the first real probe:
+The owner's 1.23.1 report carried the first real probe:
 
     WHAT THE ROUTE FEED ACTUALLY SENT
       callsign N460DF   HTTP 201   entries —
@@ -1068,7 +1028,7 @@ cannot distinguish:
 Those need three different fixes and the report collapsed them into one
 sentence. `describe()` was built for the failure case and had nothing to say
 about success. **A probe that reports a status without the body is half a
-probe**, and it took a full round trip through Noah's device to find that out.
+probe**, and it took a full round trip through the owner's device to find that out.
 
 It now reads `res.text()` FIRST and parses after, and carries `contentType`,
 `bodyLength`, `parsed` and a 400-character `bodyPrefix`. The unit tests assert
@@ -1113,13 +1073,10 @@ not SAY that, which is the same class of half-true sentence 1.22.1 fixed twice.
 
 ---
 
-## STAGED NOW — 1.23.1, waiting on Noah
+## STAGED NOW — 1.23.1, waiting on the owner
 
 **1.23.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.23.0.
-
-Noah, 2026-08-04: *"The icon at the top of the (i) panel does not match the
-app's icon close enough, and looks like an error because it is different."*
 
 ### The mark was a REDRAW, under a comment claiming it was not
 
@@ -1148,16 +1105,16 @@ because resembling it is not the requirement.
 ### How this session got it wrong first, which is the part worth keeping
 
 Asked about "the icon at the top of the (i) panel", the session grepped
-`info.js` for "icon", found none, and told Noah **"nothing in that panel carried
+`info.js` for "icon", found none, and told the owner **"nothing in that panel carried
 the app's identity at all"**. The mark was in `index.html`, in the first-run
 card. One file was searched and a claim was made about the whole surface.
 
 Then, acting on that invented finding, it ADDED A SECOND ADI MARK to the panel
 header — which would have shipped two different attitude indicators in one
-dialog — and separately reshaped the header (i) button, which Noah had not
+dialog — and separately reshaped the header (i) button, which the owner had not
 mentioned and which his words explicitly excluded.
 
-Noah: *"FUCKING ASK IF YOU DO NOT IMMEDIATELY KNOW"* and *"DON'T EVER FUCKING
+ * and *"DON'T EVER FUCKING
 GUESS."* Both additions were backed out to the byte before the real fix went in;
 `index.html`'s header block and `styles.css` match 1.23.0 exactly.
 
@@ -1170,16 +1127,12 @@ screenshot.
 
 ## PROMOTED — main reached 1.23.0, and the sweep got a selector, 2026-08-04
 
-**Noah said "Promote to main" on 2026-08-04**; `main` fast-forwarded cleanly
+**The owner said "Promote to main" on 2026-08-04**; `main` fast-forwarded cleanly
 from 1.22.1 to **1.23.0**, live at https://fauxplane.pages.dev. Every gate ran
 against the exact commit, including the plant sweep WHOLE at 57/57 — a promote
 is the one moment that cost is obviously worth it.
 
 ### Why the sweep got a selector, and why the split matters
-
-Noah, the same day: *"you make a small change and then rescan everything else
-that has no relationship and could not have changed… I think you are wasting a
-lot of time if you are."*
 
 He was right. Measured here: the unit suite is **1.2 s** for all 366 tests,
 palette 0.2 s, docs 0.2 s — and the plant sweep is **~45 minutes**, of which the
@@ -1227,7 +1180,7 @@ caught, restored, backup directory empty.
 **1.23.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.22.1 (promoted 2026-08-04; the record of that promote is below).
 
-Noah, on a 1.22.1 screenshot showing `NO CONTACT` above *"Standing off from the
+The owner, on a 1.22.1 screenshot showing `NO CONTACT` above *"Standing off from the
 aircraft feeds for a moment"*: **"No indication of how long I'll wait before the
 radar will work…like the delay countdown, maybe?…. Just looks broken."**
 
@@ -1253,7 +1206,7 @@ The countdown targets **the next TICK**, not `trafficAllowedAt`. The interval
 fires every `TRAFFIC_INTERVAL_MS` regardless and returns early while the backoff
 holds, so the moment the backoff expires is NOT when a request happens — the
 first tick at or after it is. Counting down to the wrong one would reach zero
-and then sit there, which is the precise failure Noah was already describing.
+and then sit there, which is the precise failure the owner was already describing.
 
 `nextAttemptAt()` rounds up to that tick. `nextSweepAt` is stamped on every
 tick including the ones that return early, because the cadence is what the
@@ -1287,7 +1240,7 @@ AoA needs a groundspeed over 20 kt; there is no ambient light sensor. The three
 
 ## PROMOTED — main reached 1.22.1, 2026-08-04
 
-**Noah said "Promote to main" on 2026-08-04.** `main` fast-forwarded cleanly
+**The owner said "Promote to main" on 2026-08-04.** `main` fast-forwarded cleanly
 from **1.15.0 to 1.22.1** — eleven releases, eighteen commits, no merge. Live at
 **https://fauxplane.pages.dev**; staging is the same commit.
 
@@ -1335,18 +1288,18 @@ the failure it exists to prevent (Doctrine §7).
 
 The previous session recorded this repo as BLOCKED: an amendments document had
 arrived without the base spec it amended, and building the panels from the
-amendment alone meant inventing the spec and presenting the invention as Noah's.
+amendment alone meant inventing the spec and presenting the invention as the owner's.
 
-**Noah supplied the full Jet Panel PWA spec on 2026-08-02.** Every item that
+**The owner supplied the full Jet Panel PWA spec on 2026-08-02.** Every item that
 block listed is now answered — the acceptance criteria, the attitude stability
 test, the PFD/ATIS/BITE page definitions, the sensor mapping, the four
 derivations, and the feed contracts. v1 is built.
 
 ---
 
-## Who this is for (Noah, 2026-08-02) — read before any design decision
+## Who this is for (the owner, 2026-08-02) — read before any design decision
 
-**A friend of Noah's who is 3-D printing his own 747 cockpit at home, for
+**A friend of the owner's who is 3-D printing his own 747 cockpit at home, for
 simulation. He is NOT a pilot. He loves planes and jets.**
 
 **Design questions resolve toward giving him the most JOY.** That is the tie-
@@ -1385,7 +1338,7 @@ below 20 kt, as specified).
 **So the centre of the panel and the whole ATIS page are alive, and the two
 flanking tapes plus the VSI are red.** That is honest and it is exactly what
 the spec asks for — and it is also the single biggest question for whether this
-is a joy to sit in front of. It needs Noah's call, not a session's; see the open
+is a joy to sit in front of. It needs the owner's call, not a session's; see the open
 items.
 
 ---
@@ -1403,7 +1356,7 @@ the dialog's paint. Two data points now, both on the gate dialog, none on a
 panel page. The check to suspect is the gate-surface screenshot timing, and
 this line exists so the next session starts there instead of at zero.
 
-Noah picked the icon-art card. og:image now renders from it (with width,
+The owner picked the icon-art card. og:image now renders from it (with width,
 height and alt for parity with the hub), and METADATA.md names it as the
 chosen tile. The concept-render card stays in the repo as the alternate.
 
@@ -1411,12 +1364,12 @@ chosen tile. The concept-render card stays in the repo as the alternate.
 
 ## 1.7.3 — tiles served from the site, and an icon-art variant
 
-Noah could not download the tile from GitHub on his iPad, which makes the
+The owner could not download the tile from GitHub on his iPad, which makes the
 deployed site the right distribution channel for its own artwork: both card
 designs now ship at `/social-preview.jpg` (concept render) and
 `/social-preview-icon.jpg` (drawn purely from the app icon — nothing
 borrowed). Long-press, save, upload. Repo metadata values now live in the
-hub's `METADATA.md`, per Noah: one file, every app, §10 status tracked.
+hub's `METADATA.md`, per the owner: one file, every app, §10 status tracked.
 
 ---
 
@@ -1425,7 +1378,7 @@ hub's `METADATA.md`, per Noah: one file, every app, §10 status tracked.
 Thirty ideas from a five-lens generation pass (the friend, the sensors, the
 feeds, the real 747 deck, the long-lived app), judged against honesty first,
 then joy, then feasibility. The full ranking lives in the session; what matters
-here is the order and the rulings Noah owes.
+here is the order and the rulings the owner owes.
 
 ### Build next, in order
 
@@ -1454,7 +1407,7 @@ labelled honestly) · follow records · pressure diary · military layer (terms
 of /v2/mil unread — §15.1 first) · SIGMET polygons on the ND · INT LTS manual
 dimmer (SETUP has no manual brightness at all).
 
-### Needs Noah's ruling before anyone builds
+### Needs the owner's ruling before anyone builds
 
 - **Is an on-device ephemeris a feed or synthesis?** Sun/moon/terminator hangs
   on whether computed astronomy is DERIVED like WMM or invented data. Precedent
@@ -1480,7 +1433,7 @@ dimmer (SETUP has no manual brightness at all).
 ## 1.7.2 — the card leads with the icon
 
 The ADI-face icon replaces the hub-style mark bars on the share card, at
-Noah's call ("I really like the icon"). It is the same artwork as the
+The owner's call ("I really like the icon"). It is the same artwork as the
 home-screen tile, so the card and the installed app now share a signature.
 Regenerated both outputs from the one card source.
 
@@ -1488,7 +1441,7 @@ Regenerated both outputs from the one card source.
 
 ## 1.7.1 — words on the share card, in the family style
 
-Noah: "I want words on the social preview like my other repos." The hub has a
+ The hub has a
 card pipeline (`social-card.html` + a Playwright renderer); fauxplane now has
 the same, at `scripts/social-card.html` + `scripts/render-social.mjs`, emitting
 both `docs/social-preview.jpg` (1280x640, the GitHub tile) and
@@ -1508,7 +1461,7 @@ Settings → General → Social preview → upload `docs/social-preview.jpg`.
 
 ## 1.7.0 — tap to follow, restart, and obeying the rate limit
 
-Noah's report, following UAL2436: the follow poll was refused with HTTP 429 and
+The owner's report, following UAL2436: the follow poll was refused with HTTP 429 and
 the panel KEPT ASKING every five seconds through the refusal — while the nearby
 poll (a different cache key) worked. Doctrine §15.3 calls a 429 an instruction;
 the panel was treating it as an obstacle.
@@ -1528,7 +1481,7 @@ enhancement, never the only way.
 
 **Restart the panel**, on SETUP. A reload is this app's power cycle: the worker
 serves the shell offline, boot starts clean, the PANEL POWER gate re-asks for
-sensors. Noah asked for exactly this mid-wedge, and one honest control beats a
+sensors. The owner asked for exactly this mid-wedge, and one honest control beats a
 panel that can only be unwedged from the browser chrome.
 
 ### Verified
@@ -1571,12 +1524,12 @@ presses first took the instructions away mid-read. The NODE now moves to the
 SETUP page on dismissal — moved, not copied, so the two cannot drift — and the
 gate says so up front. Checked on the SETUP page after dismissal; planted.
 
-**Social preview.** Noah supplied a concept render (a stylised tablet cockpit —
+**Social preview.** the owner supplied a concept render (a stylised tablet cockpit —
 not a screenshot, and clearly so). Committed as `docs/social-preview.jpg` at
 GitHub's 1280×640, and as `public/og-image.jpg` (1200×630) behind og:/twitter:
 meta tags so shared links to fauxplane.pages.dev carry it. Uploading the GitHub
 tile is a UI step the session token cannot perform (Doctrine §10) — steps in
-the handoff, awaiting Noah's confirm.
+the handoff, awaiting the owner's confirm.
 
 ### Verified
 
@@ -1588,8 +1541,7 @@ floor, and the new PFD layout rendered and looked at.**
 
 ## 1.5.1 — leaning is not launching: the accelerometer loses its vote when it disagrees with the gyro
 
-Noah, hand-holding the panel: *"Leaning backward and forward with my phone make
-it look like I'm a fucking rocket and X goes up again."* His diagnostics showed
+His diagnostics showed
 the whole defect in two numbers: **1.01 g beside a 26.7° residual**.
 
 ### Magnitude was the wrong discriminator, and had been from the start
@@ -1664,7 +1616,7 @@ real stillness is how the standoffs above got built.
 **212 unit tests, planted and watched fail (the direction-gate plant red about
 the gated-vs-ungated comparison, then the full sweep), the accessibility gate
 green across 3 viewports x 2 palettes x 5 pages, both palettes clearing every
-hard floor.** Not verified: the fix on Noah's actual hand — the lean gesture
+hard floor.** Not verified: the fix on the owner's actual hand — the lean gesture
 cannot be produced in this sandbox.
 
 ### Also in this release
@@ -1679,7 +1631,7 @@ capability release.
 
 ## 1.5.0 — first-time instructions, on the first surface a reader sees
 
-Noah asked for this in 1.4.2 and it was scoped rather than started. Started now.
+The owner asked for this in 1.4.2 and it was scoped rather than started. Started now.
 
 It goes on the PANEL POWER gate, which is already the first thing a new reader
 meets and already explains why it wants sensors — rather than behind a sixth tab
@@ -1727,8 +1679,6 @@ floor.**
 ---
 
 ## 1.4.3 — a failed refresh is not an empty sky
-
-Noah: *"The radar loses everything when you change range."*
 
 One line: `nearby = result.ok ? withRangeAndBearing(...) : []`. **Any** failed
 refresh wiped every aircraft off the plan view.
@@ -1795,7 +1745,7 @@ further would start costing target size, which is not a trade this app makes.
 
 ### NOT done: first-run instructions
 
-Noah also asked for first-time instructions — what the app is, and how to
+The owner also asked for first-time instructions — what the app is, and how to
 install it. **That is not started**, and it is a real piece of work rather than
 a paragraph:
 
@@ -1938,7 +1888,7 @@ been shown to work is now shown to work.
 
 ## 1.4.0 — the observed path of a followed flight
 
-Noah asked for two things: an airport (or any location) as the radar centre, and
+The owner asked for two things: an airport (or any location) as the radar centre, and
 the flight path/plan of a followed flight. **This release does the flown path.**
 The other two pieces are scoped below rather than half-built.
 
@@ -1961,12 +1911,12 @@ means to go is not, and is not invented here.
 
 ### Scoped, not done
 
-**A route (origin and destination).** Noah asked for this the day the airframe
+**A route (origin and destination).** the owner asked for this the day the airframe
 picker landed — *"a 'flight plan' page with a map and details sounds good if
 that's real and possible?"* — and it sat here blocked on terms nobody could
 read, because this sandbox cannot reach `api.adsb.lol` at all.
 
-**UNBLOCKED 2026-08-04.** Noah opened adsb.lol's OpenAPI page in Safari and sent
+**UNBLOCKED 2026-08-04.** the owner opened adsb.lol's OpenAPI page in Safari and sent
 it. Their Terms of Service, verbatim:
 
 > "You can use the API for free."
@@ -1999,7 +1949,7 @@ routes, and the first is the one this repo has used before:
 
 - **Build it with a shape probe**, exactly as the traffic feed was. The Function
   calls the endpoint and the diagnostics report gains a "WHAT THE ROUTE FEED
-  ACTUALLY SENT" block listing the keys that came back, so Noah's device
+  ACTUALLY SENT" block listing the keys that came back, so the owner's device
   reports the contract on its first real run. Until a route is understood the
   panel says so rather than inventing one. This is what confirmed the Mode S
   crew readouts, which had been built from published field names without a
@@ -2022,7 +1972,7 @@ floor.**
 
 ## 1.3.1 — the vertical speed says what it cannot resolve
 
-The last correctness item on the list. GPS altitude on Noah's iPad is accurate
+The last correctness item on the list. GPS altitude on the owner's iPad is accurate
 to plus or minus 27 m and arrives every 5 s; the panel showed a vertical speed
 derived from it without ever saying what that combination can actually
 distinguish from noise.
@@ -2090,7 +2040,7 @@ floor.**
 
 ## 1.3.0 — labels on a busy plan view stop overprinting
 
-Noah's 40 nm screenshot at 1.0.0: nineteen aircraft, about a dozen of them in
+The owner's 40 nm screenshot at 1.0.0: nineteen aircraft, about a dozen of them in
 one quadrant, and their labels overprinted into a smear. Worse than unreadable —
 it reads as CORRUPTION rather than as density, which makes the whole instrument
 look broken at the exact moment it is doing the most work.
@@ -2199,8 +2149,6 @@ floor.**
 
 ## 1.2.1 — portrait was broken, and asking was the only reason anyone found out
 
-Noah: *"Will the radar move under the pfd in portrait mode?"*
-
 The honest answer was "the DOM order says yes and I have not looked", so I
 measured it. **Both portrait cases were wrong.**
 
@@ -2256,8 +2204,6 @@ measured directly at two sizes.**
 
 ## 1.2.0 — levelling moved to where the crooked horizon is
 
-Noah: *"Please move the level function out of setup so it's intuitive."*
-
 It was on the SETUP page, which is the one place a reader is NOT looking at the
 moment they notice the horizon is wrong. **Level the horizon** now sits directly
 under the ADI, with the current state beside it and a Clear button that appears
@@ -2307,8 +2253,6 @@ clearing every hard floor, and the layout rendered and looked at.**
 ---
 
 ## 1.1.0 — a navigation display beside the horizon, which is where one goes
-
-Noah: *"The radar would be better next to the PFD than these diagnostics."*
 
 He is describing the layout of an actual airliner. A 747 has the PFD in front of
 the pilot and the **Navigation Display** immediately beside it; the plan view
@@ -2365,8 +2309,7 @@ and the layout rendered and looked at.**
 
 ## 1.0.1 — an error state that looks like a crash is a defect in its own right
 
-Noah, on a 1.0.0 screenshot: *"It doesn't need to look like this to error does
-it?"* No, it does not.
+No, it does not.
 
 **The horizon caption was severed mid-parenthesis.** It read
 `gravity reference only — gyro settling (…` — ellipsised on a single line, so
@@ -2400,7 +2343,7 @@ app spends its whole budget on being believable.
   failed instrument in red, so the convention is being followed — but
   "unavailable in this situation" and "this instrument has failed" are different
   facts and currently look identical. Distinguishing them is a real design
-  change and wants Noah's eye, not a session's taste.
+  change and wants the owner's eye, not a session's taste.
 - **Label collision on a busy plan view**, unchanged from 1.0.0.
 
 ### Verified
@@ -2410,7 +2353,7 @@ app spends its whole budget on being believable.
 
 ---
 
-## 1.0.0 — adsb.lol answered, and Noah called the version
+## 1.0.0 — adsb.lol answered, and the owner called the version
 
 Nineteen aircraft, real callsigns, real flight levels: FFT3393 at FL360, UAL1730
 at FL350, DAL1088 at FL235, SCX396 at FL276, ground traffic marked GND, and the
@@ -2425,7 +2368,7 @@ Two things that had never been verified now are:
   host refused this sandbox too. It was right. Recorded as inference confirmed
   by a device, not by a session.
 
-Noah: *"Promote to main as v1.0.0."* Doctrine §7 says he decides what counts as
+ * Doctrine §7 says he decides what counts as
 a VERSION, and the first slot stays 0 until he says otherwise. He said otherwise.
 
 ### What v1.0.0 IS
@@ -2462,8 +2405,6 @@ target device rather than against a fixture.
 ---
 
 ## 0.5.0 — traffic has a LIST of sources, and the panel credits the one that answered
-
-Noah: *"Why not switch to adsb.lol?"*
 
 No good reason. 0.4.9 wrote the decision up as his to make, which was
 over-deferring: he had asked for a working radar page, and which vendor answers
@@ -2547,7 +2488,7 @@ headers, and never lets markup through at all.
 The code is the actionable bit: **1015 is rate limiting, 1020 is a firewall rule,
 1010 is a blocked client signature.** They call for opposite responses.
 
-Tested against the captured block page from Noah's own report rather than a live
+Tested against the captured block page from the owner's own report rather than a live
 call, because the sandbox proxy refuses CONNECT to adsb.fi entirely. That is
 better evidence than a live call would have been: it is the failing case.
 
@@ -2569,7 +2510,7 @@ The legitimate routes, in order:
 3. Accept that RADAR does not work from a Cloudflare Worker and say so on the
    page, which it already does.
 
-Awaiting Noah's decision. Nothing about this is blocked on more diagnosis.
+Awaiting the owner's decision. Nothing about this is blocked on more diagnosis.
 
 ### One fix off the same report
 
@@ -2579,7 +2520,7 @@ it came straight off `coords.speed`; since 0.4.6 it is differenced from the very
 fixes beside it, which are fresh for 10 s. One fix cannot be two ages at once,
 so the freshness now matches its source.
 
-### What is confirmed WORKING on Noah's device
+### What is confirmed WORKING on the owner's device
 
 - **Levelling.** `cradle -82.5 deg pitch, 2.7 deg roll` captured and subtracted;
   the horizon reads pitch -0.04, roll -0.06. The retroactive capture works, and
@@ -2599,9 +2540,6 @@ floor.**
 ---
 
 ## 0.4.8 — the press is the disturbance, so stop measuring at the press
-
-Noah, on the levelling button: *"When I tap the button, it wiggles too much to
-work…"*
 
 The check was right and the MOMENT was wrong. Levelling read stillness at the
 instant of the click — the one instant guaranteed to be disturbed, because the
@@ -2656,7 +2594,7 @@ floor.**
 
 ## 0.4.7 — the radar page was a solid magenta rectangle, and every gate was green
 
-Noah opened RADAR for the first time. The plan view was one flat sheet of
+The owner opened RADAR for the first time. The plan view was one flat sheet of
 `#ff00ff`.
 
 That colour is not a bug, it is the SENTINEL — `canvas.js` takes every gauge
@@ -2716,7 +2654,7 @@ Rather than guess, the Function now reports what the server said: the response
 body, bounded and flattened, plus its `server` header. "HTTP 403" is a status
 code, not a reason — and the app enforces "a failure explains itself" on its own
 sensors while accepting a bare status from somebody else's. The next report
-Noah sends will name the cause.
+The owner sends will name the cause.
 
 ### Verified
 
@@ -2727,7 +2665,7 @@ accessibility gate green — now including a canvas the gate can finally see.**
 
 ## 0.4.6 — zero is a measurement, and treating it as a gap was the bug
 
-Noah, looking at a panel with groundspeed crossed out on a stationary desk:
+The owner, looking at a panel with groundspeed crossed out on a stationary desk:
 *"Why can you not show ground speed of zero?? Why the fuck can't you tell a
 wiggle isn't vertical acceleration when stationary?!"*
 
@@ -2770,7 +2708,7 @@ The vertical-speed integrator had no **zero-velocity update**, which is what
 every inertial system does about exactly this. A wiggle is bounded oscillation
 with no net displacement, but an integrator cannot tell it from the start of a
 climb, so a shaken desk accrued vertical speed until it tripped the runaway
-bound and crossed itself out. That is the X Noah saw.
+bound and crossed itself out. That is the X the owner saw.
 
 The fix is not a better integrator. It is to use the independent evidence that
 the device is not translating: the attitude filter ALREADY detects stillness
@@ -2825,7 +2763,7 @@ returns. All of them now go through `Number.isFinite`.
 
 ### The negative coasting was never a clock mismatch
 
-Every report Noah has sent showed `coasting -9ms`, `-21ms`, `-34ms`. 0.4.3
+Every report the owner has sent showed `coasting -9ms`, `-21ms`, `-34ms`. 0.4.3
 attributed that to two clocks and made the app use one — a real fix for a real
 problem, and **it did not fix this**, which the next report proved by still
 saying `-11ms`.
@@ -2866,7 +2804,7 @@ next session.
 
 ## 0.4.4 — the iPad was stuck on 0.4.1, and it was never going to unstick itself
 
-Noah's iPad reported `v0.4.1` and `service worker controlled (fauxplane-0.4.1)`
+The owner's iPad reported `v0.4.1` and `service worker controlled (fauxplane-0.4.1)`
 after two green deploys of 0.4.2 and 0.4.3. Both deploy runs succeeded, and the
 "Deploy to Cloudflare Pages" step ran in each — this was not a deploy that
 failed, it was a device that could not be reached.
@@ -2956,7 +2894,7 @@ floor.**
 - **The repair itself cannot be tested from here.** It needs a device holding a
   real older worker against a real deploy — the sandbox has no persistent
   service worker and the proxy blocks the deployed origin. The decision function
-  is unit-tested against the exact cache names Noah's iPad reported, and the
+  is unit-tested against the exact cache names the owner's iPad reported, and the
   wiring is exercised by the accessibility gate, but the end-to-end unstick is
   confirmed only when a stuck device loads it.
 - Android and desktop in landscape, still.
@@ -2966,7 +2904,7 @@ floor.**
 
 ## 0.4.2 / 0.4.3 — the iPad roll defect, FOUND, and it was two bugs
 
-Noah's iPad read roll about ninety degrees out **in both orientations**, which
+The owner's iPad read roll about ninety degrees out **in both orientations**, which
 is what ruled out the obvious cause: a missing screen rotation would be right in
 portrait and wrong only in landscape.
 
@@ -3017,7 +2955,7 @@ which passed while the Schmidt normalisation was wrong at every degree above
 one, and it is now the third time this repo has been bitten by a
 self-consistency test standing in for a correctness one.
 
-Worked from Noah's own raw axes: earth-up in device coordinates
+Worked from the owner's own raw axes: earth-up in device coordinates
 (0.610, 0.031, 0.792) at a reported angle of 90.
 
 - **The app as shipped (angle 0)** — pitch −52.3, roll **−87.1**. Reproduces the
@@ -3096,7 +3034,7 @@ widens it on evidence.
 
 ### Three more defects the same reports exposed
 
-**1. The gyro zero-offset integrator had no anti-windup.** Noah's iPhone
+**1. The gyro zero-offset integrator had no anti-windup.** the owner's iPhone
 reported `alpha -10.00 deg/s` — dead on the clamp — and the iPad `gamma -9.19`.
 A real gyroscope offset is a degree or two. What those numbers actually were is
 the integrator eating a fifty-degree residual caused by the mis-signed rotation:
@@ -3164,9 +3102,6 @@ at all; a harness that skipped would have printed a clean 16/16.
 ---
 
 ## 0.4.0 — levelling the panel to whatever it is mounted in
-
-Noah: *"Begin working on the capability of calibrating the horizon to match a
-cell phone holder in a car so someone can use it when they're driving."*
 
 **This has a name and a standard procedure, and it is not a new idea.** It is
 BORESIGHT CALIBRATION — what every installed attitude reference does. A Garmin
@@ -3262,8 +3197,7 @@ has a large header and crushing the instruments is the wrong trade.
 
 ## 0.3.1 — diagnostics, and what checking the standards changed
 
-Noah, plainly: *"ARE YOU LOOKING FOR INDUSTRY STANDARDS OR JUST DOING A
-GUESS-AND-CHECK?"* and *"create a debug info page or overlay ... so I stop
+and *"create a debug info page or overlay ... so I stop
 screenshotting like a fucking tool."*
 
 Both were fair. The honest split at the time: **standards for the physics,
@@ -3315,7 +3249,7 @@ than the publisher's own text and is recorded as such rather than rounded up.
 
 Every defect this app has had was found by photographing a phone. That channel
 loses the reason strings, cannot show a field that is off screen, cannot show
-the filter's internals at all, and makes Noah do OCR for me.
+the filter's internals at all, and makes the owner do OCR for me.
 
 Pressing the version stamp now produces the whole state as text, with **Copy**,
 **Share** and **Save as file**. What makes it worth more than a dump:
@@ -3358,7 +3292,7 @@ diagnosis. A surface nobody checks open is a surface nobody has checked.
 
 ## 0.3.0 — the horizon works, and there is a radar page
 
-Noah's 0.2.4 screenshot showed the panel he did not want: `ATT FAIL` and
+The owner's 0.2.4 screenshot showed the panel he did not want: `ATT FAIL` and
 `HDG FAIL` crossed out across the middle, "converging (residual 14.8 deg)", and
 the two flanking tapes plus the VSI red. His instruction: *"I want something
 other than red X panels to show him. Even the ground/air center one is
@@ -3506,8 +3440,6 @@ several times a second. Every sensor now takes an `owns` predicate and stops
 WRITING (never stops running: the attitude filter and the VSI stay fed, so both
 are already settled when the reader stops following).
 
-
-
 **A derived value was claiming to be more certain than its own input.** The turn
 rate is a SENSOR field in the registry — on this device it comes from the gyro —
 so when FOLLOW filled it by differencing two broadcast ground tracks, the store
@@ -3551,7 +3483,7 @@ view is checked WITH aircraft on it rather than empty.
   altitudes and distances means the mapping is right; an empty list with the
   reason "adsb.fi returned a body with no aircraft array" means a field name is
   wrong.
-- Whether the horizon actually settles on Noah's device, and how big its gyro's
+- Whether the horizon actually settles on the owner's device, and how big its gyro's
   zero-offset turns out to be. **BITE now prints it** — Sensors → Gyroscope
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
@@ -3561,7 +3493,7 @@ view is checked WITH aircraft on it rather than empty.
 
 ## 1.22.1 — two sentences the panel was saying that were not true, 2026-08-04
 
-Noah sent a **1.21.1** diagnostics report — so it predates 1.22.0's window fix
+The owner sent a **1.21.1** diagnostics report — so it predates 1.22.0's window fix
 and does not test it. It contains two DIFFERENT defects, both of them fabricated
 reason strings, and both found by reading the report against itself.
 
@@ -3644,12 +3576,6 @@ It needs a report taken immediately after returning to the app.
 
 ## 1.22.0 — the panel was crossing itself out on a working feed, 2026-08-04
 
-Noah, with three screenshots: *"It works, but the aircraft have a delay before I
-can touch them? Seems to pull extra data first? It would be nice to have an
-indicator that shows when the radar is populated and another for any other
-states like being ready to tap. This aircraft makes the whole display look
-broken without any data, despite being 'turned on.'"*
-
 ### The wall of crosses was ARITHMETIC, not a broken feed
 
 The third screenshot is following DAL2229 with GS, LOAD G, ATT, GPS ALT, VS,
@@ -3705,7 +3631,7 @@ A chip above the scope, in five states, driven by `radarReadiness()`:
 
 `tappable` is a SEPARATE channel from the state, because "populated" and "ready
 to tap" are different questions — an ageing scope is tappable and a fresh sweep
-over an empty sky is not. That was Noah's distinction and he was right to draw
+over an empty sky is not. That was the owner's distinction and he was right to draw
 it.
 
 **One function, read by the chip AND by the tap handler.** An indicator that
@@ -3731,9 +3657,6 @@ is ready. The indicator is the fix for that, not a change to the tap.
 ---
 
 ## 1.21.1 — the route feed was starving the radar, 2026-08-04
-
-Noah, within the hour of 1.21.0 landing: *"You broke touch to add on the
-radar."*
 
 **He was right, and the touch handling was not the fault.** Tap-to-follow was
 driven under real touch emulation — canvas tap, the "heard right now" list and
@@ -3793,8 +3716,7 @@ check has existed.
 
 ## 1.21.0 — the route, shipped as a probe rather than as a guess, 2026-08-04
 
-Noah asked for this the day the airframe picker landed: *"a 'flight plan' page
-with a map and details sounds good if that's real and possible?"* It is real.
+It is real.
 It took until 2026-08-04 to build because the terms had to be read first, and
 then because the endpoint's request shape turned out not to be knowable from
 here.
@@ -3830,7 +3752,7 @@ adsb.lol's OpenAPI page names the schemas `PlaneList` and `PlaneInstance`
 without expanding them in the capture we have, and this sandbox cannot reach
 `api.adsb.lol` at all. Three options existed:
 
-- Ask Noah for a fourth screenshot, of a page he had already screenshotted
+- Ask the owner for a fourth screenshot, of a page he had already screenshotted
   twice, hoping the schema expanded this time.
 - Wait, and ship nothing.
 - **Send the best-reasoned shape and report what comes back.**
@@ -3927,7 +3849,7 @@ is reliably something to draw.
 
 ## 1.20.0 — the refusal, in words the reader can use, 2026-08-04
 
-Noah, 2026-08-04: *"I'm not getting a receiver."* That is the right call and it
+ * That is the right call and it
 settles the rate limiting as a PERMANENT CONDITION rather than an open problem —
 which changes what the app owes the reader about it.
 
@@ -3976,7 +3898,7 @@ regression this release is about.
 
 ## 1.19.2 — the provider terms, read properly, and what they changed, 2026-08-04
 
-Noah sent adsb.fi's terms page as a screenshot after asking for the providers'
+The owner sent adsb.fi's terms page as a screenshot after asking for the providers'
 terms. Two of the three sources are now READ FROM THE PUBLISHER, and one is
 still not, which is stated rather than papered over.
 
@@ -4042,12 +3964,12 @@ access to feeders. adsb.fi go further and give feeder IPs automatic access to a
 snapshot endpoint that is otherwise closed.
 
 So the open item has moved from "find a better provider" to "run a receiver",
-which is hardware and therefore Noah's call. It is in Open — needs Noah.
+which is hardware and therefore the owner's call. It is in Open — needs the owner.
 
 ### airplanes.live — BOTH documents read, and they contradict each other
 
 **CORRECTION, same day.** The section below was written from the Legal Terms
-alone and concluded "the answer is NO... not an open question". Noah then sent
+alone and concluded "the answer is NO... not an open question". The owner then sent
 the API GUIDE, which is the document that actually governs the API, and it says:
 
 > "No SLA. No Uptime Guarantee. Non-Commercial Use. Airplanes.live REST API
@@ -4085,11 +4007,11 @@ provider was never the answer to a shared-address rate limit: airplanes.live is
 **A lesson worth the embarrassment: a definitive ruling from one of two
 documents is a guess wearing a verdict's clothes.** "Not an open question" was
 written before the question had been fully asked, and the person who had to
-correct it was Noah, with a screenshot.
+correct it was the owner, with a screenshot.
 
 ### What the Legal Terms say, which is the other half
 
-Their site 403s every automated fetch, so Noah opened the Legal Terms in Safari
+Their site 403s every automated fetch, so the owner opened the Legal Terms in Safari
 and sent the whole thing back as a fourteen-page capture. **This is settled now,
 and it is settled against using them.**
 
@@ -4142,13 +4064,13 @@ opposite of what a grant would say. Assuming the API page overrides them, when
 that page is the one we cannot read, is the same error with the sign flipped.
 
 **So: not used, and there is nothing to do about it in code.** Their own terms
-name the route if Noah ever wants it — `contact@airplanes.live` is the address
+name the route if the owner ever wants it — `contact@airplanes.live` is the address
 that document tells you to write to — and one email describing a free
 non-commercial hobby panel would settle it either way.
 
 **And it would not have helped anyway.** Their limit would be per-IP like
 everyone's, and the 429 is a shared-address problem. A third provider was never
-the fix; §0 in Open — needs Noah is.
+the fix; §0 in Open — needs the owner is.
 
 ### Verified
 
@@ -4164,7 +4086,7 @@ in Node rather than asserted about a Worker nobody can run here.
 
 ## 1.19.1 — landscape gets its instruments back, 2026-08-03
 
-Noah, on a landscape iPad: "Landscape is too cramped now." 1.18.0 moved the
+ 1.18.0 moved the
 value strip to the bottom, which was right, and then let it take a third of the
 height, which was not — the horizon came out a letterbox, wider than it was
 tall, and the strip STILL cut off mid-row.
@@ -4274,7 +4196,7 @@ down in between.
 
 ## 1.19.0 — runways, and bounding the horizon error, 2026-08-03
 
-Six items off Noah's screenshots. Five were straightforward; the sixth is the
+Six items off the owner's screenshots. Five were straightforward; the sixth is the
 attitude filter and is only half done, which is stated rather than glossed.
 
 ### The horizon — ROOT CAUSE FOUND, and it was the kinematics
@@ -4361,7 +4283,7 @@ ternary, so the jitter plant's one-line anchor stopped matching and it went
 STALE — proving nothing while still looking like coverage. It is re-anchored,
 and the comment there now says which edit broke it.
 
-### Runways (Noah: "Show the runway at airports.")
+### Runways ( )
 
 The bundle has carried 407 of them since 1.16.0 and nothing drew any — the
 airports were only ever a type-ahead for the centre picker. Real thresholds,
@@ -4374,7 +4296,7 @@ about a place. A runway under six pixels long is not drawn, because at 80 nm an
 whose job is telling marks apart. It reappears as the reader zooms in, which is
 what a real ND does.
 
-### Ground traffic is not traffic (Noah: "things are below me at ground level")
+### Ground traffic is not traffic ( )
 
 Right arithmetically, wrong as an instrument. This panel sits at a few hundred
 feet on a desk, so an airliner parked 700 ft lower genuinely IS below by the
@@ -4418,13 +4340,13 @@ with the bug in.
 
 Not verifiable here: the horizon on real hardware. The maths is now right and
 the arithmetic is checked, but this sandbox has no accelerometer and the next
-report from Noah's device is the test that matters.
+report from the owner's device is the test that matters.
 
 ---
 
 ## 1.18.0 — the instruments get their screen back, 2026-08-03
 
-Three things Noah asked in one message, and all three were defects rather than
+Three things the owner asked in one message, and all three were defects rather than
 preferences.
 
 ### "All the voice-over data does NOT need to fill MY screen"
@@ -4529,7 +4451,7 @@ never shown, the orientation shown every time, and an author `display` rule
 outranking `[hidden]`.
 
 Not verifiable here: whether the strip along the bottom is the right size on
-Noah's actual iPad. It is capped at a third of the panel in the side-by-side
+The owner's actual iPad. It is capped at a third of the panel in the side-by-side
 layout and scrolls beyond that; the failure state is the worst case, because
 every crossed-out value carries a reason paragraph.
 
@@ -4614,7 +4536,7 @@ words — the harness serves a byte-different `sw.js` on the second fetch and le
 the browser's own update machinery run. A mocked registration proves the mock
 works.
 
-Not verifiable here: what it looks like when Noah actually has 1.16.0 installed
+Not verifiable here: what it looks like when the owner actually has 1.16.0 installed
 and 1.17.0 lands on staging. That is the first real run of this path, and it is
 the thing to watch for on his device.
 
@@ -4622,8 +4544,7 @@ the thing to watch for on his device.
 
 ## 1.16.0 — point the radar at any airport, 2026-08-03
 
-Noah: *"I want to be able to set an airport on the radar page? Or another
-location. Airports should be easy to pick."* Both halves are one control,
+Both halves are one control,
 because an airport IS a named location — a box that takes a code, a town or a
 coordinate and offers what it found.
 
@@ -4692,15 +4613,11 @@ going red about its own thing.
 
 Not verifiable here: whether 702 airports is the right cut. The bundle is
 Northern California only, and an airport outside it is simply not found — the
-coordinate box is the escape hatch until Noah says he wants a wider region.
+coordinate box is the escape hatch until the owner says he wants a wider region.
 
 ---
 
 ## 1.15.0 — the scope becomes a TCAS display, 2026-08-03
-
-Noah: *"What does the radar look like in a real jet? This crowded? What info is
-shown for each object? Is it static or toggle-able? What are the real life
-ranges? ... My desired fix is ALWAYS more like a regular aircraft."*
 
 **The honest answer was that ours was a plane-spotting display.** A real ND's
 traffic layer is TCAS and it is austere: a symbol, a RELATIVE altitude in
@@ -4755,9 +4672,6 @@ exactly ±2700 added, because a boundary nobody tested is a boundary nobody know
 
 ## 1.14.1 — the tap that never worked, 2026-08-03
 
-Noah: *"I cannot tap the radar to add planes to the follow dialogue box like I
-asked."*
-
 **`hitTestAircraft` was used in `radar.js` and never imported.** Every tap threw
 `hitTestAircraft is not defined`. The feature has not worked ONCE since it
 shipped in 1.7.0 — seven releases, described in release notes twice, recorded in
@@ -4780,16 +4694,12 @@ that. `installConsoleCapture` has captured `error` and `unhandledrejection`
 since it was written. The zero was because he had not tapped in that session,
 not because the capture was broken. Reverted.
 
-**Power is part of a control strip now.** Noah: *"Power looks visually tied to
-nothing."* It was its own row under the left edge of the panel, in a group of
+**Power is part of a control strip now.**
+It was its own row under the left edge of the panel, in a group of
 one, labelled by nothing. Power, levelling and clear are the three things you do
 TO the panel, so they share one named group with a divider.
 
 ### The radar is not what a real one looks like, and that is now the next job
-
-Noah: *"What does the radar look like in a real jet? This crowded? What info is
-shown for each object? Is it static or toggle-able? What are the real life
-ranges? My desired fix is ALWAYS more like a regular aircraft."*
 
 **The honest answer is that ours is a plane-spotting display, not a flight-deck
 one.** A real ND's traffic layer is TCAS, and it is far more austere:
@@ -4805,7 +4715,7 @@ one.** A real ND's traffic layer is TCAS, and it is far more austere:
   for a resolution advisory.
 - **An ALTITUDE BAND FILTER is the real de-clutter**, and we have nothing like
   it: normal shows roughly ±2700 ft, with ABOVE and BELOW switches that extend
-  it to +9900 or −9900. Most of the fifty-six aircraft in Noah's screenshot
+  it to +9900 or −9900. Most of the fifty-six aircraft in the owner's screenshot
   would simply not be displayed on a real ND.
 - **It is toggle-able** — a TFC button on the EFIS control panel.
 - **Real Boeing ranges** are 10, 20, 40, 80, 160, 320 and 640 nm. Ours are 10,
@@ -4819,7 +4729,7 @@ detail, so nothing is lost: the SCOPE gets austere, the LIST stays rich.
 
 ## 1.14.0 — the scope follows the aircraft, 2026-08-03
 
-**ANSWERED AT LAST: the crew readouts are real.** Noah's report, following
+**ANSWERED AT LAST: the crew readouts are real.** the owner's report, following
 UAL1902 (N17254, a 737 MAX 8):
 
     nav.selectedAltitude   LIVE   32992  ft
@@ -4875,8 +4785,7 @@ that raises the priority of the source work in the inventory above.
 
 ## Data sources — the standing inventory, 2026-08-03
 
-Noah: *"If there are other sources, I always want to know about them to know if
-they add any other value."* So this is kept as an inventory rather than being
+So this is kept as an inventory rather than being
 rediscovered each time a provider refuses us, and it is organised by WHAT EACH
 ADDS — not by whether it works.
 
@@ -4910,14 +4819,14 @@ problem and the feature backlog are less entangled than they look.
   where the panel currently says B738, and the airframe picker would read in
   real names without depending on the feed's `desc` field arriving. Terms unread.
 - **OurAirports** — TERMS READ, public domain (CC0), blocker CLEARED. Mirrored
-  as plain CSV. UNLOCKS the airport picker Noah asked for, an arbitrary map
+  as plain CSV. UNLOCKS the airport picker the owner asked for, an arbitrary map
   centre, and named airports for any route feature. This is the one item on this
   list with nothing blocking it.
 - **Aircraft photos (planespotters.net)** — UNLOCKS a photograph of the actual
   airframe being followed, which for a plane lover is probably the highest
   joy-per-line on this entire list. Terms unread.
 - **ACARS / VDL2 text (airframes.io)** — real datalink messages, verbatim.
-  UNLOCKS the "written transcript of aircraft communications" Noah asked about,
+  UNLOCKS the "written transcript of aircraft communications" the owner asked about,
   WITHOUT the speech-to-text guessing that made the ATC-audio version
   unacceptable. Terms unread.
 - **TAF, SIGMET, AIRMET, PIREP** — the same aviationweather.gov service already
@@ -4939,7 +4848,7 @@ real blocker under §15.1 and none of it gets built until someone reads them.
 
 ## 1.13.3 — a 429 on the FIRST request, 2026-08-03
 
-Noah's report, panel up 36 s, one traffic request made:
+The owner's report, panel up 36 s, one traffic request made:
 
 > `traffic  FAILED — adsb.lol rate limited us (HTTP 429) | adsb.fi returned
 > HTTP 403 — server: cloudflare; ray a25790806923af1b-SJC`
@@ -4981,7 +4890,7 @@ adsb.fi's bot rule (CLAUDE.md, verbatim).
 autopilot selections. The feed-shape block rides on a SUCCESSFUL response, and
 there has not been one from his device yet.
 
-## 1.13.2 — two things Noah's report exposed, 2026-08-03
+## 1.13.2 — two things the owner's report exposed, 2026-08-03
 
 The report he sent could not answer the question it was built for, and that is
 itself the finding.
@@ -5017,10 +4926,6 @@ which is the same lesson as §7f: build the check so it runs itself.
 
 ## 1.13.1 — the switch annunciates, 2026-08-03
 
-Noah: *"The power button looks like a menu button rather than equipment button.
-It hides among the others and draws no attention when it's off. Maybe a
-red/green 'LED' on it? What does it look like in a normal jet?"*
-
 **The answer to the last question changed the design.** There is no power button
 in an airliner. The nearest equivalents are the battery switch and the IRS mode
 selectors on the overhead panel — the IRS being the closer analogue, since that
@@ -5050,8 +4955,7 @@ contrast registry, added in this commit as §4 requires.
 
 ## 1.13.0 — the probe, because the sandbox cannot reach the provider, 2026-08-03
 
-Noah: *"If you want to test something, put it in the damn debug screen behind
-the version number."* Now Doctrine §7f, and this is the first app to obey it.
+Now Doctrine §7f, and this is the first app to obey it.
 
 **THE THING THAT COULD NOT BE VERIFIED.** 1.11.0 added a readout for what a
 followed aircraft's CREW has dialled in — selected altitude, selected heading,
@@ -5090,7 +4994,7 @@ onto the screen, silently doing nothing. Renamed to `payload`.
 
 ## 1.12.0 — the gate becomes a switch, 2026-08-03
 
-Noah: *"Should there just be a 'power' button on the display?"* — after
+ * — after
 reporting that *"'Switch the panel on' still takes all attention on the initial
 pop-up and reads like 'accept the terms' and even *I* don't read the panel
 then."*
@@ -5155,8 +5059,7 @@ red individually, along with the new power-switch plant. 33/35 on the full run,
 
 ## 1.11.0 — the panel denied a levelling it was applying, 2026-08-03
 
-Noah: *"On reload, the app lies and says level is not set when it is actually
-using a previously stored level."* His diagnostics and the ADI badge both said
+His diagnostics and the ADI badge both said
 `cradle -46.0 deg pitch, 3.2 deg roll — being subtracted from every reading`
 and `LVL -46 +3`. The line under the horizon said *"Not levelled — the horizon
 shows the device's own angle."* Three surfaces, one truth, one of them wrong.
@@ -5227,9 +5130,7 @@ fixed.
 
 ## 1.10.0 — the airframe picker, 2026-08-03
 
-Noah, choosing it over a hardcoded 747 callout: *"instead of heavy-inbound, an
-airframe picker from all aircraft on the radar, and he can choose to see what's
-up there... Types currently in range only, and filters its own list."* His idea
+His idea
 is better than the one it replaced: a callout only fires for the type someone
 guessed in advance, while a picker built from the live sky offers whatever is
 actually there — and it puts "Boeing 747-400 (1)" on the panel of the man
@@ -5271,8 +5172,7 @@ build, the gate passing is itself proof the control renders in both states.
 
 ## 1.9.0 — the cache that never once worked, 2026-08-03
 
-Noah, with a screenshot of an empty scope: "I am getting rate limited far too
-much from the radar source. Are we doing it wrong?" Yes, in two ways that were
+Yes, in two ways that were
 ours, and a third that is not.
 
 **THE EDGE CACHE WAS SHORTER THAN THE POLL INTERVAL, SO IT NEVER SERVED ANYONE.**
@@ -5317,7 +5217,7 @@ quoted anywhere — the docs URL is 403 from this sandbox, the same block that
 stops the API working. The comment claiming we sit "comfortably inside the
 tightest published limit" was therefore comparing against a number nobody here
 has read. Doctrine §15.3 point 1 says read the published policy before writing
-or changing any pacing; that is outstanding and Noah can open the page.
+or changing any pacing; that is outstanding and the owner can open the page.
 
 **A test agreed with the code and both were wrong.** `withinRange` filtered on
 `a.rangeNm`; the producer writes `a.distanceNm`. Every aircraft was silently
@@ -5326,7 +5226,7 @@ same invented name — self-consistent and measuring nothing. The RADAR test
 caught it. The fixture now runs real aircraft through `withRangeAndBearing`
 first, so a rename breaks it loudly instead of emptying the sky.
 
-**The app's own copy described only the desk.** Noah, explaining fauxplane to
+**The app's own copy described only the desk.** the owner, explaining fauxplane to
 friends: *"You can follow a flight, or use it on a flight to see like the pilot,
 or use it in a car while you drive! Install it to your Home Screen and it works
 like an app."* Three uses. Every version of the first-run text described one —
@@ -5355,9 +5255,8 @@ easily. Because the fix turned a red into a green, which is the exact shape of a
 fix that disables a check rather than repairing it, a bad colour was planted and
 the gate was watched reporting 1.08:1 before the pass was believed.
 
-**The build stamp moved to the footer.** Noah: *"The version number can go to
-the bottom of the display instead of the menu row. There is no reason it has to
-stay there when we are fighting for space."* Correct, and §7b is satisfied
+**The build stamp moved to the footer.**
+Correct, and §7b is satisfied
 either way — it asks for always on screen and never behind a tap, not for a
 particular corner. Pressing it still opens diagnostics.
 
@@ -5383,8 +5282,8 @@ release and that was the wrong home: BITE's one job is answering "what is
 broken", and a reader who opened it because an instrument is crossed out should
 not scroll past a changelog to get there.
 
-**The (i) menu is the answer to a question Noah asked: "Where is my (i) menu
-that could carry a lot of things?"** There wasn't one. Six things a reader might
+**The (i) menu is the answer to a question
+There wasn't one. Six things a reader might
 want were in five places and none was named information — what the app is and
 how to install it had been parked on SETUP under the levelling controls, the
 release notes were under "Built-in test", the diagnostics report hid behind a
@@ -5430,10 +5329,9 @@ h2 → h4, because a `<summary>` is a disclosure control and not a heading, so
 nothing filled the level. Each release's version is now a real `h3` inside its
 summary, which also lets a screen reader jump between releases.
 
-
 ## Flight tracking as a SOURCE — what was checked, 2026-08-02
 
-Noah asked whether a flight number could drive the panel, and whether
+The owner asked whether a flight number could drive the panel, and whether
 FlightRadar24 or adsb.fi could feed it. **Framing first, because it decides
 whether the feature is allowed at all: this is not simulation.** A live flight's
 position, altitude, speed and vertical rate off ADS-B is a fetched feed from a
@@ -5503,7 +5401,7 @@ the horizon drifts.
 
 ## THE USE CASE THAT CHANGES THE ANSWER — on an aircraft, 2026-08-02
 
-Noah asked whether this duplicates something that exists. For a SIMULATOR-driven
+The owner asked whether this duplicates something that exists. For a SIMULATOR-driven
 panel the honest answer is yes: Air Manager and its peers serve home cockpit
 builders well, and a session should not pretend otherwise. **But that answer is
 wrong for the case he then raised, and it is worth writing down because it
@@ -5536,7 +5434,7 @@ is not served by any simulator product, and it should shape what gets built next
 
 ---
 
-## 0.2.1 — what Noah's device found, 2026-08-02
+## 0.2.1 — what the owner's device found, 2026-08-02
 
 He opened 0.2.0 on his phone and the screenshots found four real defects in
 about a minute. All four are fixed on `staging` and each is pinned by a test
@@ -5588,12 +5486,12 @@ from the sandbox and flagged as the likeliest thing to be wrong — was correct:
 
 ## SHIPPED TO PRODUCTION — 0.2.0, 2026-08-02
 
-Noah promoted `staging` to `main` on 2026-08-02. This is the first release to
+The owner promoted `staging` to `main` on 2026-08-02. This is the first release to
 reach production; `fauxplane.pages.dev` served nothing before it.
 
 **Promoted WITHOUT an on-device pass.** Recorded plainly because the staging
 gate exists to require one and a later session must not read this as the gate
-having been satisfied. Noah made the call knowingly.
+having been satisfied. The owner made the call knowingly.
 
 **The one live risk that carries into production.** The METAR field names in
 `functions/api/metar.js` were written from memory and have NEVER been checked
@@ -5825,7 +5723,7 @@ because each one was invisible on screen.
   the same all-FAILED screen — the one state where a mis-signed roll or an
   upside-down tape is completely invisible.
 
-### NOT verified — needs Noah's hands on the real device
+### NOT verified — needs the owner's hands on the real device
 None of this can be reached from a sandbox, and none of it should be reported as
 working until he has looked.
 
@@ -5843,9 +5741,9 @@ working until he has looked.
 
 ---
 
-## Open — needs Noah
+## Open — needs the owner
 
-0. **SETTLED 2026-08-04: NO RECEIVER.** Noah: "I'm not getting a receiver."
+0. **SETTLED 2026-08-04: NO RECEIVER.**
    That closes this, and it closes it as a PERMANENT CONDITION rather than an
    open problem — which changes what the app should do about it. 1.20.0 is that
    change: the panel now explains the refusal in a sentence a reader can use
@@ -5878,7 +5776,7 @@ working until he has looked.
    So the two routes are FEED ONE OF THEM — an RTL-SDR dongle and an antenna,
    roughly £25 to £35, running at the house — or write to adsb.fi and ask. The
    first is the one both services actually want, and it would make part of the
-   panel's data come from Noah's own receiver, which is a better story anyway.
+   panel's data come from the owner's own receiver, which is a better story anyway.
 
    **airplanes.live: both documents read, and they contradict each other.** The
    API guide invites automated access — endpoints, a 1 req/sec limit, "access
@@ -5886,7 +5784,7 @@ working until he has looked.
    automated system... that accesses the Services". Only they can settle it, at
    `contact@airplanes.live`. Not used either way, because it would not fix the
    rate limiting: they are 1 req/sec per IP like everyone, and this is a shared
-   address problem. Worth an email only if Noah wants them for some other
+   address problem. Worth an email only if the owner wants them for some other
    reason.
 
    - https://adsb.lol/feed
@@ -5916,7 +5814,7 @@ working until he has looked.
    about that is correct and specified. The question is whether it is what you
    want your friend to look at.
 
-   Three ways forward, and this is Noah's call because it turns on what the
+   Three ways forward, and this is the owner's call because it turns on what the
    thing is FOR:
 
    - **Ship it exactly as is.** The most honest panel, and the horizon, compass
@@ -5934,8 +5832,8 @@ working until he has looked.
 
 ### Sim telemetry — what is actually known, 2026-08-02
 
-**He plays DCS World** (Noah). There is a second program driving the mock
-cockpit and Noah is getting its name; that name changes the design, so do not
+**He plays DCS World** (the owner). There is a second program driving the mock
+cockpit and the owner is getting its name; that name changes the design, so do not
 start building until it arrives. See the open question below.
 
 **VERIFIED this session by reading the source, not from memory:**
@@ -5975,7 +5873,7 @@ all work with no changes. The panel would show LIVE from the sim and correctly
 fall back to FAIL the moment it stops — which is the honest behaviour and is
 already implemented and tested.
 
-### ANSWERED: X-Plane + SimVimX (Noah, relaying his friend, 2026-08-02)
+### ANSWERED: X-Plane + SimVimX (the owner, relaying his friend, 2026-08-02)
 
 **The simulator is X-Plane. The cockpit interface is SimVimX driving Arduino
 Mega boards.** He also plays DCS, but X-Plane is what flies the 747.
@@ -6104,9 +6002,9 @@ the one test that failed on first run.
 PFD, ATIS/Kollsman, BITE. Traffic and navdata pages stay gated behind the
 attitude stability test.
 
-### Branches (Noah, 2026-08-02)
+### Branches (the owner, 2026-08-02)
 `staging` and `main` only. Staging is a hard release gate: product changes land
-on `staging`, wait for Noah's pass on his actual device, and reach `main` only
+on `staging`, wait for the owner's pass on his actual device, and reach `main` only
 on his explicit "promote". Docs-only changes may skip it. The
 harness-designated `claude/*` branch is ignored (Doctrine §11).
 
@@ -6115,7 +6013,7 @@ harness-designated `claude/*` branch is ignored (Doctrine §11).
 carrying exactly one ref, `claude/jet-panel-pwa-amendments-f07ygu`, which was
 also the default branch. Both are now created and pushed for real:
 
-- `staging` — v1, waiting on Noah's device pass.
+- `staging` — v1, waiting on the owner's device pass.
 - `main` — deliberately still at the pre-UI foundation commit `7cb4e4f`, so
   promoting is a clean fast-forward rather than a merge of divergent histories.
   Nothing has ever been deployed, so that is also just true.
@@ -6129,7 +6027,7 @@ the same HTTP 403**, in both refspec syntaxes. Creation and force-update work;
 deletion does not, for any ref. It is the transport, not the default-branch rule.
 
 Consequences, and a session should not spend time re-deriving these:
-- Deleting a branch here is a GitHub-UI step for Noah, always.
+- Deleting a branch here is a GitHub-UI step for the owner, always.
 - There is no MCP tool for it either — the GitHub tools available cover files,
   PRs and issues, not branch deletion or repo settings.
 - The probe branch is identical to `main`, so it is inert while it waits.
@@ -6144,7 +6042,7 @@ separating the app's own licence from OurAirports data and runtime METAR),
 `NOTES.md`, `ACCESSIBILITY.md`, the on-screen build stamp (§7b — written at
 boot, dimmed with a colour token, its contrast pair in the gate), branches.
 
-**Hub wiring (§13.6) — DONE, 2026-08-04, on Noah's instruction.** All three
+**Hub wiring (§13.6) — DONE, 2026-08-04, on the owner's instruction.** All three
 wires are live. The app links back to `noahjefferson.pages.dev` from the (i)
 menu and the footer, and to `/accessibility` from both; those two were already
 built. The hub's outbound half landed on its `main` as `5ae9e87` — an app row
@@ -6156,7 +6054,7 @@ The reason recorded here before — "waits on a deploy; there is no URL to point
 at yet" — had been stale for a day. `fauxplane.pages.dev` has been this repo's
 website in the hub's `METADATA.md`, applied and verified, since 2026-08-03.
 
-**What it actually waited on was Noah, and that is now a doctrine rule.** He
+**What it actually waited on was the owner, and that is now a doctrine rule.** He
 decides what goes on the hub; a session does not add an app there, propose one,
 restore one, or name an unlisted one as a candidate. Doctrine §0c, written the
 same day (hub `2ae05bf`), and §13's checklist changed with it — the app's links
