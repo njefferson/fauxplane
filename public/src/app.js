@@ -604,6 +604,21 @@ async function boot() {
     announcer,
     radar,
     mode: () => ndMode,
+    // ONE value, two switches — the same arrangement the range buttons have.
+    // Setting it here keeps the PFD's pressed states honest through `syncNdMode`.
+    setMode: (id) => {
+      ndMode = id;
+      syncNdMode();
+    },
+    /**
+     * A TAP ON THE MAP FOLLOWS, through the SAME entry point the RADAR page's
+     * form, list and scope all use. Four ways in, one implementation — which is
+     * what stops one of them drifting into following an aircraft differently
+     * from the others.
+     */
+    onFollow: (aircraft) => {
+      radar.followAircraft(aircraft);
+    },
   });
 
   // RANGE, BESIDE THE NAVIGATION DISPLAY. Same four ranges as the RADAR page,
@@ -639,12 +654,17 @@ async function boot() {
     });
     b.addEventListener('click', () => {
       ndMode = m.id;
-      for (const q of ndModeButtons) q.setAttribute('aria-pressed', q.textContent === m.label ? 'true' : 'false');
+      syncNdMode();
       announcer.say(m.name);
       pfd.render(state.snapshot);
     });
     return b;
   });
+  /** Both switches show the one value. Called by whichever surface changed it. */
+  function syncNdMode() {
+    const label = ndMode === 'map' ? 'MAP' : 'PLAN';
+    for (const q of ndModeButtons) q.setAttribute('aria-pressed', q.textContent === label ? 'true' : 'false');
+  }
   ndModeHost.replaceChildren(...ndModeButtons);
 
   const pfdRangeHost = $('pfd-range');

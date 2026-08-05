@@ -816,6 +816,60 @@ export const PLANTS = [
     expect: /the 0\.25 ring reads 3 and sits at 2\.5|old code rounded these/,
   },
   {
+    // THE DEFECT THAT ACTUALLY SHIPPED. The MAP page was built with a canvas
+    // full of aircraft symbols and NO click handler, so it looked exactly like
+    // the RADAR page's tappable scope and answered nothing. Every existing
+    // check stayed green: contrast, names and axe all measure a page that
+    // renders correctly, and it did. The only question that finds it is
+    // "does pressing it do the thing".
+    name: 'map: tapping an aircraft stops following it',
+    check: 'a tap on the map follows the aircraft under it, in both modes',
+    file: 'public/src/panels/map.js',
+    find: "    if (!hit) return;\n    onFollow(hit);",
+    replace: '    if (!hit) return;\n    if (false) onFollow(hit);',
+    expect: /did not start following|tappable-looking marks that answer nothing/i,
+  },
+  {
+    // The other half, and the reason `planGeometry` exists. A hit test that
+    // computes its own centre passes in PLAN — where the centre is the middle
+    // of the box, which is what everyone writes — and misses everywhere in MAP,
+    // where own ship sits near the bottom. The a11y check taps in BOTH modes
+    // precisely so this cannot pass on the easy one.
+    name: 'map: the hit test goes back to computing its own centre',
+    check: 'the tap and the renderer share one geometry',
+    file: 'public/src/render/gauges/plan.js',
+    find: '  const { cx, cy, r, pxPerNm } = planGeometry({ x, y, w, h, rangeNm, mode, upDeg });',
+    replace: '  const cx = x + w / 2;\n  const cy = y + h / 2;\n  const r = Math.min(w, h) / 2 - 4;\n  const pxPerNm = r / rangeNm;',
+    expect: /did not start following|tappable-looking marks that answer nothing/i,
+  },
+  {
+    // THE DEFECT THAT SHIPPED IN 1.34.0. Splitting a bulletin on its blank lines
+    // tears one advisory into five, so a lone "AREA 3...FROM END-ARG-LIT-MCB"
+    // appears with no header saying which SIGMET or which hazard it belongs to.
+    // It reads as a warning cut in half, and the count is fragments.
+    name: 'reports: a bulletin is torn apart at its own paragraph breaks',
+    check: 'one bulletin is one report, however many paragraphs it has',
+    gate: 'tests',
+    file: 'functions/api/wxtext.js',
+    find: '  if (DOC_MARKER.test(text)) {',
+    replace: '  if (false) {',
+    expect: /ONE BULLETIN IS ONE REPORT|begins mid-document|document-marker/i,
+  },
+  {
+    // The advisories are national while the identical box is honoured by the
+    // other two kinds, and there is no honest way to filter them from the raw
+    // text. Dropping the caveat leaves "66 reports" beside a local weather card,
+    // which reads as sixty-six LOCAL advisories — a claim the app never made
+    // and cannot support.
+    name: 'reports: the unfiltered-area caveat is dropped from the count line',
+    check: 'a feed that does not narrow to the area says so',
+    gate: 'tests',
+    file: 'public/src/data/wxtext.js',
+    find: "  const area = result.area === 'unfiltered' ? ` · ${UNFILTERED_NOTE}` : '';",
+    replace: "  const area = '';",
+    expect: /does not narrow|UNFILTERED|caveat/i,
+  },
+  {
     // THE DEFECT THIS FEATURE IS MOST LIKELY TO ROT INTO, and it rots into a
     // LIE rather than into a blank: a service that did not answer, rendered
     // with the same words as a quiet sky. "No pilot reports in the last three

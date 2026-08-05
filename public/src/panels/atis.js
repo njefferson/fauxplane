@@ -157,18 +157,61 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
    */
   const wxBlocks = WX_KINDS.map((kind) => {
     const state = el('p', { class: 'wx-state' });
-    const body = el('pre', { class: 'wx-body', tabindex: '0', 'aria-label': `${kind.label}, as filed` });
+    const body = el('pre', { class: 'wx-body', 'aria-label': `${kind.label}, as filed` });
+    /** Outside the scroller, like the aircraft list's — a "scroll for more" that
+     *  itself scrolls out of view is the one place it must not be. */
+    const more = el('p', { class: 'wx-more', role: 'status', hidden: '' });
     return {
       kind,
       state,
       body,
+      more,
       root: el('section', { class: 'wx-block' }, [
         el('h3', { class: 'wx-h', text: kind.label }),
         state,
         body,
+        more,
       ]),
     };
   });
+
+  /**
+   * THE BLOCK ENDS ON A LINE BOUNDARY, and says how much is below it.
+   *
+   * A fixed `max-height` cuts whichever line straddles it, and a line sliced
+   * through its own glyphs against a hard container edge reads as broken rather
+   * than as scrollable. The aircraft list learned this in 1.28.x and the fix is
+   * the same one: measure, cap on a boundary, and put the count outside.
+   *
+   * Measured from the element's own line-height rather than from a constant, so
+   * it stays right at 200% text — the reader's font size is the one number a
+   * layout must never assume.
+   */
+  const capBody = (b) => {
+    const text = b.body.textContent;
+    if (!text) {
+      b.more.hidden = true;
+      return;
+    }
+    // No layout, no answer — never a count computed against a zero height.
+    if (!b.body.clientHeight) return;
+    const cs = getComputedStyle(b.body);
+    const line = Number.parseFloat(cs.lineHeight) || 18;
+    const padY = Number.parseFloat(cs.paddingTop) + Number.parseFloat(cs.paddingBottom);
+    const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    // The stylesheet's 14rem cap, in pixels, and how many WHOLE lines fit inside
+    // it once the padding is paid for. At least one, or a big type size leaves
+    // an empty box.
+    const whole = Math.max(1, Math.floor((14 * rem - padY) / line));
+    b.body.style.maxHeight = `${whole * line + padY}px`;
+    const lines = Math.max(0, Math.round((b.body.scrollHeight - b.body.clientHeight) / line));
+    b.more.textContent = lines > 0 ? `${lines} more line${lines === 1 ? '' : 's'} below — scroll this block` : '';
+    b.more.hidden = lines <= 0;
+    // SC 2.1.1: focusable only while it actually scrolls. A tabindex on a box
+    // that fits sends a keyboard user somewhere with nothing to read.
+    if (lines > 0) b.body.setAttribute('tabindex', '0');
+    else b.body.removeAttribute('tabindex');
+  };
 
   host.replaceChildren(
     el('section', { class: 'card', 'aria-labelledby': 'atis-h' }, [
@@ -201,9 +244,19 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
     ]),
     el('section', { class: 'card', 'aria-labelledby': 'wx-h' }, [
       el('h2', { id: 'wx-h', text: 'Reports and advisories' }),
+      /**
+       * THE CLAIM MATCHES WHAT THE FEED ACTUALLY SENDS.
+       *
+       * It said "Nothing here is summarised or reworded" full stop, and the
+       * first real response showed the advisories arriving with the service's
+       * own `Type: SIGMET Hazard: CONVECTIVE` labels in front of them. Small,
+       * and it is still a sentence on screen that was not quite true — in the
+       * one card whose entire selling point is that nothing was touched.
+       */
       el('p', {
         class: 'atis-source',
-        text: 'As filed, from the US National Weather Service aviation weather service. Nothing here is summarised or reworded.',
+        text:
+          'As filed, from the US National Weather Service aviation weather service. Nothing is summarised or reworded here; where the service adds its own labels to a report, those arrive with it.',
       }),
       ...wxBlocks.map((b) => b.root),
     ]),
@@ -293,6 +346,8 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
         const reports = result?.ok ? result.reports ?? [] : [];
         b.body.textContent = reports.join('\n\n');
         b.body.hidden = reports.length === 0;
+        if (reports.length) capBody(b);
+        else b.more.hidden = true;
       }
 
       announcer.watch('Altimeter setting', f['metar.altimeter']);

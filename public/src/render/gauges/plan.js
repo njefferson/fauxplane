@@ -295,21 +295,39 @@ export function ringLabelFor(rangeNm, frac) {
 }
 
 /**
- * NORTH-UP AND CENTRED, because the only tappable scope is the RADAR page's and
- * that one is both. If the navigation display beside the horizon ever becomes
- * tappable this needs the same `upDeg` and own-ship offset `drawPlan` uses —
- * geometry that disagrees with what was painted is a hit test that misses, and
- * the comment on `TAP_SLOP_PX` is what that costs.
+ * WHERE THE SCOPE'S CENTRE IS, HOW BIG IT IS, AND WHAT IS UP — in ONE place,
+ * because two answers to that question is a hit test that misses.
+ *
+ * This comment used to say the hit test was north-up and centred "because the
+ * only tappable scope is the RADAR page's, and that one is both", and that if
+ * anything else ever became tappable it would need the same geometry `drawPlan`
+ * uses. The MAP page shipped tappable-looking and not tappable, so the warning
+ * was right and arrived one release early. Now there is nothing to keep in
+ * step: the renderer and the hit test call this.
+ *
+ *   PLAN — centred; the radius is the largest circle that fits the box.
+ *   MAP  — own ship near the bottom; the radius reaches the TOP of the box, so
+ *          the range arc uses the height it has and is clipped at the sides,
+ *          which is what a real ND looks like.
  */
-export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slopPx = TAP_SLOP_PX) {
-  const cx = w / 2;
-  const cy = h / 2;
-  const r = Math.min(w, h) / 2 - 4;
-  const pxPerNm = r / rangeNm;
+export function planGeometry({ x = 0, y = 0, w, h, rangeNm, mode = 'plan', upDeg = 0 }) {
+  const isMap = mode === 'map';
+  const cx = x + w / 2;
+  const cy = isMap ? y + h * MAP_OWNSHIP_Y : y + h / 2;
+  const r = isMap ? Math.max(24, cy - y - 4) : Math.min(w, h) / 2 - 4;
+  return { isMap, cx, cy, r, pxPerNm: r / rangeNm, upDeg };
+}
+
+/**
+ * Which aircraft is under a tap. Takes the SAME geometry the renderer draws
+ * with — see `planGeometry` — so a symbol is hit exactly where it is painted.
+ */
+export function hitTestAircraft(aircraft, { centre, rangeNm, w, h, x = 0, y = 0, mode = 'plan', upDeg = 0 }, px, py, slopPx = TAP_SLOP_PX) {
+  const { cx, cy, r, pxPerNm } = planGeometry({ x, y, w, h, rangeNm, mode, upDeg });
   let best = null;
   let bestD = slopPx;
   for (const a of aircraft ?? []) {
-    const q = project(a, { centre, pxPerNm, cx, cy });
+    const q = project(a, { centre, pxPerNm, cx, cy, upDeg });
     if (!q || Math.hypot(q.x - cx, q.y - cy) > r) continue;
     const d = Math.hypot(q.x - px, q.y - py);
     if (d <= bestD) {
@@ -328,8 +346,24 @@ export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slo
  */
 export const RUNWAY_MIN_PX = 14;
 
-/** The airport symbol's radius. Small enough not to compete with a traffic
- *  mark, big enough to be a deliberate circle rather than a dot. */
+/**
+ * THE AIRPORT SYMBOL'S RADIUS, AND IT SCALES WITH THE SCOPE.
+ *
+ * It was a flat 3.5px, chosen against the navigation display beside the horizon
+ * — a box about 350px across, where 3.5px is a deliberate small circle. The MAP
+ * page is a 1900px canvas, and on it the same constant is a speck: at 40 nm
+ * every runway in the region falls under `RUNWAY_MIN_PX` and becomes one, so an
+ * entire layer switched ON renders as dust. Reported from a real iPad.
+ *
+ * A symbol is not a scale drawing — that is the whole reason it replaces the
+ * runway at range — so nothing about it has to stay a fixed number of pixels.
+ * It stays 3.5 on the small scope and grows with the glass.
+ */
+export function airportSymbolR(r) {
+  return Math.max(3.5, r * 0.016);
+}
+
+/** Kept for the tests and callers that measured the old constant. */
 export const AIRPORT_SYMBOL_R = 3.5;
 
 /**
@@ -359,15 +393,9 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
    * the furniture differ — everything else inherits the rotation through
    * `project`, which is why there is one renderer rather than two.
    */
-  const isMap = mode === 'map';
-  const upDeg = isMap ? (up?.upDeg ?? 0) : 0;
-  const cx = x + w / 2;
-  const cy = isMap ? y + h * MAP_OWNSHIP_Y : y + h / 2;
-  // In MAP the radius reaches the TOP of the box rather than fitting a circle
-  // inside it, so the range arc uses the height it has and is clipped at the
-  // sides — which is what a real ND looks like and is why it is drawn as arcs.
-  const r = isMap ? Math.max(24, cy - y - 4) : Math.min(w, h) / 2 - 4;
-  const pxPerNm = r / rangeNm;
+  const upDeg = mode === 'map' ? (up?.upDeg ?? 0) : 0;
+  // ONE SOURCE OF GEOMETRY, shared with `hitTestAircraft`. See `planGeometry`.
+  const { isMap, cx, cy, r, pxPerNm } = planGeometry({ x, y, w, h, rangeNm, mode, upDeg });
   const projection = { centre, pxPerNm, cx, cy, upDeg };
 
   ctx.save();
@@ -534,15 +562,35 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
     ctx.stroke();
   }
 
-  // One symbol per airport that is too small to draw as a runway.
+  /**
+   * One symbol per airport that is too small to draw as a runway — and, where
+   * there is room, ITS NAME.
+   *
+   * A circle with no name is a mark you cannot use. A real ND's ARPT switch
+   * shows the identifier, which is the whole point of turning the layer on: not
+   * "there is a field here" but "that is Sacramento Executive". The ident is
+   * drawn only when the symbol is big enough for the text to sit clear of it,
+   * so the small scope beside the horizon keeps its austere dots and the map
+   * page gets a usable chart.
+   */
+  const symR = airportSymbolR(r);
+  const identSize = Math.max(8, r * 0.026);
+  const showIdents = symR > 5 && identSize >= 9;
   ctx.lineWidth = 1.5;
   for (const d of byAirport.values()) {
     if (d.len >= RUNWAY_MIN_PX) continue;
     const mx = (d.a.x + d.b.x) / 2;
     const my = (d.a.y + d.b.y) / 2;
     ctx.beginPath();
-    ctx.arc(mx, my, AIRPORT_SYMBOL_R, 0, Math.PI * 2);
+    ctx.arc(mx, my, symR, 0, Math.PI * 2);
     ctx.stroke();
+    if (showIdents && d.rw.ident) {
+      text(ctx, d.rw.ident, mx + symR + 3, my + identSize * 0.35, {
+        size: identSize,
+        colour: tokens['text-3'],
+        align: 'left',
+      });
+    }
   }
   ctx.restore();
 
@@ -670,10 +718,27 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   // ahead, because ADS-B says where an aircraft has been and never where it is
   // going.
   if (trail.length > 1 && layers?.track !== false) {
+    /**
+     * DRAWN SO IT CAN BE SEEN, which the first version was not.
+     *
+     * It was a 1.5px line at 55% alpha. On the navigation display that is a
+     * legible thread; on the MAP page the same track is a hairline crossing 30
+     * pixels of a 1900px canvas, under a cluster of GND symbols, and the owner's
+     * report was simply "I see no tracks" while following an aircraft that had
+     * been broadcasting for three minutes. It was there. It was not visible,
+     * which for an instrument is the same thing.
+     *
+     * The width now scales with the scope, it is fully opaque, and each
+     * OBSERVATION gets a dot — because that is what the data is. ADS-B gives a
+     * sequence of reported positions, not a curve, and a line alone hides how
+     * many there were and how far apart. The dots are the honest form.
+     */
     ctx.save();
     ctx.strokeStyle = tokens.primary;
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = 1.5;
+    ctx.fillStyle = tokens.primary;
+    ctx.lineWidth = Math.max(1.5, r * 0.007);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     ctx.beginPath();
     let drawing = false;
     for (const point of trail) {
@@ -690,6 +755,22 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
       drawing = true;
     }
     ctx.stroke();
+    // One dot per REPORTED POSITION. Only where they are far enough apart to be
+    // distinguishable — a string of touching dots is a thicker line, not more
+    // information.
+    const dotR = Math.max(1.2, r * 0.006);
+    if (dotR > 1.6) {
+      let prev = null;
+      for (const point of trail) {
+        const q = project(point, projection);
+        if (!q || Math.hypot(q.x - cx, q.y - cy) > r) continue;
+        if (prev && Math.hypot(q.x - prev.x, q.y - prev.y) < dotR * 3) continue;
+        prev = q;
+        ctx.beginPath();
+        ctx.arc(q.x, q.y, dotR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
 

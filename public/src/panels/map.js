@@ -32,7 +32,7 @@
 
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
-import { drawPlan, upReference } from '../render/gauges/plan.js';
+import { drawPlan, hitTestAircraft, upReference } from '../render/gauges/plan.js';
 import { RADAR_RANGE_NM } from '../data/traffic.js';
 
 /**
@@ -78,7 +78,7 @@ export function describeMap({ mode, up, count, rangeNm, off = [], basemapMissing
   return `${parts.join('. ')}.`;
 }
 
-export function createMap({ host, traffic, state, announcer, radar, mode = () => 'plan' }) {
+export function createMap({ host, traffic, state, announcer, radar, mode = () => 'plan', setMode = () => {}, onFollow = null }) {
   const canvas = el('canvas', { class: 'map-canvas', role: 'img', 'aria-label': 'Map. Starting up.' });
   const surface = createSurface(canvas);
 
@@ -127,6 +127,39 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
     for (const b of rangeButtons) b.setAttribute('aria-pressed', b.textContent === String(nm) ? 'true' : 'false');
   });
 
+  /**
+   * THE MODE SWITCH, ON THIS PAGE TOO.
+   *
+   * It shipped only on the PFD, which meant the whole point of the MAP page —
+   * seeing the ground track-up across a full screen — was reachable only by
+   * going to a different page, pressing a button there, and coming back. The
+   * state is still ONE value shared with the PFD's switch; only the reach
+   * changed, which is the same arrangement the range buttons already have.
+   */
+  const modeButtons = [
+    { id: 'plan', label: 'PLAN', name: 'PLAN — centred and north up' },
+    { id: 'map', label: 'MAP', name: 'MAP — turned to the direction of travel' },
+  ].map((m) => {
+    const b = el('button', {
+      class: 'map-mode-btn',
+      type: 'button',
+      text: m.label,
+      // The visible word OPENS the name (SC 2.5.3), so "tap MAP" has an answer.
+      'aria-label': m.name,
+      'aria-pressed': mode() === m.id ? 'true' : 'false',
+    });
+    b.addEventListener('click', () => {
+      setMode(m.id);
+      syncMode();
+      announcer.say(m.name);
+      draw();
+    });
+    return b;
+  });
+  const syncMode = () => {
+    for (const b of modeButtons) b.setAttribute('aria-pressed', b.textContent === (mode() === 'map' ? 'MAP' : 'PLAN') ? 'true' : 'false');
+  };
+
   const note = el('p', { class: 'map-note', role: 'status' });
 
   host.replaceChildren(
@@ -135,11 +168,55 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
       canvas,
       el('div', { class: 'map-controls' }, [
         el('div', { class: 'map-layers', role: 'group', 'aria-label': 'Map layers' }, layerButtons),
+        el('div', { class: 'map-mode', role: 'group', 'aria-label': 'Map mode' }, modeButtons),
         el('div', { class: 'map-range', role: 'group', 'aria-label': 'Map range' }, rangeButtons),
       ]),
       note,
     ]),
   );
+
+  /**
+   * TAP AN AIRCRAFT TO FOLLOW IT — the thing this page looked like it did and
+   * did not.
+   *
+   * The owner, on a real iPad with 275 aircraft on screen: tapping the map does
+   * nothing. It was a straight omission — the RADAR page's scope has had this
+   * since 1.7.0 and this canvas was built without it, so a page full of
+   * tappable-looking marks answered no taps at all.
+   *
+   * IT USES `planGeometry` THROUGH `hitTestAircraft`, so the mark is hit exactly
+   * where it was painted, in either mode. That is the whole reason the geometry
+   * moved into one function: a hit test that computes its own centre is a hit
+   * test that misses the moment the renderer's centre moves, and MAP mode moves
+   * it to the bottom of the box.
+   *
+   * The RADAR page's "Heard right now" list remains the accessible route to the
+   * same action, so this is an enhancement rather than the only way in.
+   */
+  canvas.addEventListener('click', (e) => {
+    const view = traffic.view?.() ?? {};
+    if (!view.centre || !onFollow) return;
+    const aircraft = on.traffic ? view.aircraft ?? [] : [];
+    if (!aircraft.length) return;
+    const rect = canvas.getBoundingClientRect();
+    const ndMode = mode();
+    const hit = hitTestAircraft(
+      aircraft,
+      {
+        centre: view.centre,
+        rangeNm: view.rangeNm ?? 40,
+        w: rect.width,
+        h: rect.height,
+        mode: ndMode,
+        upDeg: ndMode === 'map' ? upReference(state.snapshot.fields, ndMode).upDeg : 0,
+      },
+      e.clientX - rect.left,
+      e.clientY - rect.top,
+    );
+    if (!hit) return;
+    onFollow(hit);
+    draw();
+  });
 
   async function loadBasemap() {
     if (basemap || basemapFailed) return;
@@ -195,9 +272,19 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
       describeMap({ mode: ndMode, up, count: on.traffic ? aircraft.length : 0, rangeNm: view.rangeNm ?? 40, off, basemapMissing: !basemap }),
     );
 
-    // The credit. Natural Earth say it is unnecessary and offer the wording;
-    // a panel whose contract is that values trace to a source names it anyway.
-    note.textContent = basemapFailed ?? (basemap ? basemap.source?.credit ?? '' : 'Loading the ground map…');
+    /**
+     * THE CREDIT SAYS WHAT IT IS CREDITING.
+     *
+     * It read "Made with Natural Earth." on its own under a map full of
+     * aircraft, and the owner's reaction was a question mark — fairly, because
+     * that sentence names a thing without saying which thing it is about. Their
+     * offered wording is kept verbatim and prefixed with the part that makes it
+     * a sentence a reader can use.
+     */
+    note.textContent = basemapFailed
+      ?? (basemap
+        ? `Coastline, lakes, rivers and towns: ${basemap.source?.credit ?? 'Natural Earth.'} Public domain. Aircraft, runways and airports come from the sources in the (i) menu.`
+        : 'Loading the ground map…');
   }
 
   return {
@@ -210,6 +297,7 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
       surface.refreshTokens();
     },
     render() {
+      syncMode();
       draw();
     },
   };

@@ -777,6 +777,20 @@ export function createRadar({
     get readiness() {
       return computeReadiness();
     },
+    /**
+     * FOLLOW AN AIRCRAFT FROM ANOTHER SURFACE, through the same entry point the
+     * form, the scope tap and the list all use.
+     *
+     * The MAP page needs it, and the alternative — a second `traffic.follow`
+     * call over there — is how two ways of following the same aeroplane end up
+     * doing different things to the Stop button, the note and the announcement.
+     * `from: 'scope'` so no note is written on THIS page for something pressed
+     * on another one; the confirmation belongs where the press happened.
+     */
+    followAircraft(a) {
+      if (!a) return;
+      startFollowing(a.callsign ? { callsign: a.callsign } : { hex: a.hex }, 'scope');
+    },
     setRange,
     /** Hear about every range change, whichever surface made it. */
     onRange(fn) {

@@ -49,6 +49,31 @@
  * NOTHING IS SUMMARISED OR REWORDED. A PIREP is shown as filed, because
  * paraphrasing a hazard report is inventing one — and because the raw form is
  * what the reader would see in a briefing.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THE FIRST REAL RESPONSE TAUGHT US (2026-08-05, from a device)
+ * ---------------------------------------------------------------------------
+ *
+ *   · `format=raw` WORKS and the reports arrive as filed. The guess was right.
+ *   · The AIRSIGMET feed PREFIXES each advisory with its own labels —
+ *     `Type: SIGMET Hazard: CONVECTIVE ` — so that block is not purely filed
+ *     text. It is a reliable document delimiter and `splitReports` uses it.
+ *   · The BBOX IS EVIDENTLY NOT APPLIED TO AIRSIGMET. The identical parameter is
+ *     honoured by pirep and taf — every observed station was inside the box —
+ *     while airsigmet came back with Phoenix, Nebraska, Cleveland and Key West
+ *     in it. WHY is NOT established: it may have no geographic parameter, or one
+ *     under another name, or `format=raw` may bypass a filter another format
+ *     applies. None of that is knowable from here, so none of it is coded as if
+ *     it were. What the app does instead is SAY SO — see `AREA_FILTERED` below.
+ *
+ * The filtering cannot be done honestly from the raw text either, and the
+ * near-misses are worth recording so nobody re-derives them:
+ *   · `KKCI` is the issuing office (Kansas City) and is on EVERY US convective
+ *     SIGMET whatever the weather. It looks like a region and is not.
+ *   · `SIGW`/`SIGC`/`SIGE` is a genuine three-way split of the country, and it
+ *     does not help: the Phoenix advisory above is itself in SIGW.
+ *   · The `FROM` line is the real polygon, and resolving it needs a navaid
+ *     database keyed by the two- and three-letter idents it uses.
  */
 
 import { POLICIES, cached, json, parseBbox, politeFetch, problem } from './_lib.js';
@@ -64,11 +89,27 @@ const UPSTREAM = 'https://aviationweather.gov/api/data';
  * would ask a public service for the same unchanged text ten times an hour
  * (§15.4, §15.6).
  */
+/**
+ * `area` is what the app KNOWS about whether the box was applied, from real
+ * responses — not what it hopes. `'unfiltered'` is a statement the reader is
+ * shown, because a page quietly listing Florida advisories to somebody in
+ * California is worse than one that says the service does not narrow them.
+ */
 export const KINDS = Object.freeze({
-  pirep: { path: 'pirep', cacheSeconds: 300, label: 'Pilot reports', hours: 3 },
-  airsigmet: { path: 'airsigmet', cacheSeconds: 900, label: 'SIGMETs and AIRMETs', hours: null },
-  taf: { path: 'taf', cacheSeconds: 1800, label: 'Forecasts', hours: null },
+  pirep: { path: 'pirep', cacheSeconds: 300, label: 'Pilot reports', hours: 3, area: 'filtered' },
+  airsigmet: { path: 'airsigmet', cacheSeconds: 900, label: 'SIGMETs and AIRMETs', hours: null, area: 'unfiltered' },
+  taf: { path: 'taf', cacheSeconds: 1800, label: 'Forecasts', hours: null, area: 'filtered' },
 });
+
+/**
+ * THE FEED'S OWN DOCUMENT MARKER, learned from a real response.
+ *
+ * The airsigmet feed prefixes each advisory with its own labels — the observed
+ * form is `Type: SIGMET Hazard: CONVECTIVE ` before the WMO header. That is
+ * feed-added metadata rather than filed text, and it is also exactly what a
+ * document delimiter is for.
+ */
+const DOC_MARKER = /^Type:\s/m;
 
 /**
  * Split a raw body into reports, and REFUSE rather than guess when it does not
@@ -82,20 +123,51 @@ export const KINDS = Object.freeze({
 export function splitReports(body) {
   if (typeof body !== 'string') return { error: 'the response body was not text' };
   const text = body.trim();
-  if (!text) return { reports: [] };
+  if (!text) return { reports: [], strategy: 'empty' };
   // A 200 carrying a web page is a question, not an answer.
   if (/^\s*<(?:!doctype|html|\?xml)/i.test(text)) {
     return { error: 'the service answered with a document rather than reports' };
   }
+
   /**
-   * A REPORT MAY WRAP. AIRMETs in particular run to several lines, and the
-   * blank line between them is what separates one from the next; single-line
-   * feeds have no blank lines and split per line. Both are handled by
-   * preferring the blank-line split when there IS one.
+   * HOW A BULLETIN IS DIVIDED, and the first version got this WRONG in a way
+   * that its own test agreed with.
+   *
+   * The rule was "a blank line separates reports". A convective SIGMET bulletin
+   * is ONE document containing several paragraphs — the advisory, then an
+   * OUTLOOK, then AREA 1, AREA 2, AREA 3 — separated by blank lines. Splitting
+   * on those tore one bulletin into five, so the panel reported 66 "reports"
+   * that were fragments, and an `AREA 3...FROM END-ARG-LIT-MCB...` paragraph
+   * appeared on its own with no header saying which SIGMET or which hazard it
+   * belonged to. That reads exactly like a truncated warning, which is the
+   * failure the rule was written to prevent.
+   *
+   * It survived because the test's fixture was built to match the heuristic
+   * instead of from a real bulletin — a check on a decision, written by the
+   * same reasoning that made the decision.
+   *
+   * So: when the feed marks its own documents, USE ITS MARKER. Only when it
+   * does not is the shape genuinely unknown, and only then does the old
+   * guesswork apply. `strategy` travels back to the client so the diagnostics
+   * report says which one ran, rather than leaving it to be inferred.
    */
-  const chunks = /\n\s*\n/.test(text) ? text.split(/\n\s*\n/) : text.split('\n');
+  if (DOC_MARKER.test(text)) {
+    const marked = text
+      .split(/\n(?=Type:\s)/)
+      .map((c) => c.trim().replace(/\s*\n\s*/g, ' '))
+      .filter(Boolean);
+    if (marked.length) return { reports: marked, strategy: 'document-marker' };
+  }
+
+  /**
+   * NO MARKER. A single-line feed — PIREPs, METARs — splits per line. A feed
+   * with blank lines in it and no marker is split on those, which is the best
+   * available guess and is recorded as one.
+   */
+  const blanks = /\n\s*\n/.test(text);
+  const chunks = blanks ? text.split(/\n\s*\n/) : text.split('\n');
   const reports = chunks.map((c) => c.trim().replace(/\s*\n\s*/g, ' ')).filter(Boolean);
-  return { reports };
+  return { reports, strategy: blanks ? 'blank-line' : 'per-line' };
 }
 
 export async function onRequestGet({ request }) {
@@ -148,7 +220,7 @@ export async function onRequestGet({ request }) {
       firstLine: body.slice(0, 160).split('\n')[0],
     };
 
-    const { reports, error: shapeError } = splitReports(body);
+    const { reports, strategy, error: shapeError } = splitReports(body);
     if (shapeError) return problem(`${kindId}: ${shapeError} (${observed.contentType ?? 'no content-type'}, ${observed.bytes} bytes)`);
 
     return json(
@@ -156,6 +228,7 @@ export async function onRequestGet({ request }) {
         ok: true,
         kind: kindId,
         label: kind.label,
+        area: kind.area,
         source: POLICIES.wxtext.source,
         sourceUrl: POLICIES.wxtext.policyUrl,
         bbox,
@@ -163,7 +236,10 @@ export async function onRequestGet({ request }) {
         count: reports.length,
         // AS FILED. Nothing here is parsed, summarised or reordered.
         reports,
-        observed: { ...observed, lines: reports.length },
+        // WHICH SPLITTING RULE RAN. The shape of these feeds is still being
+        // learned from real responses; "66 reports" meant fragments once, and
+        // the strategy is what tells the two apart in a report from a device.
+        observed: { ...observed, lines: reports.length, strategy },
       },
       { cacheSeconds: kind.cacheSeconds },
     );

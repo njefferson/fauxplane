@@ -29,6 +29,23 @@ export const WX_KINDS = [
 ];
 
 /**
+ * WHEN A FEED DOES NOT NARROW TO THE AREA, SAY SO — on the block, every time.
+ *
+ * The request carries the same box for all three kinds. Two of them honour it;
+ * the advisories come back covering the whole country, and the first real
+ * response put Phoenix, Nebraska, Cleveland and Key West on a panel in
+ * Sacramento. There is no honest way to filter them from the raw text (the
+ * issuing office is Kansas City for all of them, and the west/central/east
+ * bulletin split still puts Arizona in ours), so the choice is between hiding
+ * real advisories on a guess and telling the reader what they are looking at.
+ *
+ * This app tells them. Doctrine §5: a panel says what it is showing, and
+ * "everything the service publishes" is a different claim from "everything near
+ * you" — a reader who assumed the second would read a Florida SIGMET as local.
+ */
+export const UNFILTERED_NOTE = 'This service does not narrow these to your area — they cover the whole country.';
+
+/**
  * The box to ask about. WIDER than the METAR box on purpose: a METAR query is
  * looking for the NEAREST reporting station, and one station is enough. A PIREP
  * of severe turbulence forty miles away is worth reading, and a SIGMET's whole
@@ -128,8 +145,11 @@ export function wxSummary(kind, result, now = Date.now()) {
   const ageS = Number.isFinite(result.at) ? Math.max(0, Math.round((now - result.at) / 1000)) : null;
   const age = ageS === null ? '' : ageS < 90 ? ' · just now' : ` · ${Math.round(ageS / 60)} min ago`;
   if (!result.count) return { tone: 'empty', text: `${kind.empty}${age}` };
+  // The area caveat rides on the COUNT line, where the number that would
+  // otherwise be misread is. Put anywhere else it is a note nobody connects.
+  const area = result.area === 'unfiltered' ? ` · ${UNFILTERED_NOTE}` : '';
   return {
     tone: 'ok',
-    text: `${result.count} ${result.count === 1 ? 'report' : 'reports'}${age}`,
+    text: `${result.count} ${result.count === 1 ? 'report' : 'reports'}${age}${area}`,
   };
 }

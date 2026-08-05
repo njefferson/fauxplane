@@ -70,6 +70,26 @@
  */
 export const RELEASES = [
   {
+    version: '1.35.0',
+    date: '2026-08-05',
+    headline: 'Tapping the map follows the aircraft, and the advisories stop pretending to be local.',
+    changed: [
+      'TAP AN AIRCRAFT ON THE MAP TO FOLLOW IT. The page shipped with a screen full of aircraft and no way to press one \u2014 it looked exactly like the radar scope and answered nothing. It works in both modes now, including MAP, where the aeroplane sits at the bottom and the whole world is turned underneath it.',
+      'The PLAN / MAP switch is on the MAP page too. It was only on the PFD, so the one thing this page is for needed a trip to another page and back.',
+      'Airports are drawn to the size of the screen they are on. At 40 miles every runway in the region is too short to point anywhere, so it becomes a symbol \u2014 and that symbol was a fixed three and a half pixels chosen for the small scope beside the horizon. On a full screen it was dust. They also carry their identifier now, where there is room for it.',
+      'The track of a flight you are following is drawn thicker, solid, and with a dot at every position that was actually broadcast. It was a hairline at half opacity: really there, and not visible, which for an instrument is the same thing.',
+      'The advisories say when the service has not narrowed them to your area \u2014 and it has not. The same request that gets you local pilot reports and local forecasts comes back with SIGMETs for Arizona, Nebraska and the Florida Keys. There is no honest way to sort them out from the text, so the panel says what you are looking at rather than quietly guessing.',
+      'A SIGMET is one report again. Each was being split at its own paragraph breaks, so a single bulletin arrived as five pieces and one of them would read "AREA 3...FROM END-ARG-LIT" with nothing saying which warning it came from. "66 reports" was really about a dozen.',
+      'Long advisory lines wrap instead of running off the right edge and being cut through the middle of a word. Each block also ends on a whole line and says how many more are below it.',
+      'The credit under the map says what it is crediting.',
+    ],
+    broken: [
+      'The advisories still cover the whole country, and that is the service, not the app. What it would take to narrow them is a way to work out where each one actually is \u2014 the only thing in the text that says so is a list of navaid names, which needs a database the app does not carry yet.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.34.0',
     date: '2026-08-05',
     headline: 'The ATIS page carries the text a flight deck actually reads.',

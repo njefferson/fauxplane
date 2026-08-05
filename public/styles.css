@@ -2678,6 +2678,10 @@ body[data-powered='true'] .gate {
 }
 
 .map-canvas {
+  /* Tappable since 1.35.0 — see the click handler in map.js. `touch-action` so
+     a tap is a tap rather than the start of a browser gesture. */
+  touch-action: manipulation;
+  cursor: pointer;
   flex: 1 1 auto;
   width: 100%;
   /* In rem like every other instrument's floor, so it stays proportional to the
@@ -2698,6 +2702,7 @@ body[data-powered='true'] .gate {
 }
 
 .map-layers,
+.map-mode,
 .map-range {
   display: flex;
   flex-wrap: wrap;
@@ -2709,6 +2714,7 @@ body[data-powered='true'] .gate {
    the border and the text colour — never the fill alone (Doctrine §4, and the
    night palette's own note that deutan cannot separate two of these accents). */
 .map-layer,
+.map-mode-btn,
 .map-range-btn {
   min-height: var(--target);
   min-width: var(--target);
@@ -2725,6 +2731,7 @@ body[data-powered='true'] .gate {
 }
 
 .map-layer[aria-pressed='true'],
+.map-mode-btn[aria-pressed='true'],
 .map-range-btn[aria-pressed='true'] {
   border-color: var(--rail);
   color: var(--text);
@@ -2786,8 +2793,39 @@ body[data-powered='true'] .gate {
   font-size: 0.75rem;
   line-height: 1.5;
   color: var(--text);
-  overflow-x: auto;
+  /*
+   * `pre-wrap`, NOT `pre`, AND NO HORIZONTAL SCROLL.
+   *
+   * With `pre` and `overflow-x: auto` an advisory ran off the right edge and was
+   * cut through the middle of a word against the container's border, with
+   * nothing on screen saying it continued. On an iPad that reads as broken text,
+   * not as a scroller — the same complaint, in the same repo, as the aircraft
+   * list sliced through a row.
+   *
+   * A sideways scrollbar inside a vertical scroller is also a control nobody
+   * finds on a touch screen. `pre-wrap` keeps every newline the report was filed
+   * with and wraps only the lines that are too long for the glass, which is what
+   * a briefing printout does. There is then no horizontal overflow to indicate.
+   *
+   * `overflow-wrap: anywhere` because these are unbroken machine strings —
+   * `FROM END-ARG-LIT-MCB-CEW-210S` has no spaces to break at, and without it a
+   * single token still overflows the box.
+   */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* The vertical cap is set in JS on a LINE boundary — see `capBody` in
+     atis.js — so the edge never falls through the middle of a line. This is the
+     fallback for a browser that has not run it yet. */
   max-height: 14rem;
   overflow-y: auto;
-  white-space: pre;
+}
+
+/* "N more below" for a report block, outside the scroller — the same treatment
+   the aircraft list has, for the same reason: a "scroll for more" that itself
+   scrolls out of view is the one place it must not be. */
+.wx-more {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-2);
 }

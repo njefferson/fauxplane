@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { KINDS, splitReports } from '../functions/api/wxtext.js';
-import { WX_KINDS, createWxTextSource, wxBboxParam, wxSummary } from '../public/src/data/wxtext.js';
+import { UNFILTERED_NOTE, WX_KINDS, createWxTextSource, wxBboxParam, wxSummary } from '../public/src/data/wxtext.js';
 import { REGION } from '../public/src/core/region.js';
 
 // ---------------------------------------------------------------------------
@@ -34,22 +34,64 @@ test('one report per line, when there are no blank lines', () => {
   ]);
 });
 
-test('a BLANK LINE separates reports when there is one, so a wrapped AIRMET stays whole', () => {
-  // An AIRMET runs to several lines and the blank line is what ends it. Split
-  // per line instead and one advisory becomes four fragments, each of which
-  // reads like a truncated warning.
-  const body = [
-    'SFOT WA 051445',
-    'AIRMET TANGO FOR TURB VALID UNTIL 052100',
-    '',
-    'SFOS WA 051445',
-    'AIRMET SIERRA FOR IFR VALID UNTIL 052100',
-  ].join('\n');
-  const { reports } = splitReports(body);
-  assert.equal(reports.length, 2, 'two advisories, not five lines');
-  assert.match(reports[0], /AIRMET TANGO/);
-  assert.match(reports[0], /SFOT WA 051445/, 'and the wrapped lines are kept, joined');
-  assert.match(reports[1], /AIRMET SIERRA/);
+/**
+ * THE FIXTURE THAT COST A RELEASE. The first version of this test built a body
+ * that MATCHED the heuristic it was checking — two short advisories separated by
+ * one blank line — and passed, while the real feed sent something else entirely.
+ *
+ * Below is what a convective SIGMET bulletin actually looks like, reconstructed
+ * from a response on the owner's device: ONE document, several paragraphs,
+ * blank lines between them. The old rule tore it into five, so the panel
+ * reported 66 "reports" that were fragments and showed an `AREA 3...FROM
+ * END-ARG-LIT-MCB...` paragraph on its own with no header saying which SIGMET
+ * or which hazard it belonged to — a truncated warning, which is precisely the
+ * failure the rule claimed to prevent.
+ */
+const REAL_BULLETINS = [
+  'Type: SIGMET Hazard: CONVECTIVE WSUS33 KKCI 051755',
+  'SIGW CONVECTIVE SIGMET 17W',
+  'VALID UNTIL 1955Z',
+  'AZ',
+  'FROM 30W PHX-60E PHX-40N TUS-80ESE BZA-70E BZA-30W',
+  '',
+  'OUTLOOK VALID 051955-052355',
+  'FROM RSK-DMN-60SSE SSO-50S TUS-30SE BZA-50NNW PGS-RSK',
+  'WST ISSUANCES POSS. REFER TO MOST RECENT ACUS01 KWNS',
+  '',
+  'AREA 3...FROM END-ARG-LIT-MCB-CEW-210S CEW-50SSE',
+  'WST ISSUANCES EXPD.',
+  'Type: AIRMET Hazard: TURB SFOT WA 051445',
+  'AIRMET TANGO FOR TURB VALID UNTIL 052100',
+].join('\n');
+
+test('ONE BULLETIN IS ONE REPORT, however many paragraphs it has', () => {
+  const { reports, strategy } = splitReports(REAL_BULLETINS);
+  assert.equal(strategy, 'document-marker', 'the feed marks its own documents; use its marker');
+  assert.equal(reports.length, 2, 'two advisories — not five paragraphs');
+  assert.match(reports[0], /CONVECTIVE SIGMET 17W/);
+  assert.match(reports[0], /AREA 3/, 'every paragraph stays with the bulletin that owns it');
+  assert.match(reports[1], /AIRMET TANGO/);
+});
+
+test('no paragraph is ever left without the header that says what it is', () => {
+  // The defect in its purest form: a lone "AREA 3...FROM END-ARG-LIT" reads
+  // like a warning cut in half.
+  const { reports } = splitReports(REAL_BULLETINS);
+  for (const r of reports) {
+    assert.match(r, /^Type:\s/, `a report begins mid-document: "${r.slice(0, 48)}…"`);
+  }
+});
+
+test('a feed that marks nothing still splits, and says which guess it made', () => {
+  // PIREPs and TAFs carry no marker. The old behaviour is right for them and is
+  // recorded as a guess rather than as knowledge.
+  const perLine = splitReports('STS UA /OV STS/TM 1655\nOAK UA /OV OAK100004/TM 1619');
+  assert.equal(perLine.strategy, 'per-line');
+  assert.equal(perLine.reports.length, 2);
+
+  const blank = splitReports('AAAA 1111\nBBBB 2222\n\nCCCC 3333');
+  assert.equal(blank.strategy, 'blank-line');
+  assert.equal(blank.reports.length, 2);
 });
 
 test('a document is REFUSED rather than shown as a report', () => {
@@ -136,6 +178,32 @@ test('never asked is its own state, distinct from both', () => {
   const waiting = wxSummary(kind, null);
   assert.equal(waiting.tone, 'wait');
   assert.match(waiting.text, /Not asked yet/);
+});
+
+test('A FEED THAT DOES NOT NARROW TO THE AREA SAYS SO, on the count line', () => {
+  /**
+   * The advisories come back covering the whole country while the identical
+   * bbox is honoured by the other two kinds. There is no honest way to filter
+   * them from the raw text — the issuing office is Kansas City for all of them,
+   * and the west/central/east bulletin split still puts Arizona in ours — so
+   * the choice is between hiding real advisories on a guess and telling the
+   * reader what they are looking at. "66 reports" beside a local weather card
+   * reads as sixty-six local advisories, which is the misreading this prevents.
+   */
+  const said = wxSummary(kind, { ok: true, count: 66, at: 0, area: 'unfiltered' }, 0);
+  assert.match(said.text, /66 reports/);
+  assert.ok(said.text.includes(UNFILTERED_NOTE), 'the caveat must be on the line carrying the number');
+
+  const filtered = wxSummary(kind, { ok: true, count: 18, at: 0, area: 'filtered' }, 0);
+  assert.ok(!filtered.text.includes(UNFILTERED_NOTE), 'a feed that IS narrowed must not carry the caveat');
+});
+
+test('the per-kind area state is declared, and matches what was observed', () => {
+  // From real responses, not from hope: pirep and taf came back in-region,
+  // airsigmet came back national.
+  assert.equal(KINDS.pirep.area, 'filtered');
+  assert.equal(KINDS.taf.area, 'filtered');
+  assert.equal(KINDS.airsigmet.area, 'unfiltered');
 });
 
 test('a block with reports says how many, and how old', () => {

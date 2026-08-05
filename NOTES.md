@@ -27,10 +27,119 @@ on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.34.0, the text a flight deck reads, 2026-08-05
+## STAGED NOW — 1.35.0, what a real device found, 2026-08-05
 
-**1.34.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.35.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.29.0.
+
+Two diagnostics reports and three screenshots from an iPad, and between them
+they found more than every gate in the repo had. Recorded in the order they
+matter to a reader.
+
+### The MAP page was not tappable, and nothing could have caught it
+
+A canvas full of aircraft symbols with no click handler at all. It looked
+exactly like the RADAR page's tappable scope and answered nothing — reported
+with 275 aircraft on screen.
+
+**Contrast, accessible names and axe all passed, correctly.** They measure a page
+that renders properly, and it did. The only question that finds this is *does
+pressing it do the thing*, and nothing was asking it.
+
+`hitTestAircraft` and `drawPlan` now share `planGeometry` — one function for
+where the centre is, how big the scope is and what is up. That was not tidiness:
+a hit test that computes its own centre passes in PLAN, where the centre is the
+middle of the box, and misses everywhere in MAP, where own ship sits near the
+bottom. **The a11y check taps in BOTH modes** for exactly that reason, and there
+is a plant for each.
+
+**The first version of that check was worthless and the sweep said so.** It
+tested the follow banner's text for "following" — and `#follow-banner` carries
+the word FOLLOWING as a static badge label, present whether or not anything is
+being followed. It passed against a page with no handler at all. Both plants sat
+GREEN. It asserts the tapped aircraft's CALLSIGN now, which cannot be satisfied
+by accident. Hub LESSONS §29, in a new costume, caught by the harness that
+exists for it.
+
+### Drawn is not the same as visible
+
+- **Airports were dust.** `AIRPORT_SYMBOL_R` was a flat 3.5px, chosen against the
+  350px scope beside the horizon. The MAP page is a 1900px canvas, and at 40 nm
+  every runway in the region falls under `RUNWAY_MIN_PX` and becomes one of those
+  symbols — so an entire layer switched ON rendered as specks. It scales with the
+  scope now and carries the ident where there is room. A symbol is not a scale
+  drawing, which is the whole reason it replaces the runway at range, so nothing
+  about it had to stay a fixed number of pixels.
+- **The track was there and could not be seen.** 1.5px at 55% alpha, crossing 30
+  pixels of a 1900px canvas under a cluster of GND symbols, while an aircraft had
+  been broadcasting for three minutes. Now it scales, is opaque, and carries a
+  dot per REPORTED POSITION — because that is what the data is. ADS-B gives a
+  sequence of observations, not a curve.
+
+### The advisories were never local, and cannot honestly be made local
+
+The identical bbox is honoured by `pirep` and `taf` — every observed station was
+inside the box — and evidently not applied to `airsigmet`, which came back with
+Phoenix, Nebraska, Cleveland and Key West in it.
+
+**WHY is not established and is not coded as if it were.** It may have no
+geographic parameter, or one under another name, or `format=raw` may bypass a
+filter another format applies. None of that is reachable from here.
+
+**And it cannot be filtered from the raw text.** The near-misses are recorded so
+nobody re-derives them:
+
+- `KKCI` is the issuing office — Kansas City — and is on every US convective
+  SIGMET whatever the weather. It looks like a region and is not.
+- `SIGW`/`SIGC`/`SIGE` is a genuine three-way split of the country and does not
+  help: **the Phoenix advisory is itself in SIGW.**
+- The `FROM` line is the real polygon, and resolving it needs a navaid database
+  keyed by the two- and three-letter idents it uses. That is the only honest
+  route and it is a real piece of work.
+
+So the app SAYS SO, on the count line where the number that would otherwise be
+misread is. "66 reports" beside a local weather card reads as sixty-six local
+advisories; that is the misreading, and it is a claim the app never made.
+
+### A bulletin is one report again
+
+`splitReports` split on blank lines. A convective SIGMET bulletin is ONE document
+of several paragraphs — the advisory, an OUTLOOK, then AREA 1, 2, 3 — so one
+bulletin arrived as five, and a lone `AREA 3...FROM END-ARG-LIT-MCB` appeared
+with no header saying which warning it belonged to. A truncated warning, which is
+the failure that rule was written to prevent.
+
+**Its test agreed with it**, because the fixture was built to match the heuristic
+rather than from a real bulletin. The suite now carries the real shape, and the
+feed's own `Type:` marker is the delimiter — which is what it is for. `strategy`
+travels back in `observed`, so a future report says which rule ran rather than
+leaving it to be inferred.
+
+### Smaller, and still real
+
+- Long lines ran off the right edge, cut through the middle of a word against the
+  border, with nothing saying they continued. `pre-wrap` now, no horizontal
+  scroll at all — a sideways scrollbar inside a vertical scroller is a control
+  nobody finds on a touch screen.
+- Each block ends on a whole LINE and says how many are below it, which is the
+  aircraft list's treatment from 1.28.x.
+- The card claimed "nothing is summarised or reworded" while the advisories
+  arrive with the service's own `Type:`/`Hazard:` labels attached. Small, and it
+  was a sentence that was not quite true in the one card whose whole selling
+  point is that nothing was touched.
+- The PLAN/MAP switch is on the MAP page as well as the PFD — one value, two
+  switches, the arrangement the range buttons already had.
+- "Made with Natural Earth." on its own under a map full of aircraft names a
+  thing without saying which thing. It now says what it is crediting.
+
+**Not a defect:** the `ResizeObserver loop` console line is the known iPad noise
+already recorded in 1.32.x's notes.
+
+---
+
+## Previously staged — 1.34.0, the text a flight deck reads, 2026-08-05
+
+**`main` is on 1.29.0.**
 
 ### PIREPs, SIGMETs/AIRMETs and TAFs, on ATIS
 

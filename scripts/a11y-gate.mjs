@@ -249,6 +249,8 @@ const REGISTRY = [
   // the code that renders it). The state line's FAIL tone has its own row —
   // amber on a card is a different pair from the ordinary one beside it.
   { selector: '.wx-h', label: 'report block heading', min: 4.6, page: 'atis' },
+  // "N more lines below" — outside the scroller, like the aircraft list's foot.
+  // Measured in checkWxText, which is the only place a block has content.
   // The AMBER "not available" state is NOT here, and cannot be: the ordinary
   // sweep never presses PWR, so the feeds never start and every block stays in
   // its "not asked yet" state. A registry row that cannot match is a failure,
@@ -264,6 +266,8 @@ const REGISTRY = [
   // gate in the same commit as the code that renders it).
   { selector: ".map-layer[aria-pressed='true']", label: 'map layer (on)', min: 4.6, page: 'map' },
   { selector: '.map-note', label: 'map source credit', min: 4.6, page: 'map' },
+  { selector: ".map-mode-btn[aria-pressed='true']", label: 'map mode (selected)', min: 4.6, page: 'map' },
+  { selector: ".map-mode-btn[aria-pressed='false']", label: 'map mode (unselected)', min: 4.6, page: 'map' },
   { selector: ".map-range-btn[aria-pressed='true']", label: 'map range (selected)', min: 4.6, page: 'map' },
   { selector: ".map-range-btn[aria-pressed='false']", label: 'map range (unselected)', min: 4.6, page: 'map' },
   { selector: '.bite-intro', label: 'BITE intro', min: 4.6, page: 'bite' },
@@ -1053,6 +1057,115 @@ async function checkWxText(browser, base) {
     if (!quiet.m.every((b) => b.bodyHidden)) fail(where, 'an empty block is showing a report area with nothing in it');
   }
   await quiet.context.close();
+}
+
+/**
+ * A TAP ON THE MAP FOLLOWS THE AIRCRAFT UNDER IT.
+ *
+ * This check exists because the page shipped WITHOUT it. The MAP page was built
+ * with a canvas full of aircraft symbols and no click handler at all, so it
+ * looked exactly like the RADAR page's tappable scope and answered nothing —
+ * reported from a real iPad with 275 aircraft on screen.
+ *
+ * Nothing else could have caught it. The contrast rows, the names and the axe
+ * pass all measure a page that renders correctly, and this one did. The only
+ * question that finds it is "does pressing it do the thing".
+ *
+ * TAPPED IN BOTH MODES, because MAP moves own ship to the bottom of the box and
+ * turns the world underneath it: a hit test that computed its own centre would
+ * pass in PLAN and miss everywhere in MAP, which is the failure `planGeometry`
+ * exists to make impossible.
+ */
+async function checkMapTap(browser, base) {
+  const where = 'map-tap';
+  const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+  await seenIntro(context);
+  await context.route('**/api/traffic**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) }),
+  );
+  const page = await context.newPage();
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.getElementById('power-btn').click());
+  await page.waitForTimeout(900);
+  await page.evaluate(() => document.querySelector('[data-page="map"]').click());
+  await page.waitForTimeout(600);
+
+  for (const mode of ['PLAN', 'MAP']) {
+    await page.evaluate((m) => {
+      [...document.querySelectorAll('.map-mode-btn')].find((b) => b.textContent.trim() === m)?.click();
+    }, mode);
+    await page.waitForTimeout(300);
+
+    /**
+     * WHERE THE RENDERER ACTUALLY PUT IT. The point is read from the app's own
+     * geometry rather than from a coordinate written into this file — a
+     * hardcoded pixel would go stale the first time the layout moved, and would
+     * be testing this file's arithmetic rather than the app's.
+     */
+    const target = await page.evaluate(async () => {
+      const canvas = document.querySelector('.map-canvas');
+      const mod = await import('/src/render/gauges/plan.js');
+      const state = (await import('/src/core/state.js')).state;
+      const pressed = [...document.querySelectorAll('.map-mode-btn')].find((b) => b.getAttribute('aria-pressed') === 'true');
+      const m = pressed?.textContent.trim() === 'MAP' ? 'map' : 'plan';
+      const up = m === 'map' ? mod.upReference(state.snapshot.fields, m).upDeg : 0;
+      const r = canvas.getBoundingClientRect();
+      const geo = mod.planGeometry({ w: r.width, h: r.height, rangeNm: 40, mode: m, upDeg: up });
+      // The traffic fixture's first aircraft, projected exactly as it is drawn.
+      const res = await fetch('/api/traffic?lat=38.7&lon=-121&distNm=40');
+      const body = await res.json();
+      const a = (body.ac ?? body.aircraft ?? [])[0];
+      if (!a) return null;
+      const p = mod.project({ lat: a.lat, lon: a.lon }, { centre: { lat: 38.7, lon: -121.0 }, pxPerNm: geo.pxPerNm, cx: geo.cx, cy: geo.cy, upDeg: up });
+      return p ? { x: r.left + p.x, y: r.top + p.y, mode: m, callsign: (a.callsign ?? a.flight ?? '').trim() } : null;
+    });
+
+    if (!target) {
+      fail(where, `${mode}: could not work out where the renderer drew an aircraft`);
+      continue;
+    }
+    /**
+     * THE ASSERTION NAMES THE AIRCRAFT IT TAPPED, and the first version did not.
+     *
+     * It tested the banner's text for "following" — and `#follow-banner`
+     * carries the literal word FOLLOWING as a static badge label, present in
+     * the markup whether or not anything is being followed. So the check passed
+     * against a page with no click handler at all, which is exactly the defect
+     * it was written to catch. Both plants sat GREEN and the sweep said so.
+     *
+     * That is hub LESSONS §29 in a new costume: a substring satisfiable by
+     * coincidence reports coverage it does not have. The callsign cannot be
+     * satisfied by accident — it is only there if THIS tap followed THAT
+     * aircraft, which is the whole claim.
+     */
+    if (!target.callsign) {
+      fail(where, `${mode}: the traffic fixture's first aircraft has no callsign, so a tap cannot be told from a no-op`);
+      continue;
+    }
+    const before = await page.evaluate(() => (document.querySelector('#follow-banner')?.textContent ?? ''));
+    if (before.includes(target.callsign)) {
+      fail(where, `${mode}: already following ${target.callsign} before the tap — this check would pass on a dead handler`);
+      continue;
+    }
+    await page.mouse.click(target.x, target.y);
+    await page.waitForTimeout(500);
+    const followed = await page.evaluate(() => (document.querySelector('#follow-banner')?.textContent ?? '').replace(/\s+/g, ' ').trim());
+    if (process.env.MAPTAP_DEBUG) process.stdout.write(`  MAPTAP_DEBUG ${mode} followed="${followed}"\n`);
+    if (!followed.includes(target.callsign)) {
+      fail(
+        where,
+        `${mode} mode: tapping where the renderer drew ${target.callsign} did not follow it — the banner says `
+          + `"${followed}". The page is full of tappable-looking marks that answer nothing.`,
+      );
+    }
+    // Stop, so the next mode starts from the same state.
+    await page.evaluate(() => document.getElementById('follow-exit')?.click());
+    await page.waitForTimeout(200);
+  }
+
+  await checkContrast(page, REGISTRY.filter((r) => r.selector.includes('map-mode-btn')), where);
+  await checkNames(page, where);
+  await context.close();
 }
 
 /** Boot the panel with a chosen set of feed answers and permissions, powered on.
@@ -2113,6 +2226,7 @@ async function main() {
     await checkEicas(browser, base);
     await checkNdMode(browser, base);
     await checkWxText(browser, base);
+    await checkMapTap(browser, base);
     await checkRadarTap(browser, base, { touch: false });
     await checkRadarTap(browser, base, { touch: true });
     await checkCentrePicker(browser, base);
