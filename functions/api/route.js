@@ -41,6 +41,39 @@
 
 import { POLICIES, USER_AGENT, cached, cooldownSeconds, inCooldown, json, noteRefusal, politeFetch, problem, standoffPhrase } from './_lib.js';
 
+/**
+ * THE UPSTREAM CALL IS OFF, AND THE EVIDENCE IS WHY (2026-08-04).
+ *
+ * Three probe rounds through Noah's device, each killing one hypothesis:
+ *
+ *   1. HTTP 201, not 422 — the request SHAPE is accepted. FastAPI names a
+ *      rejected field in `detail`; that never happened.
+ *   2. `body 0 bytes`, `content-type: text/html`, `parsed as JSON: NO` — there
+ *      is no reply to parse. Not a shape we misread; nothing at all.
+ *   3. `answered by https://api.adsb.lol/api/0/routeset` with NO redirect, and
+ *      `server: cloudflare` with a `cf-ray` — **Cloudflare answered, not the
+ *      API.** The same shape as adsb.fi's 403: we are intercepted at the edge
+ *      before adsb.lol's application ever sees the request.
+ *
+ * So the call cannot succeed, and every attempt spends a request against a rate
+ * limit shared with the AIRCRAFT feed — the one Noah is actually looking at.
+ * 1.21.1 was precisely this mistake in another form, and NOTES pre-committed to
+ * this outcome before the evidence arrived: "if the next report shows an
+ * intermediary rather than adsb.lol, the honest move is to STOP CALLING the
+ * endpoint."
+ *
+ * NOTHING IS DELETED. The parser, the probe and the client are intact and
+ * tested; flipping this to `true` re-enables the whole feature in one line. It
+ * is off because it cannot work TODAY, not because it was wrong to build —
+ * and if adsb.lol's edge stops answering for them, one probe proves it.
+ */
+export const ROUTE_UPSTREAM_ENABLED = false;
+
+/** What the panel says instead, and it names the evidence rather than shrugging. */
+export const ROUTE_DISABLED_REASON =
+  'not asked — adsb.lol’s edge answers this endpoint with an empty page rather than passing it to their API, '
+  + 'so the request cannot produce a route and would spend an allowance the aircraft feed needs';
+
 export const ROUTE_SOURCE = Object.freeze({
   id: 'adsb.lol',
   url: 'https://api.adsb.lol/api/0/routeset',
@@ -194,7 +227,7 @@ function describe(payload, status, raw = null, res = null) {
   };
 }
 
-export async function onRequestGet({ request }) {
+export async function onRequestGet({ request, env = {} }) {
   const url = new URL(request.url);
   const callsign = (url.searchParams.get('callsign') ?? '').trim().toUpperCase();
   const lat = Number(url.searchParams.get('lat'));
@@ -218,6 +251,31 @@ export async function onRequestGet({ request }) {
    * harder than the traffic feed, which is a live position. One follow costs
    * one upstream request rather than one every ten seconds.
    */
+  /**
+   * ASKED NOTHING, AND SAYING SO. See ROUTE_UPSTREAM_ENABLED above — this is a
+   * standing decision backed by three probes, not a failure, so it answers
+   * immediately and costs no upstream request at all.
+   */
+  /**
+   * `ROUTE_UPSTREAM=on` in the Pages environment re-enables it without a
+   * deploy, so the day adsb.lol's edge stops swallowing this endpoint the
+   * feature can be re-probed by flipping a variable rather than by shipping.
+   * The tests use it to exercise the machinery that is otherwise unreachable.
+   */
+  if (!ROUTE_UPSTREAM_ENABLED && env?.ROUTE_UPSTREAM !== 'on') {
+    return json(
+      {
+        ok: false,
+        source: ROUTE_SOURCE.id,
+        sourceUrl: ROUTE_SOURCE.homeUrl,
+        callsign,
+        reason: ROUTE_DISABLED_REASON,
+        probe: { status: null, disabled: true, note: 'the upstream call is switched off — see route.js' },
+      },
+      { status: 200, cacheSeconds: 600 },
+    );
+  }
+
   const key = `/api/route?callsign=${callsign}`;
   return cached(request, key, POLICIES.route.cacheSeconds, async () => {
     /**

@@ -9,6 +9,74 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
+## STAGED NOW — 1.27.0, the route question is CLOSED, 2026-08-05
+
+**1.27.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.26.0.
+
+### The route: three probes, three hypotheses killed, one answer
+
+From Noah's 1.26.0 report, the self test's first real run:
+
+    callsign SKW3107   HTTP 201
+    content-type text/html
+    answered by https://api.adsb.lol/api/0/routeset
+    server: cloudflare
+    cf-ray: a261a4b65dc369a0-SJC
+    body 0 bytes   parsed as JSON: NO
+
+- **201, not 422** — the request SHAPE is accepted. That branch never fired.
+- **0 bytes, text/html** — nothing to parse. Not a shape misread; nothing at all.
+- **No redirect, `server: cloudflare`, a `cf-ray`** — **Cloudflare answered, not
+  the API.** The same shape as adsb.fi's 403: intercepted at the edge before
+  adsb.lol's application sees us.
+
+**So the call is off**, per the commitment NOTES made before the evidence
+arrived: a request that cannot succeed still spends an allowance shared with the
+AIRCRAFT feed, which is the thing on screen. 1.21.1 was this same mistake in
+another form.
+
+**Nothing is deleted.** `parseRoute`, the probe and the client are intact and
+tested. `ROUTE_UPSTREAM_ENABLED`, or `ROUTE_UPSTREAM=on` in the Pages
+environment, re-enables it — **without a deploy**, so if their edge ever stops
+swallowing it, one variable re-probes the whole thing.
+
+### The self test caught a bug in ITSELF, first run
+
+    FAIL /api/metar HTTP 400 — bbox is required
+
+…while `metar.station` read **LIVE KPVF** three lines above it in the same
+report. The self test built `/api/metar?lat=..&lon=..` by hand; the Function
+takes a `bbox`.
+
+**It accused a working feed.** That is the one failure a diagnostic cannot have,
+and it is worse than a missing check because somebody acts on it. It calls
+`metarBboxParam()` — the app's own builder — now, so it cannot drift again. The
+general rule: **a diagnostic that constructs its own requests will drift from
+the app, and the drift surfaces as a false accusation.**
+
+### The backgrounding question is now measurable rather than arguable
+
+Twice, `orientation.beta/gamma/compass` FAILED with *"no update for 3s (limit
+3s)"* while the raw block held a good gravity vector. That reason describes a
+CLOCK, not a CAUSE, and two sessions correctly refused to guess which.
+
+The `visibilitychange` handler existed but **did not cover `orientation.*`** —
+so those fields aged out unmarked. They are marked now, and the report carries a
+**FOREGROUND** block: current state, how many times the app has been
+backgrounded since boot, and when. If a future report shows the clock reason
+with no recent visibility change beside it, the cause is something else — a
+distinction the panel can now make on its own.
+
+### Confirmed working, from the same report
+
+The traffic feed answered: **86 aircraft**, `provider adsb.lol`, with the
+coverage table showing `nav_qnh` on 34 of 60 and `nav_altitude_mcp` on 29 of 60
+— the crew readouts are real and populated. 1.23.0's countdown reads
+*"not asking again for 8m 49s"*. The offline shell holds `fauxplane-1.26.0`.
+
+---
+
 ## PROMOTED — main is on 1.26.0, and four releases had never deployed, 2026-08-04
 
 **Noah said "Promote to main."** `main` fast-forwarded from 1.23.1 to **1.26.0**

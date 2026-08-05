@@ -29,6 +29,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.27.0',
+    date: '2026-08-05',
+    headline: 'The route question is answered, and the answer is no.',
+    changed: [
+      'Your self test settled it on its first real run. The route endpoint is answered by Cloudflare, not by adsb.lol — an empty page, no redirect, nothing to read. We are turned away at the door before their servers ever see the request, the same way adsb.fi turns us away.',
+      'So the panel stops asking. A request that cannot succeed still spends the allowance your RADAR needs, and the aircraft are the instrument while a route is a nicety. Nothing is deleted — if their edge ever stops swallowing it, one switch turns it back on.',
+      'The self test also caught a bug in ITSELF: it reported the weather feed as FAILED while the weather was working three lines above it, because it was asking the wrong way. Fixed, and it now builds its requests from the app\u2019s own code so it cannot drift again.',
+      'And your report now says how many times the app has been backgrounded and when. Twice your sensors stopped and the panel could only say "no update for 3 seconds", which describes a clock rather than a cause. It says which it is now.',
+    ],
+    broken: [
+      'No route, and now for a known reason rather than an unknown one.',
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+    ],
+  },
+  {
     version: '1.26.0',
     date: '2026-08-04',
     headline: 'A self test you run, so you stop paying a release per question.',

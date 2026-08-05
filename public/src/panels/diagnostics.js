@@ -99,7 +99,7 @@ function chunkList(items, width) {
   return out;
 }
 
-export function buildReport({ snapshot, fusion, traffic, route = null, selfTest = null, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
+export function buildReport({ snapshot, fusion, traffic, route = null, selfTest = null, visibility = null, metar, bootAt, precisePosition = false, env = {}, mount = null, mountApplies = null, raw = {}, now = null }) {
   // FIELD AGES are measured against the snapshot, which is when those values
   // were true. THE FILTER IS NOT A FIELD — it is live, and it keeps accepting
   // samples after a snapshot is taken. Reading it at `snapshot.t` is what put
@@ -338,6 +338,24 @@ export function buildReport({ snapshot, fusion, traffic, route = null, selfTest 
     }
   } else {
     line('SELF TEST  not run — press "Run the self test" on the BITE page');
+    line();
+  }
+
+  // ---- FOREGROUND HISTORY ----------------------------------------------------
+  //
+  // On iOS the sensors stop the moment the page loses the foreground, and the
+  // resulting FAIL reason — "no update for 3s (limit 3s)" — describes a clock
+  // rather than a cause. Two reports carried that sentence with a perfectly
+  // good gravity vector three lines below it, and neither could settle whether
+  // the page had been backgrounded. These lines settle it.
+  if (visibility) {
+    line('FOREGROUND');
+    line(`  currently ${typeof document === 'undefined' ? 'unknown' : document.visibilityState}`);
+    line(
+      `  backgrounded ${visibility.hiddenCount} time(s) since boot`
+        + `${visibility.lastHiddenAt ? `, last ${formatAge(readAt - visibility.lastHiddenAt)} ago` : ''}`
+        + `${visibility.lastVisibleAt ? `; returned ${formatAge(readAt - visibility.lastVisibleAt)} ago` : ''}`,
+    );
     line();
   }
 

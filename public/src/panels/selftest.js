@@ -33,6 +33,8 @@
  * different answers and only one of them is earned.
  */
 
+import { metarBboxParam } from '../core/region.js';
+
 /** One request, with its timing and enough of its reply to diagnose it. */
 async function probe(name, url, { fetchImpl = fetch, method = 'GET', clock = () => Date.now() } = {}) {
   const startedAt = clock();
@@ -133,7 +135,20 @@ export async function shellFacts(win = typeof window !== 'undefined' ? window : 
 export async function feedProbes({ lat, lon, callsign = null, fetchImpl = fetch, clock = () => Date.now() } = {}) {
   const at = Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
   const out = [];
-  out.push(await probe('/api/metar', at ? `/api/metar?lat=${at.lat.toFixed(3)}&lon=${at.lon.toFixed(3)}` : '/api/metar', { fetchImpl, clock }));
+  /**
+   * THE SAME URL THE APP BUILDS, from the app's own builder.
+   *
+   * The first version constructed `/api/metar?lat=..&lon=..` by hand. The
+   * Function takes a `bbox`, so the self test reported `FAIL HTTP 400 — bbox is
+   * required` for a feed that was LIVE three lines above it in the same report.
+   *
+   * That is the exact failure a diagnostic cannot have: it accused a working
+   * feed on its first real run. A diagnostic that builds its own requests will
+   * drift from the app the moment either changes, and the drift shows up as a
+   * false accusation rather than as a missing check — which is worse, because
+   * someone acts on it.
+   */
+  out.push(await probe('/api/metar', `/api/metar?bbox=${encodeURIComponent(metarBboxParam())}`, { fetchImpl, clock }));
   out.push(
     at
       ? await probe('/api/traffic', `/api/traffic?lat=${at.lat.toFixed(3)}&lon=${at.lon.toFixed(3)}&dist=40`, { fetchImpl, clock })
@@ -141,7 +156,7 @@ export async function feedProbes({ lat, lon, callsign = null, fetchImpl = fetch,
   );
   out.push(
     at
-      ? await probe('/api/winds', `/api/winds?lat=${at.lat.toFixed(3)}&lon=${at.lon.toFixed(3)}&alt=5000`, { fetchImpl, clock })
+      ? await probe('/api/winds', `/api/winds?lat=${at.lat.toFixed(3)}&lon=${at.lon.toFixed(3)}`, { fetchImpl, clock })
       : { name: '/api/winds', state: 'skipped', detail: 'no position yet' },
   );
   out.push(

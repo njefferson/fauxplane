@@ -141,6 +141,11 @@ async function boot() {
   const route = createRouteSource({ clock: now });
   /** The last self-test run, declared above the report that reads it. */
   let lastSelfTest = null;
+  /**
+   * VISIBILITY, COUNTED — so "the sensors stopped" and "you were in another app"
+   * stop being indistinguishable in a report.
+   */
+  const visibility = { hiddenCount: 0, lastHiddenAt: null, lastVisibleAt: null };
   const diagnostics = createDiagnostics({
     trigger: stamp,
     build: ({ precisePosition }) =>
@@ -153,6 +158,7 @@ async function boot() {
         // `POST /api/0/routeset` actually takes.
         route,
         selfTest: lastSelfTest,
+        visibility,
         metar,
         bootAt: BOOT_AT,
         // The filter is read at the moment the report is asked for, not at the
@@ -973,10 +979,30 @@ async function boot() {
   // FAIL until the filter has genuinely reconverged.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      for (const p of ['attitude.pitch', 'attitude.roll', 'attitude.heading', 'attitude.turnRate', 'motion.gLoad', 'motion.lateralG', 'motion.verticalAccel']) {
+      visibility.hiddenCount += 1;
+      visibility.lastHiddenAt = now();
+      /**
+       * ORIENTATION IS IN THIS LIST NOW, and it was the omission that kept a
+       * question open across two of Noah's reports.
+       *
+       * Both showed `orientation.beta`, `.gamma` and `.compass` FAILING with
+       * "no update for 3s (limit 3s)" while the raw block still held a perfectly
+       * good gravity vector — the signature of the page having lost the
+       * foreground. But those fields were not marked, so they aged out with a
+       * reason that describes a CLOCK rather than a CAUSE, and two sessions in
+       * a row correctly refused to guess which it was.
+       *
+       * Marked here, they now say backgrounding when backgrounding is what
+       * happened. If a future report shows the clock reason again with no
+       * recent visibility change beside it in the report, the cause is
+       * something else — and that is a distinction the panel can now make
+       * rather than a session having to speculate.
+       */
+      for (const p of ['attitude.pitch', 'attitude.roll', 'attitude.heading', 'attitude.turnRate', 'motion.gLoad', 'motion.lateralG', 'motion.verticalAccel', 'orientation.beta', 'orientation.gamma', 'orientation.compass']) {
         state.markStale(p, 'app was backgrounded — sensors stop delivering');
       }
     } else {
+      visibility.lastVisibleAt = now();
       fusion.reset('app returned to the foreground — filter reconverging');
       vsi.reset('app returned to the foreground');
       surface.measure();

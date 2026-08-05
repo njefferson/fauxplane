@@ -280,7 +280,7 @@ test('the route handler records its refusal against the PROVIDER, through the re
 
   try {
     const request = new Request('https://example.test/api/route?callsign=UAL328&lat=38.7&lon=-121.0');
-    await onRequestGet({ request });
+    await onRequestGet({ request, env: { ROUTE_UPSTREAM: 'on' } });
 
     const keys = [...store.keys()];
     assert.ok(
@@ -323,7 +323,7 @@ test('probe: an empty 201 is distinguishable from unparseable JSON', async () =>
   const run = async (body, status = 201, contentType = 'application/json') => {
     globalThis.fetch = async () => new Response(body, { status, headers: { 'content-type': contentType } });
     const request = new Request('https://example.test/api/route?callsign=UAL328&lat=38.7&lon=-121.0');
-    const res = await onRequestGet({ request });
+    const res = await onRequestGet({ request, env: { ROUTE_UPSTREAM: 'on' } });
     const out = await res.json();
     seen.push(out.probe);
     return out.probe;
@@ -364,7 +364,7 @@ test('probe: the raw body is bounded so a huge reply cannot flood the report', a
   globalThis.caches = { default: { put: async (r, v) => store.set(r.url ?? r, v), match: async () => null, delete: async () => true } };
   globalThis.fetch = async () => new Response('x'.repeat(50_000), { status: 201, headers: { 'content-type': 'text/plain' } });
   try {
-    const res = await onRequestGet({ request: new Request('https://example.test/api/route?callsign=UAL328&lat=1&lon=2') });
+    const res = await onRequestGet({ request: new Request('https://example.test/api/route?callsign=UAL328&lat=1&lon=2'), env: { ROUTE_UPSTREAM: 'on' } });
     const { probe } = await res.json();
     assert.equal(probe.bodyLength, 50_000, 'the TRUE length is reported');
     assert.ok(probe.bodyPrefix.length <= 400, 'but only a bounded prefix travels');
