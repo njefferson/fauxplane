@@ -9,10 +9,89 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.27.0, the route question is CLOSED, 2026-08-05
+## STAGED NOW — 1.28.0, five things wrong with the RADAR page, 2026-08-05
 
-**1.27.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
-1.26.0.
+**1.28.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.27.0.
+
+Noah, 2026-08-05, in one message: *"The radar is pushed down by the airport
+picker. The ranges still need to be made right. Tapping the planes on the bottom
+is a different path than pasting their data into the box above it. Tapping the
+planes on top is still inconsistent in whether they will respond or not.
+Clicking follow does not indicate it did anything."*
+
+Five separate defects. **Every gate on that page was green through all five**,
+and that is the thing worth keeping from this release.
+
+### 1. The picker was standing in front of the instrument
+
+The centre picker — a label, a text field and a two-line hint — was rendered
+ABOVE the scope, and the four range buttons and four altitude bands were
+flex-wrapped, so on a 402 px phone each pair took two rows instead of one. The
+scope began past the half-way point of the viewport and ran off the bottom.
+
+The picker moved BELOW the canvas. It is a setup action, used once to aim the
+thing; range and band are used *while* looking at it, so they stayed above and
+became four-column grids that fit on one line at every width this app supports.
+
+**It was not made smaller.** Shrinking a control to make room is how it stops
+being readable instead of merely being lower down.
+
+### 2. The rings printed a distance the circle is not at
+
+`Math.round(rangeNm * frac)`. At 10 nm the quarter and three-quarter rings sit
+at **2.5 and 7.5 nm** and were labelled **3 and 8** — on a display whose entire
+contract is distance. 20, 40 and 80 all divide evenly by four, so three of the
+four ranges were correct by arithmetic accident and the fourth was the only
+witness. Now `ringLabelFor`: one decimal where the number needs one, none where
+it does not.
+
+**It is EXPORTED so the test calls the real thing.** Written inline the formula
+was six characters, and the first version of the test re-typed those six
+characters — which would have gone on passing with `Math.round` restored
+underneath it. A plant proves it does not. **A test that re-implements the
+thing it is testing is a test of itself**, and it is easiest to write exactly
+when the logic is small enough to look harmless.
+
+### 3 and 4. Two tap paths, and a target that excluded the part people press
+
+Tapping a row in the list followed the flight but did NOT fill the box; tapping
+the same aircraft on the scope did both. The same action left the page in two
+states depending on which surface it was touched from. The list now fills the
+box too.
+
+The canvas taps were never flaky. `placeLabels` offsets a label by
+`size + lineHeight * 0.9` — about 20 px — and the label has its own height on
+top of that, so **a finger going for the altitude readout lands 20 to 28 px from
+the mark**. The slop radius was 24. The biggest, most inviting thing on the
+scope was half outside its own target, which is exactly what "inconsistent"
+looks like from the outside. `TAP_SLOP_PX = 34`; nearest-wins still resolves a
+cluster, so the wider radius only helps where there was nothing closer to pick.
+
+### 5. Follow answered where nobody could see it
+
+Pressing **Follow this flight** wrote to `status` — which sits ABOVE the scope,
+several hundred pixels off the top of the screen at the moment a thumb is on the
+button at the bottom. An empty box produced a sentence nobody could read, and a
+typo replaced the traffic feed's own line ("86 aircraft within 40 nm") with a
+spelling lesson.
+
+There is a `role="status"` note inside the form now. Empty box says what to do;
+a bad entry quotes what was typed; a successful follow says *"Following X. Open
+PFD to see its instruments."*
+
+### The lesson: every check asked whether things EXIST
+
+Contrast, target size, accessible names, the citation, the readiness chip, the
+FOLLOWING indicator — all green, all release. **Not one of them asked where the
+instrument starts**, which is the only question a reader has when they open the
+page. The a11y gate now fails if the scope begins past half the viewport, and
+that check has been watched going red on a plant that puts the picker back on
+top.
+
+---
+
+## 1.27.0 — the route question is CLOSED, 2026-08-05
 
 ### The route: three probes, three hypotheses killed, one answer
 

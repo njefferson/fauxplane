@@ -1285,12 +1285,36 @@ body[data-powered='true'] .gate {
   border-radius: var(--radius);
 }
 
+/* FOUR ACROSS, ALWAYS. These were flex-wrapped, so on a 402px phone the fourth
+   range dropped to its own row and cost the scope another 60px of height — part
+   of what pushed the instrument off the bottom. A four-column grid fits them on
+   one line at every width this app supports, and the touch target floor is
+   preserved because the height is unchanged. */
 .radar-range {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 0.6rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
 }
+.radar-range > * {
+  min-width: 0;
+  padding-inline: 0.25rem;
+}
+
+/* The picker sits under the scope now, so it reads as a setup control rather
+   than as something standing between the reader and the instrument. */
+.radar-centre {
+  margin-top: var(--gap);
+}
+
+/* The form's own answer, beside the form. See radar.js — this used to be
+   written to the status line above the scope, where the person pressing the
+   button could not see it. */
+.radar-form-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+
 .radar-range-btn {
   min-height: var(--target);
   min-width: 4rem;
@@ -2190,11 +2214,19 @@ body[data-powered='true'] .gate {
 }
 
 /* The TCAS altitude band — the real de-clutter, in the real names. */
+/* FOUR ACROSS, like the ranges above it. Wrapped, the fourth band dropped to
+   its own row and cost the scope another row of height — see .radar-range. This
+   is the CANONICAL rule: an earlier duplicate was overridden by this one and
+   silently did nothing, which is why the grid lives here rather than there. */
 .radar-band {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
   margin: 0 0 0.6rem;
+}
+.radar-band > * {
+  min-width: 0;
+  padding-inline: 0.25rem;
 }
 .radar-band-btn {
   min-height: var(--target);

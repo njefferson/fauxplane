@@ -1600,6 +1600,33 @@ async function checkRadarTap(browser, base, { touch = false } = {}) {
     fail(where, `the indicator says "${afterFollow.text}" — it must name the aircraft the panel has become`);
   }
 
+  /**
+   * THE SCOPE IS NOT PUSHED OFF THE SCREEN BY ITS OWN CONTROLS.
+   *
+   * Noah, 2026-08-05: "The radar is pushed down by the airport picker." The
+   * centre picker — a label, a field and a two-line hint — sat ABOVE the
+   * instrument, and the range and band buttons wrapped onto two rows each on a
+   * phone. The scope began past the half-way point and ran off the bottom.
+   *
+   * Every check on this page passed throughout, because they all asked whether
+   * things EXIST and are legible. None asked where the instrument starts, which
+   * is the only question a reader has when they open the page.
+   */
+  const scopeTop = await page.evaluate(() => {
+    const c = document.querySelector('.radar-canvas');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return { top: r.top + window.scrollY, h: r.height, viewport: window.innerHeight };
+  });
+  if (!scopeTop) fail(where, 'the radar canvas is missing');
+  else if (scopeTop.top > scopeTop.viewport * 0.5) {
+    fail(
+      where,
+      `the scope starts ${Math.round(scopeTop.top)}px down a ${scopeTop.viewport}px viewport — `
+        + 'its own controls have pushed the instrument past the half-way point',
+    );
+  }
+
   // BACK TO THE PANEL FIRST. The banner lives inside `#page-pfd`, which is
   // `[hidden]` while the scope is up — so measuring here without switching
   // reads 0x0 for a perfectly visible element and would have to be "fixed" by

@@ -14,7 +14,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { placeLabels, RUNWAY_MIN_PX, runwayWidthPx} from '../public/src/render/gauges/plan.js';
+import { placeLabels, RUNWAY_MIN_PX, runwayWidthPx } from '../public/src/render/gauges/plan.js';
 
 /** A monospace-ish stand-in: every glyph six pixels wide. */
 const measure = (t) => t.length * 6;
@@ -181,4 +181,70 @@ test('runway threshold: real runways fall the right side of it at each range', (
   assert.ok(drawnPx(0.66, 80) < RUNWAY_MIN_PX, 'at 80 nm certainly not');
   // A big one — 12,000 ft, about 2 nm — should survive further out.
   assert.ok(drawnPx(2.0, 20) >= RUNWAY_MIN_PX, 'a major runway must still read at 20 nm');
+});
+
+/**
+ * THE RING LABEL MUST NAME THE RING'S ACTUAL DISTANCE.
+ *
+ * Noah, 2026-08-05: "The ranges still need to be made right." At 10 nm the
+ * quarter and three-quarter rings sit at 2.5 and 7.5 nm and were labelled "3"
+ * and "8" — a scope whose entire contract is distance, printing a distance the
+ * circle is not at. The other ranges divide evenly and hid it.
+ */
+import { ringLabelFor } from '../public/src/render/gauges/plan.js';
+
+test('range rings: every label is the distance the ring is actually at', () => {
+  for (const range of [10, 20, 40, 80]) {
+    for (const frac of [0.25, 0.5, 0.75, 1]) {
+      const shown = Number(ringLabelFor(range, frac));
+      assert.equal(shown, range * frac, `at ${range} nm the ${frac} ring reads ${shown} and sits at ${range * frac}`);
+    }
+  }
+});
+
+test('range rings: 10 nm is the case that was wrong, and it is exact now', () => {
+  assert.deepEqual(
+    [0.25, 0.5, 0.75, 1].map((f) => ringLabelFor(10, f)),
+    ['2.5', '5', '7.5', '10'],
+    'the old code rounded these to 3, 5, 8, 10',
+  );
+});
+
+test('range rings: whole numbers do not grow a decimal point', () => {
+  assert.deepEqual([0.25, 0.5, 0.75, 1].map((f) => ringLabelFor(40, f)), ['10', '20', '30', '40']);
+  assert.deepEqual([0.25, 0.5, 0.75, 1].map((f) => ringLabelFor(80, f)), ['20', '40', '60', '80']);
+});
+
+/**
+ * THE TAP TARGET MUST INCLUDE THE LABEL, because that is what a finger goes for.
+ *
+ * `placeLabels` offsets a label by `size + lineHeight * 0.9` — about 20px — and
+ * the label has its own height on top of that. Noah: "Tapping the planes on top
+ * is still inconsistent in whether they will respond or not." It was not flaky;
+ * the biggest thing on the scope was outside the target.
+ */
+test('tap slop: a tap on the altitude label still finds its aircraft', () => {
+  const centre = { lat: 38.5, lon: -121.5 };
+  const geom = { centre, rangeNm: 40, w: 350, h: 350 };
+  const one = [{ hex: 'aaa111', lat: 38.5, lon: -121.5 }];
+  // The aircraft is at the centre; its label sits about 20-28px below.
+  for (const dy of [10, 20, 28]) {
+    assert.ok(hitTestAircraft(one, geom, 175, 175 + dy), `a tap ${dy}px away — where the label is — must hit`);
+  }
+});
+
+test('tap slop: a tap in genuinely empty space still misses', () => {
+  // Widening the target must not turn the whole scope into one button.
+  const geom = { centre: { lat: 38.5, lon: -121.5 }, rangeNm: 40, w: 350, h: 350 };
+  const one = [{ hex: 'aaa111', lat: 38.5, lon: -121.5 }];
+  assert.equal(hitTestAircraft(one, geom, 175, 175 + 60), null, 'far from anything must remain a miss');
+});
+
+test('tap slop: the nearest aircraft still wins in a cluster', () => {
+  const centre = { lat: 38.5, lon: -121.5 };
+  const geom = { centre, rangeNm: 40, w: 350, h: 350 };
+  const near = { hex: 'near01', lat: 38.5, lon: -121.5 };
+  const far = { hex: 'far001', lat: 38.62, lon: -121.5 };
+  const hit = hitTestAircraft([far, near], geom, 175, 178);
+  assert.equal(hit.hex, 'near01', 'a wider radius must not stop the closest mark winning');
 });

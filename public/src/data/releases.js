@@ -29,6 +29,23 @@
  */
 export const RELEASES = [
   {
+    version: '1.28.0',
+    date: '2026-08-05',
+    headline: 'Five things you said were wrong with the radar. All five.',
+    changed: [
+      'The scope is at the top of the page now. The airport picker was above it, so on a phone the radar started past the half-way mark and ran off the bottom. The picker is a setup control you use once to aim the thing — it belongs under it. Range and band stay above, because you use those while looking at the scope.',
+      'The range buttons fit on one line. All four of them, and all four altitude bands, instead of wrapping onto a second row each and stealing two more rows of height from the instrument.',
+      'The rings tell the truth. At 10 nm the inner rings sit at 2.5 and 7.5 miles and were labelled 3 and 8 — a distance the circle is not at, on a display whose whole job is distance. The other ranges divide evenly, which is how it stayed hidden.',
+      'Tapping an aircraft on the scope works where you actually aim. You go for the label — the callsign and the altitude, the big readable part — and the target stopped about 24 pixels from the mark while the label sits 20 to 28 away. So it hit sometimes. That was the inconsistency; it was never flaky, it was a target that excluded the part you press.',
+      'Tapping one in the list below does the same thing as tapping one on the scope: it fills the flight number into the box as well as following it. Two surfaces, one result.',
+      'And pressing Follow says so, right there under the button. It always did say so — several hundred pixels above your thumb, off the top of the screen. An empty box now says what to do instead of nothing.',
+    ],
+    broken: [
+      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'No route, for the known reason in 1.27.0.',
+    ],
+  },
+  {
     version: '1.27.0',
     date: '2026-08-05',
     headline: 'The route question is answered, and the answer is no.',

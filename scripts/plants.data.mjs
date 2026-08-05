@@ -797,6 +797,56 @@ export const PLANTS = [
     expect: /cf-ray|rate limiting us/,
   },
   {
+    // Noah, 2026-08-05: "The ranges still need to be made right." `Math.round`
+    // labelled the 2.5 and 7.5 nm rings "3" and "8". 20, 40 and 80 all divide
+    // evenly by four, so three of the four ranges were right by accident and
+    // the fourth was the only witness. The test imports `ringLabelFor` rather
+    // than re-typing the formula — that is what this plant proves.
+    name: 'rings: the range label goes back to rounding away from its ring',
+    check: 'a ring label names the distance the circle is actually at',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: '  const at = rangeNm * frac;\n  return Number.isInteger(at) ? String(at) : at.toFixed(1);',
+    replace: '  return String(Math.round(rangeNm * frac));',
+    expect: /the 0\.25 ring reads 3 and sits at 2\.5|old code rounded these/,
+  },
+  {
+    // Noah, 2026-08-05: "Tapping the planes on top is still inconsistent in
+    // whether they will respond or not." `placeLabels` puts the label 20-28px
+    // from the mark and the radius was 24, so the biggest, most inviting part
+    // of the target was half outside it. Not flakiness — geometry.
+    name: 'tap: the aircraft target shrinks back inside its own label',
+    check: 'a tap on the altitude label still finds its aircraft',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: 'export const TAP_SLOP_PX = 34;',
+    replace: 'export const TAP_SLOP_PX = 24;',
+    expect: /a tap 28px away — where the label is — must hit/,
+  },
+  {
+    // Noah, 2026-08-05: "The radar is pushed down by the airport picker."
+    // Putting the picker back above the scope is the exact regression. `el`
+    // returns nodes, so appending them earlier MOVES them — the picker really
+    // does end up back on top, and the `.radar-centre` box below is left empty.
+    //
+    // Every existing check on this page stayed green through the whole defect,
+    // because they all ask whether things EXIST and are legible. None asked
+    // where the instrument starts, which is the only question a reader has.
+    name: 'layout: the centre picker goes back above the scope',
+    check: 'the scope is not pushed past the half-way point by its own controls',
+    file: 'public/src/panels/radar.js',
+    find: "      el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),",
+    replace:
+      "      el('div', {}, [\n"
+      + "        el('label', { class: 'radar-centre-label', for: 'radar-centre', text: 'Centre the scope on' }),\n"
+      + "        el('div', { class: 'radar-centre-row' }, [centreInput, centreClear]),\n"
+      + '        centreList,\n'
+      + '        centreNote,\n'
+      + '      ]),\n'
+      + "      el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),",
+    expect: /the scope starts \d+px down a \d+px viewport/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

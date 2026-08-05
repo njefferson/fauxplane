@@ -139,7 +139,46 @@ export function placeLabels(items, { measure, lineHeight, bounds }) {
  * tolerance is testable without a canvas: a tap is a ~44 px event, not a
  * pixel, and the nearest symbol inside that circle wins.
  */
-export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slopPx = 24) {
+/**
+ * HOW FAR A TAP MAY LAND FROM THE SYMBOL AND STILL COUNT.
+ *
+ * Noah, 2026-08-05: "Tapping the planes on top is still inconsistent in whether
+ * they will respond or not." Measured against `placeLabels`, which offsets a
+ * label by `size + lineHeight * 0.9` — about 20px — plus the label's own height:
+ * **a finger going for the altitude readout lands 20 to 28 px from the mark.**
+ *
+ * The old radius was 24, so tapping the LABEL — by far the biggest and most
+ * inviting thing on the scope — missed about as often as it hit. That is the
+ * inconsistency exactly: not a flaky hit test, a target that excluded the part
+ * people aim at.
+ *
+ * Nearest-wins still resolves a cluster, so a wider radius only helps where
+ * there was nothing closer to choose.
+ */
+export const TAP_SLOP_PX = 34;
+
+/**
+ * THE LABEL ON A RANGE RING NAMES THE DISTANCE THE RING IS ACTUALLY AT.
+ *
+ * It used to round away from it: `Math.round(rangeNm * frac)`. At 10 nm the
+ * quarter and three-quarter rings sit at 2.5 and 7.5 nm and read "3" and "8" —
+ * a display whose entire contract is distance, printing a distance the circle
+ * is not at. Noah, 2026-08-05: "The ranges still need to be made right."
+ *
+ * 20, 40 and 80 all divide evenly by four, which is how it stayed hidden: three
+ * of the four ranges were correct by arithmetic accident.
+ *
+ * EXPORTED SO THE TEST CAN CALL THE REAL THING. Written inline it was six
+ * characters, and a test that re-typed those six characters would have gone on
+ * passing with `Math.round` restored underneath it — which is a test of the
+ * test, and the plant for this defect exists to prove it is not.
+ */
+export function ringLabelFor(rangeNm, frac) {
+  const at = rangeNm * frac;
+  return Number.isInteger(at) ? String(at) : at.toFixed(1);
+}
+
+export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slopPx = TAP_SLOP_PX) {
   const cx = w / 2;
   const cy = h / 2;
   const r = Math.min(w, h) / 2 - 4;
@@ -210,7 +249,7 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
     ctx.beginPath();
     ctx.arc(cx, cy, r * frac, 0, Math.PI * 2);
     ctx.stroke();
-    text(ctx, `${Math.round(rangeNm * frac)}`, cx + 3, cy - r * frac + ringLabel * 0.7, {
+    text(ctx, ringLabelFor(rangeNm, frac), cx + 3, cy - r * frac + ringLabel * 0.7, {
       size: ringLabel,
       colour: tokens['text-3'],
       align: 'left',

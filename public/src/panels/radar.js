@@ -167,13 +167,31 @@ export function createRadar({
   const followBtn = el('button', { class: 'radar-go', type: 'submit', text: 'Follow this flight' });
   const stopBtn = el('button', { class: 'radar-stop', type: 'button', text: 'Stop following', hidden: 'hidden' });
 
+  /**
+   * THE FORM ANSWERS BESIDE THE FORM.
+   *
+   * Noah, 2026-08-05: "Clicking follow does not indicate it did anything." It
+   * did — it wrote to `status`, which sits ABOVE THE SCOPE, several hundred
+   * pixels off the top of the screen at the moment your thumb is on the button
+   * at the bottom. An empty box produced a sentence nobody could see.
+   *
+   * It also overwrote the traffic feed's own line, so an input typo replaced
+   * "86 aircraft within 40 nm" with a spelling lesson.
+   */
+  const formNote = el('p', { class: 'radar-form-note', role: 'status', 'aria-live': 'polite' });
+
   const submit = (e) => {
     e.preventDefault();
     const value = input.value.trim().toUpperCase();
-    if (!/^[A-Z0-9]{2,8}$/.test(value)) {
-      status.textContent = 'A flight number is 2 to 8 letters or digits — the ICAO form, like UAL328 rather than UA328.';
+    if (!value) {
+      formNote.textContent = 'Type a flight number first, or tap an aircraft on the scope or in the list below.';
       return;
     }
+    if (!/^[A-Z0-9]{2,8}$/.test(value)) {
+      formNote.textContent = `“${value}” is not a flight number — 2 to 8 letters or digits, the ICAO form like UAL328 rather than UA328.`;
+      return;
+    }
+    formNote.textContent = '';
     startFollowing({ callsign: value });
   };
 
@@ -192,6 +210,9 @@ export function createRadar({
   const startFollowing = (key) => {
     traffic.follow(key);
     stopBtn.hidden = false;
+    // VISIBLY, where the press happened — the standing banner is on the PFD and
+    // the FOLLOWING chip is above the scope, both out of sight from the button.
+    formNote.textContent = `Following ${key.callsign ?? key.hex}. Open PFD to see its instruments.`;
     announcer.say(`Following ${key.callsign ?? key.hex}. The panel is now showing that aircraft, not this device.`);
     onFollowChange();
     renderFollowNote();
@@ -383,18 +404,30 @@ export function createRadar({
   host.replaceChildren(
     el('section', { class: 'card radar-card' }, [
       el('h2', { class: 'card-title', text: 'Traffic' }),
-      el('div', { class: 'radar-centre' }, [
-        el('label', { class: 'radar-centre-label', for: 'radar-centre', text: 'Centre the scope on' }),
-        el('div', { class: 'radar-centre-row' }, [centreInput, centreClear]),
-        centreList,
-        centreNote,
-      ]),
+      /**
+       * THE SCOPE COMES FIRST. Noah, 2026-08-05: "The radar is pushed down by
+       * the airport picker."
+       *
+       * The centre picker is a label, a text field and a two-line hint — and it
+       * sat ABOVE the instrument, so on a phone the scope began past the
+       * half-way point and ran off the bottom. It is a SETUP action, used once
+       * to aim the thing; range and band are used WHILE looking at it, so they
+       * stay above. The picker moved below the scope rather than being made
+       * smaller, because shrinking a control to make room is how it becomes
+       * unreadable instead of merely lower down.
+       */
       el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),
       bandHost,
       readyChip,
       canvas,
       status,
       attribution,
+      el('div', { class: 'radar-centre' }, [
+        el('label', { class: 'radar-centre-label', for: 'radar-centre', text: 'Centre the scope on' }),
+        el('div', { class: 'radar-centre-row' }, [centreInput, centreClear]),
+        centreList,
+        centreNote,
+      ]),
     ]),
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Follow a flight' }), form, followNote]),
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Heard right now' }), picker, list, foot]),
@@ -535,7 +568,18 @@ export function createRadar({
             class: 'radar-row',
             type: 'button',
             dataset: { hex: a.hex },
-            onclick: () => startFollowing(a.callsign ? { callsign: a.callsign } : { hex: a.hex }),
+            /**
+             * FILLS THE BOX TOO. Noah, 2026-08-05: "Tapping the planes on the
+             * bottom is a different path than pasting their data into the box
+             * above it." He was right — the canvas tap set the input and this
+             * one did not, so the same action left the page in two different
+             * states depending on which surface you touched it from.
+             */
+            onclick: () => {
+              const key = a.callsign ?? a.registration ?? a.hex.toUpperCase();
+              input.value = key;
+              startFollowing(a.callsign ? { callsign: a.callsign } : { hex: a.hex });
+            },
           },
           [
             el('span', { class: 'radar-row-name', text: name }),
