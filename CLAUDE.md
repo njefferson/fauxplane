@@ -121,10 +121,18 @@ rather than assumed. adsb.lol call routes **plausible**, which is their word and
 belongs on screen — an inference from a callsign is not a filed flight plan.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 299 unit tests over the pure logic, including the magnetic model
+- `npm test` — 449 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
-  palettes x 5 pages, including the acceptance criteria.
+  palettes x 6 pages, including the acceptance criteria, plus the checks that
+  must bring their own conditions: the EICAS strip in three states, and the
+  navigation display's mode switch actually pressed.
+
+  **A canvas is invisible to it.** Every rotation, symbol and projection is
+  drawn on one, so a plant about that maths MUST use `gate: 'tests'`; one aimed
+  here stays green forever. What this gate CAN reach is what a surface says
+  about itself — its text alternative — which is also the only part a reader who
+  cannot see the picture ever gets.
 - `npm run palette` — the hub's `palette-check.mjs` against
   `palettes/fauxplane.json`. The gate is never forked; it is run from the hub.
 - `node scripts/plant.mjs` — breaks one thing at a time and proves the gate
@@ -252,6 +260,37 @@ nothing still prints success — hub LESSONS §2, in a new costume.
 **Ignore the harness-designated `claude/*` branch** (Doctrine §11). The web-task
 harness keeps naming one; this repo's policy is staging and main, so work lands
 on `staging` and the session says so.
+
+## The navigation display: PLAN, MAP, and the space under it
+`drawPlan` renders BOTH modes and there is deliberately no second renderer.
+**PLAN** is centred and north-up — the TCAS traffic display, which is what the
+RADAR page is and stays. **MAP** turns the display so the direction of travel is
+up, puts own ship near the bottom, and draws a compass arc instead of a rose.
+
+**The rotation is applied at the PROJECTION** (`project`'s `upDeg`), so traffic,
+runways, airports, the flown track and the basemap all inherit it and none can be
+left behind. A symbol whose own maths knew about track-up would be a second
+opinion about which way is up. Exactly ONE thing turns separately and it is
+commented: a traffic symbol's own pointing.
+
+**Which way is up is never claimed without a measurement.** `upReference` prefers
+the ground track, falls back to heading and SAYS it is heading, and otherwise
+stays north-up with the reason — which on a clamped desk is nearly always. The
+label is on the instrument and in the canvas's text alternative both.
+
+`hitTestAircraft` is deliberately north-up and centred, because the only tappable
+scope is the RADAR page's. It carries a comment saying what it would need if that
+ever changes.
+
+**The space under the ND is EICAS and nothing else.** It was reserved from 1.29.0
+and claimed in 1.31.0 by the crew alerting list. The rule that decides what may
+go in it is the whole design: **a message earns its place only if the condition is
+real, is degrading something, and is NOT already visible on the page the reader is
+looking at.** Without that clause it becomes the value strip again. Empty is a
+valid state and shows nothing; a panel that is off raises nothing at all.
+Nothing emits the red tier, and there is no CSS rule for one — an unemitted
+colour cannot be measured, so the tier and its colour arrive together or not at
+all, and `alerts.test.mjs` holds that.
 
 ## The doctrine baseline this app satisfies (§7e, §7f)
 The **(i) menu** in the header carries all seven items §7e requires: what this
