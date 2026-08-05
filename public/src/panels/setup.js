@@ -59,7 +59,23 @@ export function saveMount(value, storage = globalThis.localStorage) {
 
 const fmt = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}°`;
 
-export function createSetup({ host, fusion, state, announcer, screenAngle, onChange = () => {} }) {
+/**
+ * `brightness` is the panel-dimming control, BUILT BY app.js AND PASSED IN.
+ *
+ * Noah, 2026-08-05: "brightness can go in setup, and then (i) moved up?" It was
+ * in the header beside the (i), in a box that wrapped onto its own row on every
+ * phone — a full row of chrome above every instrument, for a control chosen once
+ * for wherever the panel is standing.
+ *
+ * THE LOGIC DID NOT MOVE WITH IT. Dimming needs the ambient-light field, the
+ * store and the token surface, all of which app.js already holds; re-deriving
+ * any of that here would be a second implementation of the day/night decision,
+ * and this repo has already paid for one of those (see `levellingLine` below).
+ * So app.js still owns the mode and the element, and this page is where it is
+ * MOUNTED. A missing `brightness` renders the card without it rather than
+ * throwing, because SETUP is also constructed by the preview harness.
+ */
+export function createSetup({ host, fusion, state, announcer, screenAngle, brightness = null, onChange = () => {} }) {
   const status = el('p', { class: 'setup-status', role: 'status', 'aria-live': 'polite' });
   const current = el('p', { class: 'setup-current' });
 
@@ -222,6 +238,20 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, onCha
       el('div', { class: 'setup-actions' }, [levelBtn, clearBtn, restartBtn]),
       status,
       current,
+    ]),
+    el('section', { class: 'card' }, [
+      el('h2', { class: 'card-title', text: 'Panel brightness' }),
+      el('p', {
+        class: 'setup-body',
+        text:
+          'The panel has two measured colour schemes rather than a brightness slider — a dimmed screen at night is a screen whose text has quietly lost its contrast, and a real flight deck changes the lighting rather than fading the glass.',
+      }),
+      el('p', {
+        class: 'setup-body',
+        text:
+          'On Auto it follows the device\u2019s light sensor where there is one, and the sun\u2019s computed elevation where there is not. Press to cycle Auto, Day, Night. The button says which it is on and what it is reading.',
+      }),
+      ...(brightness ? [el('div', { class: 'setup-actions' }, [brightness])] : []),
     ]),
     el('section', { class: 'card' }, [
       el('h2', { class: 'card-title', text: 'What this does not fix' }),

@@ -68,6 +68,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.28.2',
+    date: '2026-08-05',
+    headline: 'Brightness moves to SETUP, and the (i) moves up beside the tabs.',
+    changed: [
+      'Brightness now sits on the SETUP page with the levelling controls. It is a choice made once for wherever the panel is standing, and it was holding a place in the top bar that it did not need.',
+      'It has room to explain itself there. The panel has two measured colour schemes rather than a brightness slider — a dimmed screen is a screen whose text has quietly lost its contrast, and a real flight deck changes the lighting rather than fading the glass. On Auto it follows the device\u2019s light sensor where there is one, and the sun\u2019s computed elevation where there is not.',
+      'The (i) button now rides the row of page tabs, instead of sharing a box below them with brightness. Same button, same menu behind it.',
+    ],
+    broken: [
+      'At 200% text on a small phone the RADAR scope still starts off the bottom of the screen, and moving these two controls did not change that. What fills the screen at that size is the row of five page tabs, each one at the minimum size a finger can reliably hit.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.28.1',
     date: '2026-08-05',
     headline: 'What’s new is about the panel again, not about building it.',

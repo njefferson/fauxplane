@@ -9,10 +9,60 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.1, the release notes were a support thread, 2026-08-05
+## STAGED NOW — 1.28.2, brightness to SETUP and the (i) up, 2026-08-05
 
-**1.28.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
-1.27.0.
+**1.28.2 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.28.1.
+
+Noah: *"I think brightness can go in setup, and then (i) moved up?"*
+
+Both done. Brightness is a card on SETUP beside the levelling controls, with
+room to say what it is doing — two measured colour schemes rather than a
+slider, Auto following the light sensor where there is one and the sun's
+computed elevation where there is not. **The ELEMENT moved; the logic did not.**
+Dimming reads the ambient field, the store and the token surface, all held in
+`app.js`, and a copy of the day/night decision living on SETUP would be a second
+answer to "is it night" — the exact shape of the `levellingLine` duplication
+this repo already paid for.
+
+The (i) rides the tab row, and is deliberately NOT inside the tablist. That is
+the tempting way to get it there and it makes the (i) a sixth page — which §7e
+names as the thing it must not become — while breaking the arrow-key contract
+for anyone driving the tabs from a keyboard. There is a plant for it, because
+axe does not reliably fail on a stray child of a tablist.
+
+### The header change is height-NEUTRAL, and the first version of this note said otherwise
+
+`flex-wrap: nowrap` was written first with a comment claiming the header went
+from 397 to 286 on a phone at 200% text. Then it was measured:
+
+- **200% text, 390 wide** — 406px against 407px wrapped. Pinning the (i) to the
+  tab row takes width from the tabs, which pushes them from three rows to FOUR.
+  It gives back the row it removed and charges the same for it.
+- **normal text, 390 wide** — 104px against 105px.
+
+So it was reverted to `wrap`, and then reverted BACK to `nowrap` on the totals:
+neutral everywhere, and the only arrangement that puts the (i) beside the tabs
+at every size, which is the thing actually asked for. **The real numbers are in
+the CSS** rather than a claim, so the next person can argue with them — hub
+LESSONS §54.
+
+**And it means the 200%-text problem is untouched.** That was never the header:
+it is five tab targets at 88px each, and those are navigation. Still open, still
+said in the release notes.
+
+### Two new gate checks, three plants
+
+- **The (i)'s placement**, asserted on every page and every viewport: in the
+  header, sharing a row with the tab strip, and not a descendant of the tablist.
+- **Brightness on SETUP, PRESSED.** A control that changes surface and renders
+  perfectly while doing nothing is the specific risk in a move like this, so the
+  check clicks it and requires the palette to actually change — not merely that
+  the markup is present and the contrast passes.
+
+---
+
+## 1.28.1 — the release notes were a support thread, 2026-08-05
 
 Noah, on opening What's New: *"WHAT THE **FUCK** ARE THESE RELEASE NOTES?!"*
 

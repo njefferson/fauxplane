@@ -83,25 +83,31 @@
         </div>
       </nav>
 
-      <div class="bar-right">
-        <!--
-          The (i) menu. Everything that is not an instrument lives behind it:
-          what the app is, how to install it, what changed, where the numbers
-          come from, the diagnostics report and the accessibility statement.
-          Those were in five different places and none was called information.
+      <!--
+        The (i) menu. Everything that is not an instrument lives behind it:
+        what the app is, how to install it, what changed, where the numbers
+        come from, the diagnostics report and the accessibility statement.
+        Those were in five different places and none was called information.
 
-          A LETTER, NOT A PICTOGRAM ALONE. The visible "i" is the accessible
-          name's first word, so speaking "Information" matches what is on the
-          control (SC 2.5.3), and it needs no icon font.
-        -->
-        <button type="button" id="info-btn" class="info-btn" aria-label="Information about this panel">
-          <span class="info-glyph" aria-hidden="true">i</span>
-        </button>
-        <button type="button" id="dim-toggle" class="dim-btn">
-          <span class="dim-label">Brightness</span>
-          <span class="dim-note" id="dim-note">Auto</span>
-        </button>
-      </div>
+        A LETTER, NOT A PICTOGRAM ALONE. The visible "i" is the accessible
+        name's first word, so speaking "Information" matches what is on the
+        control (SC 2.5.3), and it needs no icon font.
+
+        IT SITS BESIDE THE TABS, NOT ON A ROW OF ITS OWN. Noah, 2026-08-05:
+        "brightness can go in setup, and then (i) moved up?" It used to share a
+        `.bar-right` box with the brightness control, and that box wrapped below
+        the tab strip on a phone — a whole extra row of chrome above every
+        instrument, for two controls, one of which was a setup action. Brightness
+        moved to SETUP; this stayed in the chrome because §7e requires it there,
+        and now rides on the tab row instead of under it.
+
+        IT IS NOT INSIDE THE TABLIST, and must not be moved there. A non-tab
+        child of `role="tablist"` breaks the arrow-key pattern and makes the
+        (i) a sixth page, which §7e names as the thing it must not become.
+      -->
+      <button type="button" id="info-btn" class="info-btn" aria-label="Information about this panel">
+        <span class="info-glyph" aria-hidden="true">i</span>
+      </button>
     </header>
 
     <p class="boot-error" id="boot-error" role="alert" hidden></p>

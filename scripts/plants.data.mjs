@@ -847,6 +847,38 @@ export const PLANTS = [
     expect: /"radar-centre" sits between the card title and the scope/,
   },
   {
+    // The exact regression the `nowrap` measurement exists to hold: wrapping
+    // puts the (i) back on a row of its own under the tabs.
+    name: 'header: the (i) drops onto a row of its own again',
+    check: 'the (i) rides the tab row rather than sitting under it',
+    file: 'public/styles.css',
+    find: '  flex-wrap: nowrap;\n}\n/* Takes the room the tabs need and no more',
+    replace: '  flex-wrap: wrap;\n}\n/* Takes the room the tabs need and no more',
+    expect: /the \(i\) button sits at y=\d+ while the tab rows start at/,
+  },
+  {
+    // The tempting way to get the (i) onto the tab row, and the one §7e names
+    // as the thing it must not become. A headless axe run does NOT reliably
+    // fail on a stray child of a tablist, which is why this is asserted
+    // directly rather than left to the library.
+    name: 'header: the (i) is moved inside the tablist',
+    check: 'the (i) is not a sixth tab',
+    file: 'public/index.html',
+    find: '        </div>\n      </nav>\n',
+    replace: '        </div>\n',
+    expect: /inside the tablist — that makes it a sixth tab/,
+  },
+  {
+    // A moved control that renders and does nothing. The markup is present, the
+    // label reads correctly, contrast passes — and the panel never dims.
+    name: 'brightness: the SETUP control stops driving the palette',
+    check: 'pressing brightness actually changes the panel',
+    file: 'public/src/app.js',
+    find: '  dimToggle.addEventListener(\'click\', () => {',
+    replace: '  dimToggle.addEventListener(\'click\', () => { if (1) return;',
+    expect: /did not take a manual mode|is not driving the panel/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

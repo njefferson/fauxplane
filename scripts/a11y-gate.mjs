@@ -191,8 +191,12 @@ const REGISTRY = [
   { selector: '.stamp', label: 'build stamp', min: 4.6 },
   { selector: '.tab[aria-selected="true"]', label: 'selected tab', min: 4.6 },
   { selector: '.tab[aria-selected="false"]', label: 'unselected tab', min: 4.6 },
-  { selector: '.dim-label', label: 'brightness label', min: 4.6 },
-  { selector: '.dim-note', label: 'brightness note', min: 4.6 },
+  // BRIGHTNESS MOVED TO SETUP (2026-08-05), so these rows move with it. A
+  // registry row without `page` is asserted on EVERY page and would now fail on
+  // four of them — which is the registry working: a selector matching nothing is
+  // a failure, not a skip.
+  { selector: '.dim-label', label: 'brightness label', min: 4.6, page: 'setup' },
+  { selector: '.dim-note', label: 'brightness note', min: 4.6, page: 'setup' },
   { selector: '.foot-item', label: 'footer text', min: 4.6 },
   { selector: '.foot-link', label: 'footer link', min: 4.6 },
   { selector: '.ro-label', label: 'readout label', min: 4.6, page: 'pfd' },
@@ -588,6 +592,106 @@ async function seenIntro(context) {
     }
   });
   return context;
+}
+
+/**
+ * THE (i) IS IN THE CHROME, ON THE TAB ROW, AND IS NOT A TAB.
+ *
+ * Noah, 2026-08-05: "brightness can go in setup, and then (i) moved up?" It
+ * shared a `.bar-right` box with the brightness control; brightness moved to
+ * SETUP and this stayed, beside the tabs rather than under them.
+ *
+ * THREE THINGS, and the middle one is the only one anybody would notice going
+ * wrong before a reader did:
+ *
+ *   1. It EXISTS and is inside the header. Doctrine §7e puts the information
+ *      surface in the app's own chrome.
+ *   2. It shares a row with the tab strip — the thing actually asked for, and
+ *      the thing a stray `flex-wrap` puts back on its own line.
+ *   3. It is NOT a descendant of `role="tablist"`. That is the tempting way to
+ *      get it onto the row, and it makes the (i) a sixth page — which §7e names
+ *      as exactly what it must not become — while breaking the tablist's
+ *      arrow-key contract for anyone driving it from a keyboard.
+ */
+async function checkInfoButtonPlacement(page, where) {
+  const m = await page.evaluate(() => {
+    const btn = document.querySelector('#info-btn');
+    if (!btn) return null;
+    const tabs = [...document.querySelectorAll('.tab')];
+    if (!tabs.length) return { noTabs: true };
+    const b = btn.getBoundingClientRect();
+    const rows = tabs.map((t) => t.getBoundingClientRect());
+    return {
+      inHeader: !!btn.closest('header.bar'),
+      inTablist: !!btn.closest('[role="tablist"]'),
+      // Vertical overlap with ANY tab is what "on the row" means once the strip
+      // itself wraps to two or three rows.
+      onTabRow: rows.some((r) => b.top < r.bottom && r.top < b.bottom),
+      top: Math.round(b.top),
+      tabTops: [...new Set(rows.map((r) => Math.round(r.top)))],
+    };
+  });
+  if (!m) return fail(where, 'the (i) information button is missing from the page');
+  if (m.noTabs) return fail(where, 'no tabs found — the (i) placement cannot be judged');
+  if (!m.inHeader) fail(where, 'the (i) button is outside the header — §7e puts it in the app\u2019s own chrome');
+  if (m.inTablist) {
+    fail(where, 'the (i) button is inside the tablist — that makes it a sixth tab and breaks arrow-key navigation');
+  }
+  if (!m.onTabRow) {
+    fail(
+      where,
+      `the (i) button sits at y=${m.top} while the tab rows start at ${m.tabTops.join(', ')} — `
+        + 'it has dropped onto a row of its own instead of riding the tab strip',
+    );
+  }
+}
+
+/**
+ * BRIGHTNESS IS ON SETUP, AND IT STILL WORKS THERE.
+ *
+ * Moving a control between surfaces is the kind of change that leaves the
+ * markup present and the wiring behind — the button renders, the label reads
+ * correctly, contrast passes, and pressing it does nothing at all. So this
+ * presses it and requires the palette to actually change.
+ */
+async function checkBrightnessOnSetup(page, where) {
+  const found = await page.evaluate(() => {
+    const btn = document.querySelector('#dim-toggle');
+    if (!btn) return null;
+    return {
+      onSetup: !!btn.closest('#page-setup'),
+      inHeader: !!btn.closest('header.bar'),
+      note: (document.querySelector('#dim-note')?.textContent ?? '').trim(),
+    };
+  });
+  if (!found) return fail(where, 'the brightness control is missing from SETUP');
+  if (!found.onSetup) fail(where, 'the brightness control is not on the SETUP page');
+  if (found.inHeader) fail(where, 'the brightness control is back in the header — it belongs with the setup actions');
+  if (!found.note) fail(where, 'the brightness control does not say which mode it is in');
+
+  // PRESS IT. A moved control that renders and does nothing is the whole risk.
+  const before = await page.evaluate(() => document.documentElement.dataset.dim);
+  const after = await page.evaluate(() => {
+    // Auto -> day -> night. One press is enough to leave 'auto' and pin a mode,
+    // but the pinned mode may equal what auto had already chosen, so press until
+    // the note says Manual and then compare against the note rather than a guess.
+    document.querySelector('#dim-toggle').click();
+    return { dim: document.documentElement.dataset.dim, note: (document.querySelector('#dim-note')?.textContent ?? '').trim() };
+  });
+  if (!/^Manual: (day|night)$/.test(after.note)) {
+    fail(where, `pressing brightness left the note reading "${after.note}" — it did not take a manual mode`);
+  } else {
+    const wanted = after.note.replace('Manual: ', '');
+    if (after.dim !== wanted) {
+      fail(where, `brightness says "${after.note}" but the palette is "${after.dim}" — the button is not driving the panel`);
+    }
+  }
+  // Put it back, so no later check on this page runs against a pinned palette.
+  await page.evaluate(() => {
+    const btn = document.querySelector('#dim-toggle');
+    for (let i = 0; i < 3 && !/^Auto/.test(document.querySelector('#dim-note')?.textContent ?? ''); i += 1) btn.click();
+  });
+  await page.evaluate((d) => { document.documentElement.dataset.dim = d; }, before);
 }
 
 /**
@@ -1091,6 +1195,12 @@ async function main() {
             });
             for (const o of overlaps) fail(where, o);
           }
+
+          // The header is on every page, so this is asserted on every page —
+          // it is a layout fact and layout is per-viewport, which is exactly
+          // what this sweep varies.
+          await checkInfoButtonPlacement(page, where);
+          if (name === 'setup') await checkBrightnessOnSetup(page, where);
 
           if (name === 'radar') {
             await checkScopeIsNotBuried(page, where);

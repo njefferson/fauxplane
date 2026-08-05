@@ -290,12 +290,31 @@ async function boot() {
   // Exposed for scripts/preview.mjs ONLY, which drives the real calibration
   // entry point from outside so a preview scene cannot diverge from the button.
   globalThis.__previewFusion = fusion;
+  /**
+   * THE BRIGHTNESS CONTROL, built here and MOUNTED on SETUP.
+   *
+   * It was markup in index.html inside a `.bar-right` box beside the (i). Noah,
+   * 2026-08-05: "brightness can go in setup, and then (i) moved up?" That box
+   * wrapped onto a second row on every phone, costing a full row of chrome
+   * above every instrument.
+   *
+   * The ELEMENT moves; the logic below does not. Dimming reads the ambient
+   * field, the store and the token surface — all held here — and a copy of that
+   * decision living on the SETUP page would be a second answer to "is it night".
+   */
+  const dimNote = el('span', { class: 'dim-note', id: 'dim-note', text: 'Auto' });
+  const dimToggle = el('button', { type: 'button', id: 'dim-toggle', class: 'dim-btn' }, [
+    el('span', { class: 'dim-label', text: 'Brightness' }),
+    dimNote,
+  ]);
+
   const setup = createSetup({
     host: $('page-setup'),
     fusion,
     state,
     announcer,
     screenAngle: orientation.screenAngle,
+    brightness: dimToggle,
     onChange: () => pfd.render(state.snapshot),
   });
 
@@ -963,9 +982,9 @@ async function boot() {
       document.documentElement.dataset.dim = wanted;
       surface.refreshTokens();
     }
-    $('dim-note').textContent = dimMode === 'auto' ? `Auto (${b.from ?? 'no light source'})` : `Manual: ${wanted}`;
+    dimNote.textContent = dimMode === 'auto' ? `Auto (${b.from ?? 'no light source'})` : `Manual: ${wanted}`;
   };
-  $('dim-toggle').addEventListener('click', () => {
+  dimToggle.addEventListener('click', () => {
     dimMode = dimMode === 'auto' ? 'day' : dimMode === 'day' ? 'night' : 'auto';
     applyDim();
     announcer.say(`Panel brightness ${dimMode}`);
@@ -1168,7 +1187,7 @@ async function boot() {
       windowOrientation: typeof window.orientation === 'number' ? window.orientation : 'absent',
       orientation: screen?.orientation?.type ?? 'unknown',
       rootFontPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
-      dim: `${document.documentElement.dataset.dim} (${$('dim-note').textContent})`,
+      dim: `${document.documentElement.dataset.dim} (${dimNote.textContent})`,
       standalone: window.matchMedia?.('(display-mode: standalone)')?.matches ?? false,
       swState: navigator.serviceWorker?.controller ? `controlled (${CACHE_NAME})` : 'not controlled',
       // Doctrine §7h.4. The version stamp above cannot answer "is this the

@@ -150,7 +150,31 @@ body {
   gap: var(--gap);
   padding: 0.4rem 0.6rem;
   border-bottom: 1px solid var(--hairline);
-  flex-wrap: wrap;
+  /* DOES NOT WRAP, so the (i) rides the tab row instead of dropping below it.
+     Noah, 2026-08-05: "brightness can go in setup, and then (i) moved up?"
+
+     MEASURED BOTH WAYS, because the first attempt at this was justified with a
+     saving that does not exist. Header height, 390px screen:
+
+       · at normal text — 104px nowrap against 105px wrapped, and wrapped puts
+         the (i) on a row of its own under a single row of tabs.
+       · at 200% text — 406px against 407px. Taking width from the tabs pushes
+         them from three rows to four, and removing the (i)'s own row gives
+         back the same amount. A redistribution, not a saving.
+
+     So this is height-NEUTRAL everywhere and buys exactly one thing: the (i)
+     sits beside the tabs at every size. The 200%-text problem is not in this
+     header — it is five tab targets at 88px each, and those are navigation. */
+  flex-wrap: nowrap;
+}
+/* Takes the room the tabs need and no more, so the (i) sits at the end of the
+   row rather than in the middle of it. */
+.bar > nav {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.info-btn {
+  flex: 0 0 auto;
 }
 
 .tabs {
@@ -187,32 +211,32 @@ body {
   border-color: var(--rail);
 }
 
-.bar-right {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
+/* BRIGHTNESS LIVES ON SETUP NOW (Noah, 2026-08-05). It was in the header beside
+   the (i), in a box that wrapped onto its own row on a phone. It is a setup
+   action — chosen once for where the panel is standing — so it sits with the
+   levelling controls, where there is room to say what it is doing. */
 .dim-btn {
   min-height: var(--target);
-  padding: 0 0.9rem;
+  padding: 0.5rem 0.9rem;
   background: var(--surface);
   color: var(--text-2);
-  border: 2px solid transparent;
+  border: 2px solid var(--rail);
   border-radius: var(--radius);
   font: inherit;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
+  gap: 0.15rem;
   cursor: pointer;
 }
 .dim-label {
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
   letter-spacing: 0.05em;
 }
 .dim-note {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--text-3);
 }
 
@@ -653,15 +677,6 @@ body {
   .tab {
     padding: 0 0.5rem;
     letter-spacing: 0.02em;
-  }
-  .dim-btn {
-    padding: 0 0.55rem;
-  }
-  /* The long parenthetical — "(computed solar elevation)" — is the one piece
-     here that is explanation rather than state. It stays in the BITE page and
-     in the diagnostics report, where there is room to read it. */
-  .dim-note {
-    font-size: 0.7rem;
   }
 }
 
