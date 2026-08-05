@@ -559,6 +559,21 @@ body {
   color: var(--text);
 }
 
+/*
+ * THE SPACE UNDER THE SCOPE IS NOAH'S, AND IT STAYS EMPTY UNTIL HE FILLS IT.
+ *
+ * Noah, 2026-08-05: "Yes, there will be fucking space under the radar. I WILL
+ * FILL IT WITH SOMETHING ELSE."
+ *
+ * The scope is a circle in a column that is taller than it is wide, so there is
+ * room left over. That is not a defect, it is not slack to reclaim, and it is
+ * not an invitation to stretch the plan view, add a caption, move a control into
+ * it or "balance" the column. It is reserved.
+ *
+ * A session that finds empty space and fills it is making a product decision
+ * that belongs to the owner — the same rule as the hub's §0c, one level down.
+ * Leave it.
+ */
 .pfd-plan {
   flex: 1 1 0;
   /* In rem, like the horizon's, so it stays proportional to the reader's type

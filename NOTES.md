@@ -9,6 +9,22 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
+## RESERVED — the space under the radar is Noah's
+
+Noah, 2026-08-05: *"Yes, there will be fucking space under the radar. I WILL
+FILL IT WITH SOMETHING ELSE."*
+
+The scope is a circle in a column taller than it is wide, so 1.29.0 leaves room
+below it. **That room is reserved and stays empty until he says what goes there.**
+It is not slack to reclaim, not a reason to stretch the plan view, not somewhere
+to move a control or add a caption, and not a "balance" problem.
+
+A session that finds empty space and fills it is making a product decision that
+belongs to the owner. Same rule as the hub's §0c, one level down. The comment
+sits on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
+
+---
+
 ## STAGED NOW — 1.29.0, the value strip is not painted at all, 2026-08-05
 
 **1.29.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
