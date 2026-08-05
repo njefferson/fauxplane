@@ -99,9 +99,19 @@ export const STANDING = [
     why: 'At 200% text on a small phone the RADAR scope starts below the fold. Re-measured 2026-08-05 at 390x640: chrome takes 406px of 640 and the scope canvas starts at 707. Improved from 812 in 1.28.0 and still entirely off screen.',
   },
   {
-    id: 'advisories-nationwide',
-    must: /whole country|nationwide|not narrow/i,
-    why: 'The advisories feed does not apply the area box. Narrowing them needs the FROM line resolved against a navaid database the app does not carry yet.',
+    // REPLACES `advisories-nationwide`, which 1.37.0 fixed. Removing one of
+    // these is meant to be a deliberate act that claims a fix, and this is that
+    // claim: the advisories ARE narrowed now, by resolving their own area line
+    // against a bundled nationwide navaid table.
+    //
+    // What is left is smaller and real. The table is VOR-class navaids and
+    // airports with an IATA code, so an advisory drawn between facilities it
+    // does not carry cannot be placed — and that advisory is shown in its own
+    // group rather than filed away, because an area nobody could work out is
+    // not an area that is somewhere else.
+    id: 'advisories-unplaceable',
+    must: /could not (?:be )?place|cannot place|not everything can be placed/i,
+    why: 'Some advisories name facilities the bundled table does not carry. They are shown in a "Could not place" group with the reason, never hidden.',
   },
 ];
 
@@ -114,6 +124,26 @@ export const STANDING = [
  *   broken   what is still wrong, that he might hit
  */
 export const RELEASES = [
+  {
+    version: '1.37.0',
+    date: '2026-08-05',
+    headline: 'The hazard advisories now tell you which of them are actually over you.',
+    changed: [
+      'THE ADVISORIES ARE SORTED INTO WHERE THEY ARE. The weather service sends every SIGMET and AIRMET in the country whatever area is asked for, so the block was a list of about sixty warnings for Arizona, Oklahoma, Cleveland and the Florida Keys with no way to tell which mattered. They are now grouped: over your area, then the ones that could not be worked out, then everywhere else.',
+      'It works from the advisory\u2019s own words. Every one of them draws its area as a line of navigation beacons \u2014 "FROM BUF-BDL-CRG-CEW-BNA-CLE-BUF" is a real one \u2014 and that line is the only thing in the text that says where the weather is. The app now reads it, works out each corner, and asks whether the shape touches the ground you are over.',
+      'A NEW LIST OF EVERY NAVIGATION BEACON IN THE COUNTRY ships with the app, which is what makes that possible. The one already on board covers Northern California and knows none of the places these warnings are drawn between. The new one is positions only and is small enough to sit alongside it, and it works with no signal like everything else here.',
+      'AN ADVISORY THAT COULD NOT BE PLACED IS NEVER FILED UNDER "ELSEWHERE". It gets its own group next to the ones overhead, and it says why \u2014 which beacon it names that is not in the list, or that its area line was cut short. Not knowing where a warning is is not the same as knowing it is far away, and treating the two alike would hide the one thing this block is for.',
+      'Everywhere else is folded away behind a heading you can open, with the count on it. Nothing is thrown out \u2014 the whole national picture is still one press away.',
+      'The count line above the block says how many are over you, instead of the sentence explaining that the service does not narrow them.',
+    ],
+    broken: [
+      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out \u2014 those appear in their own group saying so, rather than being dropped.',
+      '"Over your area" is generous on purpose. It uses the rectangle an advisory\u2019s area fits inside rather than its exact outline, so a warning that passes close by is included. Being told about one that misses you costs a line; not being told about one that does not is the failure worth avoiding.',
+      'At the largest text size on a small phone, the radar scope starts below the bottom of the screen and you have to scroll before any of it is visible. The radar page is not the cause and cannot fix it \u2014 the header and tab strip alone take about two thirds of the screen at that setting. Fixing it means shrinking the chrome at large text, which changes every page.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
   {
     version: '1.36.0',
     date: '2026-08-05',

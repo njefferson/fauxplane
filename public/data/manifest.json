@@ -23,5 +23,11 @@
     "path": "/data/wmm-cof.json",
     "reason": null,
     "detail": "World Magnetic Model 2025, degree 12, valid 2024-11-13T03:00:00.000Z to 2029-11-13T03:00:00.000Z. NOAA NCEI and BGS."
+  },
+  "navaids": {
+    "present": true,
+    "path": "/data/navaids-us.json",
+    "reason": null,
+    "detail": "1158 US navaids and 873 airports, positions only, for placing hazard advisories from their FROM line. 0 idents refused as ambiguous. OurAirports, Unlicense."
   }
 }

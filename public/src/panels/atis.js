@@ -25,7 +25,9 @@
  */
 
 import { FALLBACK_ALTIMETER_INHG } from '../data/metar.js';
-import { WX_KINDS, wxSummary } from '../data/wxtext.js';
+import { WX_KINDS, placeReports, wxSummary } from '../data/wxtext.js';
+import { loadNavaids } from '../data/navaids.js';
+import { REGION } from '../core/region.js';
 import { createReadout, el } from '../render/dom.js';
 import { formatAge, inHgToHPa } from '../core/units.js';
 
@@ -161,18 +163,44 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
     /** Outside the scroller, like the aircraft list's — a "scroll for more" that
      *  itself scrolls out of view is the one place it must not be. */
     const more = el('p', { class: 'wx-more', role: 'status', hidden: '' });
+    /** WHERE THE GROUPS GO when the block can be placed. Empty and hidden
+     *  otherwise, so a kind the feed already narrows — pilot reports, forecasts
+     *  — renders exactly as it always has. */
+    const groups = el('div', { class: 'wx-groups', hidden: '' });
     return {
       kind,
       state,
       body,
       more,
+      groups,
+      /** What is currently BUILT in `groups` — see the render loop. */
+      signature: null,
       root: el('section', { class: 'wx-block' }, [
         el('h3', { class: 'wx-h', text: kind.label }),
         state,
         body,
         more,
+        groups,
       ]),
     };
+  });
+
+  /**
+   * THE NAVAID TABLE, asked for once and never waited on.
+   *
+   * A `FROM` line is the only geography in a hazard advisory, and resolving it
+   * needs the nationwide ident table. Until it arrives — and if it never does,
+   * because the bundle is absent — `placeReports` returns `placed: false` and
+   * the block shows every advisory under the sentence saying the service does
+   * not narrow them. That is the honest fallback, and it is the behaviour this
+   * page already had, so an absent bundle costs the reader nothing they had.
+   */
+  // Why it is absent, when it is, is BITE's row — see `loadNavaids` in app.js.
+  // Repeating the reason on this page would put a bundle diagnostic in front of
+  // a reader who came here to read the weather.
+  let navaidLookup = null;
+  loadNavaids().then((t) => {
+    if (t.ok) navaidLookup = t.lookup;
   });
 
   /**
@@ -187,15 +215,17 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
    * it stays right at 200% text — the reader's font size is the one number a
    * layout must never assume.
    */
-  const capBody = (b) => {
-    const text = b.body.textContent;
+  const capPre = (pre, more) => {
+    const text = pre.textContent;
     if (!text) {
-      b.more.hidden = true;
+      more.hidden = true;
       return;
     }
-    // No layout, no answer — never a count computed against a zero height.
-    if (!b.body.clientHeight) return;
-    const cs = getComputedStyle(b.body);
+    // No layout, no answer — never a count computed against a zero height. This
+    // is also what makes a CLOSED disclosure safe to call this on: it measures
+    // zero, returns, and is re-measured on toggle.
+    if (!pre.clientHeight) return;
+    const cs = getComputedStyle(pre);
     const line = Number.parseFloat(cs.lineHeight) || 18;
     const padY = Number.parseFloat(cs.paddingTop) + Number.parseFloat(cs.paddingBottom);
     const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -203,14 +233,60 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
     // it once the padding is paid for. At least one, or a big type size leaves
     // an empty box.
     const whole = Math.max(1, Math.floor((14 * rem - padY) / line));
-    b.body.style.maxHeight = `${whole * line + padY}px`;
-    const lines = Math.max(0, Math.round((b.body.scrollHeight - b.body.clientHeight) / line));
-    b.more.textContent = lines > 0 ? `${lines} more line${lines === 1 ? '' : 's'} below — scroll this block` : '';
-    b.more.hidden = lines <= 0;
+    pre.style.maxHeight = `${whole * line + padY}px`;
+    const lines = Math.max(0, Math.round((pre.scrollHeight - pre.clientHeight) / line));
+    more.textContent = lines > 0 ? `${lines} more line${lines === 1 ? '' : 's'} below — scroll this block` : '';
+    more.hidden = lines <= 0;
     // SC 2.1.1: focusable only while it actually scrolls. A tabindex on a box
     // that fits sends a keyboard user somewhere with nothing to read.
-    if (lines > 0) b.body.setAttribute('tabindex', '0');
-    else b.body.removeAttribute('tabindex');
+    if (lines > 0) pre.setAttribute('tabindex', '0');
+    else pre.removeAttribute('tabindex');
+  };
+
+  const capBody = (b) => capPre(b.body, b.more);
+
+  /**
+   * ONE GROUP OF PLACED ADVISORIES.
+   *
+   * `Elsewhere` is the only collapsed one, and it is a real `<details>` rather
+   * than a class that hides things: the reader can open it, it is a keyboard
+   * control for free, and its count is in the summary either way. Nothing is
+   * removed from the page.
+   *
+   * THE HEADING CARRIES THE COUNT because a disclosure whose label does not say
+   * how much is behind it is a control nobody has a reason to press.
+   */
+  const renderGroup = (group) => {
+    const more = el('p', { class: 'wx-more', role: 'status', hidden: '' });
+    const pre = el('pre', {
+      class: 'wx-body',
+      'aria-label': `${group.label}, as filed`,
+      text: group.reports.map((r) => (r.reason ? `${r.text}\n[${r.reason}]` : r.text)).join('\n\n'),
+    });
+    const n = group.reports.length;
+    const label = `${group.label} — ${n} report${n === 1 ? '' : 's'}`;
+
+    if (group.open) {
+      return {
+        root: el('div', { class: 'wx-group', 'data-where': group.where }, [
+          el('h4', { class: 'wx-group-h', text: label }),
+          pre,
+          more,
+        ]),
+        measure: () => capPre(pre, more),
+      };
+    }
+
+    const details = el('details', { class: 'wx-group wx-group-collapsed', 'data-where': group.where }, [
+      el('summary', { class: 'wx-group-h', text: label }),
+      pre,
+      more,
+    ]);
+    // A closed disclosure has no layout, so the cap computed on render is zero
+    // lines. Re-measure when it opens, or the reader gets an uncapped block with
+    // no "more below" line.
+    details.addEventListener('toggle', () => capPre(pre, more));
+    return { root: details, measure: () => capPre(pre, more) };
   };
 
   host.replaceChildren(
@@ -340,14 +416,66 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
        */
       for (const b of wxBlocks) {
         const result = wxText?.all?.find((x) => x.id === b.kind.id)?.result ?? null;
-        const said = wxSummary(b.kind, result, clock());
+        const reports = result?.ok ? result.reports ?? [] : [];
+
+        /**
+         * ONLY AN UNFILTERED BLOCK IS SORTED. Pilot reports and forecasts come
+         * back narrowed to the box already, so grouping them would claim a
+         * second opinion about geography the feed has already given.
+         */
+        const placement = result?.area === 'unfiltered'
+          ? placeReports(reports, REGION.bbox, navaidLookup)
+          : null;
+
+        const said = wxSummary(b.kind, result, clock(), placement);
         b.state.textContent = said.text;
         b.state.dataset.tone = said.tone;
-        const reports = result?.ok ? result.reports ?? [] : [];
-        b.body.textContent = reports.join('\n\n');
-        b.body.hidden = reports.length === 0;
-        if (reports.length) capBody(b);
-        else b.more.hidden = true;
+
+        if (placement?.placed && reports.length) {
+          // Grouped: the flat body goes away entirely rather than being left
+          // behind the groups, where it would show every report twice.
+          b.body.hidden = true;
+          b.body.removeAttribute('tabindex');
+          b.more.hidden = true;
+
+          /**
+           * REBUILT ONLY WHEN THE CONTENT CHANGES, and that is not an
+           * optimisation.
+           *
+           * `render` runs every frame. Calling `replaceChildren` unconditionally
+           * destroyed and rebuilt these nodes sixty times a second, which meant
+           * the Elsewhere disclosure shut again the instant it was opened — the
+           * reader could never read what was behind it — and any scroll position
+           * inside a group was thrown away just as fast.
+           *
+           * Caught by the accessibility gate, which pressed the disclosure and
+           * found it closed, and by four contrast rows measuring 1.00:1 against a
+           * node that had been replaced between the measurement and the
+           * screenshot. That is hub LESSONS §61 in a second costume: the fix is
+           * the same one, key on the SHAPE of what is rendered and leave the DOM
+           * alone when it has not moved.
+           */
+          const signature = placement.groups
+            .map((g) => `${g.where}:${g.reports.map((r) => r.text.length).join(',')}`)
+            .join('|');
+          if (b.signature !== signature) {
+            b.signature = signature;
+            const built = placement.groups.map(renderGroup);
+            b.groups.replaceChildren(...built.map((g) => g.root));
+            for (const g of built) g.measure();
+          }
+          b.groups.hidden = placement.groups.length === 0;
+        } else {
+          if (b.signature !== null) {
+            b.signature = null;
+            b.groups.replaceChildren();
+          }
+          b.groups.hidden = true;
+          b.body.textContent = reports.join('\n\n');
+          b.body.hidden = reports.length === 0;
+          if (reports.length) capBody(b);
+          else b.more.hidden = true;
+        }
       }
 
       announcer.watch('Altimeter setting', f['metar.altimeter']);

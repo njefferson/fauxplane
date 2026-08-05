@@ -976,6 +976,23 @@ const WXTEXT_REGISTRY = [
 ];
 
 /**
+ * The placed-advisory groups. None of these exists until an unfiltered block
+ * has been sorted, so they cannot sit in the page sweep — `checkWxText` brings
+ * the conditions and then runs this, the same relocation as CENTRE_REGISTRY.
+ *
+ * The disclosure's summary is measured SHUT and OPEN both. A control whose
+ * label is only ever contrast-checked in one of its two states is checked by
+ * luck: `.wx-group-collapsed[open] > summary::before` swaps the marker, and a
+ * marker nobody measured is a marker nobody knows the contrast of.
+ */
+const WXPLACED_REGISTRY = [
+  { selector: ".wx-group[data-where='near'] .wx-group-h", label: 'placed group heading (over your area)', min: 4.6 },
+  { selector: ".wx-group[data-where='unknown'] .wx-group-h", label: 'placed group heading (could not place)', min: 4.6 },
+  { selector: ".wx-group[data-where='far'] > summary", label: 'elsewhere disclosure', min: 4.6 },
+  { selector: ".wx-group[data-where='near'] .wx-body", label: 'placed advisory text', min: 4.6 },
+];
+
+/**
  * THE TEXT REPORTS, IN THE TWO STATES THAT MUST NOT LOOK ALIKE.
  *
  * A block with nothing in it has two completely different causes — the sky is
@@ -994,9 +1011,15 @@ async function checkWxText(browser, base) {
   const scene = async (payload) => {
     const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
     await seenIntro(context);
-    await context.route('**/api/wxtext**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) }),
-    );
+    // `payload` may be a function of the KIND asked for. The three blocks fetch
+    // separately and do not behave alike — only the advisories come back
+    // nationwide — so a scene about placement must be able to answer them
+    // differently, exactly as the real service does.
+    await context.route('**/api/wxtext**', (route) => {
+      const kind = new URL(route.request().url()).searchParams.get('kind');
+      const body = typeof payload === 'function' ? payload(kind) : payload;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
     const page = await context.newPage();
     await page.goto(`${base}/`, { waitUntil: 'networkidle' });
     await page.evaluate(() => document.getElementById('power-btn').click());
@@ -1057,6 +1080,112 @@ async function checkWxText(browser, base) {
     if (!quiet.m.every((b) => b.bodyHidden)) fail(where, 'an empty block is showing a report area with nothing in it');
   }
   await quiet.context.close();
+
+  // --- PLACED: the advisories are sorted into where they actually are -------
+  /**
+   * THE STATE THE GATE CANNOT REACH ON ITS OWN. The advisory feed comes back
+   * nationwide, and placing it needs a `FROM` line, the navaid table and a
+   * render — so this scene brings all three.
+   *
+   * The polygons are REAL: `RBL-LIN-MOD-OAK-PYE-RBL` is Red Bluff round to
+   * Point Reyes and genuinely covers this region; `BUF-BDL-CRG-CEW-BNA-CLE-BUF`
+   * is the line captured from the device and genuinely does not.
+   *
+   * What it asserts is the rule the whole feature turns on: NOTHING IS DROPPED.
+   * Three advisories go in and three are on the page, with the far one behind a
+   * disclosure rather than deleted from it.
+   */
+  const placedScene = await scene((kind) =>
+    kind === 'airsigmet'
+      ? {
+          ok: true,
+          kind,
+          area: 'unfiltered',
+          count: 3,
+          reports: [
+            'CONVECTIVE SIGMET 4W\nVALID UNTIL 2155Z\nCA\nFROM RBL-LIN-MOD-OAK-PYE-RBL',
+            'CONVECTIVE SIGMET 21E\nVALID UNTIL 2155Z\nNY OH\nFROM BUF-BDL-CRG-CEW-BNA-CLE-BUF',
+            'AIRMET TANGO FOR TURB\nFROM ZZZQ-ZZZR-ZZZQ',
+          ],
+        }
+      // The other two ARE narrowed by the service, so they must not be grouped.
+      // Handing all three the unfiltered shape produced nine groups and hid the
+      // fact that the selectors below name no particular block.
+      : { ok: true, kind, area: 'filtered', count: 1, reports: [`${kind.toUpperCase()} ONE REPORT`] });
+
+  // The table is fetched after boot, so the first render is the unplaced one.
+  await placedScene.page.waitForSelector('.wx-group', { timeout: 5000 }).catch(() => {});
+  const placed = await placedScene.page.evaluate(() => {
+    const groups = [...document.querySelectorAll('.wx-group')];
+    return {
+      order: groups.map((g) => g.dataset.where),
+      headings: groups.map((g) => (g.querySelector('.wx-group-h')?.textContent ?? '').trim()),
+      reportCount: groups.reduce((n, g) => n + (g.querySelector('.wx-body')?.textContent ?? '').split(/\n{2,}/).filter(Boolean).length, 0),
+      farClosed: document.querySelector(".wx-group[data-where='far']")?.tagName === 'DETAILS'
+        && !document.querySelector(".wx-group[data-where='far']").open,
+      // COLLAPSED IS NOT REMOVED. The text must be in the document even while
+      // the disclosure is shut.
+      farTextPresent: /BUF-BDL/.test(document.querySelector(".wx-group[data-where='far'] .wx-body")?.textContent ?? ''),
+      unknownReason: (document.querySelector(".wx-group[data-where='unknown'] .wx-body")?.textContent ?? ''),
+      // The state line of the block that OWNS the groups, not of whichever
+      // block happens to come first on the page.
+      state: (document.querySelector('.wx-group')?.closest('.wx-block')?.querySelector('.wx-state')?.textContent ?? ''),
+      // Exactly one block may be grouped: the advisories. If a narrowed feed is
+      // being sorted too, the page is claiming a geography it was already given.
+      groupedBlocks: new Set([...document.querySelectorAll('.wx-group')].map((g) => g.closest('.wx-block')?.querySelector('.wx-h')?.textContent)).size,
+      flatVisible: [...document.querySelectorAll('.wx-block')].some((b) => {
+        const body = b.querySelector(':scope > .wx-body');
+        return body && !body.hidden && b.querySelector('.wx-group');
+      }),
+    };
+  });
+
+  if (!placed.order.length) {
+    fail(where, 'the advisories were never placed — the block is still showing a flat nationwide list');
+  } else {
+    if (placed.order.join() !== 'near,unknown,far') {
+      fail(where, `the groups are in the order ${placed.order.join(', ')} — overhead must come first and elsewhere last`);
+    }
+    if (placed.groupedBlocks !== 1) {
+      fail(where, `${placed.groupedBlocks} blocks were sorted into groups — only the nationwide advisories may be`);
+    }
+    if (placed.reportCount !== 3) {
+      fail(where, `three advisories went in and ${placed.reportCount} are on the page — one was dropped by the grouping`);
+    }
+    if (!placed.farClosed) fail(where, 'the elsewhere group is not a closed disclosure');
+    if (!placed.farTextPresent) {
+      fail(where, 'a collapsed advisory is not in the document at all — collapsed must mean shut, never removed');
+    }
+    /**
+     * A REASON IS PRESENT AND IT NAMES WHAT FAILED — asserted as the rule, not
+     * as a sentence. The first version of this matched the exact words the
+     * reason happened to use that afternoon, and went red when they were
+     * reworded while the behaviour was correct. Hub LESSONS §59.
+     */
+    if (!/\[[^\]]+\]/.test(placed.unknownReason)) {
+      fail(where, 'an advisory nobody could place is shown without saying why');
+    } else if (!/ZZZQ/.test(placed.unknownReason)) {
+      fail(where, 'the reason does not name the place that could not be found, so the reader cannot tell what went wrong');
+    }
+    if (!/over your area/.test(placed.state)) {
+      fail(where, `the count line does not say how many are overhead: "${placed.state.trim()}"`);
+    }
+    if (placed.flatVisible) {
+      fail(where, 'the flat report list is still visible under the groups, so every advisory is on the page twice');
+    }
+
+    // Every group heading is a fg/bg pair, and the disclosure is a CONTROL — so
+    // it is measured open as well as shut. §4: a new pair joins the gate in the
+    // same commit as the code that renders it.
+    await checkContrast(placedScene.page, WXPLACED_REGISTRY, where);
+    await placedScene.page.evaluate(() => document.querySelector(".wx-group[data-where='far'] > summary")?.click());
+    await placedScene.page.waitForTimeout(250);
+    const opened = await placedScene.page.evaluate(() => document.querySelector(".wx-group[data-where='far']")?.open === true);
+    if (!opened) fail(where, 'the elsewhere disclosure does not open when pressed');
+    await checkContrast(placedScene.page, WXPLACED_REGISTRY, `${where} (elsewhere open)`);
+    await checkNames(placedScene.page, where);
+  }
+  await placedScene.context.close();
 }
 
 /**

@@ -19,6 +19,7 @@
  */
 
 import { REGION } from '../core/region.js';
+import { placeAdvisory } from './fromline.js';
 
 /** The three blocks, in the order a crew would read them: what is happening
  *  now, what is being warned about, then what is forecast. */
@@ -134,20 +135,83 @@ export function createWxTextSource({ fetchImpl = null, clock = () => Date.now() 
 }
 
 /**
+ * The three groups an unfiltered block is sorted into, in the order they are
+ * read. The order is the design: what is over the reader first, what could not
+ * be worked out second — because an unknown is closer to a hazard than to a
+ * filed-away one — and the rest last, behind a disclosure.
+ */
+export const PLACEMENT_GROUPS = [
+  { where: 'near', label: 'Over your area', open: true },
+  { where: 'unknown', label: 'Could not place', open: true },
+  { where: 'far', label: 'Elsewhere', open: false },
+];
+
+/**
+ * Sort a block's reports into those three groups.
+ *
+ * ---------------------------------------------------------------------------
+ * NOTHING IS EVER DROPPED, and that is not a nicety
+ * ---------------------------------------------------------------------------
+ *
+ * `Elsewhere` is COLLAPSED, never removed — it is behind a disclosure control
+ * the reader can open, and the count is on the summary line either way. An
+ * advisory this could not place goes in its own group WITH its reason, next to
+ * the ones that are overhead, because "we do not know where this is" is not
+ * "it is not near you". Hiding a hazard advisory on a parser's failure would be
+ * a worse defect than the nationwide list this replaces.
+ *
+ * WITHOUT THE TABLE, NOTHING IS GROUPED AT ALL. If the navaid bundle is absent
+ * there is no geography to sort on, and inventing an order would be worse than
+ * the honest nationwide list — so it returns `placed: false` and the block goes
+ * back to showing every report under `UNFILTERED_NOTE`. That is the same
+ * mechanism as every other absent bundle: a stated reason, never a guess.
+ */
+export function placeReports(reports, box, lookup) {
+  const list = Array.isArray(reports) ? reports : [];
+  if (typeof lookup !== 'function' || !box) {
+    return { placed: false, groups: [], all: list, near: 0, unknown: 0, far: 0 };
+  }
+  const byWhere = { near: [], unknown: [], far: [] };
+  for (const text of list) {
+    const out = placeAdvisory(text, box, lookup);
+    (byWhere[out.where] ?? byWhere.unknown).push({ text, where: out.where, reason: out.reason });
+  }
+  return {
+    placed: true,
+    groups: PLACEMENT_GROUPS.map((g) => ({ ...g, reports: byWhere[g.where] })).filter((g) => g.reports.length),
+    all: list,
+    near: byWhere.near.length,
+    unknown: byWhere.unknown.length,
+    far: byWhere.far.length,
+  };
+}
+
+/**
  * What one block says about itself, in one line. Pure and exported, so every
  * sentence this feature can produce is testable without a browser or a feed —
  * and so that "the sky is quiet" and "the service did not answer" can be held
  * apart by a test rather than by care.
+ *
+ * `placement` is the fourth state of the area caveat. Unfiltered and unplaced
+ * still says the service covers the whole country; unfiltered and PLACED says
+ * how many of them are actually over the reader, which is the sentence the
+ * whole feature exists to be able to write.
  */
-export function wxSummary(kind, result, now = Date.now()) {
+export function wxSummary(kind, result, now = Date.now(), placement = null) {
   if (!result) return { tone: 'wait', text: 'Not asked yet.' };
   if (!result.ok) return { tone: 'fail', text: `Not available — ${result.reason}` };
   const ageS = Number.isFinite(result.at) ? Math.max(0, Math.round((now - result.at) / 1000)) : null;
   const age = ageS === null ? '' : ageS < 90 ? ' · just now' : ` · ${Math.round(ageS / 60)} min ago`;
   if (!result.count) return { tone: 'empty', text: `${kind.empty}${age}` };
+
   // The area caveat rides on the COUNT line, where the number that would
   // otherwise be misread is. Put anywhere else it is a note nobody connects.
-  const area = result.area === 'unfiltered' ? ` · ${UNFILTERED_NOTE}` : '';
+  let area = '';
+  if (result.area === 'unfiltered') {
+    area = placement?.placed
+      ? ` · ${placement.near} over your area${placement.unknown ? `, ${placement.unknown} that could not be placed` : ''}`
+      : ` · ${UNFILTERED_NOTE}`;
+  }
   return {
     tone: 'ok',
     text: `${result.count} ${result.count === 1 ? 'report' : 'reports'}${age}${area}`,

@@ -67,6 +67,36 @@ Data the app bundles is generated, never hand-written:
   silent fallback. A bundled dataset also cannot be rate limited, which is why
   the picker keeps working on a day the live feed does not.
 
+- `npm run navaids` — the NATIONWIDE ident table, `public/data/navaids-us.json`:
+  1158 US VOR-class navaids and 873 airports carrying an IATA code, positions
+  only, 50 KB. Same OurAirports CSVs and the same settled Unlicense grant as
+  `navdata`, so it raises no new licence question. **It is not a bigger
+  `navdata` and the two are not interchangeable** — `navdata` is bbox-clipped to
+  the region by design, which is right for the centre picker and cannot place a
+  hazard advisory drawn between PHX, BUF and CLE. NDBs are excluded on purpose:
+  they treble the file, cause nearly every ident collision, and a `FROM` line
+  does not use them. An ident two facilities tie for is REFUSED, not guessed —
+  a dropped ident shows as "could not place", and a coin flip would put a hazard
+  on the map at a position nobody measured.
+
+**A hazard advisory is placed from its own `FROM` line** (`public/src/data/fromline.js`,
+pure, 1.37.0). The service sends every SIGMET and AIRMET in the country whatever
+box is asked for, and that line is the only thing in the raw text carrying
+geography. The grammar was taken from the REAL captured lines, never from a
+specification: offsets precede their ident and both separators must be read at
+once, so `PHX-60E PHX` is three tokens.
+
+**The rule that decides a partial polygon errs one way ON PURPOSE.** A missing
+vertex can only make the real area bigger, so resolved points that already touch
+are `near` and that is certain; not touching with something unresolved is
+`unknown`, NEVER `far`; `far` requires a complete polygon. **An advisory that
+could not be placed is shown BESIDE the overhead ones with its reason, never
+filed under Elsewhere** — an area nobody could work out is not an area that is
+somewhere else, and hiding a hazard because a parser failed would be worse than
+the nationwide list it replaces. `Elsewhere` is a real disclosure: collapsed,
+never removed. Each clause is tested SEPARATELY, because pooling one bulletin's
+several areas into a single box claimed all of New Mexico.
+
 **Text reports — PIREPs, SIGMETs/AIRMETs and TAFs — come from the SAME service
 as METAR**, so there is no new licensing question: a US Government work whose
 terms are already read. `POLICIES.wxtext` is a separate entry only because the

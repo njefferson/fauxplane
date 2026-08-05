@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { KINDS, splitReports } from '../functions/api/wxtext.js';
-import { UNFILTERED_NOTE, WX_KINDS, createWxTextSource, wxBboxParam, wxSummary } from '../public/src/data/wxtext.js';
+import { UNFILTERED_NOTE, WX_KINDS, createWxTextSource, placeReports, wxBboxParam, wxSummary } from '../public/src/data/wxtext.js';
 import { REGION } from '../public/src/core/region.js';
 
 // ---------------------------------------------------------------------------
@@ -294,4 +294,104 @@ test('two refreshes at once share one flight', async () => {
   });
   await Promise.all([src.refresh(), src.refresh()]);
   assert.equal(calls, WX_KINDS.length, 'the second refresh asked again while the first was still going');
+});
+
+// ---------------------------------------------------------------------------
+// Sorting an unfiltered block into where its advisories actually are
+// ---------------------------------------------------------------------------
+
+/** The shipped table, resolving the same way the app does. See
+ *  `fromline.test.mjs` for why the real table and not a hand-written one. */
+const NAVAIDS = JSON.parse(
+  await (await import('node:fs/promises')).readFile(new URL('../public/data/navaids-us.json', import.meta.url), 'utf8'),
+);
+const lookup = (id) => {
+  const hit = NAVAIDS.navaids[id] ?? NAVAIDS.airports[id];
+  return hit ? { lat: hit[0], lon: hit[1] } : null;
+};
+
+/** Real lines, the same ones `fromline.test.mjs` uses. */
+const OVER_ARIZONA = 'CONVECTIVE SIGMET 17W\nFROM 30W PHX-60E PHX-PHX';
+const OVER_THE_EAST = 'CONVECTIVE SIGMET 21E\nFROM BUF-BDL-CRG-CEW-BNA-CLE-BUF';
+const UNPLACEABLE = 'CONVECTIVE SIGMET 9C\nFROM ZZZQ-ZZZR-ZZZQ';
+const ARIZONA_BOX = { latMin: 32, latMax: 35, lonMin: -113, lonMax: -110 };
+
+test('the three groups, and every report lands in exactly one of them', () => {
+  const out = placeReports([OVER_ARIZONA, OVER_THE_EAST, UNPLACEABLE], ARIZONA_BOX, lookup);
+  assert.equal(out.placed, true);
+  assert.deepEqual([out.near, out.unknown, out.far], [1, 1, 1]);
+  const total = out.groups.reduce((n, g) => n + g.reports.length, 0);
+  assert.equal(total, 3, 'a report went missing between the input and the groups');
+});
+
+test('THE ORDER IS THE DESIGN — overhead first, unplaceable second, elsewhere last', () => {
+  // An unknown is closer to a hazard than to a filed-away one, so it is read
+  // BEFORE the collapsed group rather than after it.
+  const out = placeReports([OVER_THE_EAST, UNPLACEABLE, OVER_ARIZONA], ARIZONA_BOX, lookup);
+  assert.deepEqual(out.groups.map((g) => g.where), ['near', 'unknown', 'far']);
+});
+
+test('ONLY "Elsewhere" IS COLLAPSED, and it is still there', () => {
+  const out = placeReports([OVER_ARIZONA, OVER_THE_EAST, UNPLACEABLE], ARIZONA_BOX, lookup);
+  const byWhere = Object.fromEntries(out.groups.map((g) => [g.where, g]));
+  assert.equal(byWhere.near.open, true);
+  assert.equal(byWhere.unknown.open, true, 'a hazard nobody could place must not be hidden behind a control');
+  assert.equal(byWhere.far.open, false);
+  assert.equal(byWhere.far.reports.length, 1, 'collapsed is not removed — the report is still in the group');
+});
+
+test('an empty group is not rendered at all, rather than as a heading with nothing under it', () => {
+  const out = placeReports([OVER_ARIZONA], ARIZONA_BOX, lookup);
+  assert.deepEqual(out.groups.map((g) => g.where), ['near']);
+});
+
+test('an unplaceable advisory carries its REASON into the group', () => {
+  const [report] = placeReports([UNPLACEABLE], ARIZONA_BOX, lookup).groups[0].reports;
+  assert.equal(report.where, 'unknown');
+  assert.match(report.reason, /ZZZQ/, 'the reader is told which name could not be found');
+});
+
+test('WITHOUT THE TABLE NOTHING IS GROUPED — it does not fall back to an order it invented', () => {
+  // The bundle absent, or not loaded yet. Grouping on no geography would be a
+  // synthetic placement path, which is the one thing this app does not have.
+  const out = placeReports([OVER_ARIZONA, OVER_THE_EAST], ARIZONA_BOX, null);
+  assert.equal(out.placed, false);
+  assert.deepEqual(out.groups, []);
+  assert.equal(out.all.length, 2, 'every report is still there to render flat');
+});
+
+test('the count line SAYS how many are over the reader, once they can be placed', () => {
+  const kind = WX_KINDS[1];
+  const placement = placeReports([OVER_ARIZONA, OVER_THE_EAST, UNPLACEABLE], ARIZONA_BOX, lookup);
+  const said = wxSummary(kind, { ok: true, count: 3, at: 0, area: 'unfiltered' }, 0, placement);
+  assert.match(said.text, /1 over your area/);
+  assert.match(said.text, /1 that could not be placed/);
+  assert.ok(!said.text.includes(UNFILTERED_NOTE), 'the nationwide caveat is replaced once the reports are placed');
+});
+
+test('and it goes BACK to the nationwide caveat when they cannot be', () => {
+  // The honest fallback. Not a silent one: this is the sentence the block
+  // carried before any of this existed, and it is still true when the table is
+  // absent.
+  const kind = WX_KINDS[1];
+  const unplaced = placeReports([OVER_ARIZONA], ARIZONA_BOX, null);
+  const said = wxSummary(kind, { ok: true, count: 66, at: 0, area: 'unfiltered' }, 0, unplaced);
+  assert.ok(said.text.includes(UNFILTERED_NOTE));
+});
+
+test('a block with nothing that could not be placed does not mention placing', () => {
+  const kind = WX_KINDS[1];
+  const placement = placeReports([OVER_ARIZONA], ARIZONA_BOX, lookup);
+  const said = wxSummary(kind, { ok: true, count: 1, at: 0, area: 'unfiltered' }, 0, placement);
+  assert.match(said.text, /1 over your area/);
+  assert.ok(!said.text.includes('could not be placed'), 'a clause about zero unplaceable reports is noise');
+});
+
+test('a FILTERED block is never sorted, whatever it is handed', () => {
+  // PIREPs and forecasts come back narrowed already. Grouping them would be a
+  // second opinion about geography the feed has given.
+  const kind = WX_KINDS[0];
+  const placement = placeReports([OVER_ARIZONA], ARIZONA_BOX, lookup);
+  const said = wxSummary(kind, { ok: true, count: 1, at: 0, area: 'filtered' }, 0, placement);
+  assert.ok(!said.text.includes('over your area'));
 });

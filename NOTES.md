@@ -151,7 +151,7 @@ exists for it.
   dot per REPORTED POSITION — because that is what the data is. ADS-B gives a
   sequence of observations, not a curve.
 
-### The advisories were never local, and cannot honestly be made local
+### The advisories were never local — and 1.37.0 made them local honestly
 
 The identical bbox is honoured by `pirep` and `taf` — every observed station was
 inside the box — and evidently not applied to `airsigmet`, which came back with
@@ -172,9 +172,79 @@ nobody re-derives them:
   keyed by the two- and three-letter idents it uses. That is the only honest
   route and it is a real piece of work.
 
-So the app SAYS SO, on the count line where the number that would otherwise be
-misread is. "66 reports" beside a local weather card reads as sixty-six local
-advisories; that is the misreading, and it is a claim the app never made.
+So 1.35.0 made the app SAY SO, on the count line where the number that would
+otherwise be misread is. "66 reports" beside a local weather card reads as
+sixty-six local advisories; that is the misreading, and it is a claim the app
+never made.
+
+**1.37.0 did the real piece of work**, and the sentence above about the `FROM`
+line is now the design rather than a note about one.
+
+- `scripts/build-navaids.mjs` emits `public/data/navaids-us.json` — 1158 US
+  VOR-class navaids and 873 airports carrying an IATA code, positions only, at
+  50 KB against the 324 KB region bundle. NDBs are EXCLUDED and that choice pays
+  twice: they roughly treble the file, they are the source of nearly every ident
+  collision, and a `FROM` line does not use them. The result has zero ambiguous
+  idents. Same OurAirports CSVs, same Unlicense grant, no new licence question.
+- The region bundle could never have answered it: `inBox` in
+  `build-navdata.mjs` clips to Northern California, so its 44 navaids contain
+  none of PHX, TUS, BUF, BDL, CLE.
+- `public/src/data/fromline.js` is pure and reads the grammar taken from the
+  real captured lines rather than from a specification. Points separate on `-`,
+  groups on a space, and an offset is a distance glued to a 16-point compass
+  name placed BEFORE its ident — so `PHX-60E PHX` is three tokens and both
+  separators have to be read at once.
+- `destinationPoint` in `units.js` is the missing direct geodesic; every other
+  helper there solves the inverse problem. Verified as its exact inverse
+  against `greatCircleNm`/`bearingDeg` to three decimals.
+
+**Three defects found by measuring rather than by reading the code**, each of
+which looked right:
+
+- A clause was allowed to run past the end of its line, so `MOD TURB BTN FL180`
+  after a `FROM` line tokenised into four ident-shaped words, none of them a
+  place — and an advisory whose polygon resolved perfectly reported itself as
+  unplaceable.
+- One bulletin's several areas were pooled into a single bounding box. The
+  captured bulletin has a cell over Arizona and another running from Oklahoma to
+  the Gulf; pooling them claimed all of New Mexico and west Texas, where the
+  bulletin says nothing. A box between the two came back `near`. Each clause is
+  tested on its own now.
+- A clause ending on an offset — `BZA-30W` — had its dangling token dropped
+  silently, so a polygon that stopped mid-point reported itself as complete.
+  Every line captured in full closes on the facility it opened with, which is
+  what makes a trailing offset recognisable as a truncation rather than a shape.
+
+**The rule that decides a partial polygon, and it errs one way on purpose.** A
+missing vertex can only make the real area BIGGER. So resolved points that
+already touch are `near` and that is certain; resolved points that do not touch
+with something unresolved are `unknown`, never `far`; and `far` needs a complete
+polygon. The unknown group is read BESIDE the overhead ones rather than filed
+away, because an area nobody could work out is not an area that is somewhere
+else. `Elsewhere` is a real `<details>` — collapsed, never removed.
+
+**The placement is a bounding-box overlap, not a point-in-polygon test**, and
+that is deliberate rather than unfinished: a polygon's bounding box contains the
+polygon, so everything that truly intersects is caught along with a few things
+that do not. A sharper test could only ever REMOVE advisories, which is the
+direction that must not be taken on a guess.
+
+**The panel rebuilt its groups on every frame** and the accessibility gate caught
+it — the `Elsewhere` disclosure shut again the instant it was opened, so nothing
+behind it could ever be read, and four contrast rows measured 1.00:1 against
+nodes replaced between the measurement and the screenshot. Hub LESSONS §61 in a
+second costume; the fix is the same, key on the shape of what is rendered.
+
+**Two plants that stayed GREEN and had to be re-aimed**, both worth keeping as
+shapes:
+
+- One broke `build-navaids.mjs`. No gate runs the generator — the guarantee
+  under test is about the artifact that ships — so a plant aimed at code nothing
+  executes measures nothing.
+- Its replacement deleted `BUF` from the shipped table and still stayed green,
+  because Buffalo has an IATA code and the airport fallback resolved it anyway.
+  That is the fallback working exactly as designed. It now deletes `RSK`, which
+  has no airport behind it and opens the real captured OUTLOOK line.
 
 ### A bulletin is one report again
 

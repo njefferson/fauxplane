@@ -76,6 +76,12 @@ const SOURCES = [
     href: 'https://ourairports.com/data/',
   },
   {
+    name: 'Where a hazard advisory is',
+    detail:
+      'OurAirports again, under the same public-domain dedication. A SIGMET draws its area as a line of navigation beacons, so a nationwide list of those beacons and their positions is bundled with the app — that is what lets the advisories be sorted into the ones over you and the ones that are not. It works with the radio off, and an advisory naming a place the list does not carry is shown as unplaced rather than guessed at.',
+    href: 'https://ourairports.com/data/',
+  },
+  {
     name: 'Magnetic declination',
     detail:
       'The NOAA World Magnetic Model 2025, bundled with the app and checked against NOAA’s own published test values at 100 points.',

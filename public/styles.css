@@ -2829,3 +2829,66 @@ body[data-powered='true'] .gate {
   font-weight: 700;
   color: var(--text-2);
 }
+
+/*
+ * PLACED ADVISORIES — the three groups.
+ *
+ * There is no colour here that carries meaning, and that is deliberate. The
+ * group a report is in is stated in words on its own heading; encoding "over
+ * your area" as a tint would be information available only to a reader who can
+ * see it, and would collide with the provenance palette besides. The tones on
+ * this page are already spoken for: amber means a feed is degraded.
+ */
+.wx-groups {
+  margin-top: 0.5rem;
+}
+
+.wx-group + .wx-group {
+  margin-top: 0.7rem;
+}
+
+.wx-group-h {
+  margin: 0 0 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+/*
+ * The Elsewhere disclosure. `summary` is a real control, so it gets a real
+ * target: 44px of height and a visible focus ring, the same rules every other
+ * control on this panel follows. `list-style: none` with a `::before` marker
+ * because Safari's default triangle cannot be sized with the text.
+ */
+.wx-group-collapsed > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.wx-group-collapsed > summary::-webkit-details-marker {
+  display: none;
+}
+
+.wx-group-collapsed > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 1em;
+  color: var(--text-3);
+  /* No transition: this rotates on open, and a reader who asked for less motion
+     is asking about exactly this kind of decoration. */
+}
+
+.wx-group-collapsed[open] > summary::before {
+  content: '▾';
+}
+
+.wx-group-collapsed > summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}

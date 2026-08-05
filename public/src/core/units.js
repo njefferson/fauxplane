@@ -188,6 +188,61 @@ export function bearingDeg(a, b) {
  * half-width is divided by cos(lat) — omitting that makes the box far too
  * narrow at 38 N, which is where this app lives.
  */
+/**
+ * THE 16-POINT COMPASS, and it is a table rather than arithmetic on purpose.
+ *
+ * A `FROM` line offsets a point by a distance and a compass POINT, not by a
+ * bearing: `30W PHX`, `60SSE SAW`, `80ESE TUS`. Sixteen names, each 22.5 apart,
+ * and the two- and three-letter forms are not derivable from each other by any
+ * rule short of writing the table anyway — ESE is not "E then SE" in any scheme
+ * that also produces NNE and SSW correctly.
+ *
+ * Ordered from north, clockwise, so the index IS the bearing divided by 22.5.
+ */
+export const COMPASS_16 = Object.freeze([
+  'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+]);
+
+/** The true bearing a 16-point compass name stands for, or null if it is not
+ *  one of the sixteen. Null rather than a guess: an unrecognised token in a
+ *  hazard advisory must not become a direction nobody wrote. */
+export function compassBearing(point) {
+  const i = COMPASS_16.indexOf(String(point ?? '').toUpperCase());
+  return i < 0 ? null : i * 22.5;
+}
+
+/**
+ * THE DIRECT GEODESIC — a point, a bearing and a distance, giving a new point.
+ *
+ * Every other helper in this file solves the INVERSE problem: two points in,
+ * distance or bearing out. `greatCircleNm`, `bearingDeg` and `metresBetween` are
+ * all that shape, which is why nothing here could place "30 nm west of PHX"
+ * until now.
+ *
+ * Spherical, matching `greatCircleM` beside it, so the two are exact inverses of
+ * each other rather than approximately so — which is what `units.test.mjs`
+ * asserts. Over the tens or hundreds of miles a hazard advisory spans, the
+ * difference from an ellipsoidal solution is far below the precision of a
+ * polygon drawn between VOR names.
+ */
+export function destinationPoint({ lat, lon }, bearingDegTrue, distanceNm) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (!Number.isFinite(bearingDegTrue) || !Number.isFinite(distanceNm)) return null;
+  // Angular distance travelled, in radians of arc.
+  const delta = (distanceNm * 1852) / EARTH_RADIUS_M;
+  const theta = degToRad(bearingDegTrue);
+  const phi1 = degToRad(lat);
+  const lambda1 = degToRad(lon);
+  const sinPhi2 = Math.sin(phi1) * Math.cos(delta) + Math.cos(phi1) * Math.sin(delta) * Math.cos(theta);
+  const phi2 = Math.asin(Math.min(1, Math.max(-1, sinPhi2)));
+  const lambda2 = lambda1 + Math.atan2(
+    Math.sin(theta) * Math.sin(delta) * Math.cos(phi1),
+    Math.cos(delta) - Math.sin(phi1) * sinPhi2,
+  );
+  return { lat: radToDeg(phi2), lon: wrap180(radToDeg(lambda2)) };
+}
+
 export function bboxAround({ lat, lon }, halfWidthNm) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(halfWidthNm)) return null;
   const dLat = halfWidthNm / 60;

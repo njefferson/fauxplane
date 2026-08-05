@@ -69,8 +69,10 @@ const SHELL = [
   '/src/data/metar.js',
   '/src/data/windsaloft.js',
   '/src/data/wxtext.js',
+  '/src/data/fromline.js',
   '/src/data/traffic.js',
   '/src/data/navdata.js',
+  '/src/data/navaids.js',
   '/src/data/route.js',
   '/src/data/geoid.js',
   '/src/data/manifest.js',
@@ -104,7 +106,7 @@ const SHELL = [
  * ships, and the panel's instruments do not need it. If it fails to download,
  * the centre picker says so and everything else still works offline.
  */
-const OPTIONAL = ['/data/navdata.json', '/data/basemap.json', '/data/geoid-norcal.json', '/data/wmm-cof.json'];
+const OPTIONAL = ['/data/navdata.json', '/data/basemap.json', '/data/geoid-norcal.json', '/data/wmm-cof.json', '/data/navaids-us.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

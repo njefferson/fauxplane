@@ -1286,5 +1286,87 @@ export const PLANTS = [
     // and the check it aims at were satisfied by any FAIL anywhere on the page,
     // and the feed rows supply one in this build whatever BITE does.
     expect: /BITE reports "(orientation|heading|motion|geo)" as PASS with every permission denied/,
+  },,
+  {
+    // THE ONE THAT MATTERS MOST IN THIS FEATURE. An advisory nobody could place
+    // is filed with the ones that are elsewhere — which is the panel claiming a
+    // hazard is not near the reader on the strength of a parser that failed.
+    name: 'advisories: an unplaceable one is filed as elsewhere',
+    check: 'unknown is never elsewhere',
+    gate: 'tests',
+    file: 'public/src/data/fromline.js',
+    find: '  if (unresolved.length) {\n    return {\n      where: \'unknown\',',
+    replace: '  if (false && unresolved.length) {\n    return {\n      where: \'unknown\',',
+    expect: /may reach further|'far' !== 'unknown'|'unknown'/,
+  },
+  {
+    // The unresolved group silently discarded: a name the table does not carry
+    // is skipped instead of recorded, so a polygon with a missing vertex reports
+    // itself as complete and is confidently placed somewhere it might not be.
+    name: 'advisories: an ident that cannot be found is silently skipped',
+    check: 'a point that cannot be resolved is recorded, never dropped',
+    gate: 'tests',
+    file: 'public/src/data/fromline.js',
+    find: '    const base = lookup(token);\n    if (!base) {\n      unresolved.push(token);',
+    replace: '    const base = lookup(token);\n    if (!base) {\n      void token;',
+    expect: /unresolved|SPO|ZZZQ/,
+  },
+  {
+    // The intersection test inverted. Everything overhead becomes elsewhere and
+    // everything elsewhere becomes overhead — the failure that would put a
+    // Florida SIGMET on a Sacramento panel and hide the one over the reader.
+    name: 'advisories: the box intersection test is inverted',
+    check: 'a polygon that touches the region is NEAR it',
+    gate: 'tests',
+    file: 'public/src/data/fromline.js',
+    find: '  return !(latMax < box.latMin || latMin > box.latMax || lonMax < box.lonMin || lonMin > box.lonMax);',
+    replace: '  return (latMax < box.latMin || latMin > box.latMax || lonMax < box.lonMin || lonMin > box.lonMax);',
+    expect: /'far' !== 'near'|'near' !== 'far'|touches/,
+  },
+  {
+    // The nationwide table losing its reach, which is how this feature dies
+    // silently: advisories across the country become "could not place", the
+    // block still renders, and nothing says the table stopped covering them.
+    //
+    // IT BREAKS THE SHIPPED FILE, not the generator that writes it. The first
+    // version of this plant edited `build-navaids.mjs` and stayed GREEN —
+    // correctly, because no gate runs the generator, and the guarantee under
+    // test is about the artifact that actually ships. A plant aimed at code
+    // nothing executes measures nothing.
+    // AND IT BREAKS A NAVAID THE AIRPORT FALLBACK CANNOT COVER. The version
+    // before this deleted BUF and stayed green: Buffalo has an IATA code, so
+    // `makeLookup` found the airport and resolved it anyway. That is the
+    // fallback working exactly as designed and a plant proving nothing.
+    // RSK has no airport behind it, and the real captured OUTLOOK line opens
+    // with it.
+    name: 'advisories: the shipped navaid table stops covering the whole country',
+    check: 'the ident table is NATIONWIDE',
+    gate: 'tests',
+    file: 'public/data/navaids-us.json',
+    find: '"RSK":[36.7484,-108.099],',
+    replace: '',
+    expect: /RSK|unresolved|nationwide|clipped/,
+  },
+  {
+    // A tie decided by whichever row was read first. The advisory lands at a
+    // position nobody measured, and nothing on screen says a coin was flipped.
+    name: 'advisories: an ambiguous ident is guessed rather than refused',
+    check: 'a tie is refused, not won',
+    gate: 'tests',
+    file: 'scripts/build-navaids.mjs',
+    find: '    else if (rank === cur.rank) cur.tied = true;',
+    replace: '    else if (rank === cur.rank) cur.tied = false;',
+    expect: /refused|ambiguous|TIE/,
+  },
+  {
+    // The panel rebuilding its groups every frame. This is the defect the gate
+    // actually caught during the build: the Elsewhere disclosure shut again the
+    // instant it was opened, so what is behind it could never be read.
+    name: 'advisories: the placed groups are rebuilt on every frame',
+    check: 'the elsewhere disclosure stays open when opened',
+    file: 'public/src/panels/atis.js',
+    find: '          if (b.signature !== signature) {\n            b.signature = signature;',
+    replace: '          if (true) {\n            b.signature = signature;',
+    expect: /disclosure does not open|measured 1\.00:1/,
   },
 ];

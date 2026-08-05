@@ -43,6 +43,7 @@ import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, followBannerText, 
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
+import { loadNavaids } from './data/navaids.js';
 import { createRouteSource, routeCaveat, routeLine } from './data/route.js';
 import { loadModel, magneticField } from './data/wmm.js';
 
@@ -745,6 +746,25 @@ async function boot() {
             reason: res.detail ? `${res.reason} — ${res.detail}` : res.reason,
           },
     );
+    bite.setHostEntries(extraBite);
+  });
+
+  /**
+   * The nationwide ident table, which is what lets a hazard advisory be placed
+   * rather than merely listed. Reported here for the same reason every other
+   * bundle is: absent is a real answer, and BITE is where a reader finds out
+   * WHY the advisory block went back to showing the whole country.
+   */
+  loadNavaids().then((res) => {
+    extraBite.push({
+      id: 'navaids',
+      label: 'Navaid table (places hazard advisories)',
+      group: 'Feeds',
+      status: res.ok ? PASS : FAILED,
+      reason: res.ok
+        ? `${res.counts.navaids} navaids, ${res.counts.airports} airports, nationwide`
+        : (res.detail ? `${res.reason} — ${res.detail}` : res.reason),
+    });
     bite.setHostEntries(extraBite);
   });
 
