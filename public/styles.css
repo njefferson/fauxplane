@@ -492,17 +492,43 @@ body {
   gap: var(--gap);
 }
 
+/*
+ * WHERE THE RANGE BUTTONS GO, AND IT DEPENDS ON WHICH AXIS IS SCARCE.
+ *
+ * Noah, 2026-08-05: "Why must the range markers go on the right side instead of
+ * the top or bottom of the radar?" Measured both ways, as the diameter of the
+ * circle that actually results — the scope is round, so its size is the SMALLER
+ * of its box's two sides, and 44px taken off the long side costs nothing at all:
+ *
+ *   874x402 (landscape phone)  right 213  ·  below 163
+ *   740x360 (landscape phone)  right 151  ·  below 128
+ *   1024x768 (tablet)          right 326  ·  below 331
+ *   390x844 (portrait phone)   right 316  ·  below 330
+ *
+ * On a LANDSCAPE screen the scope is height-bound: a column beside it is free,
+ * and a row under it takes 44px off the one axis it cannot spare — a quarter of
+ * the circle. On a TABLET or in PORTRAIT it is width-bound and the opposite is
+ * true, by a smaller margin.
+ *
+ * So BELOW is the default, which also matches the RADAR page's own range row and
+ * is the arrangement on the device this is mostly read on; the landscape rule in
+ * the short-screen block moves them beside the scope where height is the scarce
+ * axis. Neither is a taste call and both numbers are above.
+ */
 .pfd-plan-row {
   flex: 1 1 auto;
   min-height: 9rem;
   display: flex;
+  flex-direction: column;
   gap: 0.35rem;
   min-width: 0;
 }
 
 .pfd-range {
   display: flex;
-  flex-direction: column;
+  /* A row under the scope — see `.pfd-plan-row`. A column beside it only where
+     height is scarcer than width, which is the short-screen block. */
+  flex-direction: row;
   gap: 0.35rem;
   justify-content: center;
 }
@@ -755,6 +781,12 @@ body {
   /* Four stacked 44px targets are taller than a landscape phone's plan row —
      the gate measured the stack overlapping the build stamp above it and the
      readouts below. Two-by-two fits: 2 x 44px + gap inside a ~160px row. */
+  /* HEIGHT IS THE SCARCE AXIS HERE, so the buttons go BESIDE the scope where
+     they cost it nothing. Measured: 213px of circle against 163 with them
+     underneath, on an 874x402 phone. */
+  .pfd-plan-row {
+    flex-direction: row;
+  }
   .pfd-range {
     display: grid;
     grid-template-columns: repeat(2, minmax(var(--target), 1fr));

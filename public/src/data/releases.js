@@ -68,6 +68,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.28.7',
+    date: '2026-08-05',
+    headline: 'The range buttons move to whichever side the scope can spare.',
+    changed: [
+      'The scope is a circle, so its size is whatever the SMALLER side of its box allows — which means four buttons take nothing at all off one edge and a quarter of the circle off the other, depending on the shape of the screen.',
+      'Measured, as the diameter you actually get. On a phone held sideways, beside the scope: 213 against 163 underneath. On a tablet, underneath: 331 against 326 beside it. In portrait, underneath: 330 against 316.',
+      'So they follow the scarce side now. Beside the scope on a landscape phone, where height is what it cannot spare; under it on a tablet or in portrait, where width is — which is also where the RADAR page has always kept them.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.28.6',
     date: '2026-08-05',
     headline: 'The horizon is the biggest thing on the panel again.',

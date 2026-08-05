@@ -9,10 +9,45 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.6, the horizon is the primary instrument again, 2026-08-05
+## STAGED NOW — 1.28.7, the range buttons follow the scarce axis, 2026-08-05
 
-**1.28.6 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.28.7 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.28.3.
+
+Noah: *"Why must the range markers go on the right side instead of the top or
+bottom of the radar?"*
+
+**Answered with measurement rather than a rationale, and the answer turned out
+to be "it depends, and one of the two cases was wrong".** The scope is a CIRCLE,
+so its size is the smaller side of its box — four buttons take nothing off the
+long side and a quarter of the circle off the short one. Diameter, both ways:
+
+- **874x402** — beside **213**, below 163
+- **740x360** — beside **151**, below 128
+- **1024x768** — beside 326, below **331**
+- **390x844** — beside 316, below **330**
+
+On a landscape phone the scope is height-bound and a column beside it is free.
+On a tablet or in portrait it is width-bound and the opposite holds. So the
+buttons follow the scarce axis now — which also puts them where the RADAR page
+has always had them on the devices where that applies.
+
+**Neither position is a taste call and both sets of numbers are in the
+stylesheet**, so the next session can argue with them instead of re-deriving.
+
+### Two plants that were not plants
+
+- `flex: 62 1 0;` occurs **twice** in `styles.css`, so the horizon-share plant
+  was injected into the wrong rule and the gate stayed green. **A `find` that is
+  not unique is not a plant, it is a coin toss** — and nothing but the sweep's
+  UNPROVEN line would ever have said so.
+- The second plant went stale mid-run because the file was edited while it ran.
+  The harness detected that and said so rather than reporting a result, which is
+  exactly what it should do.
+
+---
+
+## 1.28.6 — the horizon is the primary instrument again, 2026-08-05
 
 Noah: *"The PFD still looks wrong because you insist on trying to make the
 horizon and the radar the same height."*

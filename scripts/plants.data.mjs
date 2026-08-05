@@ -947,9 +947,15 @@ export const PLANTS = [
     // that back.
     name: 'PFD: the navigation display out-sizes the horizon again',
     check: 'the attitude indicator is the biggest instrument on a PRIMARY flight display',
+    //
+    // THE FIRST VERSION OF THIS PLANT USED `flex: 62 1 0;` ALONE, which occurs
+    // TWICE in this stylesheet — so it was injected into the wrong rule and the
+    // gate stayed green. The harness reported UNPROVEN, which is the only
+    // reason anybody counted. A `find` that is not unique is not a plant, it is
+    // a coin toss.
     file: 'public/styles.css',
-    find: '  flex: 62 1 0;',
-    replace: '  flex: 20 1 0;',
+    find: '.pfd-main {\n  flex: 62 1 0;',
+    replace: '.pfd-main {\n  flex: 20 1 0;',
     expect: /must be the biggest instrument on a PRIMARY flight display/,
   },
   {
@@ -959,8 +965,8 @@ export const PLANTS = [
     name: 'PFD: the instrument wrapper stops taking the page height',
     check: 'the horizon is most of the panel, not merely bigger than the scope',
     file: 'public/styles.css',
-    find: '  flex: 1 1 auto;\n  min-height: 0;\n}\n\n/* The instruments plus the controls',
-    replace: '  min-height: 0;\n}\n\n/* The instruments plus the controls',
+    find: '     growth, and the measurement is the only thing that says so. */\n  flex: 1 1 auto;\n  min-height: 0;',
+    replace: '     growth, and the measurement is the only thing that says so. */\n  min-height: 0;',
     expect: /under half the screen it is on/,
   },
   {
