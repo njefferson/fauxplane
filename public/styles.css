@@ -392,7 +392,14 @@ body {
      because the row inside it grew while the wrapper itself sized to content.
      A new box between a flex child and its parent inherits none of the child's
      growth, and the measurement is the only thing that says so. */
-  flex: 1 1 auto;
+  /* `1 0 auto` — grows into spare height, NEVER shrinks below its own content.
+     This was fixed in the short-screen block first and left wrong here, and
+     Noah found the result on an iPad in landscape: the wrapper was squeezed, the
+     controls hung out of it, and the value strip was drawn straight over PWR.
+     "Cannot be seen in landscape because it's covered by the Text info."
+     The same fix, applied to the case in front of me and not the case beside
+     it — twice in one session now. */
+  flex: 1 0 auto;
   min-height: 0;
 }
 
@@ -738,6 +745,25 @@ body {
     overflow-y: auto;
   }
   /* Intrinsic height, never a share of a column that has none to give. */
+  /* STACKED, SO THE CONTROLS GO BACK UNDER THE HORIZON.
+     Noah, 2026-08-05: "the power button is too low in portrait mode." It is —
+     side by side the controls sit under both instruments, which is what makes
+     them cost both the same; stacked, "under both" means under the radar too,
+     and PWR ends up most of a screen further down than the horizon it belongs
+     to. `display: contents` dissolves the row so all three are children of the
+     same column and can be ordered. */
+  .pfd-row {
+    display: contents;
+  }
+  .pfd-main {
+    order: 1;
+  }
+  .pfd-controls {
+    order: 2;
+  }
+  .pfd-side {
+    order: 3;
+  }
   .pfd-main,
   .pfd-side {
     flex: 0 0 auto;

@@ -970,6 +970,30 @@ export const PLANTS = [
     expect: /under half the screen it is on/,
   },
   {
+    // Noah, 2026-08-05, iPad portrait: "the power button is too low." Removing
+    // the order puts the controls after BOTH stacked instruments again, which
+    // is most of a screen below the horizon they belong to.
+    name: 'PFD: the power switch drops below the radar in portrait',
+    check: 'PWR sits with the horizon it powers when the instruments are stacked',
+    file: 'public/styles.css',
+    find: '  .pfd-controls {\n    order: 2;\n  }',
+    replace: '  .pfd-controls {\n    order: 4;\n  }',
+    expect: /it belongs with the horizon it powers, not underneath the radar/,
+  },
+  {
+    // iPad landscape: "cannot be seen in landscape because it's covered by the
+    // Text info." The wrapper could be squeezed below its own content on any
+    // screen the short-screen rules did not reach, so the value strip was drawn
+    // over the switch. The general overlap check did not list `.pfd-controls`
+    // and watched it happen.
+    name: 'PFD: the value strip is drawn over the power switch again',
+    check: 'nothing is stacked on top of PWR',
+    file: 'public/styles.css',
+    find: '     it — twice in one session now. */\n  flex: 1 0 auto;',
+    replace: '     it — twice in one session now. */\n  flex: 1 1 auto;',
+    expect: /drawn over the power switch|and \.readouts overlap|stacked on top of the power switch/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

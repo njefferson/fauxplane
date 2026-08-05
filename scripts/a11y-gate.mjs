@@ -614,6 +614,88 @@ async function seenIntro(context) {
  *      arrow-key contract for anyone driving it from a keyboard.
  */
 /**
+ * THE POWER SWITCH IS ON SCREEN, AND NOTHING IS DRAWN OVER IT.
+ *
+ * Noah, 2026-08-05, with an iPad both ways up: "Now the power button is too low
+ * in portrait mode, and cannot be seen in landscape because it's covered by the
+ * Text info."
+ *
+ * BOTH FAULTS WERE MINE, ONE RELEASE OLD, and both are about the same move —
+ * lifting the controls out of the horizon's column so the two instruments could
+ * be equal. Side by side that is right. Stacked, "under both instruments" means
+ * under the RADAR too, and PWR ends up most of a screen below the horizon it
+ * belongs to. And the wrapper holding them could still be squeezed below its own
+ * content on any screen the short-screen rules did not cover, so the value strip
+ * was drawn straight over the switch.
+ *
+ * PWR is the control that turns the panel ON. A reader who cannot find it has no
+ * app at all, so this is asserted on every layout viewport rather than left to
+ * the general overlap check — which did not list `.pfd-controls` and so watched
+ * the whole thing happen.
+ */
+async function checkPowerIsReachable(page, where) {
+  const m = await page.evaluate(() => {
+    const pwr = document.querySelector('.power-btn');
+    const strip = document.querySelector('.readouts');
+    if (!pwr) return null;
+    const p = pwr.getBoundingClientRect();
+    const s = strip?.getBoundingClientRect();
+    const overlap = s
+      ? Math.max(0, Math.min(p.bottom, s.bottom) - Math.max(p.top, s.top))
+        * Math.max(0, Math.min(p.right, s.right) - Math.max(p.left, s.left))
+      : 0;
+    const plan = document.querySelector('.pfd-plan');
+    return {
+      top: Math.round(p.top),
+      bottom: Math.round(p.bottom),
+      planTop: plan ? Math.round(plan.getBoundingClientRect().top) : null,
+      horizonBottom: (() => {
+        const hz = document.querySelector('.pfd-canvas');
+        return hz ? Math.round(hz.getBoundingClientRect().bottom) : null;
+      })(),
+      viewport: window.innerHeight,
+      overlap: Math.round(overlap),
+      covered: document.elementFromPoint(p.left + p.width / 2, p.top + p.height / 2)?.closest('.power-btn') === null,
+    };
+  });
+  if (!m) return fail(where, 'the power switch is missing');
+  /**
+   * IT BELONGS TO THE HORIZON, so it comes before the navigation display.
+   *
+   * The first version of this asserted "no scrolling to reach it", which is the
+   * rule you want and is NOT ACHIEVABLE at every size: at 200% text on a 390px
+   * screen the horizon's own 12rem floor plus three rows of tabs already exceed
+   * the viewport, so the only way to pass would be to crush the horizon below
+   * the floor that makes it usable. A check nobody can satisfy gets deleted by
+   * the next person, so it is not written.
+   *
+   * This is the invariant behind BOTH of Noah's complaints and it holds at every
+   * size: PWR sits with the instrument it powers, never after the radar. Stacked
+   * or side by side, it is the same sentence.
+   */
+  // STACKED ONLY. Side by side the controls sit under BOTH instruments on
+  // purpose — that is what stops the horizon paying for them alone (1.28.6) —
+  // so PWR being below the radar is correct there. The rule bites when the
+  // instruments are in a column, where "under both" puts PWR most of a screen
+  // below the horizon. Stacked means the radar starts at or after the horizon
+  // ends; side by side they share a top edge.
+  const stacked = m.planTop !== null && m.horizonBottom !== null && m.planTop >= m.horizonBottom - 4;
+  if (stacked && m.top > m.planTop) {
+    fail(
+      where,
+      `the power switch starts at ${m.top}px, below the navigation display at ${m.planTop}px — `
+        + 'it belongs with the horizon it powers, not underneath the radar',
+    );
+  }
+  if (m.overlap > 4) {
+    fail(where, `the value strip is drawn over the power switch — ${m.overlap}px of overlap`);
+  }
+  if (m.covered) {
+    fail(where, 'something is stacked on top of the power switch — a press at its centre does not reach it');
+  }
+}
+
+/**
  * THE "HEARD RIGHT NOW" LIST COUNTS WHAT IS ACTUALLY HIDDEN, AND ENDS ON A ROW.
  *
  * Noah, 2026-08-05, with a screenshot: "The list of aircraft is not looking
@@ -746,6 +828,17 @@ const LAYOUT_VIEWPORTS = [
   // horizon — 613x381 down to 613x227 — and nothing in the sweep noticed,
   // because every other check on this page is about existence, not size.
   { name: 'tablet-landscape', width: 1024, height: 768, fontScale: 1, short: false },
+  /**
+   * NOAH'S IPAD, BOTH WAYS UP, WITH SAFARI'S CHROME TAKEN OFF.
+   *
+   * 620 rather than 768: the tab strip and address bar are real and they put the
+   * viewport in a band NOTHING in this gate covered — taller than the 34rem
+   * short-screen rules, shorter than the tablet the sweep runs. Both of the
+   * faults he photographed on 2026-08-05 lived in exactly that band, and both
+   * passed every check.
+   */
+  { name: 'ipad-landscape', width: 1024, height: 620, fontScale: 1, short: false },
+  { name: 'ipad-portrait', width: 768, height: 950, fontScale: 1, short: false },
   { name: 'small-phone-200pct', width: 390, height: 640, fontScale: 2, short: false },
 ];
 
@@ -766,6 +859,7 @@ async function checkChromeLayout(browser, base) {
     await page.waitForTimeout(400);
     await checkInfoButtonPlacement(page, where);
     await checkHorizonIsPrimary(page, where);
+    await checkPowerIsReachable(page, where);
     if (vp.short) await checkInstrumentsOwnTheScreen(page, where);
     await context.close();
   }
@@ -1465,7 +1559,16 @@ async function main() {
                 const r = el.getBoundingClientRect();
                 return r.width > 1 && r.height > 1 ? { sel, ...r.toJSON() } : null;
               };
-              const boxes = ['.pfd-canvas', '.pfd-plan', '.readouts', '.pfd-level'].map(rect).filter(Boolean);
+              // `.pfd-controls` IS IN THIS LIST NOW. Noah found the value strip
+              // drawn straight over the PWR switch on an iPad in landscape —
+              // "cannot be seen in landscape because it's covered by the Text
+              // info" — and this check, which exists to catch exactly that,
+              // was not looking at the controls. It listed the two canvases
+              // and the strip, because those were the elements that had
+              // overlapped before.
+              const boxes = ['.pfd-canvas', '.pfd-plan', '.readouts', '.pfd-level', '.pfd-controls']
+                .map(rect)
+                .filter(Boolean);
               const bad = [];
               for (let i = 0; i < boxes.length; i += 1) {
                 for (let j = i + 1; j < boxes.length; j += 1) {

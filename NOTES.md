@@ -9,10 +9,58 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.7, the range buttons follow the scarce axis, 2026-08-05
+## STAGED NOW — 1.28.8, PWR back where it can be seen and pressed, 2026-08-05
 
-**1.28.7 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.28.8 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.28.3.
+
+Noah, with an iPad both ways up: *"Now the power button is too low in portrait
+mode, and cannot be seen in landscape because it's covered by the Text info."*
+
+**Both faults were mine, one release old, and both come from the same move** —
+lifting the controls out of the horizon's column in 1.28.6 so the two
+instruments could be equal.
+
+- **Portrait.** Side by side, "under both instruments" is exactly right and is
+  what stops the horizon paying for the buttons alone. STACKED, it means under
+  the RADAR too, and PWR lands most of a screen below the horizon it belongs to.
+  `display: contents` on the row in portrait, so all three are children of one
+  column and can be ordered horizon, controls, radar.
+- **Landscape.** `.pfd-screen` was given `flex: 1 0 auto` — grow, never shrink —
+  **in the short-screen block only**, and left shrinkable in the base rule. On an
+  iPad in landscape the wrapper was squeezed below its own content, the controls
+  hung out of it, and the value strip was painted over PWR. **The same fix,
+  applied to the case in front of me and not the case beside it — twice in one
+  session**, the other being `ellipsise` in the ADI's two branches.
+
+### The band nothing was measuring
+
+Safari's tab strip and address bar are real. An iPad in landscape is a **1024x620**
+viewport, not 1024x768 — taller than every short-screen rule, shorter than the
+tablet the sweep runs. **Both faults lived in exactly that band and both passed
+every check.** `ipad-landscape` (1024x620) and `ipad-portrait` (768x950) are
+layout viewports now.
+
+And the general overlap check listed the two canvases and the value strip but
+**not `.pfd-controls`** — the elements that had overlapped before, rather than
+the elements that could. It lists the controls now.
+
+### A rule nobody can satisfy does not get written
+
+The first version of `checkPowerIsReachable` asserted PWR needs no scrolling.
+True as a wish, and **impossible at 200% text on a 390px screen**: the horizon's
+own 12rem floor plus three rows of tabs already exceed the viewport, so the only
+way to pass is to crush the horizon below the floor that makes it usable. A
+check nobody can satisfy is deleted by the next person who meets it.
+
+What it asserts instead holds at every size and is the sentence behind both
+complaints: **PWR sits with the instrument it powers, and is never painted
+over.** Scoped to the stacked case, because side by side "below the radar" is
+the correct arrangement rather than the defect.
+
+---
+
+## 1.28.7 — the range buttons follow the scarce axis, 2026-08-05
 
 Noah: *"Why must the range markers go on the right side instead of the top or
 bottom of the radar?"*
