@@ -98,6 +98,33 @@ comparing the two sentences.
   which brings its own conditions. Same shape as the EICAS strip, one release
   earlier.
 
+### The doctrine marker was stale at `fd4e55e`, and is now reconciled
+
+`doctrine-sync.mjs` reported nine files and the whole of DOCTRINE.md as drifted,
+which reads like a wall and is mostly not drift: **one of the four commits that
+touched the doctrine is the mass quote scrub**, a rewording pass that accounts
+for nearly all 1,317 changed lines and introduces no rule.
+
+The genuinely new rules are three, and this repo owes nothing on any of them:
+
+- **§5b — when a tool fails, diagnose it, never hand the owner the blame.** A
+  session-behaviour rule; no code or document here is affected. It is the rule
+  behind reporting the aviationweather.gov failure as *this sandbox's proxy
+  refuses CONNECT* — a mechanism — rather than as a suspect.
+- **§0d — his words are not repo material.** Already reflected in `CLAUDE.md`
+  and enforced by the privacy gate in `deploy.yml` on every push.
+- **§7d.1 — "you" is the reader, there is no "I", nobody is asked to send
+  anything.** Already a hard gate here: `releases.test.mjs`.
+
+And §9b changed: **the history question is SETTLED** — making a repo private and
+contacting GitHub Support are declined remedies a session does not propose again,
+in any repo. Not copied into this file, because the doctrine is linked and never
+forked; recorded here only so the next session knows it was read.
+
+Marker moved to `e9b4273`. **Adopting is an assertion, not a measurement** — the
+same shape as `handoff-check`'s `--ack`, and it should not be made on a partial
+read.
+
 ---
 
 ## Previously staged — 1.33.0, the MAP page and a bundled basemap, 2026-08-05
