@@ -41,6 +41,7 @@ export const RELEASES = [
       'And pressing Follow says so, right there under the button. It always did say so — several hundred pixels above your thumb, off the top of the screen. An empty box now says what to do instead of nothing.',
     ],
     broken: [
+      'If you run your text at 200%, the scope still starts below the fold on a small phone and you have to scroll to reach it. The radar page more than halved its own share of that this release, but at that size the header and tabs alone take two thirds of the screen before the page even begins. That is a separate job and it is written down.',
       'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
       'No route, for the known reason in 1.27.0.',
     ],

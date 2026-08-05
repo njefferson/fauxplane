@@ -85,9 +85,49 @@ PFD to see its instruments."*
 Contrast, target size, accessible names, the citation, the readiness chip, the
 FOLLOWING indicator — all green, all release. **Not one of them asked where the
 instrument starts**, which is the only question a reader has when they open the
-page. The a11y gate now fails if the scope begins past half the viewport, and
-that check has been watched going red on a plant that puts the picker back on
-top.
+page.
+
+### And the first version of THAT check was the same mistake again
+
+It asked whether the scope began past half the viewport, and it lived inside
+`checkRadarTap` — which pins **1024x900**. Measured there the scope starts 27%
+down **with the fault planted**, so the check could not fail. It went green on a
+build I had already claimed was fixed, and the sweep called it:
+
+    GREEN  layout: the centre picker goes back above the scope  <-- the check does not work
+    UNPROVEN  the gate stayed GREEN with the fault planted
+
+**A threshold nobody measured, on the one viewport where the defect cannot
+appear.** That is the same shape as the five defects it was written for — a
+check that asks a question in a place where the answer is always yes. It is also
+exactly what `plant.mjs` exists for: nothing else in the pipeline would have
+said a word.
+
+Rewritten around two MEASURED questions, both about what this page controls:
+
+- **What may sit above the canvas, by name.** Range, band and the readiness chip
+  are read *while* looking at the scope; the centre picker aims it once. This is
+  DOM order, so it fires at every viewport including the single one `--quick`
+  runs — which is what lets a plant prove it at all.
+- **How much room they take, in rem**, so it scales with the reader's text size.
+  Measured 2026-08-05: **11.1rem** at every normal-text viewport and **11.88rem**
+  at 200% text. Before the fix: **17.45rem**, **21.73rem** on a portrait phone,
+  **41.59rem** at 200%. The ceiling is 13.
+
+Watched going red. The message names the element it found.
+
+### Still open: at 200% text the scope is below the fold, and this page cannot fix it
+
+Measured at 390x640 with 200% text: the header and tab strip take **407px of a
+640px screen** before the radar card begins. The card's own stack is 380px more.
+So the scope starts at 812 and the reader must scroll to see any of it.
+
+**The card is not the cause** — it more than halved its own contribution this
+release (1331px to 380px), and even at zero the scope would still start past the
+fold. This is a navigation-height question at large text sizes, and the gate
+deliberately does NOT assert total distance down the page: it would either fail
+on something the radar page cannot fix, or be set loose enough to mean nothing.
+Recorded here rather than hidden behind a lenient threshold.
 
 ---
 

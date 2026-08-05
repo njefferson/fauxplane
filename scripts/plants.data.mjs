@@ -833,18 +833,18 @@ export const PLANTS = [
     // because they all ask whether things EXIST and are legible. None asked
     // where the instrument starts, which is the only question a reader has.
     name: 'layout: the centre picker goes back above the scope',
-    check: 'the scope is not pushed past the half-way point by its own controls',
+    check: 'only the controls read WHILE looking at the scope may sit above it',
     file: 'public/src/panels/radar.js',
     find: "      el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),",
     replace:
-      "      el('div', {}, [\n"
+      "      el('div', { class: 'radar-centre' }, [\n"
       + "        el('label', { class: 'radar-centre-label', for: 'radar-centre', text: 'Centre the scope on' }),\n"
       + "        el('div', { class: 'radar-centre-row' }, [centreInput, centreClear]),\n"
       + '        centreList,\n'
       + '        centreNote,\n'
       + '      ]),\n'
       + "      el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),",
-    expect: /the scope starts \d+px down a \d+px viewport/,
+    expect: /"radar-centre" sits between the card title and the scope/,
   },
   {
     name: 'BITE: the page stops reading the live store',

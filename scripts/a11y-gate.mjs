@@ -590,6 +590,88 @@ async function seenIntro(context) {
   return context;
 }
 
+/**
+ * THE SCOPE IS NOT BURIED UNDER ITS OWN CONTROLS.
+ *
+ * Noah, 2026-08-05: "The radar is pushed down by the airport picker." The
+ * centre picker — a label, a field and a two-line hint — sat ABOVE the
+ * instrument, and the range and band buttons flex-wrapped onto two rows each on
+ * a phone. Every check on this page was green throughout, because they all ask
+ * whether things EXIST and are legible. None asked where the instrument STARTS,
+ * which is the only question a reader has when they open the page.
+ *
+ * THE FIRST VERSION OF THIS CHECK WAS ITSELF THE SAME MISTAKE, and the sweep
+ * caught it: it asked whether the scope began past half the viewport, and it
+ * ran inside `checkRadarTap`, which pins 1024x900. Measured there the scope
+ * starts 27% down WITH the fault planted — so the check could not fail, and the
+ * sweep reported it UNPROVEN. A threshold nobody measured, on the one viewport
+ * where the defect cannot appear.
+ *
+ * So it asks two measured questions instead, both about what the RADAR PAGE
+ * controls rather than what navigation does:
+ *
+ *   1. WHAT IS ALLOWED ABOVE THE CANVAS, by name. Range, band and the readiness
+ *      chip are read WHILE looking at the scope, so they earn their place. The
+ *      centre picker aims the thing once and belongs below it. This is DOM
+ *      order, so it fires at every viewport — including the single one `--quick`
+ *      runs, which is what lets a plant prove it.
+ *   2. HOW MUCH ROOM THEY TAKE, in rem, so it scales with the reader's text
+ *      size instead of assuming 16px. Measured 2026-08-05: 11.1rem at every
+ *      normal-text viewport and 11.88rem at 200% text; before the fix, 17.45rem,
+ *      21.73rem on a portrait phone and 41.59rem at 200%. 13 is the ceiling —
+ *      about 10% of headroom over the worst real number, and nowhere near the
+ *      cheapest regression.
+ *
+ * WHAT IT DELIBERATELY DOES NOT ASSERT: total distance down the page. At 200%
+ * text the header and tab strip alone take 407px of a 640px screen, so the
+ * scope starts below the fold there no matter what this card does. That is a
+ * navigation question and it is recorded in NOTES as still open — asserting it
+ * here would either fail on something this page cannot fix or be set loose
+ * enough to mean nothing.
+ */
+const SCOPE_STACK_MAX_REM = 13;
+const ALLOWED_ABOVE_SCOPE = ['card-title', 'radar-range', 'radar-band', 'radar-ready'];
+
+async function checkScopeIsNotBuried(page, where) {
+  const m = await page.evaluate(() => {
+    const card = document.querySelector('.radar-card');
+    const canvas = document.querySelector('.radar-canvas');
+    if (!card || !canvas) return null;
+    const canvasTop = canvas.getBoundingClientRect().top;
+    const root = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const above = [];
+    for (const n of card.children) {
+      const r = n.getBoundingClientRect();
+      if (n === canvas || r.height === 0 || r.top >= canvasTop) continue;
+      above.push(String(n.className || n.tagName.toLowerCase()).trim());
+    }
+    return { above, px: Math.round(canvasTop - card.getBoundingClientRect().top), root };
+  });
+
+  if (!m) {
+    fail(where, 'the radar card or its canvas is missing — the scope check cannot run');
+    return;
+  }
+
+  const strays = m.above.filter((c) => !ALLOWED_ABOVE_SCOPE.some((ok) => c.split(/\s+/).includes(ok)));
+  if (strays.length) {
+    fail(
+      where,
+      `"${strays.join('", "')}" sits between the card title and the scope — only the controls read WHILE `
+        + `looking at the instrument (${ALLOWED_ABOVE_SCOPE.join(', ')}) may push it down`,
+    );
+  }
+
+  const rem = m.px / m.root;
+  if (rem > SCOPE_STACK_MAX_REM) {
+    fail(
+      where,
+      `the scope's own controls take ${rem.toFixed(1)}rem (${m.px}px at ${m.root}px text) above it, over the `
+        + `${SCOPE_STACK_MAX_REM}rem ceiling — the instrument is being pushed down the page`,
+    );
+  }
+}
+
 /** Touch targets, with the inline-in-a-sentence exemption applied and NAMED. */
 async function checkTargets(page, where) {
   const results = await page.evaluate(() => {
@@ -1011,6 +1093,7 @@ async function main() {
           }
 
           if (name === 'radar') {
+            await checkScopeIsNotBuried(page, where);
             const credit = await page.evaluate(() => {
               const a = document.querySelector('.radar-credit-link');
               return a
@@ -1598,33 +1681,6 @@ async function checkRadarTap(browser, base, { touch = false } = {}) {
   }
   if (afterFollow && !/UAL328/.test(afterFollow.text)) {
     fail(where, `the indicator says "${afterFollow.text}" — it must name the aircraft the panel has become`);
-  }
-
-  /**
-   * THE SCOPE IS NOT PUSHED OFF THE SCREEN BY ITS OWN CONTROLS.
-   *
-   * Noah, 2026-08-05: "The radar is pushed down by the airport picker." The
-   * centre picker — a label, a field and a two-line hint — sat ABOVE the
-   * instrument, and the range and band buttons wrapped onto two rows each on a
-   * phone. The scope began past the half-way point and ran off the bottom.
-   *
-   * Every check on this page passed throughout, because they all asked whether
-   * things EXIST and are legible. None asked where the instrument starts, which
-   * is the only question a reader has when they open the page.
-   */
-  const scopeTop = await page.evaluate(() => {
-    const c = document.querySelector('.radar-canvas');
-    if (!c) return null;
-    const r = c.getBoundingClientRect();
-    return { top: r.top + window.scrollY, h: r.height, viewport: window.innerHeight };
-  });
-  if (!scopeTop) fail(where, 'the radar canvas is missing');
-  else if (scopeTop.top > scopeTop.viewport * 0.5) {
-    fail(
-      where,
-      `the scope starts ${Math.round(scopeTop.top)}px down a ${scopeTop.viewport}px viewport — `
-        + 'its own controls have pushed the instrument past the half-way point',
-    );
   }
 
   // BACK TO THE PANEL FIRST. The banner lives inside `#page-pfd`, which is
