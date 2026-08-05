@@ -785,11 +785,33 @@ body {
      Here the page already scrolls, which the block above calls the honest
      answer, so the row is allowed to be as tall as it needs and the reader
      scrolls to the values. */
+  /* THE INSTRUMENTS OWN THE SCREEN. THE VALUES START BELOW IT.
+     Noah, 2026-08-05: "Why are you bounding everything to the circle inside the
+     radar instead of pushing everything down so I don't have to see all the
+     diagnostics?"
+
+     THREE ARRANGEMENTS WERE TRIED BEFORE THAT QUESTION AND ALL THREE ANSWERED
+     THE WRONG ONE — how to fit a row of values onto a screen with no room for
+     it. `auto` never shrank, so the strip was cut by the footer. `0` shrank
+     without limit and the gate caught the horizon hanging through the strip
+     (`.pfd-canvas and .readouts overlap by 436x33px`, by name). `min-content`
+     split the difference and still sliced a sentence in half. Every one of them
+     put a fragment of diagnostics on a cockpit and called it a compromise.
+
+     A full panel tall. The horizon and the scope get all of it, and the strip
+     begins AT the fold rather than through it, so nothing is half on screen and
+     there is nothing to look cut. Scroll for the numbers as text — which is
+     what the strip is for, since a canvas is non-text content and these values
+     must exist as text somewhere. Nothing requires them to be what fills the
+     glass. */
   .pfd-row {
-    min-height: auto;
+    min-height: 100%;
   }
-  /* The percentage cap is a share of a height the panel no longer owns here. */
+  /* Its natural height, below the fold, where it costs the instruments nothing.
+     It has been capped at 21%, at 4.5rem and at the leftover space on the way
+     here; all three were rationing a thing that no longer needs rationing. */
   .readouts {
+    flex: 0 0 auto;
     max-height: none;
   }
 
@@ -821,6 +843,38 @@ body {
   }
   .pfd-canvas {
     min-height: 8rem;
+  }
+  /* THE PLAN VIEW GETS THE SAME FLOOR AS THE HORIZON HERE. It kept 9rem while
+     the horizon dropped to 8, so on a landscape phone the plan alone decided
+     the instrument row's height — and with the value strip capped to a band,
+     that one extra rem was the whole difference between the page fitting and
+     the strip being sliced by the footer. The a11y gate reported it as a
+     `.pfd-plan`/`.readouts` overlap, by name, which is how the floor was found
+     rather than guessed at. */
+  .pfd-plan {
+    min-height: 8rem;
+  }
+}
+
+/* ONE COLUMN OF RANGES WHERE FOUR TARGETS FIT, so the scope gets the width back.
+   Noah, 2026-08-05: "Why are you bounding everything to the circle inside the
+   radar" — the 2x2 block was 94px of a 318px column and the circle is sized by
+   whatever is left. Stacked, the same four buttons are 44px wide and the scope
+   goes from 215px across to 269: a square scope, a quarter wider, for no height
+   at all now that the instruments own the panel.
+
+   THIS BLOCK IS AFTER THE ONE ABOVE, NOT INSIDE IT, and the first attempt put
+   it inside — which closed the short-screen query early and quietly dropped
+   every rule that followed, including the one giving the instruments the panel.
+   The measurement caught it: the row came back at 269px on a 360px-tall screen,
+   which is impossible if the rules had still been applying.
+
+   The bound is what four targets and their gaps actually need rather than a
+   device width. Below it the 2x2 still applies, because on a 360px-tall
+   landscape phone a stack of four would overflow the row it sits in. */
+@media (max-height: 34rem) and (min-height: 25rem) {
+  .pfd-range {
+    grid-template-columns: minmax(var(--target), 1fr);
   }
 }
 

@@ -861,12 +861,32 @@ export const PLANTS = [
     // as the thing it must not become. A headless axe run does NOT reliably
     // fail on a stray child of a tablist, which is why this is asserted
     // directly rather than left to the library.
+    //
+    // THE FIRST VERSION OF THIS PLANT DELETED `</nav>`, which puts the button
+    // inside the NAV and not inside the tablist — so it broke the layout, the
+    // gate went red about the (i) leaving the tab row, and the harness
+    // correctly reported the plant as unproven: red, but not about this.
     name: 'header: the (i) is moved inside the tablist',
     check: 'the (i) is not a sixth tab',
     file: 'public/index.html',
     find: '        </div>\n      </nav>\n',
-    replace: '        </div>\n',
+    replace:
+      '          <button type="button" id="info-btn" class="info-btn" aria-label="Information about this panel">'
+      + '<span class="info-glyph" aria-hidden="true">i</span></button>\n        </div>\n      </nav>\n',
     expect: /inside the tablist — that makes it a sixth tab/,
+  },
+  {
+    // Noah, 2026-08-05, on a landscape phone: "This layout is unacceptable",
+    // and then "why are you bounding everything to the circle inside the radar
+    // instead of pushing everything down so I don't have to see all the
+    // diagnostics?" `auto` is what the rule held before, and it puts a sliced
+    // value row back on the panel above the footer.
+    name: 'layout: the value strip climbs back onto the instrument screen',
+    check: 'on a short screen the instruments fill the panel and the values start below it',
+    file: 'public/styles.css',
+    find: '  .pfd-row {\n    min-height: 100%;\n  }',
+    replace: '  .pfd-row {\n    min-height: auto;\n  }',
+    expect: /the value strip starts \d+px above the fold|is not filling the screen it was given/,
   },
   {
     // A moved control that renders and does nothing. The markup is present, the

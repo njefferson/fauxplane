@@ -9,10 +9,64 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.2, brightness to SETUP and the (i) up, 2026-08-05
+## STAGED NOW — 1.28.3, the instruments get the landscape screen, 2026-08-05
 
-**1.28.2 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.28.3 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.28.1.
+
+Noah, with a photograph of the PFD on an iPhone in landscape: *"This layout is
+unacceptable."* Reproduced at his exact size — **874x402** — and the numbers
+were damning: the value strip was **354px of a 659px page**, so more than half
+the panel was below the fold and what was visible ended in a sentence sliced
+through the middle, directly above a solid footer bar.
+
+**Three attempts went by before the right question got asked**, and all three
+were answering the wrong one — how to fit a row of values onto a screen with no
+room for one:
+
+- `min-height: auto` on the instrument row never shrinks, so the strip stayed
+  under the footer.
+- `0` shrinks without limit, and the a11y gate caught it inside a minute:
+  `.pfd-canvas and .readouts overlap by 436x33px`, by name, at 740x360.
+- `min-content` split the difference and still sliced a sentence.
+
+Then Noah: *"Why are you bounding everything to the circle inside the radar
+instead of pushing everything down so I don't have to see all the
+diagnostics?"* — which is the actual answer. **The instrument row is a full
+panel tall.** The strip begins AT the fold rather than through it, so nothing is
+half on screen and there is nothing to look cut. The values are text because a
+canvas is non-text content and they must exist as text somewhere; nothing
+requires them to be what fills the glass.
+
+**And the scope got a quarter of its width back.** With the instruments owning
+the height, the four range buttons stack into a 44px column instead of a 94px
+2x2 block, and the plan view goes from 215px across to a square 269.
+
+### The three checks this cost, and the one that was unprovable
+
+`plant.mjs` runs the a11y gate with `--quick`, which is **ONE viewport,
+1024x768** — and at that width the (i) sits beside the tabs whatever
+`flex-wrap` says. So the (i)-placement check written into the per-page sweep
+could not fail in the harness meant to verify it, and the sweep said so:
+`UNPROVEN`. **Hub LESSONS §54 for the third time in one day**, and the third
+time it was caught before anything was claimed rather than after.
+
+Both layout checks now pin their own contexts, like `checkRadarTap` does:
+
+- **874x402**, the device in the photograph. Short enough for the panel rules
+  and tall enough for the stacked range column — a combination NO viewport in
+  the sweep exercises.
+- **390x640 at 200% text**, where the tab strip wraps to three rows and the (i)
+  has somewhere to fall.
+
+The second check also failed correctly on its first run, by 24px, because it
+compared the row against the page's PADDING box rather than its content box.
+`min-height: 100%` resolves against the content height. Fixed, and the check
+now measures what the rule actually promises.
+
+---
+
+## 1.28.2 — brightness to SETUP and the (i) up, 2026-08-05
 
 Noah: *"I think brightness can go in setup, and then (i) moved up?"*
 

@@ -68,6 +68,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.28.3',
+    date: '2026-08-05',
+    headline: 'On a phone held sideways, the instruments get the whole screen.',
+    changed: [
+      'The PFD in landscape used to end with a row of value text sliced through the middle, sitting just above the footer. The instruments now fill the screen and the written values start below it — scroll down for them, or do not, and nothing is cut in half.',
+      'The scope is a quarter wider for it. The four range buttons stack into a single narrow column beside it instead of sitting in a square block, and the circle gets the room that block was using.',
+      'The horizon is taller too, by about the height of the row that used to be wasted on a fragment of text.',
+    ],
+    broken: [
+      'The written values are still there and still complete — they are simply below the instruments now. On a very short screen there is no arrangement that shows both, and the instruments are what a panel is for.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.28.2',
     date: '2026-08-05',
     headline: 'Brightness moves to SETUP, and the (i) moves up beside the tabs.',

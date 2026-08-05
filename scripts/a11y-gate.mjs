@@ -613,6 +613,101 @@ async function seenIntro(context) {
  *      as exactly what it must not become — while breaking the tablist's
  *      arrow-key contract for anyone driving it from a keyboard.
  */
+/**
+ * THE CHROME AND PANEL LAYOUT CHECKS, ON VIEWPORTS WHERE THEIR DEFECTS EXIST.
+ *
+ * These were written inside the per-page sweep, and the plant harness reported
+ * one of them UNPROVEN within the hour: `plant.mjs` runs the gate with
+ * `--quick`, which is ONE viewport — 1024x768 — and at that width the (i) sits
+ * beside the tabs whatever `flex-wrap` says. A check that cannot fail in the
+ * harness meant to verify it is not a check. Hub LESSONS §54, for the third
+ * time in a day, and this time the sweep said so before anything was claimed.
+ *
+ * So both pin their own contexts, like `checkRadarTap` does, and run whatever
+ * the sweep is doing:
+ *
+ *   · 874x402 — an iPhone 16 Pro in landscape, which is the device Noah sent a
+ *     photograph of. Short enough for the panel rules and tall enough for the
+ *     stacked range column, which no viewport in the sweep exercises.
+ *   · 390x640 at 200% text — where the tab strip wraps to three rows and the
+ *     (i) has somewhere to fall.
+ */
+const LAYOUT_VIEWPORTS = [
+  { name: 'iphone-landscape', width: 874, height: 402, fontScale: 1, short: true },
+  { name: 'small-phone-200pct', width: 390, height: 640, fontScale: 2, short: false },
+];
+
+async function checkChromeLayout(browser, base) {
+  for (const vp of LAYOUT_VIEWPORTS) {
+    const where = `layout/${vp.name}`;
+    const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, permissions: [] });
+    await seenIntro(context);
+    const page = await context.newPage();
+    if (vp.fontScale !== 1) {
+      await page.addInitScript((scale) => {
+        document.addEventListener('DOMContentLoaded', () => {
+          document.documentElement.style.fontSize = `${16 * scale}px`;
+        });
+      }, vp.fontScale);
+    }
+    await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(400);
+    await checkInfoButtonPlacement(page, where);
+    if (vp.short) await checkInstrumentsOwnTheScreen(page, where);
+    await context.close();
+  }
+}
+
+/**
+ * ON A SHORT SCREEN THE INSTRUMENTS GET THE PANEL AND THE VALUES START BELOW IT.
+ *
+ * Noah, 2026-08-05, on a photograph of the PFD in landscape: "This layout is
+ * unacceptable" — and then, when the fix was still trying to fit one row of
+ * values on screen: "Why are you bounding everything to the circle inside the
+ * radar instead of pushing everything down so I don't have to see all the
+ * diagnostics?"
+ *
+ * The strip is 354px of a 659px page here. Every arrangement that let part of
+ * it on screen put a half-cut sentence directly above a solid footer bar, which
+ * reads as broken however correct the overflow rules are. So: the value strip
+ * must begin at or below the fold, and the instrument row must actually fill
+ * the panel rather than leaving a gap for it.
+ */
+async function checkInstrumentsOwnTheScreen(page, where) {
+  const m = await page.evaluate(() => {
+    const row = document.querySelector('.pfd-row');
+    const strip = document.querySelector('.readouts');
+    const foot = document.querySelector('.foot');
+    const page_ = document.querySelector('.page-pfd');
+    if (!row || !strip || !foot || !page_) return null;
+    return {
+      stripTop: Math.round(strip.getBoundingClientRect().top),
+      foldTop: Math.round(foot.getBoundingClientRect().top),
+      rowH: Math.round(row.getBoundingClientRect().height),
+      // The CONTENT box, not the padding box. `min-height: 100%` resolves
+      // against the content height, so comparing with clientHeight fails by
+      // exactly the page's own padding and says the row is short when it is
+      // filling everything it was offered.
+      visibleH: (() => {
+        const cs = getComputedStyle(page_);
+        return Math.round(page_.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom));
+      })(),
+    };
+  });
+  if (!m) return fail(where, 'the PFD row, value strip, footer or page is missing — the layout cannot be judged');
+  // One pixel of slack for sub-pixel rounding, not for a visible sliver.
+  if (m.stripTop < m.foldTop - 1) {
+    fail(
+      where,
+      `the value strip starts ${m.foldTop - m.stripTop}px above the fold — on a screen this short it is `
+        + 'a fragment of diagnostics cut off by the footer, and the instruments should have that space',
+    );
+  }
+  if (m.rowH < m.visibleH - 1) {
+    fail(where, `the instrument row is ${m.rowH}px in a ${m.visibleH}px panel — it is not filling the screen it was given`);
+  }
+}
+
 async function checkInfoButtonPlacement(page, where) {
   const m = await page.evaluate(() => {
     const btn = document.querySelector('#info-btn');
@@ -1196,10 +1291,6 @@ async function main() {
             for (const o of overlaps) fail(where, o);
           }
 
-          // The header is on every page, so this is asserted on every page —
-          // it is a layout fact and layout is per-viewport, which is exactly
-          // what this sweep varies.
-          await checkInfoButtonPlacement(page, where);
           if (name === 'setup') await checkBrightnessOnSetup(page, where);
 
           if (name === 'radar') {
@@ -1267,6 +1358,7 @@ async function main() {
     // this check — which only ever drove a MOUSE — was green. A mouse click
     // and a touch tap are different event paths, and the device this app is
     // built for only has one of them.
+    await checkChromeLayout(browser, base);
     await checkRadarTap(browser, base, { touch: false });
     await checkRadarTap(browser, base, { touch: true });
     await checkCentrePicker(browser, base);
