@@ -312,13 +312,18 @@ export const PLANTS = [
     // report from PXT466", under a banner asserting that aircraft's broadcast
     // was on screen. It was showing nothing. That sentence sits at the top of a
     // panel of red crosses and is why it "looks broken without any data".
+    // WENT STALE WHEN THE BANNER WAS SHORTENED IN 1.29.2, and stale is not a
+    // small thing here: the plant's `find` no longer existed, so the harness
+    // skipped it and this check went unproven through exactly the release that
+    // rewrote the code it guards. Re-aimed at the CONDITION rather than at the
+    // sentence — the same correction the three tests needed (hub LESSONS §58).
     name: 'honesty: the follow banner claims a broadcast that never arrived',
     check: 'the banner does not claim data the panel does not have',
     gate: 'tests',
     file: 'public/src/data/traffic.js',
-    find: '  if (followed) return `${label} — this panel is showing that aircraft\'s broadcast, not this device`;',
-    replace: '  return `${label} — this panel is showing that aircraft\'s broadcast, not this device`;',
-    expect: /never arrived|no broadcast received|showing that aircraft/i,
+    find: '  if (followed) return `${label} — showing its broadcast`;',
+    replace: '  if (true) return `${label} — showing its broadcast`;',
+    expect: /never arrived|no broadcast|showing/i,
   },
   {
     // the owner PHOTOGRAPHED THIS: following DAL2229, every instrument crossed out
