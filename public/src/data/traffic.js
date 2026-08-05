@@ -259,10 +259,27 @@ export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0
  *
  * Pure, so both branches are testable without a browser or a feed.
  */
+/**
+ * ONE LINE. It is a standing indicator, not a paragraph.
+ *
+ * It used to read `LXJ576 — no broadcast received yet. The panel stays crossed
+ * out until one arrives.`, which wrapped to three lines and, with the badge and
+ * the exit button, took roughly a fifth of a phone's PFD before a single
+ * instrument. The second sentence explained something the crossed-out panel
+ * behind it was already demonstrating, and the HDG row says the same again in
+ * its own reason string.
+ *
+ * WHAT IT MAY NOT LOSE: which aircraft, and whether anything has arrived from
+ * it. A reader whose panel is showing somebody else's aeroplane must be able to
+ * tell that from a panel that is merely broken — Doctrine §3 — and "no
+ * broadcast yet" is the whole of that distinction. An error, when there is one,
+ * still replaces the short form rather than being dropped: it is the only place
+ * a refusal reaches the PFD at all.
+ */
 export function followBannerText(label, { followed = null, followError = null } = {}) {
   if (!label) return '';
-  if (followed) return `${label} — this panel is showing that aircraft's broadcast, not this device`;
-  return `${label} — no broadcast received yet${followError ? `: ${followError}` : '. The panel stays crossed out until one arrives.'}`;
+  if (followed) return `${label} — showing its broadcast`;
+  return followError ? `${label} — ${followError}` : `${label} — no broadcast yet`;
 }
 
 export const FOLLOW_WRITES = [

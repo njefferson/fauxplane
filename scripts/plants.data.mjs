@@ -875,29 +875,18 @@ export const PLANTS = [
       + '<span class="info-glyph" aria-hidden="true">i</span></button>\n        </div>\n      </nav>\n',
     expect: /inside the tablist — that makes it a sixth tab/,
   },
-  {
-    // A LEFTOVER QUOTATION, removed 2026-08-05. The attribution in front of it
-    // had already been stripped, so the gate — which anchors on a name or a
-    // role — could not see the sentence still sitting here. A bare quotation
-    // with nothing attached is the one shape the pattern cannot catch, and the
-    // honest coverage note is in DOCTRINE §0d.
-    //
-    // The engineering fact, which is all this ever needed: on a short screen the
-    // instruments own the panel and the value strip begins at the fold.
-    // `auto` is what the rule held before, and it puts a sliced
-    // value row back on the panel above the footer.
-    name: 'layout: the value strip climbs back onto the instrument screen',
-    check: 'on a short screen the instruments fill the panel and the values start below it',
-    file: 'public/styles.css',
-    // RE-AIMED. The rule this named (`min-height: 100%` on the row) was replaced
-    // when the controls moved out of the horizon's column and the `.pfd-screen`
-    // wrapper took over owning the panel. The harness reported it stale rather
-    // than passing, which is the behaviour that makes a stale plant visible
-    // instead of silently green.
-    find: '       the row grows to fill what is left and never shrinks past them. */\n    min-height: min-content;',
-    replace: '       the row grows to fill what is left and never shrinks past them. */\n    min-height: auto;',
-    expect: /the value strip starts \d+px above the fold|is not filling the screen it was given/,
-  },
+  /*
+   * NO PLANT FOR "the value strip climbs back onto the instrument screen".
+   * The defect it described cannot happen any more: the strip is `.sr-only`
+   * since 1.29.0, so it has no position to climb to. The plant was re-aimed
+   * once and still came back green — correctly. The gate is not blind; the
+   * fault is extinct.
+   *
+   * Recorded rather than deleted silently, because a check with no plant looks
+   * identical to a check nobody bothered to prove.
+   * `checkValuesAreScreenReaderOnly` guards the strip now, with plants in both
+   * directions — painted again, and hidden from screen readers too.
+   */
   {
     // A moved control that renders and does nothing. The markup is present, the
     // label reads correctly, contrast passes — and the panel never dims.

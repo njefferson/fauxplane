@@ -71,6 +71,20 @@ export function createRadar({
   /** Outside the scroller on purpose: a "scroll for more" that itself scrolls
    *  out of view is the one place it must not be. */
   const foot = el('p', { class: 'radar-list-foot', role: 'status', hidden: '' });
+  /**
+   * THE LIST ANSWERS BESIDE THE LIST.
+   *
+   * There are THREE ways to start following — the form, a tap on the scope, and
+   * a press on a row in this list — and they are in three different cards. The
+   * confirmation was written to the form's note every time, which is the card
+   * ABOVE this one: press a row and the answer appears off the top of the
+   * screen, in a place you were not looking, for a thing you did from here.
+   *
+   * The same defect as the value strip and as the readiness chip, in a third
+   * costume: a message that lives where it was convenient to put it rather than
+   * where the press happened.
+   */
+  const listNote = el('p', { class: 'radar-list-note', role: 'status', 'aria-live': 'polite' });
   const followNote = el('p', { class: 'radar-follow-note' });
   /**
    * THE AIRFRAME PICKER.
@@ -205,12 +219,18 @@ export function createRadar({
     }),
   ]);
 
-  const startFollowing = (key) => {
+  /**
+   * `from` NAMES THE SURFACE THAT WAS PRESSED — 'form', 'scope' or 'list' — so
+   * the confirmation lands next to it rather than always in the form's card.
+   * The scope's own answer is the FOLLOWING chip directly under it, which is
+   * already adjacent, so a tap there needs no extra line.
+   */
+  const startFollowing = (key, from = 'form') => {
     traffic.follow(key);
     stopBtn.hidden = false;
-    // VISIBLY, where the press happened — the standing banner is on the PFD and
-    // the FOLLOWING chip is above the scope, both out of sight from the button.
-    formNote.textContent = `Following ${key.callsign ?? key.hex}. Open PFD to see its instruments.`;
+    const said = `Following ${key.callsign ?? key.hex}. Open PFD to see its instruments.`;
+    formNote.textContent = from === 'form' ? said : '';
+    listNote.textContent = from === 'list' ? said : '';
     announcer.say(`Following ${key.callsign ?? key.hex}. The panel is now showing that aircraft, not this device.`);
     onFollowChange();
     renderFollowNote();
@@ -240,7 +260,7 @@ export function createRadar({
     if (!hit) return;
     const key = hit.callsign ?? hit.registration ?? hit.hex.toUpperCase();
     input.value = key;
-    startFollowing(hit.callsign ? { callsign: hit.callsign } : { hex: hit.hex });
+    startFollowing(hit.callsign ? { callsign: hit.callsign } : { hex: hit.hex }, 'scope');
   });
 
   stopBtn.addEventListener('click', () => {
@@ -446,7 +466,7 @@ export function createRadar({
       ]),
     ]),
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Follow a flight' }), form, followNote]),
-    el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Heard right now' }), picker, list, foot]),
+    el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: 'Heard right now' }), picker, list, foot, listNote]),
   );
 
   function renderFollowNote() {
@@ -592,7 +612,7 @@ export function createRadar({
             onclick: () => {
               const key = a.callsign ?? a.registration ?? a.hex.toUpperCase();
               input.value = key;
-              startFollowing(a.callsign ? { callsign: a.callsign } : { hex: a.hex });
+              startFollowing(a.callsign ? { callsign: a.callsign } : { hex: a.hex }, 'list');
             },
           },
           [

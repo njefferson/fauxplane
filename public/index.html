@@ -168,7 +168,19 @@
           -->
           <span id="follow-route" class="follow-route" hidden></span>
           <span id="follow-route-caveat" class="follow-caveat" hidden></span>
-          <button type="button" id="follow-exit" class="follow-exit">Stop following</button>
+          <!--
+            "Stop", not "Stop following". The banner is one row and this button
+            was what pushed it to two on a phone: badge plus sentence plus a
+            two-word button is wider than 390px allows, and the row it wrapped
+            onto came off the horizon directly below it.
+
+            SC 2.5.3 IS SATISFIED RATHER THAN DODGED — the accessible name below
+            OPENS with the visible word, so speaking "Stop" matches the control
+            and the fuller name still says what it stops. An `aria-label` that
+            did not contain the visible text would pass a substring check by
+            accident and fail a real user; the hub records that exact trap.
+          -->
+          <button type="button" id="follow-exit" class="follow-exit" aria-label="Stop following this aircraft">Stop</button>
         </div>
         <!--
           The instrument row is its own element so the banner above can be a

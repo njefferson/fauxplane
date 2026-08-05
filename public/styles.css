@@ -1699,6 +1699,13 @@ body[data-powered='true'] .gate {
   font-size: 0.75rem;
   color: var(--text-3);
 }
+/* The list's own confirmation — see radar.js. Same look as the form's note,
+   because they are the same message answered in two places. */
+.radar-list-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
 .radar-list-foot {
   margin: 0.35rem 0 0;
   font-size: 0.75rem;
@@ -1747,13 +1754,17 @@ body[data-powered='true'] .gate {
 .follow-banner[hidden] {
   display: none;
 }
+/* A STANDING INDICATOR, ONE ROW HIGH. It was a wrapped paragraph with a badge
+   above a button, about a fifth of a phone's PFD before any instrument — and it
+   sits at the TOP, so everything it took came off the horizon. Doctrine §3 wants
+   the fact and the way out permanently visible; it never wanted a card. */
 .follow-banner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: var(--gap);
-  padding: 0.5rem 0.75rem;
+  gap: 0.4rem 0.6rem;
+  margin-bottom: 0.4rem;
+  padding: 0.3rem 0.5rem;
   background: var(--surface-3);
   border: 2px solid var(--primary);
   border-radius: var(--radius);
@@ -1769,13 +1780,17 @@ body[data-powered='true'] .gate {
   letter-spacing: 0.1em;
 }
 .follow-what {
-  flex: 1 1 12rem;
-  font-size: 0.875rem;
+  /* A 12rem basis forced this onto its own row on any phone. It takes what is
+     left of the row instead, and wraps only when the row genuinely runs out. */
+  flex: 1 1 8rem;
+  min-width: 0;
+  font-size: 0.8125rem;
   color: var(--text);
 }
 .follow-exit {
+  /* The target floor is untouched — only the padding around the words moved. */
   min-height: var(--target);
-  padding: 0 0.9rem;
+  padding: 0 0.7rem;
   background: var(--surface);
   color: var(--text);
   border: 2px solid var(--rail);

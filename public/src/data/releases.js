@@ -70,6 +70,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.29.2',
+    date: '2026-08-05',
+    headline: 'FOLLOWING answers where you pressed, and stops eating the top of the panel.',
+    changed: [
+      'The FOLLOWING banner on the PFD is one row. It was a badge, a two-sentence explanation and a button stacked into a card taking about a fifth of a phone\u2019s panel — and it sits at the top, so all of it came off the horizon. It still says which aircraft and whether anything has arrived from it, which is the whole reason it exists.',
+      'The second sentence is gone because the crossed-out panel behind it was already saying the same thing, and the heading row says it again in its own words.',
+      'There are three ways to start following — the box, a tap on the scope, and a press on a row in the list below — and the confirmation used to appear beside the box every time. Press a row and the answer showed up in the card above, off the top of the screen, for something you did from the bottom. Each one answers where it was pressed now.',
+      'The Stop button says "Stop". It is spoken as "Stop following this aircraft".',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.29.1',
     date: '2026-08-05',
     headline: 'The scope stops telling you it is empty while it is full of airports.',

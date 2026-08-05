@@ -22,10 +22,55 @@ sits on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.29.1, the scope stops contradicting itself, 2026-08-05
+## STAGED NOW — 1.29.2, FOLLOWING answers where it was pressed, 2026-08-05
 
-**1.29.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.29.2 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.29.0.
+
+### The banner was a card at the top of the panel
+
+`FOLLOWING` badge, then *"LXJ576 — no broadcast received yet. The panel stays
+crossed out until one arrives."* wrapped to three lines, then a two-word button
+on a row of its own. **Measured 150px of a 390px phone's panel, all of it above
+the horizon.**
+
+Doctrine §3 wants the fact and the way out permanently visible. It never wanted
+a paragraph. One row, 58px, and it still carries the two things that matter:
+WHICH aircraft, and whether anything has arrived from it — the distinction
+between a panel showing somebody else's aeroplane and a panel that is broken.
+The dropped sentence was explaining what the crossed-out instruments behind it
+were already demonstrating, and what the HDG row says again in its own reason.
+
+The button reads **Stop** and is spoken *"Stop following this aircraft"* — the
+visible word OPENS the accessible name, so SC 2.5.3 is satisfied rather than
+dodged. An `aria-label` that does not contain the visible text passes a
+substring check by accident, which is hub LESSONS §29.
+
+### The confirmation appeared where it was convenient, not where you pressed
+
+**Three surfaces start a follow** — the form, a tap on the scope, and a press on
+a row in "Heard right now" — and all three wrote to the FORM's note. Press a row
+and the answer lands in the card ABOVE, off the top of the screen, for something
+done from the bottom.
+
+`startFollowing(key, from)` now writes to the note beside the surface used. The
+scope needs none: the FOLLOWING chip sits directly under it since 1.29.1.
+
+**This is the third costume of one defect this week** — the value strip, the
+readiness chip, and now this: a message living where it was convenient to put it
+rather than where the press happened.
+
+### A plant retired rather than deleted
+
+`layout: the value strip climbs back onto the instrument screen` cannot fail any
+more: the strip is `.sr-only`, so it has no position to climb to. Re-aimed once,
+still green, and the gate is not blind — the fault is extinct. Recorded in the
+data file where it was, because **a check with no plant looks exactly like a
+check nobody bothered to prove**.
+
+---
+
+## 1.29.1 — the scope stops contradicting itself, 2026-08-05
 
 Four defects from one pair of screenshots, and the first is the honesty rule
 broken in the plainest possible way.
