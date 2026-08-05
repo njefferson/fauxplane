@@ -178,14 +178,69 @@
           itself to the READOUTS' full content height — about 1000px — and drag
           the canvas to match, which put the horizon somewhere below the fold.
         -->
-        <div class="pfd-row">
+        <!--
+          WHAT A READER SEES BEFORE SCROLLING: the two instruments and the
+          controls under them, as ONE unit that owns the visible panel.
+
+          The row and the controls used to compete with the value strip for the
+          same flex space, so neither could claim the screen: the row grew to
+          193px of a 269px panel and the strip crept 19px above the fold, which
+          is the sliced-sentence complaint again in miniature. Wrapped, the pair
+          takes the height and the strip starts below it.
+        -->
+        <div class="pfd-screen">
+          <div class="pfd-row">
+            <!--
+              A canvas is non-text content (SC 1.1.1). Its aria-label is written at
+              boot and kept current with what is actually on it — the readouts below
+              carry the same values as real, selectable, screen-reader text.
+            -->
+            <div class="pfd-main">
+              <canvas id="pfd-canvas" class="pfd-canvas" role="img" aria-label="Primary flight display. Starting up."></canvas>
+            </div>
+            <!--
+              THE RIGHT-HAND COLUMN IS THE NAVIGATION DISPLAY, and now only that,
+              which is how an airliner is actually laid out: PFD on the left, ND
+              beside it, both as big as the glass allows.
+
+              THE READOUTS USED TO BE STACKED UNDER IT and took the larger share —
+              `flex: 56` against the plan view's 44. Noah, with an iPad full of
+              it: "All the voice-over data does NOT need to fill MY screen. That
+              space has MUCH more important stuff to hold." He is right, and the
+              reason given for the stacking was wrong on its own terms: a canvas
+              IS non-text content, so these numbers must exist as text — but
+              nothing about SC 1.1.1 says the text must be the biggest thing on
+              the page, or that it must sit beside the picture it describes.
+
+              Most of it was duplication anyway. Groundspeed is the GS tape,
+              indicated altitude is the ALT tape, vertical speed is the VS tape,
+              heading is the compass rose, pitch is the horizon — five of the
+              eight rows repeating what is drawn a few inches to their left.
+            -->
+            <div class="pfd-side">
+              <div class="pfd-plan-row">
+                <canvas id="pfd-plan" class="pfd-plan" role="img" aria-label="Navigation display. Starting up."></canvas>
+                <!-- The same four ranges as the RADAR page, driving the same
+                     value through the same setter. -->
+                <div id="pfd-range" class="pfd-range" role="group" aria-label="Navigation display range"></div>
+              </div>
+            </div>
+          </div>
           <!--
-            A canvas is non-text content (SC 1.1.1). Its aria-label is written at
-            boot and kept current with what is actually on it — the readouts below
-            carry the same values as real, selectable, screen-reader text.
+            THE CONTROLS SIT UNDER BOTH INSTRUMENTS, NOT INSIDE THE HORIZON'S
+            COLUMN. Noah, 2026-08-05: "The PFD still looks wrong because you
+            insist on trying to make the horizon and the radar the same height."
+
+            Measured, and it was worse than a coupling: the RADAR WAS BIGGER THAN
+            THE HORIZON. 520x217 against 269x269 on a landscape phone; 613x387
+            against 326x437 on a tablet. The right-hand column stretched to the
+            full row height while the left-hand column spent 45px of its share on
+            these buttons — so the horizon paid for the controls and the radar did
+            not, on a display whose whole name is PRIMARY FLIGHT.
+
+            Out here they cost both instruments equally, which is the only
+            arrangement where "the same height" means what it says.
           -->
-          <div class="pfd-main">
-            <canvas id="pfd-canvas" class="pfd-canvas" role="img" aria-label="Primary flight display. Starting up."></canvas>
             <!--
               LEVELLING LIVES WHERE THE CROOKED HORIZON IS. It was on the SETUP
               page, which is the one place a reader is NOT looking when they
@@ -210,34 +265,6 @@
               <button type="button" id="pfd-level-clear" class="pfd-level-btn pfd-level-clear" hidden>Clear levelling</button>
               <p id="pfd-level-status" class="pfd-level-status" role="status" aria-live="polite"></p>
             </div>
-          </div>
-          <!--
-            THE RIGHT-HAND COLUMN IS THE NAVIGATION DISPLAY, and now only that,
-            which is how an airliner is actually laid out: PFD on the left, ND
-            beside it, both as big as the glass allows.
-
-            THE READOUTS USED TO BE STACKED UNDER IT and took the larger share —
-            `flex: 56` against the plan view's 44. Noah, with an iPad full of
-            it: "All the voice-over data does NOT need to fill MY screen. That
-            space has MUCH more important stuff to hold." He is right, and the
-            reason given for the stacking was wrong on its own terms: a canvas
-            IS non-text content, so these numbers must exist as text — but
-            nothing about SC 1.1.1 says the text must be the biggest thing on
-            the page, or that it must sit beside the picture it describes.
-
-            Most of it was duplication anyway. Groundspeed is the GS tape,
-            indicated altitude is the ALT tape, vertical speed is the VS tape,
-            heading is the compass rose, pitch is the horizon — five of the
-            eight rows repeating what is drawn a few inches to their left.
-          -->
-          <div class="pfd-side">
-            <div class="pfd-plan-row">
-              <canvas id="pfd-plan" class="pfd-plan" role="img" aria-label="Navigation display. Starting up."></canvas>
-              <!-- The same four ranges as the RADAR page, driving the same
-                   value through the same setter. -->
-              <div id="pfd-range" class="pfd-range" role="group" aria-label="Navigation display range"></div>
-            </div>
-          </div>
         </div>
         <!--
           THE VALUES AS TEXT, along the bottom, full width. Noah: "You can push

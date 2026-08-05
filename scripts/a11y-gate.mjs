@@ -741,6 +741,11 @@ async function checkHeardList(browser, base) {
  */
 const LAYOUT_VIEWPORTS = [
   { name: 'iphone-landscape', width: 874, height: 402, fontScale: 1, short: true },
+  // The tablet is here for the HORIZON SHARE below: introducing the
+  // `.pfd-screen` wrapper without a `flex` cost this viewport 40% of its
+  // horizon — 613x381 down to 613x227 — and nothing in the sweep noticed,
+  // because every other check on this page is about existence, not size.
+  { name: 'tablet-landscape', width: 1024, height: 768, fontScale: 1, short: false },
   { name: 'small-phone-200pct', width: 390, height: 640, fontScale: 2, short: false },
 ];
 
@@ -760,6 +765,7 @@ async function checkChromeLayout(browser, base) {
     await page.goto(`${base}/`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(400);
     await checkInfoButtonPlacement(page, where);
+    await checkHorizonIsPrimary(page, where);
     if (vp.short) await checkInstrumentsOwnTheScreen(page, where);
     await context.close();
   }
@@ -783,6 +789,7 @@ async function checkChromeLayout(browser, base) {
 async function checkInstrumentsOwnTheScreen(page, where) {
   const m = await page.evaluate(() => {
     const row = document.querySelector('.pfd-row');
+    const controls = document.querySelector('.pfd-controls');
     const strip = document.querySelector('.readouts');
     const foot = document.querySelector('.foot');
     const page_ = document.querySelector('.page-pfd');
@@ -790,7 +797,14 @@ async function checkInstrumentsOwnTheScreen(page, where) {
     return {
       stripTop: Math.round(strip.getBoundingClientRect().top),
       foldTop: Math.round(foot.getBoundingClientRect().top),
-      rowH: Math.round(row.getBoundingClientRect().height),
+      // THE INSTRUMENT AREA IS THE ROW **PLUS THE CONTROLS**, because the
+      // controls moved out of the horizon's column and became a sibling — so
+      // "the instruments fill the screen" is now a claim about both together.
+      // Measured from the top of the row to the bottom of the controls, which
+      // is what a reader sees as the panel.
+      rowH: Math.round(
+        (controls ?? row).getBoundingClientRect().bottom - row.getBoundingClientRect().top,
+      ),
       // The CONTENT box, not the padding box. `min-height: 100%` resolves
       // against the content height, so comparing with clientHeight fails by
       // exactly the page's own padding and says the row is short when it is
@@ -810,8 +824,79 @@ async function checkInstrumentsOwnTheScreen(page, where) {
         + 'a fragment of diagnostics cut off by the footer, and the instruments should have that space',
     );
   }
-  if (m.rowH < m.visibleH - 1) {
-    fail(where, `the instrument row is ${m.rowH}px in a ${m.visibleH}px panel — it is not filling the screen it was given`);
+  // A few pixels of slack: the row is a flex child among siblings with gaps,
+  // and this is about a panel that is visibly short, not about sub-pixel maths.
+  if (m.rowH < m.visibleH - 20) {
+    fail(where, `the instruments occupy ${m.rowH}px of a ${m.visibleH}px panel — they are not filling the screen they were given`);
+  }
+}
+
+/**
+ * THE HORIZON IS NEVER SMALLER THAN THE NAVIGATION DISPLAY.
+ *
+ * Noah, 2026-08-05: "The PFD still looks wrong because you insist on trying to
+ * make the horizon and the radar the same height." Measured, it was worse than
+ * a coupling — the RADAR WAS BIGGER. 520x217 against 269x269 on a landscape
+ * phone, 613x387 against 326x437 on a tablet, because the controls sat inside
+ * the horizon's column and the radar's column stretched past them. The horizon
+ * paid for the buttons and the radar did not.
+ *
+ * This is the invariant behind the complaint rather than the arrangement that
+ * happens to satisfy it today: on a display called PRIMARY FLIGHT, the attitude
+ * indicator is the biggest thing on it. Stated as area, so a future layout is
+ * free to stop making them equal in height — which is what was actually asked
+ * for — without being free to shrink the horizon below the scope.
+ */
+async function checkHorizonIsPrimary(page, where) {
+  const m = await page.evaluate(() => {
+    const h = document.querySelector('.pfd-canvas');
+    const p = document.querySelector('.pfd-plan');
+    if (!h || !p) return null;
+    const a = h.getBoundingClientRect();
+    const b = p.getBoundingClientRect();
+    const page = document.querySelector('.page-pfd');
+    return {
+      horizon: { w: Math.round(a.width), h: Math.round(a.height) },
+      plan: { w: Math.round(b.width), h: Math.round(b.height) },
+      // THE VISIBLE panel, not the scrolling column. On a portrait phone at
+      // 200% text the page IS the scroller and `clientHeight` is 3387px — the
+      // whole content — so a share measured against it is meaningless and the
+      // check failed on a layout that was correct.
+      pageH: page ? Math.min(page.clientHeight, window.innerHeight) : 0,
+    };
+  });
+  if (!m) return fail(where, 'the horizon or the navigation display is missing');
+  const hArea = m.horizon.w * m.horizon.h;
+  const pArea = m.plan.w * m.plan.h;
+  if (hArea <= pArea) {
+    fail(
+      where,
+      `the horizon is ${m.horizon.w}x${m.horizon.h} and the navigation display is ${m.plan.w}x${m.plan.h} — `
+        + 'the attitude indicator must be the biggest instrument on a PRIMARY flight display',
+    );
+  }
+  /**
+   * AND IT IS MOST OF THE PANEL, not merely bigger than the scope.
+   *
+   * Both instruments shrink together, so the ratio above survives a layout that
+   * quietly hands half the screen back to nothing. A new box between a flex
+   * child and its parent inherits none of the child's growth: `.pfd-screen` was
+   * added without a `flex` and the tablet's horizon went from 381px to 227 in
+   * one edit, with every existing check still green.
+   */
+  if (m.pageH && m.horizon.h < m.pageH * 0.5) {
+    fail(
+      where,
+      `the horizon is ${m.horizon.h}px in a ${m.pageH}px panel — under half the screen it is on, `
+        + 'which is what a layout looks like when something above it stopped growing',
+    );
+  }
+  if (m.plan.h > m.horizon.h + 1) {
+    fail(
+      where,
+      `the navigation display is ${m.plan.h}px tall against the horizon's ${m.horizon.h}px — `
+        + 'the scope is taller than the attitude indicator it sits beside',
+    );
   }
 }
 

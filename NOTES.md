@@ -9,10 +9,52 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.5, the list count, and a confident wrong diagnosis, 2026-08-05
+## STAGED NOW — 1.28.6, the horizon is the primary instrument again, 2026-08-05
 
-**1.28.5 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.28.6 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.28.3.
+
+Noah: *"The PFD still looks wrong because you insist on trying to make the
+horizon and the radar the same height."*
+
+**Measured, it was worse than a coupling — the RADAR WAS BIGGER.**
+
+- 874x402 — horizon **520x217**, radar **269x269**
+- 1024x768 — horizon **613x387**, radar **326x437**
+
+The controls sat INSIDE the horizon's column, so the left column spent 45px of
+its share on PWR, the levelling button and the levelling message, while the
+right-hand column stretched past them. **The horizon paid for the buttons and
+the radar did not**, on a display whose whole name is PRIMARY FLIGHT.
+
+The controls are a sibling of the instrument row now, under both. Both
+instruments take the full row height, the horizon is **1.9x the radar by area**
+at every size, and the levelling message fits on ONE line instead of three now
+that it has the full width rather than the tail of a column.
+
+### Two regressions made while fixing it, both caught by measurement
+
+- **The new `.pfd-screen` wrapper cost the TABLET 40% of its horizon** — 613x381
+  down to 613x227 — because a new box between a flex child and its parent
+  inherits none of the child's growth. Every existing check stayed green: they
+  are all about existence, not size. There is a check for the horizon's SHARE of
+  the panel now, and the tablet is in the layout viewport list because of it.
+- **The wrapper was then shrunk below its own content** on a 740x360 night pass,
+  so the controls hung out of it and through the value strip. `flex: 1 0 auto` —
+  grow, never shrink — and the page scrolls on a screen genuinely too short,
+  rather than the panel overlapping itself to pretend otherwise.
+
+### The invariant is stated as AREA, deliberately
+
+`checkHorizonIsPrimary` asserts the attitude indicator is the biggest instrument
+and that the scope is never taller — not that the two are equal. **Noah asked
+for them to stop being forced to the same height**, and a check that pins the
+current arrangement would forbid the thing he actually asked for. The rule is
+which instrument is primary; the arrangement is free to change.
+
+---
+
+## 1.28.5 — the list count, and a confident wrong diagnosis, 2026-08-05
 
 **1.28.4 claimed to fix the aircraft list count and did not.** It named a cause,
 the cause was wrong, and the fix that followed addressed something that was

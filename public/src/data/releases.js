@@ -68,6 +68,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.28.6',
+    date: '2026-08-05',
+    headline: 'The horizon is the biggest thing on the panel again.',
+    changed: [
+      'The radar was bigger than the horizon. On a landscape phone the horizon was 520 across by 217 down and the radar beside it was 269 by 269 — a bigger instrument, on a display whose whole name is Primary Flight.',
+      'The reason was where the buttons lived. PWR, levelling and the levelling message sat inside the horizon\u2019s column, so the horizon gave up room for them while the radar beside it did not. The buttons are under both instruments now, so they cost both the same and the two are genuinely the same height.',
+      'The horizon is about twice the radar by area at every size, and the levelling message fits on one line instead of three now that it has the full width.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.28.5',
     date: '2026-08-05',
     headline: 'The aircraft list can count now — the last release said it could, and it could not.',

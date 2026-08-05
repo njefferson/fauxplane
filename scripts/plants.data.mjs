@@ -941,6 +941,29 @@ export const PLANTS = [
     expect: /row\(s\) are cut through the middle by the list/,
   },
   {
+    // Noah, 2026-08-05: "The PFD still looks wrong because you insist on trying
+    // to make the horizon and the radar the same height." Measured, the radar
+    // was BIGGER: 520x217 against 269x269. Narrowing the horizon's share puts
+    // that back.
+    name: 'PFD: the navigation display out-sizes the horizon again',
+    check: 'the attitude indicator is the biggest instrument on a PRIMARY flight display',
+    file: 'public/styles.css',
+    find: '  flex: 62 1 0;',
+    replace: '  flex: 20 1 0;',
+    expect: /must be the biggest instrument on a PRIMARY flight display/,
+  },
+  {
+    // The regression made WHILE fixing the above: a new wrapper between the row
+    // and the page inherits none of the row's growth, and the tablet's horizon
+    // fell from 381px to 227 with every existing check still green.
+    name: 'PFD: the instrument wrapper stops taking the page height',
+    check: 'the horizon is most of the panel, not merely bigger than the scope',
+    file: 'public/styles.css',
+    find: '  flex: 1 1 auto;\n  min-height: 0;\n}\n\n/* The instruments plus the controls',
+    replace: '  min-height: 0;\n}\n\n/* The instruments plus the controls',
+    expect: /under half the screen it is on/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

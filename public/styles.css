@@ -381,6 +381,21 @@ body {
   flex: 0 0 auto;
   margin-bottom: 0;
 }
+/* The instruments plus the controls beneath them — see index.html. A column, so
+   the row can take whatever the controls do not. */
+.pfd-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  /* IT TAKES THE PAGE'S HEIGHT, EVERYWHERE. Introducing this wrapper without
+     this line cost the tablet 40% of its horizon — 613x381 down to 613x227 —
+     because the row inside it grew while the wrapper itself sized to content.
+     A new box between a flex child and its parent inherits none of the child's
+     growth, and the measurement is the only thing that says so. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .pfd-row {
   flex: 1 1 auto;
   display: flex;
@@ -804,8 +819,34 @@ body {
      what the strip is for, since a canvas is non-text content and these values
      must exist as text somewhere. Nothing requires them to be what fills the
      glass. */
-  .pfd-row {
+  /* The instruments and their controls own the visible panel, together.
+     `1 0 auto` — GROWS to fill it, and never SHRINKS below its own content.
+     With shrink allowed the wrapper was squeezed to 167px while its children
+     needed 207, so the controls hung out of it and straight through the value
+     strip; the gate reported it as a `.pfd-canvas`/`.readouts` overlap on a
+     740x360 night pass. On a screen genuinely too short for both, the page
+     scrolls — which it already does — rather than the panel overlapping itself
+     to pretend otherwise. */
+  .pfd-screen {
     min-height: 100%;
+    flex: 1 0 auto;
+  }
+  .pfd-row {
+    /* WHAT IS LEFT AFTER THE CONTROLS, not the whole panel. The controls used to
+       live inside the horizon's column, so the horizon was 217px while the
+       radar beside it was 269 — the radar bigger than the horizon, on a PRIMARY
+       flight display. They are siblings now, so this row is the panel minus
+       them and both instruments get all of it. */
+    flex: 1 1 auto;
+    /* NOT `0`, which lets it collapse to nothing while the canvases keep their
+       own floors and hang out of it — measured at 874x402: row 0px tall with a
+       128px horizon inside it. `min-content` is the instruments' own floors, so
+       the row grows to fill what is left and never shrinks past them. */
+    min-height: min-content;
+  }
+  /* Never squeezed by the row above it. */
+  .pfd-controls {
+    flex: 0 0 auto;
   }
   /* Its natural height, below the fold, where it costs the instruments nothing.
      It has been capped at 21%, at 4.5rem and at the leftover space on the way
