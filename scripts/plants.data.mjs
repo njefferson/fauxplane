@@ -816,6 +816,35 @@ export const PLANTS = [
     expect: /the 0\.25 ring reads 3 and sits at 2\.5|old code rounded these/,
   },
   {
+    // The rotation lives at the PROJECTION so every mark inherits it at once.
+    // Ignoring `upDeg` there is the defect that would look most like working
+    // code: the compass arc still turns, the aeroplane still points up, and
+    // every aircraft, runway and airport sits at a bearing it is not at.
+    //
+    // Against the UNIT SUITE, and it MUST be: a headless browser cannot see a
+    // pixel of a canvas, so an a11y plant here would stay green forever.
+    name: 'map: the projection stops rotating and only the furniture turns',
+    check: 'track-up rotates the marks, not just the compass',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: '  if (!upDeg) return { x: cx + ex, y: cy + ny };',
+    replace: '  if (true) return { x: cx + ex, y: cy + ny };',
+    expect: /east up puts east at the top|bearing \d+ with \d+ up/i,
+  },
+  {
+    // The honesty half. With no track and no heading the display must stay
+    // north-up and SAY so; rotating to an assumed zero while claiming TRK UP is
+    // a bearing produced from no measurement, which is the one thing this app
+    // does not do. On a desk this is the state nearly all of the time.
+    name: 'map: a display with no heading claims track-up anyway',
+    check: 'the up reference is never claimed without a measurement',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: "    label: 'NORTH UP',\n    reason: track?.reason ?? heading?.reason ?? 'no track or heading',",
+    replace: "    label: 'TRK UP',\n    reason: null,",
+    expect: /NORTH UP|it still says why|north-up and carries the reason/i,
+  },
+  {
     // EICAS's whole design is the clause "not already visible on the page the
     // reader is looking at". Dropping the power gate is the fastest way to lose
     // it: every field is seeded FAIL before the switch, so the strip lights on

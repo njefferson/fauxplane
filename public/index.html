@@ -236,8 +236,18 @@
               <div class="pfd-plan-row">
                 <canvas id="pfd-plan" class="pfd-plan" role="img" aria-label="Navigation display. Starting up."></canvas>
                 <!-- The same four ranges as the RADAR page, driving the same
-                     value through the same setter. -->
-                <div id="pfd-range" class="pfd-range" role="group" aria-label="Navigation display range"></div>
+                     value through the same setter — and the mode switch beside
+                     them, because both are things you do TO this instrument.
+
+                     PLAN IS THE DISPLAY THAT WAS ALWAYS HERE, and it keeps its
+                     name for what it is: centred, north-up, the whole ring —
+                     what a crew uses to REVIEW a route. MAP is what they fly
+                     with. Neither replaces the other and the RADAR page's scope
+                     is unchanged and always PLAN. -->
+                <div class="pfd-nd-controls">
+                  <div id="pfd-mode" class="pfd-mode" role="group" aria-label="Navigation display mode"></div>
+                  <div id="pfd-range" class="pfd-range" role="group" aria-label="Navigation display range"></div>
+                </div>
               </div>
               <!--
                 EICAS — THE CREW ALERTING LIST, in the space this column has had

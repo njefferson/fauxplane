@@ -529,6 +529,16 @@ body {
   min-width: 0;
 }
 
+/* The mode switch and the ranges, as one strip. They wrap together and they
+   share the row on a wide box, so the pair costs one row rather than two. */
+.pfd-nd-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+  align-items: center;
+}
+
 .pfd-range {
   display: flex;
   /* A row under the scope — see `.pfd-plan-row`. A column beside it only where
@@ -536,6 +546,37 @@ body {
   flex-direction: row;
   gap: 0.35rem;
   justify-content: center;
+}
+
+.pfd-mode {
+  display: flex;
+  flex-direction: row;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+/* Same shape as the range buttons — they are the same kind of control on the
+   same instrument, and two visual languages for one strip would read as two
+   strips. The pressed state changes BOTH the border and the text colour, so
+   the selection is never carried by colour alone (Doctrine §4). */
+.pfd-mode-btn {
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0 0.6rem;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.pfd-mode-btn[aria-pressed='true'] {
+  border-color: var(--rail);
+  color: var(--text);
 }
 
 .pfd-range-btn {
@@ -897,10 +938,22 @@ body {
   .pfd-plan-row {
     flex-direction: row;
   }
+  /* Beside the scope the controls are a narrow COLUMN, so the mode switch sits
+     above the ranges rather than trying to share a row with them. */
+  .pfd-nd-controls {
+    flex-direction: column;
+    align-self: center;
+  }
   .pfd-range {
     display: grid;
     grid-template-columns: repeat(2, minmax(var(--target), 1fr));
     align-self: center;
+  }
+  /* Two 44px targets side by side is the same width as the 2x2 range grid, so
+     the strip stays one column wide whichever row you look at. */
+  .pfd-mode {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(var(--target), 1fr));
   }
 
   .bar {

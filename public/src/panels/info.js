@@ -98,6 +98,11 @@ const SYMBOLS = [
     detail: 'The aircraft you are following. The whole panel is showing its flight, not this desk’s.',
   },
   {
+    name: 'PLAN and MAP',
+    detail:
+      'Two ways to draw the scope beside the horizon. PLAN is centred and north up — what a crew uses to review a route. MAP turns the whole display so the direction of travel is at the top and puts the aeroplane near the bottom, which is what they actually fly with. MAP always says which reference is up: the ground track if there is one, the magnetic heading if not, and north with the reason when the device has neither — which on a desk is most of the time.',
+  },
+  {
     name: '+03↑',
     detail:
       'How far above or below you it is, in hundreds of feet, and whether it is climbing or descending faster than 500 feet a minute. Three hundred feet above and climbing, here.',

@@ -231,6 +231,10 @@ const REGISTRY = [
   { selector: '.setup-caution', label: 'setup caution (amber)', min: 4.6, page: 'setup' },
   { selector: ".pfd-range-btn[aria-pressed='true']", label: 'PFD range (selected)', min: 4.6, page: 'pfd' },
   { selector: ".pfd-range-btn[aria-pressed='false']", label: 'PFD range (unselected)', min: 4.6, page: 'pfd' },
+  // The navigation display's PLAN/MAP switch, both states (§4: a new fg/bg pair
+  // joins the gate in the same commit as the code that renders it).
+  { selector: ".pfd-mode-btn[aria-pressed='true']", label: 'ND mode (selected)', min: 4.6, page: 'pfd' },
+  { selector: ".pfd-mode-btn[aria-pressed='false']", label: 'ND mode (unselected)', min: 4.6, page: 'pfd' },
   { selector: '#pfd-level', label: 'PFD levelling button', min: 4.6, page: 'pfd' },
   { selector: '.pfd-level-status', label: 'PFD levelling state', min: 4.6, page: 'pfd' },
   { selector: '.setup-current', label: 'setup levelling state', min: 4.6, page: 'setup' },
@@ -864,6 +868,83 @@ const EICAS_REGISTRY = [
   { selector: ".eicas-msg[data-level='status'] .eicas-code", label: 'EICAS status message', min: 4.6 },
   { selector: '.eicas-detail', label: 'EICAS message detail', min: 4.6 },
 ];
+
+/**
+ * THE NAVIGATION DISPLAY'S MODE SWITCH, PRESSED.
+ *
+ * The contrast registry measures the two buttons and `checkNames` reads their
+ * accessible names, and BOTH of those pass on a switch wired to nothing. What
+ * this asserts is that pressing MAP changes what the display SAYS ABOUT ITSELF
+ * — which is the only part of a canvas rotation any check in this file can
+ * reach, and the only part a reader who cannot see the picture ever gets.
+ *
+ * The rotation itself is held by `mapmode.test.mjs`, against the real `project`
+ * and `upReference`. A headless browser cannot see a pixel of a canvas, so a
+ * plant about the maths MUST aim at the unit suite; one aimed here would stay
+ * green and prove nothing.
+ */
+async function checkNdMode(browser, base) {
+  const where = 'nd-mode';
+  const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });
+  await seenIntro(context);
+  await context.route('**/api/traffic**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) }),
+  );
+  const page = await context.newPage();
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.getElementById('power-btn').click());
+  await page.waitForTimeout(900);
+
+  const read = () => page.evaluate(() => {
+    const btns = [...document.querySelectorAll('.pfd-mode-btn')];
+    return {
+      labels: btns.map((b) => b.textContent.trim()),
+      pressed: btns.filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent.trim()),
+      name: document.querySelector('#pfd-plan')?.getAttribute('aria-label') ?? '',
+    };
+  });
+
+  const before = await read();
+  if (before.labels.length !== 2) {
+    await context.close();
+    return fail(where, `expected a two-way PLAN/MAP switch, found ${before.labels.length} button(s): ${before.labels.join(', ') || 'none'}`);
+  }
+  if (before.pressed.length !== 1) {
+    fail(where, `${before.pressed.length} modes are pressed at once — a mode switch has exactly one selection`);
+  }
+  if (!/plan mode/i.test(before.name)) {
+    fail(where, `the navigation display's description does not say which mode it is in: "${before.name}"`);
+  }
+
+  await page.evaluate(() => [...document.querySelectorAll('.pfd-mode-btn')].find((b) => b.textContent.trim() === 'MAP')?.click());
+  await page.waitForTimeout(400);
+  const after = await read();
+
+  if (after.pressed.join() !== 'MAP') {
+    fail(where, `pressing MAP left "${after.pressed.join(', ') || 'nothing'}" selected`);
+  }
+  if (after.name === before.name) {
+    fail(where, 'pressing MAP changed nothing about what the display says it is showing — the switch is wired to a picture and not to a description');
+  }
+  if (!/map mode/i.test(after.name)) {
+    fail(where, `in MAP the description still reads "${after.name}"`);
+  }
+  /**
+   * AND IT SAYS WHICH WAY IS UP. A rotation is meaningless to a reader who
+   * cannot see it unless the reference is named — "measured from north" and
+   * "measured from where you are going" give every bearing on the display a
+   * different meaning. On this desk it is nearly always north-up, and the
+   * interesting part is the reason.
+   */
+  if (!/(track|heading|north) up/i.test(after.name)) {
+    fail(where, `MAP mode does not say which way is up: "${after.name}"`);
+  }
+
+  await checkContrast(page, REGISTRY.filter((r) => r.selector.includes('pfd-mode-btn')), where);
+  await checkTargets(page, where);
+  await checkNames(page, where);
+  await context.close();
+}
 
 /** Boot the panel with a chosen set of feed answers and permissions, powered on.
  *  Every EICAS scenario below is a REAL state of the app, reached through the
@@ -1916,6 +1997,7 @@ async function main() {
     await checkChromeLayout(browser, base);
     await checkHeardList(browser, base);
     await checkEicas(browser, base);
+    await checkNdMode(browser, base);
     await checkRadarTap(browser, base, { touch: false });
     await checkRadarTap(browser, base, { touch: true });
     await checkCentrePicker(browser, base);

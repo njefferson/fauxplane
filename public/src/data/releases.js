@@ -70,6 +70,23 @@
  */
 export const RELEASES = [
   {
+    version: '1.32.0',
+    date: '2026-08-05',
+    headline: 'The scope beside the horizon can fly the way a 747 crew actually flies it.',
+    changed: [
+      'There is a PLAN / MAP switch under the navigation display. PLAN is what was always there — centred, north at the top, the full ring. It is real, and it is what a crew uses to REVIEW a route rather than to fly one.',
+      'MAP is the other one. The whole display turns so the direction you are going is at the top, the aeroplane sits near the bottom so most of the glass is what is ahead, and a compass arc runs across the top with the bearings in the flight deck\u2019s own shorthand \u2014 24 for 240.',
+      'It always says which reference is up, in the corner. TRK UP when there is a real ground track, HDG UP when there is only a magnetic heading, and NORTH UP with the reason when the device has neither \u2014 which on a desk is nearly always. It will never turn the map to a direction it has not measured.',
+      'The one place it comes alive is following a flight. That track is broadcast, so the map turns with the aeroplane you are watching.',
+      'MAP also draws the wind at your altitude, as an arrow pointing the way the wind is blowing with the reported direction and speed beside it. That is the one number on this display that is not already a tape a few inches to the left.',
+      'Everything else on the scope \u2014 traffic, runways, airports, the path of a followed flight \u2014 turns with it, because they all come through the same piece of maths. The RADAR page is untouched and stays north up.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.31.0',
     date: '2026-08-05',
     headline: 'The space under the radar is a crew alerting display now.',

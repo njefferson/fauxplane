@@ -36,6 +36,7 @@ import { probeNetwork, watchNetwork } from './sensors/network.js';
 import { probeMagnetometer } from './sensors/magnetometer.js';
 
 import { crewAlerts } from './data/alerts.js';
+import { upReference } from './render/gauges/plan.js';
 import { createMetarSource } from './data/metar.js';
 import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, followBannerText, lastKnownFix, radarCentre, rememberFix } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
@@ -255,6 +256,10 @@ async function boot() {
    */
   let started = false;
 
+  /** PLAN or MAP for the navigation display beside the horizon. Declared here
+   *  because the PFD's traffic getter reads it and is built below. */
+  let ndMode = 'plan';
+
   const pfd = createPfd({
     canvas,
     surface,
@@ -277,6 +282,21 @@ async function boot() {
       trail: traffic.trail,
       // The same flag the RADAR page's chip shows — see radar.js's `readiness`.
       readiness: radar.readiness,
+      /**
+       * PLAN or MAP, and which way is UP.
+       *
+       * `upReference` is pure and decides between track, heading and north with
+       * the reason for the choice — the panel never picks silently, because a
+       * map that switched references without saying so is untrustworthy in the
+       * way this app spends all its effort not being.
+       */
+      mode: ndMode,
+      up: upReference(state.snapshot.fields, ndMode),
+      /** The one number on the ND that is not already a tape on the PFD. */
+      wind: (() => {
+        const f = state.snapshot.fields['winds.vector'];
+        return f && f.provenance !== 'FAIL' ? f.value : null;
+      })(),
     }),
     readoutHost: $('pfd-readouts'),
     /**
@@ -553,6 +573,43 @@ async function boot() {
   // driving the same value through radar.setRange — two controls are fine, two
   // copies of the value is how they disagree. onRange keeps both surfaces'
   // pressed states true whichever one was tapped.
+  /**
+   * THE NAVIGATION DISPLAY'S MODE — PLAN or MAP, and it belongs to the PFD
+   * alone.
+   *
+   * The RADAR page's scope is a TCAS traffic display: centred, north-up, whole
+   * rings. That is a real instrument and it is not changed by this. What was
+   * missing is the display a 747 crew actually spends its time on — track-up,
+   * aeroplane near the bottom, compass arc across the top — so the existing
+   * display keeps its behaviour under the name it always deserved, PLAN, and
+   * MAP is added beside it.
+   */
+  const ND_MODES = [
+    { id: 'plan', label: 'PLAN', name: 'Plan mode — centred and north up' },
+    { id: 'map', label: 'MAP', name: 'Map mode — turned to the direction of travel' },
+  ];
+  const ndModeHost = $('pfd-mode');
+  const ndModeButtons = ND_MODES.map((m) => {
+    const b = el('button', {
+      class: 'pfd-mode-btn',
+      type: 'button',
+      text: m.label,
+      // The visible word OPENS the accessible name (SC 2.5.3), so "tap MAP"
+      // has an answer. An aria-label that merely CONTAINS the word passes a
+      // substring check by accident — hub LESSONS §29 cost a release to that.
+      'aria-label': m.name,
+      'aria-pressed': ndMode === m.id ? 'true' : 'false',
+    });
+    b.addEventListener('click', () => {
+      ndMode = m.id;
+      for (const q of ndModeButtons) q.setAttribute('aria-pressed', q.textContent === m.label ? 'true' : 'false');
+      announcer.say(m.name);
+      pfd.render(state.snapshot);
+    });
+    return b;
+  });
+  ndModeHost.replaceChildren(...ndModeButtons);
+
   const pfdRangeHost = $('pfd-range');
   // FROM THE ONE LIST, not a copy of it. This was a hardcoded [10, 25, 40, 80]
   // beside RADAR_RANGE_NM's own copy — two sources of truth for the same

@@ -387,6 +387,11 @@ export function createPfd({
       // The same runways the RADAR page draws, from the same source. Two
       // scopes showing one truth is the rule this file's own comment set.
       runways: view.runways ?? [],
+      // PLAN or MAP, which way is up, and the wind. All decided in app.js from
+      // the store; this panel only subscribes, which is the file's contract.
+      mode: view.mode ?? 'plan',
+      up: view.up ?? null,
+      wind: view.wind ?? null,
     });
     if (planCanvas) {
       const n = (view.aircraft ?? []).length;
@@ -405,11 +410,24 @@ export function createPfd({
       const flag = view.readiness?.label && view.readiness.state !== 'contact' && view.readiness.state !== 'following'
         ? ` Feed state: ${view.readiness.label}.`
         : '';
+      /**
+       * WHICH MODE, AND WHICH WAY IS UP, IN THE NAME TOO.
+       *
+       * Track-up is a rotation of a picture, so a reader who cannot see the
+       * picture gets NOTHING from it unless it is said — and the difference
+       * between "everything on this display is measured from north" and "from
+       * where you are going" is the whole meaning of every bearing on it. The
+       * reason travels with it, because on a desk the answer is nearly always
+       * north-up and the interesting part is why.
+       */
+      const upSaid = view.mode === 'map'
+        ? ` Map mode, ${(view.up?.label ?? 'north up').toLowerCase()}${view.up?.reason ? ` — ${view.up.reason}` : ''}.`
+        : ' Plan mode, north up, centred.';
       planCanvas.setAttribute(
         'aria-label',
         n
-          ? `Navigation display: ${n} aircraft within ${view.rangeNm ?? 40} nautical miles.${flag} The list on the RADAR page has each one as text.`
-          : `Navigation display: no aircraft within range.${flag}`,
+          ? `Navigation display:${upSaid} ${n} aircraft within ${view.rangeNm ?? 40} nautical miles.${flag} The list on the RADAR page has each one as text.`
+          : `Navigation display:${upSaid} No aircraft within range.${flag}`,
       );
     }
   };

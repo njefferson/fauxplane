@@ -27,10 +27,92 @@ on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.31.0, the EICAS crew alerting strip, 2026-08-05
+## STAGED NOW — 1.32.0, MAP mode on the navigation display, 2026-08-05
 
-**1.31.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.32.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.29.0.
+
+### The gap this closes
+
+The scope beside the horizon was a TCAS traffic display: own-ship centred,
+north-up, range rings. That is a real instrument and the range steps are the real
+Boeing ones — but north-up-centred is what a crew uses to REVIEW a route. What
+they fly with is MAP: track-up, aeroplane near the bottom, compass arc across the
+top, most of the glass showing what is ahead.
+
+So the existing display keeps its behaviour under the name it always deserved,
+**PLAN**, and **MAP** is added beside it. **The RADAR page is untouched and stays
+north-up** — its scope is a traffic display and that is what it should be.
+
+### The rotation is applied at the PROJECTION, and that is the whole design
+
+`project` gained `upDeg`, the true bearing the top of the display points at.
+Every mark — traffic, runways, airports, the flown track — arrives through that
+one function, so rotating there rotates all of them at once and none can be left
+behind. **A symbol whose own maths knew about track-up would be a second opinion
+about which way is up**, and the ones nobody remembered would sit at a bearing
+they are not at while looking perfectly ordinary.
+
+Exactly one thing has to be turned separately and it is named in the code: a
+traffic symbol's own POINTING, drawn in its own frame. `(track − upDeg)`.
+
+`hitTestAircraft` is deliberately NOT rotated — the only tappable scope is the
+RADAR page's, which is north-up and centred. It carries a comment saying what it
+would need if the ND ever becomes tappable, because geometry that disagrees with
+what was painted is a hit test that misses.
+
+### Which way is up is a FIELD decision, and it is never claimed without one
+
+`upReference(fields, mode)` is pure and exported:
+
+- **TRK UP** when `position.track` is live. This is what a real ND is up to, and
+  it is the case that comes alive while FOLLOWING — that track is broadcast, so
+  the map turns with the aeroplane being watched.
+- **HDG UP** when only `attitude.heading` is. Labelled as heading, because a crew
+  reads TRK and HDG as different numbers and a display showing one under the
+  other's name is a lie about which it is, even on the day they are equal.
+- **NORTH UP, with the reason**, when the device has neither — which on a
+  clamped desk is nearly always. Rotating to an assumed zero would be a bearing
+  produced from no measurement at all.
+
+The label is drawn on the instrument AND is in the canvas's text alternative,
+because a rotation means nothing to a reader who cannot see it unless the
+reference is named: "measured from north" and "measured from where you are going"
+give every bearing on the display a different meaning.
+
+### What MAP does NOT show, and why
+
+A real ND puts GS and TAS in the top-left corner. **They are not drawn**, and
+that is a decision rather than an omission: groundspeed, altitude, vertical speed
+and heading are all tapes a few inches to the left on the same page. Copying them
+into an ND corner because a real ND has them there is the value strip's mistake
+in a smaller box.
+
+**The wind IS drawn**, for the opposite reason — it is the one number on this
+display that is nowhere else on the PFD. The arrow points the way the wind is
+GOING, which is opposite to the direction it is reported FROM, with the reported
+direction and speed beside it, so both conventions are on screen and neither has
+to be guessed.
+
+### Where the checks live, and why they had to split
+
+The rotation is on a canvas, and **a headless browser cannot see a pixel of one**.
+So `mapmode.test.mjs` holds the maths against the real `project` and
+`upReference` — including a bearing/reference sweep, because a sign error is
+invisible at 90° and obvious at 45° — and both plants for it are `gate: 'tests'`.
+One aimed at the accessibility gate would stay green forever.
+
+What the a11y gate CAN reach is what the display says about itself, and
+`checkNdMode` presses MAP and asserts the text alternative changes and names the
+up-reference. The contrast registry measures both switch states, and both of
+those pass on a switch wired to nothing — which is why the press is a separate
+check.
+
+---
+
+## Previously staged — 1.31.0, the EICAS crew alerting strip, 2026-08-05
+
+**`main` is on 1.29.0.**
 
 ### The rule that decides what may go in the strip
 

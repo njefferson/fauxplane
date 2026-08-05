@@ -23,8 +23,24 @@
 
 import { roundRect, text } from '../canvas.js';
 
-/** Screen position for a lat/lon, given the centre and the scale. */
-export function project({ lat, lon }, { centre, pxPerNm, cx, cy }) {
+/**
+ * Screen position for a lat/lon, given the centre, the scale, and WHICH WAY IS
+ * UP.
+ *
+ * `upDeg` is the true bearing the top of the display points at. Zero is north,
+ * which is what every caller passed before MAP mode existed and is still the
+ * default — the RADAR page's scope is north-up and stays north-up.
+ *
+ * THE ROTATION IS APPLIED HERE, AT THE PROJECTION, AND THAT IS THE WHOLE
+ * DESIGN. Every mark on the display — traffic, runways, airports, the flown
+ * track — arrives through this function, so rotating here rotates all of them
+ * at once and none of them can be left behind. A symbol whose own maths knew
+ * about track-up would be a second opinion about which way is up, and the ones
+ * that were forgotten would sit at a bearing they are not at while looking
+ * perfectly ordinary. Only a symbol's own POINTING has to be turned separately,
+ * and there is exactly one of those.
+ */
+export function project({ lat, lon }, { centre, pxPerNm, cx, cy, upDeg = 0 }) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   // Equirectangular about the centre. Over a plan view of tens of nautical
   // miles the error against a proper projection is far below one pixel, and it
@@ -32,8 +48,67 @@ export function project({ lat, lon }, { centre, pxPerNm, cx, cy }) {
   // everything east-west is stretched by a quarter at this latitude.
   const dNorthNm = (lat - centre.lat) * 60;
   const dEastNm = (lon - centre.lon) * 60 * Math.cos((centre.lat * Math.PI) / 180);
-  return { x: cx + dEastNm * pxPerNm, y: cy - dNorthNm * pxPerNm };
+  const ex = dEastNm * pxPerNm;
+  const ny = -dNorthNm * pxPerNm;
+  if (!upDeg) return { x: cx + ex, y: cy + ny };
+  // Screen axes, y down. Turning the WORLD by −upDeg is what puts the bearing
+  // `upDeg` at the top: due east with east up must land straight above centre.
+  const a = (upDeg * Math.PI) / 180;
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  return { x: cx + ex * cos + ny * sin, y: cy + ny * cos - ex * sin };
 }
+
+/**
+ * WHICH WAY IS UP, AND WHY — and it is a FIELD DECISION, not a preference.
+ *
+ * A real ND in MAP mode is TRACK-UP: the top of the display is where the
+ * aeroplane is actually going. Not heading, which is where the nose points, and
+ * on a windy day those differ by several degrees.
+ *
+ * THIS PANEL USUALLY HAS NEITHER. It sits clamped to a desk: the GPS track needs
+ * movement to exist, and plenty of phones report no magnetic heading at all. So
+ * the display falls back to NORTH-UP and SAYS SO — a map that silently switched
+ * between two references would be untrustworthy in exactly the way the file
+ * header has always said, and a map claiming track-up while drawn north-up would
+ * be worse than either.
+ *
+ * The case where it comes alive is FOLLOWING an aircraft, where the track is
+ * filled from a real ADS-B broadcast. The map then turns with the flight.
+ *
+ * Pure and exported, so every sentence the display can put on itself is testable
+ * without a canvas.
+ */
+export function upReference(fields = {}, mode = 'plan') {
+  if (mode !== 'map') return { upDeg: 0, label: 'NORTH UP', reason: null, kind: 'north' };
+  const track = fields['position.track'];
+  if (track && track.provenance !== 'FAIL' && Number.isFinite(track.value)) {
+    return { upDeg: track.value, label: 'TRK UP', reason: null, kind: 'track' };
+  }
+  const heading = fields['attitude.heading'];
+  if (heading && heading.provenance !== 'FAIL' && Number.isFinite(heading.value)) {
+    // Second choice and labelled as such. A crew reads TRK and HDG as different
+    // numbers, so a display showing one under the other's name is a lie about
+    // which it is — even when they happen to be equal.
+    return { upDeg: heading.value, label: 'HDG UP', reason: 'no ground track — the nose, not the path', kind: 'heading' };
+  }
+  return {
+    upDeg: 0,
+    label: 'NORTH UP',
+    reason: track?.reason ?? heading?.reason ?? 'no track or heading',
+    kind: 'north',
+  };
+}
+
+/**
+ * WHERE OWN SHIP SITS, as a fraction of the box height.
+ *
+ * A north-up plan view is CENTRED, because the question it answers is "what is
+ * around me". MAP mode puts the aeroplane near the bottom, because the question
+ * changes to "what is ahead" and two thirds of a centred display is behind you.
+ * 0.78 is about where a real ND's aircraft symbol sits.
+ */
+export const MAP_OWNSHIP_Y = 0.78;
 
 /** Flight level or altitude, in the compact form a plan view wants. */
 /**
@@ -219,6 +294,13 @@ export function ringLabelFor(rangeNm, frac) {
   return Number.isInteger(at) ? String(at) : at.toFixed(1);
 }
 
+/**
+ * NORTH-UP AND CENTRED, because the only tappable scope is the RADAR page's and
+ * that one is both. If the navigation display beside the horizon ever becomes
+ * tappable this needs the same `upDeg` and own-ship offset `drawPlan` uses —
+ * geometry that disagrees with what was painted is a hit test that misses, and
+ * the comment on `TAP_SLOP_PX` is what that costs.
+ */
 export function hitTestAircraft(aircraft, { centre, rangeNm, w, h }, px, py, slopPx = TAP_SLOP_PX) {
   const cx = w / 2;
   const cy = h / 2;
@@ -262,11 +344,31 @@ export function runwayWidthPx(len) {
   return Math.max(2, Math.min(7, len * 0.13));
 }
 
-export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [], readiness = null }) {
+export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [], readiness = null, mode = 'plan', up = null, wind = null }) {
+  /**
+   * TWO GEOMETRIES, ONE RENDERER.
+   *
+   *   PLAN — centred, north-up, full rings and a fixed compass rose. What you
+   *          use to review what is AROUND you, and what the RADAR page is.
+   *   MAP  — own ship near the bottom, the display turned so the direction of
+   *          travel is up, range ARCS and a compass arc across the top. What a
+   *          crew actually flies with, because two thirds of a centred display
+   *          is behind you.
+   *
+   * Same projection, same symbols, same data. Only the centre, the radius and
+   * the furniture differ — everything else inherits the rotation through
+   * `project`, which is why there is one renderer rather than two.
+   */
+  const isMap = mode === 'map';
+  const upDeg = isMap ? (up?.upDeg ?? 0) : 0;
   const cx = x + w / 2;
-  const cy = y + h / 2;
-  const r = Math.min(w, h) / 2 - 4;
+  const cy = isMap ? y + h * MAP_OWNSHIP_Y : y + h / 2;
+  // In MAP the radius reaches the TOP of the box rather than fitting a circle
+  // inside it, so the range arc uses the height it has and is clipped at the
+  // sides — which is what a real ND looks like and is why it is drawn as arcs.
+  const r = isMap ? Math.max(24, cy - y - 4) : Math.min(w, h) / 2 - 4;
   const pxPerNm = r / rangeNm;
+  const projection = { centre, pxPerNm, cx, cy, upDeg };
 
   ctx.save();
   ctx.fillStyle = tokens.surface;
@@ -282,13 +384,17 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   roundRect(ctx, x + 1, y + 1, w - 2, h - 2, 8);
   ctx.clip();
 
-  // --- range rings ---------------------------------------------------------
+  // --- range rings, or range ARCS ------------------------------------------
+  // A full circle in MAP mode would spend most of its ink behind the aeroplane
+  // and off the bottom of the box. The arc spans the sector actually in view.
   const ringLabel = Math.max(9, Math.min(12, r * 0.07));
+  const from = isMap ? -Math.PI * 0.92 : 0;
+  const to = isMap ? -Math.PI * 0.08 : Math.PI * 2;
   ctx.strokeStyle = tokens.rail;
   ctx.lineWidth = 1;
   for (const frac of [0.25, 0.5, 0.75, 1]) {
     ctx.beginPath();
-    ctx.arc(cx, cy, r * frac, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r * frac, from, to);
     ctx.stroke();
     text(ctx, ringLabelFor(rangeNm, frac), cx + 3, cy - r * frac + ringLabel * 0.7, {
       size: ringLabel,
@@ -354,8 +460,8 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   ctx.lineCap = 'butt';
   const drawn = [];
   for (const rw of runways) {
-    const a = project(rw.le, { centre, pxPerNm, cx, cy });
-    const b = project(rw.he, { centre, pxPerNm, cx, cy });
+    const a = project(rw.le, projection);
+    const b = project(rw.he, projection);
     if (!a || !b) continue;
     drawn.push({ rw, a, b, len: Math.hypot(b.x - a.x, b.y - a.y) });
   }
@@ -393,31 +499,105 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   }
   ctx.restore();
 
-  // --- compass rose, fixed: NORTH IS UP ------------------------------------
-  for (const [deg, label] of [
-    [0, 'N'],
-    [90, 'E'],
-    [180, 'S'],
-    [270, 'W'],
-  ]) {
-    const a = ((deg - 90) * Math.PI) / 180;
-    text(ctx, label, cx + Math.cos(a) * (r - ringLabel), cy + Math.sin(a) * (r - ringLabel), {
-      size: ringLabel * 1.1,
-      weight: 700,
-      colour: tokens['text-2'],
-    });
+  if (!isMap) {
+    // --- compass rose, fixed: NORTH IS UP ----------------------------------
+    for (const [deg, label] of [
+      [0, 'N'],
+      [90, 'E'],
+      [180, 'S'],
+      [270, 'W'],
+    ]) {
+      const a = ((deg - 90) * Math.PI) / 180;
+      text(ctx, label, cx + Math.cos(a) * (r - ringLabel), cy + Math.sin(a) * (r - ringLabel), {
+        size: ringLabel * 1.1,
+        weight: 700,
+        colour: tokens['text-2'],
+      });
+    }
+  } else {
+    /**
+     * --- THE COMPASS ARC, which is what a real ND has instead of a rose.
+     *
+     * It TURNS WITH THE MAP, so a bearing is read where that bearing actually
+     * lies rather than off a fixed ring — that is the whole point of track-up
+     * and the reason a rose would be worse than nothing here.
+     *
+     * Ticks every 10 degrees, labelled every 30, in the flight deck's own form:
+     * the leading digits only, so 240 reads "24". Drawn only across the sector
+     * in view, because a tick behind the aeroplane is a tick nobody can see.
+     */
+    const arcR = r - ringLabel * 0.6;
+    ctx.strokeStyle = tokens.rail;
+    ctx.lineWidth = 1;
+    for (let brg = 0; brg < 360; brg += 10) {
+      // Where this bearing sits once the world has been turned by upDeg.
+      const rel = ((brg - upDeg + 540) % 360) - 180;
+      if (Math.abs(rel) > 74) continue;
+      const a = ((rel - 90) * Math.PI) / 180;
+      const major = brg % 30 === 0;
+      const len = major ? ringLabel * 0.8 : ringLabel * 0.45;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * arcR, cy + Math.sin(a) * arcR);
+      ctx.lineTo(cx + Math.cos(a) * (arcR - len), cy + Math.sin(a) * (arcR - len));
+      ctx.stroke();
+      if (major) {
+        const lr = arcR - len - ringLabel * 0.8;
+        text(ctx, brg === 0 ? 'N' : String(brg / 10).padStart(2, '0'), cx + Math.cos(a) * lr, cy + Math.sin(a) * lr, {
+          size: ringLabel,
+          weight: 700,
+          colour: tokens['text-2'],
+        });
+      }
+    }
+
+    /**
+     * WHICH REFERENCE IS UP, IN WORDS, ALWAYS. TRK UP, HDG UP or NORTH UP —
+     * and on a desk it is nearly always the last of those, with the reason
+     * beside it. A map that silently switched references would be untrustworthy
+     * in exactly the way this file's header has said since it was written; one
+     * that claimed track-up while drawn north-up would be worse than either.
+     */
+    if (up?.label) {
+      const size = Math.max(9, r * 0.06);
+      text(ctx, up.label, cx, y + size + 4, { size, weight: 700, colour: up.kind === 'north' ? tokens.stale ?? tokens['text-2'] : tokens['text-2'] });
+    }
   }
 
   // --- the centre ----------------------------------------------------------
   ctx.strokeStyle = tokens.symbol;
   ctx.lineWidth = 2;
   const s = Math.max(5, r * 0.03);
-  ctx.beginPath();
-  ctx.moveTo(cx - s, cy);
-  ctx.lineTo(cx + s, cy);
-  ctx.moveTo(cx, cy - s);
-  ctx.lineTo(cx, cy + s);
-  ctx.stroke();
+  if (isMap) {
+    /**
+     * OWN SHIP, and in MAP mode it is an AEROPLANE rather than a cross.
+     *
+     * The cross is right for a centred plan view: it marks a PLACE, which is
+     * all a north-up scope claims about the middle. Track-up is a different
+     * claim — the display is oriented to where this thing is going, so the
+     * symbol has a direction, and drawing a direction-free cross under a
+     * direction-bearing display would be the only mark on it that disagreed.
+     *
+     * It points straight up by construction, because up IS the reference. It
+     * never needs rotating and must never be given a rotation: the day it is,
+     * it will be turned twice.
+     */
+    const a = s * 1.9;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - a);
+    ctx.lineTo(cx, cy + a * 0.75);
+    ctx.moveTo(cx - a * 0.8, cy + a * 0.1);
+    ctx.lineTo(cx + a * 0.8, cy + a * 0.1);
+    ctx.moveTo(cx - a * 0.35, cy + a * 0.7);
+    ctx.lineTo(cx + a * 0.35, cy + a * 0.7);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(cx - s, cy);
+    ctx.lineTo(cx + s, cy);
+    ctx.moveTo(cx, cy - s);
+    ctx.lineTo(cx, cy + s);
+    ctx.stroke();
+  }
   // THE CENTRE SAYS WHAT IT IS, and `radarCentre` is the one thing that decides.
   //
   // Four states now: this device, the home reference before a fix, the aircraft
@@ -450,7 +630,7 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
     ctx.beginPath();
     let drawing = false;
     for (const point of trail) {
-      const q = project(point, { centre, pxPerNm, cx, cy });
+      const q = project(point, projection);
       // Outside the ring it would read as a bearing it is not at, so the trail
       // simply stops there and resumes when it comes back — the same contract
       // the symbols keep.
@@ -469,7 +649,7 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   const labelSize = Math.max(8, Math.min(12, r * 0.062));
   const pending = [];
   for (const a of aircraft ?? []) {
-    const p = project(a, { centre, pxPerNm, cx, cy });
+    const p = project(a, projection);
     if (!p) continue;
     // Outside the drawn circle it would sit in a corner and read as being at a
     // bearing it is not. Range is the display's contract; respect it.
@@ -487,7 +667,11 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
 
     ctx.save();
     ctx.translate(p.x, p.y);
-    if (track !== null) ctx.rotate((track * Math.PI) / 180);
+    // THE ONE THING `project` CANNOT DO FOR US. Position is rotated at the
+    // projection; a symbol's own POINTING is drawn in its own frame, so it has
+    // to be turned by the same amount here or every triangle on a track-up map
+    // points at a bearing it is not flying.
+    if (track !== null) ctx.rotate(((track - upDeg) * Math.PI) / 180);
 
     ctx.beginPath();
     if (track === null) {
@@ -551,6 +735,58 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
       // whoever is nearest the middle.
       priority: (isFollowed ? 1e6 : 0) - Math.hypot(p.x - cx, p.y - cy),
       followed: isFollowed,
+    });
+  }
+
+  /**
+   * --- THE WIND, and it is the one number on this display that is NOT on the
+   * PFD already.
+   *
+   * Groundspeed, altitude, vertical speed and heading are all tapes a few
+   * inches to the left; putting them in an ND corner because a real ND has them
+   * there would be the value strip's mistake in a smaller box. The wind aloft
+   * is not anywhere on this page — it lives on ATIS — and it is what makes the
+   * difference between where the nose points and where the aeroplane goes.
+   *
+   * THE ARROW POINTS THE WAY THE WIND IS GOING, which is the opposite of the
+   * direction it is REPORTED from: a "240" wind blows from 240 towards 060. A
+   * flight deck draws the vector, and the number beside it is the reported
+   * direction, so both conventions are on screen and neither has to be guessed.
+   *
+   * It turns with the map like everything else. Drawn only in MAP mode, and only
+   * when there is a wind to draw — a crossed-out arrow would be furniture.
+   */
+  if (isMap && Number.isFinite(wind?.dirDeg) && Number.isFinite(wind?.speedKt)) {
+    const size = Math.max(9, r * 0.06);
+    const wx = x + w - size * 2.4;
+    const wy = y + size * 3.2;
+    const len = size * 1.5;
+    // Reported FROM dirDeg, so it travels towards dirDeg + 180, then the map's
+    // own rotation is taken off exactly as every other bearing's is.
+    const a = ((wind.dirDeg + 180 - upDeg - 90) * Math.PI) / 180;
+    const dx = Math.cos(a);
+    const dy = Math.sin(a);
+    ctx.save();
+    ctx.strokeStyle = tokens['text-2'];
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(wx - dx * len, wy - dy * len);
+    ctx.lineTo(wx + dx * len, wy + dy * len);
+    // A head, so the direction is carried by shape and not only by position.
+    const head = size * 0.55;
+    const left = a + Math.PI * 0.82;
+    const right = a - Math.PI * 0.82;
+    ctx.moveTo(wx + dx * len, wy + dy * len);
+    ctx.lineTo(wx + dx * len + Math.cos(left) * head, wy + dy * len + Math.sin(left) * head);
+    ctx.moveTo(wx + dx * len, wy + dy * len);
+    ctx.lineTo(wx + dx * len + Math.cos(right) * head, wy + dy * len + Math.sin(right) * head);
+    ctx.stroke();
+    ctx.restore();
+    text(ctx, `${String(Math.round(wind.dirDeg) % 360).padStart(3, '0')}/${Math.round(wind.speedKt)}`, x + w - 6, y + size + 4, {
+      size,
+      weight: 700,
+      colour: tokens['text-2'],
+      align: 'right',
     });
   }
 
