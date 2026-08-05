@@ -206,11 +206,16 @@
               THE READOUTS USED TO BE STACKED UNDER IT and took the larger share —
               `flex: 56` against the plan view's 44. Noah, with an iPad full of
               it: "All the voice-over data does NOT need to fill MY screen. That
-              space has MUCH more important stuff to hold." He is right, and the
-              reason given for the stacking was wrong on its own terms: a canvas
-              IS non-text content, so these numbers must exist as text — but
-              nothing about SC 1.1.1 says the text must be the biggest thing on
-              the page, or that it must sit beside the picture it describes.
+              space has MUCH more important stuff to hold."
+
+              HE SAID THAT IN 1.18.0 AND IT TOOK UNTIL 1.29.0 TO ACT ON IT. This
+              comment agreed with him, correctly noted that SC 1.1.1 says nothing
+              about the text being big or beside the picture — and then kept it
+              PAINTED anyway, and a few lines further down called that "never
+              optional". The criterion requires a text alternative to EXIST. It
+              was read as requiring it to be VISIBLE, and that reading was then
+              repeated to him as a standards requirement whenever he asked for
+              the space back. It is `.sr-only` now; see below.
 
               Most of it was duplication anyway. Groundspeed is the GS tape,
               indicated altitude is the ALT tape, vertical speed is the VS tape,
@@ -267,17 +272,14 @@
             </div>
         </div>
         <!--
-          THE VALUES AS TEXT, along the bottom, full width. Noah: "You can push
-          the stuff to the very bottom if needed."
+          THE VALUES AS TEXT. Noah: "You can push the stuff to the very bottom
+          if needed" — the third time he asked for this space back.
 
-          Still real, selectable, screen-reader-readable text carrying every
-          value, its units, its provenance and its failure reason — that part
-          was never optional. What changed is that it is a dense strip under the
-          instruments instead of a column beside them, so it costs the panel a
-          band rather than a third of the glass.
-
-          A scrollable region must be reachable and scrollable from the
-          keyboard, so it is focusable and named.
+          "THAT PART WAS NEVER OPTIONAL" USED TO BE WRITTEN HERE, about the strip
+          being VISIBLE. It was false. What is not optional is that the values
+          EXIST as text for a reader who cannot see the gauges; where they are
+          drawn, or whether they are drawn at all, was always a product decision
+          and always his. Kept as a marker of what the wrong reading cost.
         -->
         <!--
           THE VALUES AS TEXT, FOR WHOEVER CANNOT SEE THE GAUGES — and only for

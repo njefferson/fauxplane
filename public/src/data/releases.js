@@ -476,7 +476,7 @@ export const RELEASES = [
     headline: 'The instruments get their screen back, and the panel knows where you are.',
     changed: [
       'The column of values no longer takes a third of the display. It is a strip along the bottom now, and the navigation display beside the horizon is roughly twice the size it was. Most of that column was repeating the instruments anyway — groundspeed is the GS tape, altitude is the ALT tape, vertical speed is the VS tape, heading is the compass rose.',
-      'The values are all still there, still as real text you can select or have read aloud. That part was never optional; what changed is that it costs the panel a band instead of a third of the glass.',
+      'The values are all still there, still as real text you can select or have read aloud. This note called that "never optional" — it was wrong, and it was wrong in a way that kept taking your screen. See 1.29.0.',
       'The first-time instructions are shown again on a first visit. They had been moved into the (i) menu and nothing ever opened them, so a newcomer got a cockpit full of crossed-out instruments and no explanation. The panel is live behind them and closing them is all they ask.',
       'The panel remembers roughly where you were and starts there next time, instead of always starting at a fixed point in Cameron Park. Stored to about a kilometre — enough to centre a scope, not enough to be your address.',
       'The line along the bottom says what the scope is ACTUALLY centred on: your position, an airport you picked, a flight you are following, or the fallback. It used to say "Home reference Cameron Park" even while your own GPS altitude was on screen a few inches above it.',
