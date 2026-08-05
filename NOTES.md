@@ -66,6 +66,34 @@ the very release that adds the gate.** "Below the fold" in 1.28.1's own `broken`
 list. That is the value of writing the check from real sentences rather than
 imagined ones.
 
+### And `--changed` had never once run in its normal mode
+
+Found while running the selective sweep for this release. `plant.mjs --changed`
+asks git which files moved, then re-runs itself inside a scratch copy of the
+tree — a copy that deliberately excludes `.git`, correctly, because it is the
+largest thing here and no plant touches it.
+
+**The child then re-ran the selection.** git printed its usage text into the log
+and the harness exited 2. From a fault-injection harness, exit 2 reads as *a
+plant failed*, so the flag built to make the common case cheap looked like it
+was finding real problems while never having run at all.
+
+Every verification of that flag had used `--dry`, which prints the selection and
+exits **before** the isolation step. The fast path used to check the feature was
+not the path the feature runs on.
+
+The selection is computed ONCE now, in the parent, and handed to the child
+through `PLANT_SELECTED` — by NAME rather than by index, because an index means
+a different plant the moment the data file is reordered and nothing would catch
+it across a process boundary. The git path is now only reachable from a genuinely
+bad ref, and says so.
+
+**A zero-plant selection also says what it means.** It used to print
+`0/0 planted faults were caught by the gate`, which is true and reads as a clean
+sweep. It now says NOTHING was verified by this run, and that the gates are
+unproven since the last whole sweep — the same reason the selector already prints
+what it skipped.
+
 ---
 
 ## 1.28.0 — five things wrong with the RADAR page, 2026-08-05

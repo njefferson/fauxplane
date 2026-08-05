@@ -203,7 +203,21 @@ const { values: argv } = parseArgs({
 function changedFiles(ref) {
   const out = spawnSync('git', ['diff', '--name-only', ref, '--'], { cwd: REPO, encoding: 'utf8' });
   if (out.status !== 0) {
-    console.error(`--changed=${ref}: git diff failed — ${(out.stderr || '').trim()}`);
+    /**
+     * THE SCRATCH COPY HAS NO `.git`, AND THAT IS WHERE THIS USED TO DIE.
+     *
+     * The isolated re-run (below) copies the tree WITHOUT `.git` — correctly, it
+     * is the biggest thing here and no plant touches it. But the child then
+     * re-ran this function, git printed its usage text into the log, and the
+     * harness exited 2. Exit 2 from a fault-injection harness reads as "a plant
+     * failed", so `--changed` appeared to be finding real problems while
+     * actually never having run at all in its normal mode.
+     *
+     * The selection is now computed ONCE, in the parent, and handed to the
+     * child through PLANT_SELECTED — so this path is only reachable from a real
+     * bad ref, and says so.
+     */
+    console.error(`--changed=${ref}: git diff failed — ${(out.stderr || '').trim() || 'no .git here?'}`);
     process.exit(2);
   }
   const tracked = out.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -215,7 +229,14 @@ let selected = PLANTS;
 let skipped = [];
 let escalated = null;
 
-if (argv.only) {
+if (process.env.PLANT_SELECTED !== undefined) {
+  // The isolated child. The parent already asked git — see changedFiles().
+  // An EMPTY string is a real answer meaning "nothing to run", which is why
+  // this tests for undefined rather than for falsiness.
+  const names = new Set(process.env.PLANT_SELECTED.split('\n').filter(Boolean));
+  selected = PLANTS.filter((pl) => names.has(pl.name));
+  skipped = PLANTS.filter((pl) => !names.has(pl.name));
+} else if (argv.only) {
   selected = [PLANTS[Number(argv.only)]];
 } else if (argv.changed) {
   const touched = changedFiles(argv.changed);
@@ -263,6 +284,20 @@ if (argv.dry) {
   process.exit(0);
 }
 /**
+ * NOTHING TO RUN IS AN ANSWER, and it is said in those words.
+ *
+ * `0/0 planted faults were caught by the gate` is technically true and reads as
+ * a clean sweep. A selective run that found no plants to run has verified
+ * NOTHING, and the only honest closing line says so — the same reason the
+ * selector prints what it skipped.
+ */
+if (!selected.length) {
+  console.log('\nNo plant targets the files that changed. NOTHING was verified by this run.');
+  console.log('The gates themselves are unproven since the last whole sweep — run one before a promote.');
+  process.exit(0);
+}
+
+/**
  * THE SWEEP RUNS IN A COPY, SO IT NEVER TAKES THE WORKING TREE HOSTAGE.
  *
  * Noah, 2026-08-04: "WHY THE FUCK DO YOU RUN SWEEPS THAT DELAY EVERY FUCKING
@@ -307,7 +342,11 @@ if (!process.env.PLANT_ISOLATED && !argv.here && !argv.dry) {
   process.stdout.write(`plant: running in ${scratch} — your working tree is untouched\n`);
   const child = spawnSync(process.execPath, [path.join(scratch, 'scripts', 'plant.mjs'), ...process.argv.slice(2)], {
     stdio: 'inherit',
-    env: { ...process.env, PLANT_ISOLATED: '1' },
+    // The selection travels WITH the child, because the copy has no `.git` to
+    // ask. Names rather than indices: an index means a different plant the
+    // moment the data file is reordered, and this list crosses a process
+    // boundary where nothing would catch the mismatch.
+    env: { ...process.env, PLANT_ISOLATED: '1', PLANT_SELECTED: selected.map((pl) => pl.name).join('\n') },
   });
   rmSync(scratch, { recursive: true, force: true });
   process.exit(child.status ?? 1);
