@@ -980,19 +980,32 @@ export const PLANTS = [
     replace: '  .pfd-controls {\n    order: 4;\n  }',
     expect: /it belongs with the horizon it powers, not underneath the radar/,
   },
-  {
-    // iPad landscape: "cannot be seen in landscape because it's covered by the
-    // Text info." The wrapper could be squeezed below its own content on any
-    // screen the short-screen rules did not reach, so the value strip was drawn
-    // over the switch. The general overlap check did not list `.pfd-controls`
-    // and watched it happen.
-    name: 'PFD: the value strip is drawn over the power switch again',
-    check: 'nothing is stacked on top of PWR',
-    file: 'public/styles.css',
-    find: '     it — twice in one session now. */\n  flex: 1 0 auto;',
-    replace: '     it — twice in one session now. */\n  flex: 1 1 auto;',
-    expect: /drawn over the power switch|and \.readouts overlap|stacked on top of the power switch/,
-  },
+  /*
+   * NO PLANT FOR "the value strip is drawn over the power switch", DELIBERATELY,
+   * and this comment is the record of why.
+   *
+   * The defect was real — Noah photographed it on an iPad in landscape at
+   * 1.28.6 — and it is fixed. But THREE attempts at a single-edit plant came
+   * back green: reverting the wrapper's `flex`, reverting the range column, and
+   * both together. Each was written from a confident story about the mechanism,
+   * and the sweep said plainly each time that the story was wrong.
+   *
+   * A plant that does not reproduce is not evidence, and one kept anyway is
+   * worse than none: it reports coverage it does not have.
+   *
+   * THE GUARD IS PROVEN A BETTER WAY. `scripts/a11y-gate.mjs` as it stands was
+   * run against a checkout of 1.28.6 — the build in the photograph — and went
+   * red on both complaints, by name:
+   *
+   *   layout/ipad-landscape: the value strip is drawn over the power switch
+   *                          — 3402px of overlap
+   *   layout/ipad-portrait:  the power switch starts at 1091px, below the
+   *                          navigation display at 652px
+   *
+   * A check verified against the real historical defect, on the real device
+   * shape, beats a synthetic fault injected to satisfy a harness. Where a plant
+   * cannot be written, say so here rather than leaving the check unmentioned.
+   */
   {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',

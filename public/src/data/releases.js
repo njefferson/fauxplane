@@ -68,12 +68,25 @@
  */
 export const RELEASES = [
   {
+    version: '1.28.9',
+    date: '2026-08-05',
+    headline: 'A correction: the last release explained a fix it had not made.',
+    changed: [
+      'The value strip being drawn over PWR in landscape was already fixed a release earlier, by the change that moved the range buttons. 1.28.8 hardened the same area, which is worth having, and then described that hardening as the fix. It was not, and this says so rather than quietly rewording it.',
+      'Nothing on screen changes here. What changed is the record, and the check behind it: the accessibility gate now runs on an iPad-shaped screen with the browser\u2019s own bars taken off — the exact shape both faults lived in and nothing was measuring.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.28.8',
     date: '2026-08-05',
     headline: 'The power switch is where you can see it and press it again.',
     changed: [
       'Held upright, PWR sits under the horizon where it always did. Two releases ago the controls moved out from under the horizon so it and the radar could be the same size side by side — which is right when they are side by side, and puts PWR below the radar when they are stacked, most of a screen further down than it should be.',
-      'Held sideways, the row of values is no longer drawn on top of PWR. The block holding the controls could be squeezed smaller than the controls inside it, and whatever came next was painted over them.',
+      'Held sideways, the row of values is no longer drawn on top of PWR. The explanation given here for that one was a guess and is corrected in 1.28.9.',
       'Both were introduced by this week\u2019s layout work and both are gone.',
     ],
     broken: [

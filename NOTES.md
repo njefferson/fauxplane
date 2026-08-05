@@ -9,10 +9,53 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.8, PWR back where it can be seen and pressed, 2026-08-05
+## STAGED NOW — 1.28.9, the fix I described was not the fix I made, 2026-08-05
 
-**1.28.8 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.28.9 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.28.3.
+
+1.28.8 said the landscape overlap was fixed by giving `.pfd-screen`
+`flex: 1 0 auto` in the base rule. **It was not.** The plant for it came back
+`UNPROVEN`, and a bisect against real checkouts settled it:
+
+- **1.28.6** at 1024x620 — controls at 406..450 against a strip at 402..490:
+  **44px of overlap**, exactly the photograph.
+- **1.28.7** at the same size — **no overlap**. Already gone, before the change
+  that claimed it.
+
+So the fix arrived with the range-button work and the `flex` hardening is
+defensive rather than causal. **Three single-edit plants were then written from
+three confident stories about the mechanism — reverting the wrapper's `flex`,
+reverting the range column, and both together — and all three came back green.**
+
+### The plant was deleted, and the guard proven a better way
+
+An unprovable plant is worse than none: it reports coverage it does not have.
+Instead, **the current `a11y-gate.mjs` was run against a checkout of 1.28.6** —
+the build in the photograph — and went red on both complaints by name:
+
+    layout/ipad-landscape: the value strip is drawn over the power switch
+                           — 3402px of overlap
+    layout/ipad-portrait:  the power switch starts at 1091px, below the
+                           navigation display at 652px
+
+**A check verified against the real historical defect, on the real device shape,
+beats a synthetic fault injected to satisfy a harness.** That is now the recorded
+method for any guard whose defect resists a one-line reproduction, and the reason
+sits in `plants.data.mjs` where the missing plant would have been.
+
+### The pattern this session keeps producing
+
+A mechanism that explains the symptom, is consistent with the code, and is
+WRONG — written into a release note as fact. **This is the second time today**;
+the first was the aircraft list count, blamed on a hidden page and actually
+`offsetTop` measured from an unpositioned ancestor. Both times the story felt
+finished, so the measurement that would have refuted it was never run. Both times
+the plant sweep is what refused to agree.
+
+---
+
+## 1.28.8 — PWR back where it can be seen and pressed, 2026-08-05
 
 Noah, with an iPad both ways up: *"Now the power button is too low in portrait
 mode, and cannot be seen in landscape because it's covered by the Text info."*
