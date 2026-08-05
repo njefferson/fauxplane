@@ -1026,7 +1026,7 @@ export const PLANTS = [
     file: 'public/index.html',
     find: '<div class="readouts sr-only" id="pfd-readouts" role="group" aria-label="Flight values"></div>',
     replace: '<div class="readouts sr-only" id="pfd-readouts" role="group" aria-label="Flight values" aria-hidden="true"></div>',
-    expect: /aria-hidden — the one thing it must never be|readouts/,
+    expect: /`aria-hidden` — the one thing it must never be/,
   },
   {
     name: 'BITE: the page stops reading the live store',
