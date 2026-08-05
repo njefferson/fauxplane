@@ -9,10 +9,66 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.0, five things wrong with the RADAR page, 2026-08-05
+## STAGED NOW — 1.28.1, the release notes were a support thread, 2026-08-05
 
-**1.28.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.28.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.27.0.
+
+Noah, on opening What's New: *"WHAT THE **FUCK** ARE THESE RELEASE NOTES?!"*
+
+He was looking at ten releases of a **development diary published inside the
+product**. Three distinct failures, all of which read as reasonable while being
+written:
+
+- **"You" had quietly stopped meaning the reader.** *"You asked why every runway
+  looks the same."* *"You held the panel up next to your home screen and said it
+  did not match."* *"You sent a photo of DAL2229."* *"Five things you said were
+  wrong with the radar."* The reader is a friend of Noah's building a 747
+  cockpit. He opens the list and is addressed as somebody else, about events he
+  was not present for.
+- **"I" appeared at all.** *"I measured both."* *"It covers exactly what I cannot
+  reach from here."* *"I only wrote the test AFTER you found it. That is
+  backwards."* A session narrating its own process, under Noah's name, to a
+  stranger. There is no author character in a patch note.
+- **The reader was given homework, in eight consecutive releases.** *"Send me
+  that."* *"Follow a flight and send the report."* *"That is the thing to send
+  me."* Telling a reader HOW to report a problem is §7e and belongs in the (i)
+  menu; making the next release conditional on him doing it is an arrangement
+  between two other people, leaking onto his screen.
+
+Plus raw protocol on the face of it — `HTTP 201`, `content-type: text/html`,
+`cf-ray`, "24 pixels", "below the fold".
+
+**1.0.0 through 1.19.1 are clean.** The rot starts at 1.19.2, is total by 1.24.0,
+and tracks exactly the period when the work became a fast back-and-forth with
+Noah — the notes were being written from the SESSION's memory of the day rather
+than from the diff. Every one of them has been rewritten for the reader. No claim
+changed and nothing was dropped; the same releases, described from the other side
+of the screen.
+
+### The rule was in the file's own header the whole time
+
+`releases.js` opens with *"THE READER IS NOT A DEVELOPER… what he can now see or
+do."* That paragraph was written from this app and then walked past for ten
+releases. **A rule that lives in a comment at the top of the file being edited is
+not enforcement** — it is read once and then the file is edited from the bottom.
+
+So it is a gate: `releases.test.mjs` now fails on the reporter-address forms, on
+first person, on "send me", and on raw protocol and pixel counts. Deliberately
+narrow — ordinary second person is how the whole file speaks to its reader ("the
+aircraft over your desk", "you decide when"), and banning "you" outright would
+make the notes worse. There is a test asserting that narrowness, and another
+asserting each pattern still catches the **verbatim shipped sentence** it was
+written from.
+
+**It went red on six lines immediately — two of them written minutes earlier, in
+the very release that adds the gate.** "Below the fold" in 1.28.1's own `broken`
+list. That is the value of writing the check from real sentences rather than
+imagined ones.
+
+---
+
+## 1.28.0 — five things wrong with the RADAR page, 2026-08-05
 
 Noah, 2026-08-05, in one message: *"The radar is pushed down by the airport
 picker. The ranges still need to be made right. Tapping the planes on the bottom

@@ -17,6 +17,45 @@
  * release to say what is still wrong, in the app, where the reader will find it.
  * A panel that only lists wins teaches him to distrust the wins. An entry with
  * nothing outstanding uses an empty array and says so on screen.
+ *
+ * ---------------------------------------------------------------------------
+ * "YOU" IS THE READER. THERE IS NO "I". AND NOBODY IS ASKED TO SEND ANYTHING.
+ * ---------------------------------------------------------------------------
+ *
+ * Rewritten wholesale on 2026-08-05, because ten releases had drifted into
+ * being a support thread published inside the product. Noah, on opening What's
+ * New: "WHAT THE *FUCK* ARE THESE RELEASE NOTES?!"
+ *
+ * Three failures, each of which reads as perfectly reasonable while writing it:
+ *
+ *   · "YOU" QUIETLY BECAME THE PERSON WHO REPORTED THE BUG. "You asked why every
+ *     runway looks the same." "You held the panel up next to your home screen."
+ *     "You sent a photo of DAL2229." "Five things you said were wrong." The
+ *     reader is not that person. He opens this list and is addressed as someone
+ *     else, about events he was not present for.
+ *
+ *   · "I" APPEARED AT ALL. "I measured both." "It covers exactly what I cannot
+ *     reach from here." "I only wrote the test AFTER you found it. That is
+ *     backwards." A session narrating its own process, in someone else's app,
+ *     to a stranger. There is no author character in a patch note. The panel
+ *     changed; say what it does now.
+ *
+ *   · THE READER WAS GIVEN HOMEWORK, in eight consecutive releases. "Send me
+ *     that." "Follow a flight and send the report." "That is the thing to send
+ *     me." Telling a reader HOW to report a problem is Doctrine §7e and belongs
+ *     in the (i) menu. Making the next release conditional on him doing it is a
+ *     working arrangement between two other people, leaking onto his screen.
+ *
+ * The tell they share: a note written from the SESSION's memory of the week
+ * rather than from the diff. What was fixed is reader material. Who found it,
+ * how it felt to find, and what is owed next are not.
+ *
+ * Raw protocol goes the same way — HTTP 201, `content-type`, `cf-ray`, "24
+ * pixels", "below the fold". The diagnostics report is where that lives, and it
+ * is one press away. `releases.test.mjs` fails the build on all of it.
+ *
+ * The rule was in this header the whole time and ten releases went past it, so
+ * it is a GATE now rather than a paragraph.
  */
 
 /**
@@ -29,51 +68,66 @@
  */
 export const RELEASES = [
   {
-    version: '1.28.0',
+    version: '1.28.1',
     date: '2026-08-05',
-    headline: 'Five things you said were wrong with the radar. All five.',
+    headline: 'What’s new is about the panel again, not about building it.',
     changed: [
-      'The scope is at the top of the page now. The airport picker was above it, so on a phone the radar started past the half-way mark and ran off the bottom. The picker is a setup control you use once to aim the thing — it belongs under it. Range and band stay above, because you use those while looking at the scope.',
-      'The range buttons fit on one line. All four of them, and all four altitude bands, instead of wrapping onto a second row each and stealing two more rows of height from the instrument.',
-      'The rings tell the truth. At 10 nm the inner rings sit at 2.5 and 7.5 miles and were labelled 3 and 8 — a distance the circle is not at, on a display whose whole job is distance. The other ranges divide evenly, which is how it stayed hidden.',
-      'Tapping an aircraft on the scope works where you actually aim. You go for the label — the callsign and the altitude, the big readable part — and the target stopped about 24 pixels from the mark while the label sits 20 to 28 away. So it hit sometimes. That was the inconsistency; it was never flaky, it was a target that excluded the part you press.',
-      'Tapping one in the list below does the same thing as tapping one on the scope: it fills the flight number into the box as well as following it. Two surfaces, one result.',
-      'And pressing Follow says so, right there under the button. It always did say so — several hundred pixels above your thumb, off the top of the screen. An empty box now says what to do instead of nothing.',
+      'These notes had turned into a developer’s diary. Half of them addressed whoever reported a fault rather than whoever is reading, several asked the reader to go and send a report back, and a few printed server replies and pixel measurements. Every release below is rewritten to say what the panel does and what it still gets wrong. No claim changed and nothing was dropped — the same releases, described from the other side of the screen.',
+      'What belongs here: what can now be seen or done, and what is still wrong with it. What does not: how any of it was found. The diagnostics report behind the version stamp holds all of that and is one press away.',
     ],
     broken: [
-      'If you run your text at 200%, the scope still starts below the fold on a small phone and you have to scroll to reach it. The radar page more than halved its own share of that this release, but at that size the header and tabs alone take two thirds of the screen before the page even begins. That is a separate job and it is written down.',
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
-      'No route, for the known reason in 1.27.0.',
+      'At 200% text on a small phone the RADAR scope still starts off the bottom of the screen and has to be scrolled to. At that size the header and the row of tabs alone fill two thirds of the screen before the page begins.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
+    version: '1.28.0',
+    date: '2026-08-05',
+    headline: 'The radar page, five ways it was getting in the way.',
+    changed: [
+      'The scope is at the top of the page. The airport picker used to sit above it and push the instrument down — on a phone the radar began past the half-way mark and ran off the bottom. The picker aims the scope once, so it lives below it now. Range and altitude band stay above, because those are read while looking at the scope.',
+      'The four ranges fit on one line, and so do the four altitude bands. Each used to wrap onto a second row on a phone, costing the scope two more rows of height.',
+      'The range rings are labelled with the distance they are actually at. On the 10 nm scope the inner rings sit at 2.5 and 7.5 miles and used to read 3 and 8. The wider ranges divide evenly, which is how it went unnoticed.',
+      'Tapping an aircraft works where the eye goes. The callsign and height beside a symbol are the big readable part, and that is what a finger aims at — but the tap area stopped just short of the label, so it worked sometimes and not others. It reaches the label now.',
+      'Tapping an aircraft in the list does the same as tapping it on the scope: it fills the flight number into the box as well as following it.',
+      'Pressing "Follow this flight" answers right under the button. It always answered — at the top of the page, out of sight from the button at the bottom. An empty box now says what to type instead of saying nothing.',
+    ],
+    broken: [
+      'At 200% text on a small phone the scope still starts off the bottom of the screen. This page more than halved its own share of that, but at that size the header and the row of tabs alone fill two thirds of the screen.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
     ],
   },
   {
     version: '1.27.0',
     date: '2026-08-05',
-    headline: 'The route question is answered, and the answer is no.',
+    headline: 'The route is switched off, and this is why.',
     changed: [
-      'Your self test settled it on its first real run. The route endpoint is answered by Cloudflare, not by adsb.lol — an empty page, no redirect, nothing to read. We are turned away at the door before their servers ever see the request, the same way adsb.fi turns us away.',
-      'So the panel stops asking. A request that cannot succeed still spends the allowance your RADAR needs, and the aircraft are the instrument while a route is a nicety. Nothing is deleted — if their edge ever stops swallowing it, one switch turns it back on.',
-      'The self test also caught a bug in ITSELF: it reported the weather feed as FAILED while the weather was working three lines above it, because it was asking the wrong way. Fixed, and it now builds its requests from the app\u2019s own code so it cannot drift again.',
-      'And your report now says how many times the app has been backgrounded and when. Twice your sensors stopped and the panel could only say "no update for 3 seconds", which describes a clock rather than a cause. It says which it is now.',
+      'A followed flight no longer tries to show its route. The service that publishes routes never actually receives the request — it is stopped at the edge of their network and answered with an empty page, the same way the second aircraft feed turns this app away.',
+      'Every one of those attempts spent part of the same allowance the RADAR needs. The aircraft are the instrument and a route is a nicety, so the asking stopped and the aircraft got the allowance back.',
+      'Nothing was removed. If that service ever starts letting the request through, the route comes back on with one switch.',
+      'The self test on the BITE page no longer reports the weather feed as failed while the weather is plainly working two lines above it. It had been asking in the wrong form.',
+      'The diagnostics report says how many times the panel has been put in the background, and when. Sensors stop while an app is in the background, so "no update for 3 seconds" was describing a clock rather than a cause.',
     ],
     broken: [
-      'No route, and now for a known reason rather than an unknown one.',
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'A followed flight shows no route — now for a known reason rather than an unknown one.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
     ],
   },
   {
     version: '1.26.0',
     date: '2026-08-04',
-    headline: 'A self test you run, so you stop paying a release per question.',
+    headline: 'One press, and the panel checks everything it can reach.',
     changed: [
-      'BITE has a "Run the self test" button. One press asks every feed once and reports what this device can and cannot do — and the result goes into the diagnostics report automatically, so one paste carries everything.',
-      'It covers exactly what I cannot reach from here: the real feeds through the real servers, what iOS actually reports about your screen and sensors, and what the offline copy is holding. Everything else I can already test myself, and should have been.',
-      'It tells apart "did not ask" from "asked and got nothing". Without a followed flight the route check says SKIPPED rather than inventing a callsign to ask about — asking about a made-up aeroplane would break the same rule as inventing a reading.',
-      'Anything it could not determine says so, rather than quietly counting as fine.',
+      'BITE has a "Run the self test" button. One press asks every feed once and reports what this device can and cannot do: its sensors, what the screen really is, what the offline copy is holding, and each feed through the real servers.',
+      'The result goes into the diagnostics report automatically, so one copy carries everything.',
+      'It tells apart "did not ask" from "asked and got nothing". With no flight followed, the route check says SKIPPED rather than making up a callsign to ask about — asking about an invented aeroplane would break the same rule as inventing a reading.',
+      'Anything it cannot determine says so, rather than quietly counting as fine.',
     ],
     broken: [
-      'The route still does not appear. Now you can press the self test with a flight followed and it will show exactly what came back, without me shipping anything first.',
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'A followed flight still shows no route.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
     ],
   },
   {
@@ -81,74 +135,67 @@ export const RELEASES = [
     date: '2026-08-04',
     headline: 'Runways stop being identical hairlines, and airports get their own mark.',
     changed: [
-      'You asked why every runway looks the same at every scale. Two reasons, and I measured both against the real airport data rather than guessing.',
-      'The width was pinned. The formula worked out to 1.5 pixels for every runway at every range — it had never varied once, for any airport, since the day it shipped. Width now rises with the runway\u2019s drawn size.',
-      'And at 40 or 80 miles a real runway is three to nine pixels long. Drawn honestly it is a speck; drawn bigger it would be a lie about a distance. So below the size where a line can actually show you a DIRECTION, it becomes a small circle — the airport symbol every aeronautical chart uses — one per airport rather than one per runway.',
+      'Every runway used to be drawn the same width, at every range and at every airport — it had never once varied since the day it shipped. Width now rises with the runway\u2019s drawn size.',
+      'And at 40 or 80 miles a real runway is only a few pixels long. Drawn honestly it is a speck; drawn bigger it would be a lie about a distance. So below the size where a line can actually show a DIRECTION, it becomes a small circle — the airport symbol every aeronautical chart uses — one per airport rather than one per runway.',
       'Zoom in and the circles become real runways again, where they are, pointing where they point. That is what a real navigation display does.',
     ],
     broken: [
-      'The route still does not appear. Follow a flight and send the report — 1.24.1 added the last piece I need.',
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'A followed flight still shows no route.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
     ],
   },
   {
     version: '1.25.0',
     date: '2026-08-04',
-    headline: 'The panel now checks the aeroplane it was handed is the one it asked for.',
+    headline: 'The panel checks that the aeroplane it was handed is the one it asked for.',
     changed: [
-      'You asked why I could not just write simple tests instead of sending you round the houses. You were right: of the last five things you found, four were reachable by a plain test and in every case I only wrote the test AFTER you found it. That is backwards.',
-      'So I wrote tests that check RULES rather than examples — sentences that must be true of every reading in every state, checked by walking the panel through following, switching aircraft, and losing the feed.',
-      'The first one failed immediately, on a bug nobody had reported. When the panel asked the feed about one aircraft, it accepted whatever came back without checking it was that aircraft. Real numbers, real timestamps, honest-looking provenance — wrong aeroplane. You would have had no way to tell.',
-      'It now refuses a broadcast that is not about the aircraft you are following, and says so instead of showing it.',
+      'When the panel asked the feed about one aircraft, it accepted whatever came back without checking it really was that aircraft. Real numbers, real timestamps, honest-looking provenance — and possibly the wrong aeroplane, with nothing on screen to say so.',
+      'It now refuses a broadcast that is not about the aircraft being followed, and says so instead of showing it.',
     ],
     broken: [
-      'The route still does not appear. 1.24.1 added the last piece of evidence I need — follow a flight and send the report.',
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
+      'A followed flight still shows no route.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
     ],
   },
   {
     version: '1.24.1',
     date: '2026-08-04',
-    headline: 'One more line in the route probe, and this is finished.',
+    headline: 'The panel records who answered when a route cannot be shown.',
     changed: [
-      'Your last report said the route feed answered with 201, content-type text/html, and ZERO bytes. That is not the routes API replying — an API returning routes sends JSON with something in it. Something else is answering.',
-      'The probe now records WHO answered: the final address, whether the request got redirected on the way, and the server and ray headers. Those three things tell apart the possibilities I am not going to guess between.',
-      'That is the last piece. Follow a flight, send the report, and this either works in the next release or gets abandoned with a reason.',
+      'When a route does not appear, the diagnostics report now records where the reply really came from: the final address, whether the request was redirected on the way, and which server answered. Enough to tell the possibilities apart rather than guess between them.',
     ],
     broken: [
-      'The route still does not appear, and until the above comes back I will not pretend to know why.',
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
-      'The ResizeObserver warnings you saw on the iPad have not come back in your latest report — they are still not diagnosed, only absent.',
+      'A followed flight still shows no route, and why is not yet known.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
     ],
   },
   {
     version: '1.24.0',
     date: '2026-08-04',
-    headline: 'Your route probe came back — and the request was ACCEPTED.',
+    headline: 'A followed flight stops carrying the last one\u2019s name.',
     changed: [
-      'The route feed answered your device with HTTP 201, which means it accepted the request. I had expected a rejection naming a field I had got wrong; instead the shape is right and something else is going on with the reply.',
-      'My probe could not tell me what. It reported "no readable keys", which cannot distinguish an empty reply from an unreadable one from a perfectly good one in an unexpected shape — and those need three different fixes. It now carries the actual reply, its size and its type. One more report and this is solved.',
-      'A real bug you caught in the same report: you were following N81AB and the heading still said "N460DF is not broadcasting a heading". The panel was naming an aircraft you had stopped following. Every field is cleared on a switch now.',
-      'The diagnostics report also says when the route block is about a different aircraft than the one you are following, instead of quietly showing the last one.',
+      'Switching from one aircraft to another left the previous one\u2019s name in the readings — following one registration while the heading still named a different one as the aircraft not broadcasting. Every field is cleared on a switch now.',
+      'The diagnostics report says when the route block is about a different aircraft than the one being followed, instead of quietly showing the last one.',
+      'The route request itself is accepted by the feed, so the request is not the thing that is wrong. The report now carries the actual reply, its size and its type.',
     ],
     broken: [
-      'The route still does not appear, and now I know it is not the request that is wrong. Follow a flight and send the report once more — WHAT THE ROUTE FEED ACTUALLY SENT now has the reply in it.',
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
-      'The console shows repeated "ResizeObserver loop" warnings on iPad. They are noise from the layout settling, not a fault, and they are not fixed yet.',
+      'A followed flight still shows no route.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'The browser console shows repeated "ResizeObserver loop" warnings on iPad. They are noise from the layout settling, not a fault, and they are not fixed.',
     ],
   },
   {
     version: '1.23.1',
     date: '2026-08-04',
-    headline: 'The icon at the top of the panel is now actually the app’s icon.',
+    headline: 'The icon at the top of the panel is the app’s own icon.',
     changed: [
-      'You held the panel up next to your home screen and said it did not match closely enough. It did not: it was a hand-drawn copy — no dark plate around it, the horizon level instead of banked, no pitch ladder, and no dark outline on the aircraft symbol. Same idea, different drawing.',
-      'It is the real icon file now — the exact same one on your home screen and in your browser tab, not a copy of it. It cannot drift away from that icon again, because there is only one of it.',
-      'A check now fails the build if those ever stop being the same file. Resembling the icon is not good enough, which was the whole point.',
+      'The icon in the (i) menu was a hand-drawn copy of the app icon rather than the icon itself — the horizon level instead of banked, no dark plate around it, no pitch ladder, no outline on the aircraft symbol. Same idea, different drawing.',
+      'It is the real icon file now: the exact one on the home screen and in the browser tab, not a copy of it. There is only one of it, so it cannot drift again.',
+      'A check fails the build if those ever stop being the same file. Resembling the icon is not good enough.',
     ],
     broken: [
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
-      'The route shape is still unconfirmed. WHAT THE ROUTE FEED ACTUALLY SENT, in the diagnostics report, is the thing to send me.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight still shows no route.',
     ],
   },
   {
@@ -156,15 +203,15 @@ export const RELEASES = [
     date: '2026-08-04',
     headline: 'The radar counts down instead of saying "a moment".',
     changed: [
-      'When the scope is waiting, the indicator now shows a countdown: NO CONTACT · RETRY 12s, ticking down to the next sweep. You said a wait with no number just looks broken, and you were right — the app knew the number the whole time and never said it.',
-      'It counts down to when the panel will ASK, not to when the radar will work. Those are different promises and only the first one is mine to make: the next answer might be another refusal. You will see it try, and you will see what happened.',
+      'When the scope is waiting, the indicator shows a countdown: NO CONTACT · RETRY 12s, ticking down to the next sweep. A wait with no number just looks broken, and the app knew the number the whole time without ever saying it.',
+      'It counts down to when the panel will ASK, not to when the radar will work. Those are different promises and only the first can honestly be made — the next answer might be another refusal. Either way it is visible: the attempt, and what came back.',
       'An ageing scope counts down too, and the aircraft on it stay tappable while it does.',
       'The stand-off message now shrinks as the wait does. It used to say "standing off for up to 600s" for the whole ten minutes, including the last thirty seconds of it. It now says how much is actually left.',
     ],
     broken: [
       'The countdown cannot tell you when the feed will start answering, only when the panel will next try. Nothing on this device knows the first one.',
       'The rate limiting itself is unchanged and is not being fixed; the note in 1.20.0 still stands.',
-      'The route shape is still unconfirmed. WHAT THE ROUTE FEED ACTUALLY SENT, in the diagnostics report, is the thing to send me.',
+      'A followed flight still shows no route.',
     ],
   },
   {
@@ -172,14 +219,14 @@ export const RELEASES = [
     date: '2026-08-04',
     headline: 'Two things the panel was saying that were not true.',
     changed: [
-      'Your diagnostics report said the heading had failed because "this device reports no magnetic heading". Three lines further down, the same report showed your compass reading 278.3 degrees. Your phone has a compass — it had just stopped sending updates while the page was in the background. The panel now says which of those two it is, and shows the last reading it actually had.',
-      'That distinction matters more than it sounds. A wrong number looks wrong. A confident wrong sentence sends you off to fix hardware that works.',
-      'The FOLLOWING banner said "this panel is showing that aircraft\u2019s broadcast, not this device" from the moment you pressed follow — including when the feed was rate limited and no broadcast ever arrived. It was showing nothing. That sentence was sitting at the top of a panel of red crosses telling you it had data.',
+      'The panel could report that the heading had failed because "this device reports no magnetic heading" while the same report showed the compass reading 278.3 degrees a few lines further down. The compass was there — it had simply stopped sending updates while the page was in the background. The panel now says which of those two it is, and shows the last reading it actually had.',
+      'That distinction matters more than it sounds. A wrong number looks wrong. A confident wrong sentence sends someone off to fix hardware that works.',
+      'The FOLLOWING banner said "this panel is showing that aircraft\u2019s broadcast, not this device" from the moment follow was pressed — including when the feed was rate limited and no broadcast ever arrived. It was showing nothing, while a line at the top of a panel full of red crosses claimed it had data.',
       'It now says "no broadcast received yet" until one actually arrives, and gives the feed\u2019s own reason when there is one. Same aircraft, same crosses, but the panel is no longer arguing with itself.',
     ],
     broken: [
-      'Rate limiting is unchanged. If it will not answer, following an aircraft still gives you a crossed-out panel — the difference is that the panel now tells you why instead of claiming otherwise.',
-      'The route shape is still unconfirmed. WHAT THE ROUTE FEED ACTUALLY SENT, in the diagnostics report, is the thing to send me.',
+      'Rate limiting is unchanged. If the feed will not answer, following an aircraft still gives a crossed-out panel — the difference is that it now says why instead of claiming otherwise.',
+      'A followed flight still shows no route.',
     ],
   },
   {
@@ -187,15 +234,15 @@ export const RELEASES = [
     date: '2026-08-04',
     headline: 'The panel stops crossing itself out while a flight is being followed.',
     changed: [
-      'You sent a photo of DAL2229 with every instrument crossed out at once — speed, G, attitude, altitude, vertical speed, heading — with the power on and the feed working. That was arithmetic, not a broken feed, and it is fixed.',
+      'Following a flight could cross out every instrument at once — speed, G, attitude, altitude, vertical speed, heading — with the power on and the feed working. That was arithmetic rather than a broken feed, and it is fixed.',
       'Each reading has a limit on how long it stays believable before the panel refuses to show it. Those limits were set for this device\u2019s own sensors, which report many times a second. Heading\u2019s limit was five seconds — and a followed aircraft is asked once every ten. The number was dead before the next one could possibly arrive, every single time.',
       'The aircraft\u2019s readings now age on the aircraft\u2019s own clock: still shown, still honest about how old they are, but no longer declared dead a moment after they arrive. Nothing is invented and nothing is held longer than it should be — a followed flight goes STALE, and then FAIL, only when the feed has genuinely stopped.',
       'THE RADAR NOW SAYS WHAT STATE IT IS IN, above the scope. LISTENING before the first sweep. CONTACT with a count once aircraft are on it. AGEING when the feed has stopped answering but the aircraft shown are still real ones. NO CONTACT — which means two different things, so it says which: nothing in range, or the feed will not answer.',
-      'The indicator also tells you when a tap will actually do something. That is a separate fact from the scope being full, which is why it is shown separately: an ageing scope is still tappable, and a fresh sweep with an empty sky is not.',
+      'The indicator also says when a tap will actually do something. That is a separate fact from the scope being full, which is why it is shown separately: an ageing scope is still tappable, and a fresh sweep over an empty sky is not.',
     ],
     broken: [
-      'The route shape is still unconfirmed, so the route may read as unavailable. The diagnostics report behind the version stamp carries WHAT THE ROUTE FEED ACTUALLY SENT — that is the thing to send me.',
-      'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands. AGEING on the indicator is that, named.',
+      'A followed flight still shows no route.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands. AGEING on the indicator is that, named.',
       'Following an aircraft still crosses out pitch, slip, true and indicated airspeed, and indicated altitude. That is correct and is not this defect — ADS-B does not carry them, and the panel will not invent them.',
     ],
   },
@@ -204,14 +251,14 @@ export const RELEASES = [
     date: '2026-08-04',
     headline: 'The route feed was quietly eating the radar’s allowance. Fixed.',
     changed: [
-      'You reported tapping the radar to add an aircraft had stopped working. The tapping itself is fine — there was nothing on the scope to tap, and that is what 1.21.0 broke.',
-      'The route feature I added yesterday talks to adsb.lol, which is the same service the aircraft feed uses. When a service turns us away, the panel is supposed to stop asking it for a while. I recorded that stand-off separately for the route feed — which sounds careful and is the opposite, because their limit counts every request from us together, not per feature.',
+      'Tapping the radar to follow an aircraft appeared to have stopped working. The tapping was fine — there was nothing on the scope to tap, and that is what 1.21.0 broke.',
+      'The route feature talks to adsb.lol, which is the same service the aircraft feed uses. When a service turns us away, the panel is supposed to stop asking it for a while. That stand-off was being recorded separately for the route feed — which sounds careful and is the opposite, because their limit counts every request from this app together rather than per feature.',
       'So a refusal earned by asking for a route never told the aircraft feed to back off, and the aircraft feed kept asking, and got refused. The route is a nicety; the aircraft ARE the instrument. One stand-off now covers the whole service.',
-      'The panel also will not ask for a route at all while the aircraft feed is being refused. Spending the next request on a line of text instead of on the contents of your radar is the wrong trade.',
+      'The panel also will not ask for a route at all while the aircraft feed is being refused. Spending the next request on a line of text instead of on the contents of the radar is the wrong trade.',
     ],
     broken: [
-      'If your scope was empty, give it a few minutes after loading this version — any stand-off already recorded has to expire on its own.',
-      'The route shape is still unconfirmed, so the route itself may read as unavailable. The diagnostics report behind the version stamp has a block called WHAT THE ROUTE FEED ACTUALLY SENT — that is the thing to send me.',
+      'If the scope was empty before this version, give it a few minutes — any stand-off already recorded has to expire on its own.',
+      'A followed flight still shows no route.',
       'The underlying rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
     ],
   },
@@ -220,15 +267,15 @@ export const RELEASES = [
     date: '2026-08-04',
     headline: 'The flight you are following says where it is going.',
     changed: [
-      'Follow an aircraft and the banner now shows its route — KSFO → KJFK, and every stop in between if it has any. This is the flight-plan idea you asked for, in the smallest form that is honest.',
+      'Follow an aircraft and the banner shows its route — KSFO → KJFK, and every stop in between if it has any. A flight plan in the smallest form that is honest.',
       'It says PLAUSIBLE right next to it, and that word is not decoration. adsb.lol work the route out from the callsign — UAL328 flies the sector United usually fly it on — which is a good guess and is not a filed flight plan. The aircraft could be diverting, repositioning, or flying something else entirely under a reused callsign. The panel will not present a guess as a clearance.',
       'It is asked once per flight, not once per sweep. Following one aeroplane for an hour costs the volunteers who run this service a single request.',
       'The (i) menu now lists the route feed alongside every other source, with its licence and a link to its terms.',
     ],
     broken: [
       'THE ROUTE MAY NOT APPEAR AT ALL ON THIS RELEASE, and if it does not, that is expected rather than a fault. The exact shape of the request this feed wants is not published anywhere this session could read, so the panel sends its best-reasoned guess. If the guess is wrong the route simply reads as unavailable — it will never show a made-up one.',
-      'That is what the diagnostics report behind the version stamp is for. Follow a flight, then open it: a block called WHAT THE ROUTE FEED ACTUALLY SENT records exactly what came back, including the field the feed rejected if it rejected one. Send me that and the next release is a correction rather than another guess.',
-      'There is still no map. The route is two airport codes, not a drawn line — that comes after the shape above is confirmed.',
+      'When it does not appear, the diagnostics report behind the version stamp records exactly what came back, including the field the feed rejected if it rejected one.',
+      'There is still no map. The route is two airport codes rather than a drawn line.',
       'The rate limiting is unchanged and is not being fixed; the note in 1.20.0 still stands.',
     ],
   },
@@ -237,7 +284,7 @@ export const RELEASES = [
     date: '2026-08-04',
     headline: 'The radar explains itself in English when the feed says no.',
     changed: [
-      'When the aircraft feed turns us away, the panel now says so in a sentence instead of printing the raw server reply. It used to read "No traffic: adsb.lol rate limited us (HTTP 429; cf-ray a258e8a82ff1fa4e-SJC) | adsb.fi returned HTTP 403 — server: cloudflare; ray ...". Every word of that was true and none of it was for you.',
+      'When the aircraft feed turns us away, the panel says so in a sentence instead of printing the raw server reply. It used to put the refusal codes, the internal trace identifiers and both services\u2019 names straight onto the gauge. Every word of that was true and none of it was for a reader.',
       'It says WHY when the cause is actually known: the panel reaches these services through Cloudflare, whose address is shared with a great many other sites, so the allowance can be spent by traffic that has nothing to do with you. When the cause is not known it does not guess.',
       'It says what is still true on screen — that the aircraft drawn are the last ones really heard and are ageing — because a stale scope and an empty sky mean completely different things.',
       'Nothing is hidden. The full server reply is still in the diagnostics report behind the version stamp, and on a long-press of the status line. Simplifying an error is help; hiding one is not.',
@@ -279,16 +326,16 @@ export const RELEASES = [
     headline: 'Runways on the scope, and the horizon recovers twice as fast.',
     changed: [
       'Airports now show their RUNWAYS on the radar — the real thresholds, where they actually are and pointing where they actually point. Centre the scope on an airport and drop to 10 nm to see the layout with real traffic moving over it.',
-      'GENTLE ROTATION NO LONGER ERRORS THE HORIZON, and this one is a real fix rather than a workaround. Turning the panel while it is tilted — in a cradle, on a desk, in your hand — used to invent roll that was not happening: about ten degrees of it at a ten-degree tilt, and fifty at sixty, from three seconds of slow turning. Your report is what found it. The maths that carries the gyro forward was using a shortcut that is only exact when the panel is bolt upright, and it now uses the full relations.',
+      'GENTLE ROTATION NO LONGER ERRORS THE HORIZON, and this one is a real fix rather than a workaround. Turning the panel while it is tilted — in a cradle, on a desk, in the hand — used to invent roll that was not happening: about ten degrees of it at a ten-degree tilt, and fifty at sixty, from three seconds of slow turning. The maths that carries the gyro forward was using a shortcut that is only exact when the panel is bolt upright, and it now uses the full relations.',
       'The filter also trusts the gyro for half as long before the accelerometer wins, so if anything does knock it off it comes back in well under a second instead of four.',
       'Aircraft on the ground no longer appear as traffic below you. A real flight deck does not show parked aeroplanes, and an airport ramp was filling the BELOW band. ALL still shows them, because that one is marked as ours rather than a real setting.',
-      'The aircraft list says how many there are and how many are still below the fold. It always scrolled; nothing on screen said so.',
+      'The aircraft list says how many there are and how many are still further down. It always scrolled; nothing on screen said so.',
       "What's new shows the last three releases and puts the rest behind one press, instead of every version ever, forever.",
       'The welcome screen leads with the instrument instead of a wall of grey text.',
       "A link to the rest of Noah's apps, in the (i) menu and in the footer.",
     ],
     broken: [
-      'The horizon fix is verified against the maths, not against hardware — this sandbox has no accelerometer. If it still misbehaves, press the version stamp WHILE it is wrong and send that report; the last one is what made the cause findable.',
+      'The horizon fix is verified against the maths rather than against hardware. If it still misbehaves, press the version stamp WHILE it is wrong — that report is what makes a cause findable.',
       'Held in a hand the panel never goes properly still, so it stays at COARSE quality and never declares itself converged. That is honest rather than broken, but it means a hand-held panel has neither of the two things that normally rescue a drifting horizon.',
       'Runways are drawn without their identifiers. Adding labels risks the overprinting smear the aircraft labels already had to be rescued from.',
       'The runway data is Northern California only, like the airports.',
@@ -377,7 +424,7 @@ export const RELEASES = [
     headline: 'Following a flight now centres the radar on it — and the crew readouts are real.',
     changed: [
       'Follow an aircraft and the scope centres on THAT aircraft, not on your desk. Every other instrument had already switched to it; the radar was the last thing still showing where you are standing. The caption names what the centre is, so it no longer says "within 40 nm of this device" while pointing at a 737 over the Sierra.',
-      'Confirmed working from your own device: a 737 MAX broadcast its selected altitude (32,992 ft), its selected heading and the altimeter setting its crew was flying to. Those three readouts are real — they were built from published field names without a single real response ever having been seen, and now they have been.',
+      'Confirmed against a real aeroplane: a 737 MAX broadcast its selected altitude (32,992 ft), its selected heading and the altimeter setting its crew was flying to. Those three readouts had been built from published field names without a single real response ever having been seen. Now they have been.',
       'The PWR switch responds the instant it is pressed instead of waiting for the first weather fetch to finish.',
     ],
     broken: [
@@ -389,7 +436,7 @@ export const RELEASES = [
     date: '2026-08-03',
     headline: 'When the aircraft feed turns us away, the panel now says for how long.',
     changed: [
-      'A rate-limited reply used to read only "rate limited us (HTTP 429)". The service usually says how long to wait and how much allowance is left, and all of that was being thrown away. It is on the gauge and in the report now.',
+      'When the aircraft feed turns the panel away, it usually says how long to wait and how much allowance is left. All of that was being thrown away and replaced with a bare refusal code. It is on the gauge and in the report now.',
     ],
     broken: [
       'Being turned away on the very first request of a session is not something this app can pace its way out of. It reaches the feed through Cloudflare, which shares one address across an enormous number of sites, so the allowance can already be spent by traffic that has nothing to do with you.',
