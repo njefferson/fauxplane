@@ -74,6 +74,13 @@
           <button type="button" role="tab" id="tab-radar" class="tab" data-page="radar" aria-controls="page-radar" aria-selected="false" tabindex="-1">
             RADAR
           </button>
+          <!-- The sixth tab, and the only one added since the strip was
+               settled. It earns it by being an INSTRUMENT — the navigation
+               display over the ground it is above — rather than information
+               about the app, which is what the (i) menu is for. -->
+          <button type="button" role="tab" id="tab-map" class="tab" data-page="map" aria-controls="page-map" aria-selected="false" tabindex="-1">
+            MAP
+          </button>
           <button type="button" role="tab" id="tab-bite" class="tab" data-page="bite" aria-controls="page-bite" aria-selected="false" tabindex="-1">
             BITE
           </button>
@@ -356,6 +363,8 @@
       <section id="page-atis" class="page page-cards" role="tabpanel" aria-labelledby="tab-atis" tabindex="0" hidden></section>
 
       <section id="page-radar" class="page page-cards" role="tabpanel" aria-labelledby="tab-radar" tabindex="0" hidden></section>
+
+      <section id="page-map" class="page page-cards" role="tabpanel" aria-labelledby="tab-map" tabindex="0" hidden></section>
 
       <section id="page-bite" class="page page-cards" role="tabpanel" aria-labelledby="tab-bite" tabindex="0" hidden></section>
 

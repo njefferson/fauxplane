@@ -27,10 +27,84 @@ on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.32.0, MAP mode on the navigation display, 2026-08-05
+## STAGED NOW — 1.33.0, the MAP page and a bundled basemap, 2026-08-05
 
-**1.32.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.33.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.29.0.
+
+### A sixth tab, and why it earns one
+
+The tab strip is for INSTRUMENTS; everything else lives behind the (i), which is
+what §7e requires. This earns a tab because it IS an instrument — the navigation
+display over the ground it is above, which is what MAP mode means on a real
+aeroplane — and the PFD's ND is a few inches across. A map you cannot see the
+ground on is not the thing.
+
+**It does not grow a second renderer.** Every mark is drawn by `drawPlan`: same
+projection, same TCAS symbology, same runways and airports, same track-up
+rotation, same range arcs. `map.js` is a page around it — a canvas, the layer
+switches, the range buttons. The PFD's PLAN/MAP switch moves this page too,
+because both read `ndView`, one thunk built in `app.js` and shared. Three
+surfaces drawing one truth is fine; three copies of that truth is how they
+disagree, and this repo has committed that defect once already.
+
+### The basemap: bundled, clipped, public domain
+
+Natural Earth, and the licence was read from **LICENSE.md in the publisher's own
+repository** rather than from a description of it: *"Everything here is public
+domain. ... No permission is needed to use Natural Earth. Crediting the authors
+is unnecessary."* A licence grant on the artifact, which is the same standard the
+OurAirports question was finally settled on.
+
+**They are credited anyway**, in their own offered wording, under the map. A
+panel whose contract is that values trace to a source does not leave one
+anonymous, and writing our own sentence about somebody else's terms is the
+defect the traffic providers already produced once.
+
+**1:10m, not the 1:50m the plan named.** This scope runs from 10 to 80 nm. The
+1:50m build is generalised for looking at continents; drawn across a 10 nm
+display its coastline is a handful of straight lines through the water, which is
+not a coarse map but a wrong one. The larger download does not reach the app,
+because what ships is the clip: **162 KB, half the size of the airport database**.
+
+**Bundled rather than tiled**, for exactly the OurAirports reasons: a dataset in
+the repository cannot be rate limited, works with the radio off, and puts none of
+this app's load on someone else's tile server.
+
+**The two clips have different contracts**, and the first version of the test
+asserted the wrong one for half the file. Lines are split at the boundary and
+kept near it. Areas are kept WHOLE or dropped — clipping a polygon properly means
+cutting it against the box and closing the cut edge, and a lake closed along an
+invented straight edge is a shoreline this app did not measure. The overshoot is
+bounded rather than unlimited, because "keep anything that touches" would let one
+continent-sized polygon back in.
+
+### What the gate found
+
+- **SC 2.5.3 on all four layer switches.** GND, ARPT, TFC, TRK are flight-deck
+  abbreviations and none of them appeared in its own accessible name, so "tap
+  ARPT" had no answer. Every name opens with the visible word now — and it has to
+  OPEN with it, not merely mention it, or a substring check passes by accident
+  (hub LESSONS §29).
+- **The EICAS rows are `<p>` elements and this stylesheet has no paragraph
+  reset.** The user agent gives them `margin: 1em 0`, which at that font size is
+  24px of blank per row — more than the row itself. That is why the strip could
+  not fit two messages in a 76px cap, why the first fix looked like it needed a
+  bigger cap, and why the contrast sampler kept reading pixels no text was on.
+  One line.
+- **`1.00:1` a second time, for a genuinely new reason.** The traffic flag
+  carries a retry countdown, so its text changed every second and the strip was
+  rebuilt each time. The contrast sampler reads a box, hides that element,
+  screenshots, then samples — and a node replaced in between is a node still
+  painted when the shot is taken, so it measured the text against itself. The
+  strip now rebuilds only when the LIST changes and writes text in place, which
+  also stops it dropping focus once a second.
+
+---
+
+## Previously staged — 1.32.0, MAP mode on the navigation display, 2026-08-05
+
+**`main` is on 1.29.0.**
 
 ### The gap this closes
 

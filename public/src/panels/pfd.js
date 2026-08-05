@@ -320,30 +320,52 @@ export function createPfd({
    * The accessible name still carries the summary, so "none" is something a
    * reader can be told rather than an element that has disappeared.
    */
-  const lastAlertKey = { value: null };
+  /**
+   * THE ROWS ARE KEPT AND THEIR TEXT IS UPDATED; only a change in the LIST
+   * ITSELF rebuilds them.
+   *
+   * The traffic flag carries a countdown — `NO CONTACT · RETRY 14s` — so its
+   * text changes every second. Rebuilding on every text change replaced the row
+   * nodes once a second, which is wasteful, would drop focus out of the strip
+   * if anyone were reading it, and broke measurement outright: the contrast
+   * gate reads a box, hides that element, screenshots, and samples. A node
+   * replaced in between is a node still painted when the screenshot is taken,
+   * and the sampler then reads the text's own pixels as its backdrop and
+   * reports 1.00:1 — a colour compared against itself. That is the second
+   * distinct way this file has produced that number.
+   *
+   * So the STRUCTURE key is the ids and levels, which change only when the list
+   * of conditions does. Text is written in place.
+   */
+  let alertShape = null;
+  let alertRows = [];
   const drawEicas = () => {
     if (!eicasHost) return;
     const list = alerts() ?? [];
     eicasHost.setAttribute('aria-label', alertsSummary(list));
     eicasHost.hidden = list.length === 0;
 
-    // The strip is inside a live region's reach, so rebuilding identical nodes
-    // every frame would re-announce them. The key is what a reader would hear.
-    const key = list.map((a) => `${a.level}|${a.text}|${a.detail}`).join('\n');
-    if (key === lastAlertKey.value) return;
-    lastAlertKey.value = key;
-
-    eicasHost.replaceChildren(
-      ...list.map((a) =>
+    const shape = list.map((a) => `${a.id}:${a.level}`).join('|');
+    if (shape !== alertShape) {
+      alertShape = shape;
+      alertRows = list.map((a) => {
+        const code = el('span', { class: 'eicas-code' });
         // The detail span is omitted rather than emptied when there is none:
         // an empty element still takes the row's gap and still answers a
         // selector, which is how a contrast registry ends up measuring nothing.
-        el('p', { class: 'eicas-msg', 'data-level': a.level }, [
-          el('span', { class: 'eicas-code', text: a.text }),
-          ...(a.detail ? [el('span', { class: 'eicas-detail', text: a.detail })] : []),
-        ]),
-      ),
-    );
+        const detail = a.detail ? el('span', { class: 'eicas-detail' }) : null;
+        const row = el('p', { class: 'eicas-msg', 'data-level': a.level }, detail ? [code, detail] : [code]);
+        return { row, code, detail };
+      });
+      eicasHost.replaceChildren(...alertRows.map((r) => r.row));
+    }
+
+    for (let i = 0; i < list.length; i += 1) {
+      const r = alertRows[i];
+      if (!r) continue;
+      if (r.code.textContent !== list[i].text) r.code.textContent = list[i].text;
+      if (r.detail && r.detail.textContent !== list[i].detail) r.detail.textContent = list[i].detail;
+    }
 
     /**
      * FOCUSABLE ONLY WHEN IT ACTUALLY SCROLLS (SC 2.1.1).

@@ -85,6 +85,7 @@ const SHELL = [
   '/src/panels/pfd.js',
   '/src/panels/atis.js',
   '/src/panels/bite.js',
+  '/src/panels/map.js',
   '/src/panels/radar.js',
   '/src/panels/diagnostics.js',
   '/src/panels/setup.js',
@@ -102,7 +103,7 @@ const SHELL = [
  * ships, and the panel's instruments do not need it. If it fails to download,
  * the centre picker says so and everything else still works offline.
  */
-const OPTIONAL = ['/data/navdata.json', '/data/geoid-norcal.json', '/data/wmm-cof.json'];
+const OPTIONAL = ['/data/navdata.json', '/data/basemap.json', '/data/geoid-norcal.json', '/data/wmm-cof.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

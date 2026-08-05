@@ -668,6 +668,13 @@ body {
   gap: 0.5rem;
   align-items: baseline;
   min-width: 0;
+  /* A <p> AND THERE IS NO GLOBAL PARAGRAPH RESET IN THIS FILE. The user agent
+     gives it `margin: 1em 0`, which at this font size is 24px of blank per row
+     — more than the row itself. That is why the strip could not fit two
+     messages in a 76px cap, why the contrast sampler kept reading pixels no
+     text was on, and why the first fix looked like it needed a bigger cap. It
+     needed this line. */
+  margin: 0;
 }
 
 /* The flight-deck message: short, upper case, and the thing scanned for. It
@@ -2650,4 +2657,81 @@ body[data-powered='true'] .gate {
 .radar-centre-hit:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+
+/* --- the MAP page --------------------------------------------------------
+ *
+ * ONE CARD, ALL GLASS. The map is the page: the canvas takes every pixel the
+ * card can give it and the controls are a single wrapping strip beneath. A map
+ * broken into sections is a map you cannot see anything on, which is the whole
+ * reason this is a page rather than a corner of the PFD.
+ */
+.map-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* The card fills the page so the canvas has real height to measure. Without
+     it the canvas sizes to its own content — which for a canvas is nothing. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.map-canvas {
+  flex: 1 1 auto;
+  width: 100%;
+  /* In rem like every other instrument's floor, so it stays proportional to the
+     reader's type size instead of being the next fixed height that fails at
+     200% text. */
+  min-height: 14rem;
+  background: var(--page-alt);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.map-layers,
+.map-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* The layer switches and the range buttons are the same kind of control on the
+   same instrument, so they are the same shape. The pressed state changes BOTH
+   the border and the text colour — never the fill alone (Doctrine §4, and the
+   night palette's own note that deutan cannot separate two of these accents). */
+.map-layer,
+.map-range-btn {
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0 0.6rem;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.map-layer[aria-pressed='true'],
+.map-range-btn[aria-pressed='true'] {
+  border-color: var(--rail);
+  color: var(--text);
+}
+
+.map-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
 }

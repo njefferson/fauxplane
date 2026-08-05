@@ -344,7 +344,7 @@ export function runwayWidthPx(len) {
   return Math.max(2, Math.min(7, len * 0.13));
 }
 
-export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [], readiness = null, mode = 'plan', up = null, wind = null }) {
+export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [], readiness = null, mode = 'plan', up = null, wind = null, basemap = null, layers = null }) {
   /**
    * TWO GEOMETRIES, ONE RENDERER.
    *
@@ -383,6 +383,53 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   ctx.beginPath();
   roundRect(ctx, x + 1, y + 1, w - 2, h - 2, 8);
   ctx.clip();
+
+  /**
+   * --- THE BASEMAP, UNDER EVERYTHING -------------------------------------
+   *
+   * Natural Earth, public domain, clipped to this region and BUNDLED — see
+   * `scripts/build-basemap.mjs` for the licence read from the publisher's own
+   * repository and for why it is not tiled.
+   *
+   * IT IS FURNITURE AND IT MUST LOOK LIKE FURNITURE. A coastline as bright as
+   * an aircraft is a scope where the ground competes with the traffic, which is
+   * the one thing a traffic display cannot afford. Every layer is drawn in a
+   * dim token at reduced alpha, under the range rings, and it is the only thing
+   * on this display that can be switched off.
+   *
+   * It goes through `project` like everything else, so it turns with MAP mode
+   * without knowing that MAP mode exists.
+   */
+  if (basemap && layers?.basemap !== false) {
+    ctx.save();
+    for (const layer of basemap.layers ?? []) {
+      if (layers?.[layer.id] === false) continue;
+      const area = layer.kind === 'area';
+      ctx.globalAlpha = area ? 0.22 : 0.5;
+      ctx.strokeStyle = tokens.hairline;
+      ctx.fillStyle = tokens.hairline;
+      ctx.lineWidth = layer.id === 'coast' ? 1.4 : 1;
+      for (const shape of layer.shapes) {
+        ctx.beginPath();
+        let started = false;
+        for (const [lon, lat] of shape) {
+          const q = project({ lat, lon }, projection);
+          if (!q) continue;
+          if (started) ctx.lineTo(q.x, q.y);
+          else ctx.moveTo(q.x, q.y);
+          started = true;
+        }
+        if (!started) continue;
+        if (area) {
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+  }
 
   // --- range rings, or range ARCS ------------------------------------------
   // A full circle in MAP mode would spend most of its ink behind the aeroplane
@@ -459,7 +506,7 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   ctx.save();
   ctx.lineCap = 'butt';
   const drawn = [];
-  for (const rw of runways) {
+  for (const rw of (layers?.airports === false ? [] : runways)) {
     const a = project(rw.le, projection);
     const b = project(rw.he, projection);
     if (!a || !b) continue;
@@ -622,7 +669,7 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   // DRAWING of a flight path rather than a record of one, and no extrapolation
   // ahead, because ADS-B says where an aircraft has been and never where it is
   // going.
-  if (trail.length > 1) {
+  if (trail.length > 1 && layers?.track !== false) {
     ctx.save();
     ctx.strokeStyle = tokens.primary;
     ctx.globalAlpha = 0.55;
@@ -648,7 +695,7 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
 
   const labelSize = Math.max(8, Math.min(12, r * 0.062));
   const pending = [];
-  for (const a of aircraft ?? []) {
+  for (const a of (layers?.traffic === false ? [] : aircraft ?? [])) {
     const p = project(a, projection);
     if (!p) continue;
     // Outside the drawn circle it would sit in a corner and read as being at a

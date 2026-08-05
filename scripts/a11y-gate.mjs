@@ -74,7 +74,12 @@ const ALL_VIEWPORTS = [
  */
 const VIEWPORTS = argv.quick ? [ALL_VIEWPORTS[0]] : ALL_VIEWPORTS;
 
-const PAGES = ['pfd', 'atis', 'radar', 'bite', 'setup'];
+/**
+ * EVERY PAGE, AND A NEW ONE JOINS THIS LIST IN THE SAME COMMIT AS THE CODE THAT
+ * RENDERS IT. A surface missing from here is a surface that ships unmeasured,
+ * which is hub LESSONS §28 and cost a sibling app a release.
+ */
+const PAGES = ['pfd', 'atis', 'radar', 'map', 'bite', 'setup'];
 
 /**
  * A traffic response in the shape /api/traffic emits, so the radar page renders
@@ -245,6 +250,12 @@ const REGISTRY = [
   { selector: '.koll-unit', label: 'Kollsman unit', min: 4.6, page: 'atis' },
   { selector: '.koll-note', label: 'Kollsman note', min: 4.6, page: 'atis' },
   { selector: '.koll-label', label: 'Kollsman input label', min: 4.6, page: 'atis' },
+  // The MAP page's controls, both states each (§4: a new fg/bg pair joins the
+  // gate in the same commit as the code that renders it).
+  { selector: ".map-layer[aria-pressed='true']", label: 'map layer (on)', min: 4.6, page: 'map' },
+  { selector: '.map-note', label: 'map source credit', min: 4.6, page: 'map' },
+  { selector: ".map-range-btn[aria-pressed='true']", label: 'map range (selected)', min: 4.6, page: 'map' },
+  { selector: ".map-range-btn[aria-pressed='false']", label: 'map range (unselected)', min: 4.6, page: 'map' },
   { selector: '.bite-intro', label: 'BITE intro', min: 4.6, page: 'bite' },
   { selector: '.bite-summary', label: 'BITE summary', min: 4.6, page: 'bite' },
   { selector: '.bite-label', label: 'BITE entry label', min: 4.6, page: 'bite' },

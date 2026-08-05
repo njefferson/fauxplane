@@ -816,6 +816,32 @@ export const PLANTS = [
     expect: /the 0\.25 ring reads 3 and sits at 2\.5|old code rounded these/,
   },
   {
+    // A SWITCHED-OFF LAYER IS A FACT ABOUT THE PICTURE. Drop it from the
+    // description and a reader using the panel by voice is told there are no
+    // aircraft on a map whose traffic layer somebody turned off — which is a
+    // different thing entirely, and the map looks perfectly fine.
+    name: 'map: a switched-off layer stops being mentioned',
+    check: 'the map says which layers are off, not just what is on it',
+    gate: 'tests',
+    file: 'public/src/panels/map.js',
+    find: "  if (off.length) parts.push(`${off.join(', ')} turned off`);",
+    replace: '  if (false) parts.push(\'\');',
+    expect: /turned off|SWITCHED-OFF LAYER/i,
+  },
+  {
+    // The credit. Natural Earth say it is unnecessary and offer the wording;
+    // this app names every source anyway, and a citation nobody watches fail is
+    // a citation that lapses in the next tidy-up — the same reason the traffic
+    // providers' attribution has a plant.
+    name: 'map: the basemap credit is replaced with our own wording',
+    check: 'a source is cited in its own words, not in ours',
+    gate: 'tests',
+    file: 'public/data/basemap.json',
+    find: '"credit":"Made with Natural Earth."',
+    replace: '"credit":"Map data from Natural Earth"',
+    expect: /Made with Natural Earth|credit/i,
+  },
+  {
     // The rotation lives at the PROJECTION so every mark inherits it at once.
     // Ignoring `upDeg` there is the defect that would look most like working
     // code: the compass arc still turns, the aeroplane still points up, and

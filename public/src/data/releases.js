@@ -70,6 +70,24 @@
  */
 export const RELEASES = [
   {
+    version: '1.33.0',
+    date: '2026-08-05',
+    headline: 'There is a MAP page, with the actual ground on it.',
+    changed: [
+      'A sixth tab. It is the same scope you already have beside the horizon \u2014 the same aircraft, the same runways and airports, the same PLAN and MAP modes \u2014 drawn across the whole screen, over the coastline, the lakes, the rivers and the built-up areas.',
+      'The ground map is bundled with the app rather than fetched from a tile server. It works with the radio off, it cannot be rate limited on a bad day, and it costs nobody else anything. 162 KB, which is half the size of the airport database already in there.',
+      'It is Natural Earth, which its authors put in the public domain. They say crediting them is unnecessary and offer wording for anyone who wants to; the panel credits them anyway, in their words, under the map.',
+      'Four switches: GND for the ground, ARPT for airports and runways, TFC for traffic, TRK for the path of a flight you are following. Turn any of them off. Whatever is off is said in the display\u2019s spoken description too \u2014 otherwise a map with the traffic layer off would sound exactly like an empty sky.',
+      'The PLAN / MAP switch on the PFD moves this page as well, which is what a mode switch on an aeroplane does.',
+      'And the crew alert strip under the radar had a fault worth naming: each message was a paragraph, and a paragraph carries a blank line above and below it that nothing in this app had ever turned off. Two messages did not fit in a space that should have held three.',
+    ],
+    broken: [
+      'The ground map covers Northern California only \u2014 the same region as the airport database. Outside it the map is empty and everything else still works.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.32.0',
     date: '2026-08-05',
     headline: 'The scope beside the horizon can fly the way a 747 crew actually flies it.',

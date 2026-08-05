@@ -58,6 +58,12 @@ const SOURCES = [
     href: 'https://api.adsb.lol/docs',
   },
   {
+    name: 'The ground on the MAP page',
+    detail:
+      'Natural Earth, released into the public domain by its authors. The coastline, lakes, rivers and built-up areas for this region are bundled with the app, clipped to Northern California, so the map draws with the radio off and cannot be rate limited.',
+    href: 'https://www.naturalearthdata.com/about/terms-of-use/',
+  },
+  {
     name: 'Airports',
     detail:
       'OurAirports, released into the public domain by its contributors. 702 Northern California fields are bundled with the app, so the radar’s centre picker works with the radio off.',

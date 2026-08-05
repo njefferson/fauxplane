@@ -38,7 +38,7 @@ import { probeMagnetometer } from './sensors/magnetometer.js';
 import { crewAlerts } from './data/alerts.js';
 import { upReference } from './render/gauges/plan.js';
 import { createMetarSource } from './data/metar.js';
-import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, followBannerText, lastKnownFix, radarCentre, rememberFix } from './data/traffic.js';
+import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, followBannerText, lastKnownFix, ownAltitudeFt, radarCentre, rememberFix } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
 import { loadNavdata } from './data/navdata.js';
@@ -50,6 +50,7 @@ import { createAnnouncer, el } from './render/dom.js';
 import { createPfd } from './panels/pfd.js';
 import { createAtis } from './panels/atis.js';
 import { createBite } from './panels/bite.js';
+import { createMap } from './panels/map.js';
 import { createRadar } from './panels/radar.js';
 import { buildReport, createDiagnostics, installConsoleCapture } from './panels/diagnostics.js';
 import { createSetup } from './panels/setup.js';
@@ -260,15 +261,17 @@ async function boot() {
    *  because the PFD's traffic getter reads it and is built below. */
   let ndMode = 'plan';
 
-  const pfd = createPfd({
-    canvas,
-    surface,
-    planCanvas,
-    planSurface,
-    // ONE SOURCE, TWO DRAWINGS. The ND reads the same traffic the RADAR page
-    // does, at the same range, rather than keeping its own copy — two pictures
-    // of one truth is exactly how they come to disagree.
-    traffic: () => ({
+  /**
+   * ONE VIEW OF THE TRAFFIC WORLD, READ BY BOTH SURFACES THAT DRAW IT.
+   *
+   * The PFD's navigation display and the MAP page are the same scope at two
+   * sizes. Built here rather than in either panel, and shared, because two
+   * pictures of one truth is precisely how they come to disagree — the comment
+   * that used to sit on this object said so and then had the defect committed
+   * three lines below it (the ND drew a ring around this desk while its
+   * aircraft had been fetched around a hand-picked airport).
+   */
+  const ndView = () => ({
       // The CHOSEN PLACE is passed too. Without it the ND drew a ring around
       // this desk while the aircraft in it had been fetched around whatever
       // airport was picked on the RADAR page — the two-pictures-of-one-truth
@@ -282,6 +285,9 @@ async function boot() {
       trail: traffic.trail,
       // The same flag the RADAR page's chip shows — see radar.js's `readiness`.
       readiness: radar.readiness,
+      // The same datum the RADAR page's labels use, so a relative altitude does
+      // not mean one thing on one surface and another on the next.
+      ownAltFt: ownAltitudeFt(state.snapshot.fields, traffic.followed),
       /**
        * PLAN or MAP, and which way is UP.
        *
@@ -297,7 +303,17 @@ async function boot() {
         const f = state.snapshot.fields['winds.vector'];
         return f && f.provenance !== 'FAIL' ? f.value : null;
       })(),
-    }),
+    });
+
+  const pfd = createPfd({
+    canvas,
+    surface,
+    planCanvas,
+    planSurface,
+    // ONE SOURCE, TWO DRAWINGS. The ND reads the same traffic the RADAR page
+    // does, at the same range, rather than keeping its own copy — two pictures
+    // of one truth is exactly how they come to disagree.
+    traffic: ndView,
     readoutHost: $('pfd-readouts'),
     /**
      * EICAS. Every input is something this file already holds and no panel
@@ -567,6 +583,23 @@ async function boot() {
       const at = nextAttemptAt();
       return at ? Math.max(0, (at - now()) / 1000) : null;
     },
+  });
+
+  /**
+   * THE MAP PAGE — the same scope, over the ground it is above.
+   *
+   * It shares `ndView`, `radar.setRange` and the PFD's own PLAN/MAP mode rather
+   * than keeping its own copies: three surfaces drawing one truth is fine, three
+   * copies of that truth is how they disagree. The mode switch on the PFD moves
+   * this page too, which is what a mode switch on an aeroplane does.
+   */
+  const map = createMap({
+    host: $('page-map'),
+    traffic: { view: ndView },
+    state,
+    announcer,
+    radar,
+    mode: () => ndMode,
   });
 
   // RANGE, BESIDE THE NAVIGATION DISPLAY. Same four ranges as the RADAR page,
@@ -934,7 +967,7 @@ async function boot() {
     // at the plan view and may ask for it. The rule is unchanged — fetch only
     // for a page somebody has open — and the edge cache means two pages open in
     // turn cost one upstream request, not two.
-    if (active === 'radar' || active === 'pfd') {
+    if (active === 'radar' || active === 'pfd' || active === 'map') {
       noteTrafficResult(await traffic.refreshNearby(state.snapshot.fields, radar.rangeNm));
       trafficBite();
     }
@@ -953,6 +986,7 @@ async function boot() {
     pfd: $('page-pfd'),
     atis: $('page-atis'),
     radar: $('page-radar'),
+    map: $('page-map'),
     bite: $('page-bite'),
     setup: $('page-setup'),
   };
@@ -971,6 +1005,10 @@ async function boot() {
     // The canvas is only measured while it is on screen; a hidden element has
     // no box, and a size captured then would be zero for ever.
     if (name === 'pfd') surface.measure();
+    // The MAP page's canvas has no box while it is hidden, and it is where the
+    // basemap is loaded from — lazily, so a reader who never opens the page
+    // never pays for 162 KB of coastline.
+    if (name === 'map') map.measure();
     if (name === 'radar') {
       radar.measure();
       // Opening the page asks at once rather than waiting out the interval —
@@ -1011,6 +1049,7 @@ async function boot() {
     if (active === 'pfd') pfd.render(snapshot);
     else if (active === 'atis') atis.render(snapshot, metar.last);
     else if (active === 'radar') radar.render(snapshot);
+    else if (active === 'map') map.render();
     else if (active === 'setup') setup.render();
     else bite.render(snapshot);
   });

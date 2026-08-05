@@ -6,6 +6,12 @@
     "reason": null,
     "detail": "702 airports, 407 runways, 44 navaids for norcal."
   },
+  "basemap": {
+    "present": true,
+    "path": "/data/basemap.json",
+    "reason": null,
+    "detail": "Natural Earth 1:10m clipped to norcal: 1 coastline runs, 8 lakes, 25 rivers, 58 built-up areas. Public domain."
+  },
   "geoid": {
     "present": true,
     "path": "/data/geoid-norcal.json",
