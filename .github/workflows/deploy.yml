@@ -1,6 +1,6 @@
 name: Deploy
 
-# staging -> a preview URL Noah can open on his device
+# staging -> a preview URL to open on a real device
 # main    -> production
 #
 # Cloudflare Pages, deploying public/ plus the Pages Functions in functions/.
@@ -66,7 +66,7 @@ jobs:
           persist-credentials: false
 
       # It reads the working TREE. Git history is out of its reach, and
-      # rewriting public history is Noah's call rather than a session's.
+      # rewriting public history is the owner's call rather than a session's.
       - name: Privacy gate (Doctrine §9b)
         run: node .hub/privacy-check.mjs --repo .
 
@@ -125,5 +125,5 @@ jobs:
             echo "Production: https://fauxplane.pages.dev"
           else
             echo "Preview:    https://${{ github.ref_name }}.fauxplane.pages.dev"
-            echo "Staging is a hard gate — this does NOT go to production until Noah says promote."
+            echo "Staging is a hard gate — this does NOT reach production until it is promoted."
           fi
