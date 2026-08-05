@@ -1563,6 +1563,82 @@ async function checkChromeLayout(browser, base) {
 }
 
 /**
+ * AT 200% TEXT THE RADAR SCOPE IS ON SCREEN.
+ *
+ * ---------------------------------------------------------------------------
+ * THE DEFECT THIS ENCODES WAS PUBLISHED FOR TWENTY RELEASES AND NEVER MEASURED
+ * ---------------------------------------------------------------------------
+ *
+ * At 390x640 with 200% text the scope canvas began 707px down a 640px screen —
+ * not clipped, not small, simply not there until the reader scrolled. It sat on
+ * the app's own "Still not right" list release after release, described as
+ * needing a redesign of every page.
+ *
+ * NOTHING CAUGHT IT, and that is the part worth keeping. Every other check on
+ * this page was green throughout: contrast passed, names passed, axe passed,
+ * and the target-size check passed BECAUSE ITS FLOOR WAS THE PROBLEM — targets
+ * were 88px at that text size, comfortably over a floor of 44, and the gate has
+ * no ceiling. A check that measures whether something is big enough cannot
+ * notice that it is too big.
+ *
+ * So this measures the thing the reader actually cares about — is the
+ * instrument on the glass — rather than any of the properties that add up to
+ * it. It is deliberately the WEAKEST useful assertion: some of the scope, not
+ * all of it, because demanding the whole canvas would fail on a genuinely tiny
+ * screen where scrolling is the honest answer.
+ */
+async function checkScopeOnScreen(browser, base) {
+  const where = 'scope-on-screen';
+  const context = await browser.newContext({ viewport: { width: 390, height: 640 }, permissions: [] });
+  await seenIntro(context);
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      document.documentElement.style.fontSize = '32px'; // 200%
+    });
+  });
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.getElementById('power-btn')?.click());
+  await page.waitForTimeout(900);
+  await page.evaluate(() => document.querySelector('[data-page="radar"]')?.click());
+  await page.waitForTimeout(600);
+
+  const m = await page.evaluate(() => {
+    const canvas = document.querySelector('.radar-canvas');
+    const panel = document.querySelector('#panel');
+    const tabs = document.querySelector('.tabs');
+    if (!canvas) return null;
+    const r = canvas.getBoundingClientRect();
+    return {
+      viewportH: window.innerHeight,
+      top: Math.round(r.top + window.scrollY),
+      height: Math.round(r.height),
+      chrome: panel ? Math.round(panel.getBoundingClientRect().top + window.scrollY) : null,
+      tabRows: tabs ? new Set([...tabs.children].map((c) => Math.round(c.getBoundingClientRect().top))).size : null,
+    };
+  });
+
+  if (!m) {
+    fail(where, 'the RADAR page has no scope canvas at 200% text');
+  } else {
+    const visible = Math.max(0, Math.min(m.viewportH, m.top + m.height) - m.top);
+    if (m.top >= m.viewportH) {
+      fail(
+        where,
+        `at 200% text the scope starts ${m.top}px down a ${m.viewportH}px screen — none of it is visible without scrolling `
+          + `(chrome takes ${m.chrome}px, tabs on ${m.tabRows} rows)`,
+      );
+    } else if (visible < 120) {
+      fail(
+        where,
+        `at 200% text only ${visible}px of the ${m.height}px scope is on screen — chrome takes ${m.chrome}px, tabs on ${m.tabRows} rows`,
+      );
+    }
+  }
+  await context.close();
+}
+
+/**
  * ON A SHORT SCREEN THE INSTRUMENTS GET THE PANEL AND THE VALUES START BELOW IT.
  *
  * — and then, when the fix was still trying to fit one row of
@@ -2351,6 +2427,7 @@ async function main() {
     // and a touch tap are different event paths, and the device this app is
     // built for only has one of them.
     await checkChromeLayout(browser, base);
+    await checkScopeOnScreen(browser, base);
     await checkHeardList(browser, base);
     await checkEicas(browser, base);
     await checkNdMode(browser, base);

@@ -1368,5 +1368,21 @@ export const PLANTS = [
     find: '          if (b.signature !== signature) {\n            b.signature = signature;',
     replace: '          if (true) {\n            b.signature = signature;',
     expect: /disclosure does not open|measured 1\.00:1/,
+  },,
+  {
+    // THE REGRESSION THIS APP ALREADY SHIPPED FOR TWENTY RELEASES. Putting the
+    // touch-target floor back on a relative unit makes every target 88px at
+    // 200% text, which pushes the tab strip to four rows and the scope canvas
+    // off the bottom of the screen entirely.
+    //
+    // No other check notices. Contrast, names and axe all stay green, and the
+    // target-size check gets HAPPIER — 88 is further above its floor of 44 than
+    // 44 is. A gate with no ceiling cannot see this.
+    name: 'layout: the touch-target floor grows with the text size again',
+    check: 'the radar scope is on screen at 200% text',
+    file: 'public/styles.css',
+    find: '  --target: 44px;',
+    replace: '  --target: 2.75rem;',
+    expect: /none of it is visible without scrolling|of the \d+px scope is on screen/,
   },
 ];

@@ -39,7 +39,30 @@
   --symbol: #ffc247;
   --symbol-outline: #0b0b0b;
 
-  --target: 2.75rem; /* 44px at the default root size, and it grows with the reader's */
+  /*
+   * 44 CSS PIXELS, FLAT — and it deliberately does NOT grow with the text size.
+   *
+   * It was `2.75rem`, which is 44px at the default root and 88px at 200% text.
+   * That is over-delivery nobody asked for and it cost the app its main
+   * instrument: SC 2.5.5 and SC 2.5.8 both specify CSS PIXELS, this gate's own
+   * floor is an absolute `w < 44 || h < 44`, and a finger does not get bigger
+   * when a reader turns the type up. The two preferences are independent.
+   *
+   * What it cost, measured at 390x640 with 200% text on the RADAR page:
+   *
+   *   2.75rem            chrome 406px, tabs on 4 rows of 88px, scope starts at
+   *                      707 down a 640px screen — NONE of it on screen at all
+   *   clamp(44..56px)    chrome 278px, still 4 rows, 101px of the scope visible
+   *   44px               chrome 175px, tabs on 3 rows, 216px of 276 visible
+   *
+   * Nothing is clipped at 44px and no target falls under the floor — both were
+   * measured across every control on the page at 200%, not reasoned about.
+   *
+   * This was the top item on the app's own "Still not right" list for twenty
+   * releases, and it was described there as needing a redesign of every page.
+   * It needed one token.
+   */
+  --target: 44px;
   --gap: 0.75rem;
   --radius: 0.5rem;
 }

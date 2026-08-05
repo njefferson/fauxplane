@@ -94,11 +94,6 @@ export const STANDING = [
     why: "adsb.lol's edge answers the routes endpoint with an empty page before their API sees it. Upstream call is off behind a flag.",
   },
   {
-    id: 'scope-below-fold-200pct',
-    must: /200%|large text/i,
-    why: 'At 200% text on a small phone the RADAR scope starts below the fold. Re-measured 2026-08-05 at 390x640: chrome takes 406px of 640 and the scope canvas starts at 707. Improved from 812 in 1.28.0 and still entirely off screen.',
-  },
-  {
     // REPLACES `advisories-nationwide`, which 1.37.0 fixed. Removing one of
     // these is meant to be a deliberate act that claims a fix, and this is that
     // claim: the advisories ARE narrowed now, by resolving their own area line
@@ -124,6 +119,22 @@ export const STANDING = [
  *   broken   what is still wrong, that he might hit
  */
 export const RELEASES = [
+  {
+    version: '1.37.1',
+    date: '2026-08-05',
+    headline: 'At the largest text size the radar scope is on screen. It has not been for twenty releases.',
+    changed: [
+      'THE RADAR SCOPE IS VISIBLE AT THE LARGEST TEXT SIZE. On a small phone it used to begin past the bottom of the screen \u2014 not small, not cut off, simply not there until you scrolled. Most of it is now on the glass as soon as the page opens.',
+      'The cause was the buttons, not the radar page. Every button in the app had a minimum size that grew with your text setting, so turning the type up doubled the tab strip and pushed it onto four rows, and the tabs alone took two thirds of the screen. Buttons are now a fixed comfortable size whatever the text size \u2014 a finger does not get bigger when you turn the type up, and the accessibility standard this follows is written in fixed sizes for exactly that reason. Nothing has become smaller than it was at the normal text setting.',
+      'This was on the "Still not right" list below for twenty releases, described as needing every page redesigned. It needed one setting changed \u2014 and the reason nobody found it is that every check the app runs on itself was happy. The buttons were comfortably over the size they had to be, and there was no check asking the only question that mattered: can you see the instrument. There is one now.',
+    ],
+    broken: [
+      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out \u2014 those appear in their own group saying so, rather than being dropped.',
+      'At the largest text size the tab strip is still three rows, so the radar page opens with the top of the scope on screen rather than the whole of it. Better than none of it, and not finished.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
   {
     version: '1.37.0',
     date: '2026-08-05',

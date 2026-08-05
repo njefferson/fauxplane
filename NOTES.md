@@ -37,7 +37,7 @@ eight releases missed, and What's New carries all eight.
 
 ## STAGED NOW — 1.36.0, the fault that stopped being published, 2026-08-05
 
-**1.36.0 is on staging: https://staging.fauxplane.pages.dev**
+**1.37.1 is on staging: https://staging.fauxplane.pages.dev**
 
 ### A defect that was still true fell out of the app's own broken list
 
@@ -73,8 +73,45 @@ defect actually is. `releases.test.mjs` fails the build when one is missing.
 tell the reader about it.
 
 Removing an entry is now a deliberate act that says "this is fixed", in a diff
-where somebody can disagree with it. Four entries today: the rate-limited feed,
-the missing route, the 200% scope, and the nationwide advisories.
+where somebody can disagree with it. It started with four: the rate-limited feed,
+the missing route, the 200% scope, and the nationwide advisories. **Two have been
+removed since, each in the release that fixed it** — the nationwide advisories in
+1.37.0 and the 200% scope in 1.37.1 — which is the mechanism working in the
+direction it was built for.
+
+### The 200% scope was one token, and no check could see it
+
+Twenty releases of carrying it, described each time as needing every page
+redesigned. The anatomy had never been measured, only the total:
+
+- of the 406px of chrome, **386 was the tab strip** — four rows of 88px tabs
+- a tab was 88px because `--target` was `2.75rem`, so every touch target in the
+  app doubled when the reader turned the type up
+
+**Nothing in SC 2.5.5 or SC 2.5.8 asks for that.** Both are written in CSS
+PIXELS, and so is this repo's own gate — `t.w < 44 || t.h < 44`. A finger does
+not get bigger when a reader increases the text size; the two preferences are
+independent, and the app was paying for a benefit no standard asked for with its
+primary instrument.
+
+Measured at 390x640, 200% text, before anything was changed:
+
+- `2.75rem` — chrome 406, four rows, scope at 707, **none of it on screen**
+- `clamp(44px, 2.75rem, 56px)` — chrome 278, still four rows, 101px visible
+- `44px` — chrome 175, three rows, **216px of 276 visible**
+
+Nothing is clipped at 44px and no control falls under the floor; both were
+measured across every target on the page rather than reasoned about.
+
+**THE PART WORTH KEEPING IS WHY NO GATE CAUGHT IT.** Contrast, names and axe were
+green throughout, and the target-size check was green BECAUSE THE DEFECT MADE IT
+HAPPIER — 88px is further above a floor of 44 than 44px is. A check with a floor
+and no ceiling cannot see "too big", and every property the page was measured on
+was individually fine while the thing the reader wanted was off the screen.
+
+So `checkScopeOnScreen` measures the OUTCOME — is the instrument on the glass —
+rather than any of the properties that add up to it, and a plant putting
+`--target` back on a relative unit was watched going red about exactly that.
 
 **The first plant for it stayed GREEN and the sweep said so.** It prefixed the
 line rather than removing it, so the entry was still in the list and still
