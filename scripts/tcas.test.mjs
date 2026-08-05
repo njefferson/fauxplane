@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ALTITUDE_BANDS, RADAR_RANGE_NM, ownAltitudeFt, withinBand } from '../public/src/data/traffic.js';
-import { tcasLabel } from '../public/src/render/gauges/plan.js';
+import { PROXIMATE_FT, PROXIMATE_NM, tcasClass, tcasLabel } from '../public/src/render/gauges/plan.js';
 
 const ac = (altGeomFt, verticalRateFpm = 0, extra = {}) => ({ altGeomFt, altBaroFt: altGeomFt, verticalRateFpm, onGround: false, ...extra });
 
@@ -54,6 +54,39 @@ test('WITH NO OWN ALTITUDE it falls back to absolute rather than inventing a dat
 
 test('an aircraft broadcasting no altitude gets no label, not a zero', () => {
   assert.equal(tcasLabel({ altGeomFt: null, altBaroFt: null, onGround: false }, 34000), '');
+});
+
+// ---------------------------------------------------------------------------
+// The category — other, or proximate
+// ---------------------------------------------------------------------------
+
+test('proximate is the real definition: within 6 nm AND within 1200 ft', () => {
+  assert.equal(PROXIMATE_NM, 6);
+  assert.equal(PROXIMATE_FT, 1200);
+  assert.equal(tcasClass(ac(34500), 34000, 3), 'proximate', '3 nm and 500 ft is proximate — the two categories collapsed into one');
+  assert.equal(tcasClass(ac(34500), 34000, 9), 'other', 'close in height, far away');
+  assert.equal(tcasClass(ac(38000), 34000, 3), 'other', 'nearby, but four thousand feet up');
+});
+
+test('both edges are inclusive, and one past either is out', () => {
+  // Done as arithmetic rather than eyeballed: 6.0 nm and 1200 ft are IN.
+  assert.equal(tcasClass(ac(35200), 34000, 6), 'proximate');
+  assert.equal(tcasClass(ac(35201), 34000, 6), 'other');
+  assert.equal(tcasClass(ac(32800), 34000, 6), 'proximate', 'below counts the same as above');
+  assert.equal(tcasClass(ac(35200), 34000, 6.01), 'other');
+});
+
+test('A MISSING NUMBER NEVER PROMOTES — every unknown lands on the category that claims less', () => {
+  assert.equal(tcasClass(ac(34100), 34000, null), 'other', 'an unknown distance was promoted to proximate');
+  assert.equal(tcasClass(ac(34100), null, 1), 'other', 'no own altitude to be relative to');
+  assert.equal(tcasClass({ altGeomFt: null, altBaroFt: null, onGround: false }, 34000, 1), 'other', 'no altitude broadcast');
+  assert.equal(tcasClass(null, 34000, 1), 'other');
+});
+
+test('an aircraft ON THE GROUND is never proximate traffic', () => {
+  // It is sitting on a ramp a mile away and at your altitude, which satisfies
+  // the arithmetic and is not traffic. A real TCAS does not display it either.
+  assert.equal(tcasClass({ ...ac(200), onGround: true }, 300, 1), 'other');
 });
 
 // ---------------------------------------------------------------------------

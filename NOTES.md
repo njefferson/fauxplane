@@ -22,10 +22,74 @@ sits on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.29.2, FOLLOWING answers where it was pressed, 2026-08-05
+## STAGED NOW — 1.30.0, proximate traffic, and 1.29.2 had never deployed, 2026-08-05
 
-**1.29.2 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.30.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.29.0.
+
+### 1.29.2 WAS PUSHED, VERIFIED AGAINST THE REMOTE, AND NEVER SHIPPED
+
+Its `deploy.yml` run for `b3356ca` concluded **failure**, on `npm test`. Staging
+was serving 1.29.1 — the last green run was `9c5e317`, a docs-only commit sitting
+on top of it — and the FOLLOWING work was on the branch and nowhere else.
+
+**Three tests were pinned to the banner's PROSE, not to its rule.** 1.29.2
+shortened `followBannerText` from two sentences to one, which is what it was for;
+the tests matched `/no broadcast received yet/`, `/crossed out until one arrives/`
+and `/is showing that aircraft's broadcast, not this device/`, and all three of
+those sentences had stopped existing. Nothing was broken. The rule the tests were
+written to hold — that the banner may not claim a broadcast which has not arrived
+— was satisfied by the new wording the whole time.
+
+So this is the trap in CLAUDE.md a third time, with a third gate: privacy in
+1.24.1–1.26.0, and now the unit suite. The shape does not change. A push that
+reports success, a remote that genuinely moved, and a deploy that failed after
+everyone stopped looking.
+
+The tests now assert the DISTINCTION — is a broadcast arriving or is it not —
+and let the prose move. **A test pinned to a sentence that can be legitimately
+reworded is a gate that fails on correct work**, and the cost is not a red tick,
+it is a release the owner never receives.
+
+### Proximate traffic: the second category the broadcast can honestly support
+
+Every aircraft on the scope was one mark. A real display draws four, and exactly
+two of them are available from ADS-B: **other** and **proximate** — within 6 nm
+and 1200 ft, which is the real definition and not an invented threshold. It is
+carried by FILL, in the same ink, because a hue there would collide with the
+provenance tones and with the red and amber the flight deck reserves for a
+condition to act on. This is neither; it is an aeroplane that is close.
+
+`tcasClass` decides, and every unknown lands on `other` — no distance, no
+altitude, no own altitude to be relative to, or an aircraft on the ground.
+**A missing number never promotes.**
+
+**What it is proximate TO is the centre of the scope**, which is the datum the
+range rings already measure from and which the crosshair names. On a scope
+centred on KSMF the filled marks are the ones near KSMF, exactly as the outer
+ring's "10" means ten miles from it.
+
+`drawPlan` reads the distance back off the geometry it just drew with rather than
+taking `a.distanceNm`, so a filled mark is always inside a circle the reader can
+check against the rings. The two are the same number today and would not be on a
+scope whose centre is not the fetch's centre.
+
+**TA and RA are not drawn and never will be from this feed.** Both are decided by
+closing rate; ADS-B reports where an aircraft is and where it has been, never when
+it would reach you. The (i) menu says so in the reader's words — a display that
+is missing two categories a knowledgeable reader expects should say why, or it
+reads as unfinished.
+
+The no-track fallback moved from a circle to a **diamond**, which is the flight
+deck's own mark for traffic whose heading is unknown, so the absence is stated in
+the symbology rather than merely present.
+
+Two plants, both `gate: 'tests'` — a canvas is invisible to an accessibility gate,
+so an `a11y` plant here would have stayed green and proved nothing.
+
+---
+
+## Previously staged — 1.29.2, FOLLOWING answers where it was pressed, 2026-08-05
 
 ### The banner was a card at the top of the panel
 

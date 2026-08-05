@@ -811,6 +811,35 @@ export const PLANTS = [
     expect: /the 0\.25 ring reads 3 and sits at 2\.5|old code rounded these/,
   },
   {
+    // Two categories is the whole of what ADS-B can honestly support, and the
+    // filled mark is the only thing carrying the difference. Collapsing it puts
+    // the scope back to one shape for every aeroplane in the county — which is
+    // what it looked like before, and looks like nothing at all is wrong.
+    //
+    // Against the UNIT SUITE, not the accessibility gate: this is drawn on a
+    // canvas, and a gate that reads the accessibility tree cannot see a pixel.
+    name: 'traffic: proximate collapses back into a single symbol',
+    check: 'the scope distinguishes proximate traffic from everything else',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: "  return Math.abs(ft - ownAltFt) <= PROXIMATE_FT ? 'proximate' : 'other';",
+    replace: "  return 'other';",
+    expect: /the two categories collapsed into one/,
+  },
+  {
+    // The honesty rule, in the one place it is easiest to lose: an aircraft
+    // whose distance is unknown must land in the category that claims LESS.
+    // Flipping the guard makes a missing number fall through to the altitude
+    // test and come out filled — a display asserting proximity it never measured.
+    name: 'traffic: an unknown distance promotes an aircraft to proximate',
+    check: 'a missing number never promotes a contact',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: "  if (!Number.isFinite(distanceNm) || distanceNm > PROXIMATE_NM) return 'other';",
+    replace: "  if (Number.isFinite(distanceNm) && distanceNm > PROXIMATE_NM) return 'other';",
+    expect: /an unknown distance was promoted to proximate/,
+  },
+  {
     //
     // `placeLabels` puts the label 20-28px
     // from the mark and the radius was 24, so the biggest, most inviting part

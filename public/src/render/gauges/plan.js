@@ -4,12 +4,17 @@
  * NON-HUE CHANNELS, declared before the code (Doctrine §4). Aircraft differ
  * from one another and from the furniture without relying on colour:
  *
- *   1. SHAPE. Each aircraft is a triangle POINTED ALONG ITS TRACK, so heading
- *      is carried by geometry. The centre is a cross; range rings are circles.
- *   2. SIZE AND FILL. The followed aircraft is drawn larger and filled solid,
- *      with a ring around it; everything else is outlined.
- *   3. TEXT. Every aircraft is labelled with its callsign and flight level, so
- *      no aircraft is identified by colour alone.
+ *   1. SHAPE. An aircraft that broadcasts a track is a triangle POINTED ALONG
+ *      IT, so direction is carried by geometry; one that does not is a DIAMOND,
+ *      which is the flight deck's own symbol for traffic whose heading is not
+ *      known. The centre is a cross; range rings are circles.
+ *   2. FILL. Proximate traffic — within 6 nm and 1200 ft — is filled solid;
+ *      everything else is outlined. `tcasClass` decides, and the reason it
+ *      cannot go further than two categories is written there.
+ *   3. SIZE AND A RING. The followed aircraft is drawn larger, filled, and
+ *      circled, so it is never confused with a proximate contact.
+ *   4. TEXT. Every aircraft is labelled with its relative altitude and trend,
+ *      so no aircraft is identified by colour alone.
  *
  * NORTH IS UP AND SAYS SO. A track-up plan view would need a heading this panel
  * may not have, and silently switching between the two is how a display becomes
@@ -64,6 +69,45 @@ export function tcasLabel(a, ownAltFt) {
   const rate = a.verticalRateFpm;
   const trend = !Number.isFinite(rate) || Math.abs(rate) < 500 ? '' : rate > 0 ? '\u2191' : '\u2193';
   return `${sign}${digits}${trend}`;
+}
+
+/**
+ * PROXIMATE TRAFFIC: the real TCAS definition, and it is exactly two numbers —
+ * within 6 nautical miles AND within 1200 feet vertically. Nothing else.
+ *
+ * A real display draws four categories. Two of them, TRAFFIC ADVISORY and
+ * RESOLUTION ADVISORY, are NOT DRAWN HERE and never will be from this data:
+ * both are decided by CLOSING RATE — how long until the two aircraft are at the
+ * same point — and an ADS-B broadcast does not carry it. It reports where an
+ * aircraft is and where it has been. Computing a threat category from that
+ * would be a value produced from neither a sensor nor a feed, which is the one
+ * thing this app does not do. The (i) menu says so in the reader's words.
+ *
+ * The remaining two ARE honest, because range and relative altitude are both
+ * broadcast, and the distinction is worth having: it is the difference between
+ * an aeroplane somewhere in the county and one you could see out of the window.
+ *
+ * WHAT IT IS PROXIMATE TO is the CENTRE OF THE SCOPE, which is the same datum
+ * the range rings measure from and which the crosshair names — YOU, HOME, a
+ * followed flight, or a field picked by hand. On a scope centred on an airport
+ * the filled marks are the ones close to that airport, exactly as the "10" on
+ * the outer ring means ten miles from it.
+ *
+ * A MISSING NUMBER NEVER PROMOTES. No distance, no altitude, or no own altitude
+ * to be relative to, and the aircraft is `other` — the category that claims
+ * less. An aircraft on the ground is not traffic at all and is never proximate,
+ * which is what a real TCAS does with it.
+ */
+export const PROXIMATE_NM = 6;
+export const PROXIMATE_FT = 1200;
+
+export function tcasClass(a, ownAltFt, distanceNm) {
+  if (!a || a.onGround) return 'other';
+  if (!Number.isFinite(distanceNm) || distanceNm > PROXIMATE_NM) return 'other';
+  if (!Number.isFinite(ownAltFt)) return 'other';
+  const ft = Number.isFinite(a.altGeomFt) ? a.altGeomFt : a.altBaroFt;
+  if (!Number.isFinite(ft)) return 'other';
+  return Math.abs(ft - ownAltFt) <= PROXIMATE_FT ? 'proximate' : 'other';
 }
 
 export function altLabel(a) {
@@ -434,6 +478,12 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
     const isFollowed = followedHex && a.hex === followedHex;
     const size = isFollowed ? Math.max(7, r * 0.042) : Math.max(5, r * 0.028);
     const track = Number.isFinite(a.trackDeg) ? a.trackDeg : null;
+    // THE DISTANCE THE DISPLAY IS ITSELF ASSERTING, read back off the geometry
+    // it just drew with, so a filled mark is always inside the circle a reader
+    // can measure against the range rings. Taking `a.distanceNm` instead would
+    // be a distance from the fetch's centre, which is not always this one.
+    const distanceNm = Math.hypot(p.x - cx, p.y - cy) / pxPerNm;
+    const proximate = tcasClass(a, ownAltFt, distanceNm) === 'proximate';
 
     ctx.save();
     ctx.translate(p.x, p.y);
@@ -441,9 +491,16 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
 
     ctx.beginPath();
     if (track === null) {
-      // No track broadcast: a circle, which cannot imply a direction it does
-      // not have. A triangle pointing at a default would be an invented value.
-      ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
+      // No track broadcast: a DIAMOND, the flight deck's own mark for traffic
+      // whose heading is not known, so the absence is stated in the symbology
+      // rather than merely absent. A triangle pointing at a default would be an
+      // invented value.
+      const d = size * 0.85;
+      ctx.moveTo(0, -d);
+      ctx.lineTo(d, 0);
+      ctx.lineTo(0, d);
+      ctx.lineTo(-d, 0);
+      ctx.closePath();
     } else {
       ctx.moveTo(0, -size);
       ctx.lineTo(size * 0.62, size * 0.75);
@@ -454,6 +511,13 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
 
     if (isFollowed) {
       ctx.fillStyle = tokens.primary;
+      ctx.fill();
+    } else if (proximate) {
+      // Filled, in the SAME ink as an outlined contact. Proximity is a fill, not
+      // a hue: a colour here would collide with the provenance tones and with
+      // the red/amber the flight deck reserves for a condition to act on, and
+      // this is neither — it is an aeroplane that happens to be close.
+      ctx.fillStyle = tokens.text;
       ctx.fill();
     } else {
       ctx.strokeStyle = a.onGround ? tokens['text-3'] : tokens.text;

@@ -71,6 +71,39 @@ const SOURCES = [
   },
 ];
 
+/**
+ * WHAT EACH MARK ON THE TRAFFIC SCOPE MEANS, and — the part that matters — what
+ * the scope deliberately does NOT draw.
+ *
+ * A real display has four traffic categories. This one has two, and somebody
+ * who knows the instrument will notice the amber circle and the red square are
+ * missing. The honest thing is to say why in the place a reader looks things up,
+ * rather than let it read as an unfinished display.
+ */
+const SYMBOLS = [
+  {
+    name: 'A triangle',
+    detail: 'An aircraft broadcasting which way it is going. The triangle points along its track.',
+  },
+  {
+    name: 'A diamond',
+    detail: 'An aircraft that is not broadcasting a track. The shape says the direction is unknown rather than guessing one.',
+  },
+  {
+    name: 'Filled in',
+    detail: 'Proximate traffic — within 6 miles of the centre of the scope and 1200 feet of your altitude. This is the real definition a flight deck uses.',
+  },
+  {
+    name: 'Larger, filled, with a ring',
+    detail: 'The aircraft you are following. The whole panel is showing its flight, not this desk’s.',
+  },
+  {
+    name: '+03↑',
+    detail:
+      'How far above or below you it is, in hundreds of feet, and whether it is climbing or descending faster than 500 feet a minute. Three hundred feet above and climbing, here.',
+  },
+];
+
 /** A titled block inside the dialog. */
 function section(title, children) {
   return el('section', { class: 'info-section' }, [
@@ -151,6 +184,18 @@ export function createInfo({ trigger, onDiagnostics }) {
           'Every value on screen comes from a sensor in this device or from one of these feeds. Nothing is simulated, and a reading that is missing says so rather than being filled in.',
       }),
       sourcesList,
+    ]),
+
+    section('Reading the traffic scope', [
+      el('ul', { class: 'info-sources' }, SYMBOLS.map((s) => el('li', {}, [
+        el('strong', { text: s.name }),
+        el('span', { text: ` — ${s.detail}` }),
+      ]))),
+      el('p', {
+        class: 'info-body info-small',
+        text:
+          'A real display also draws an amber circle and a red square for traffic it wants you to act on. This one never will, and that is not a gap being filled in later: those two are decided by how fast an aircraft is closing on you, and an ADS-B broadcast does not carry it. It says where an aeroplane is, not when it will reach you. Colouring one red from a guess would be exactly the invented number this panel refuses to show.',
+      }),
     ]),
 
     section('If something looks wrong', [

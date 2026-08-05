@@ -351,16 +351,26 @@ test('readiness: while following, the chip says whose aircraft the panel is show
  * why the display "looks broken without any data": the app was insisting it had
  * data. A false sentence in the element whose whole job is to say what the
  * panel is showing is the same defect as a fabricated number.
+ *
+ * THESE THREE HELD THE WORDING, NOT THE RULE, AND IT COST A RELEASE. When the
+ * banner was shortened to one line in 1.29.2 the sentences they matched stopped
+ * existing, all three went red, and `npm test` is a hard CI gate — so the deploy
+ * failed and 1.29.2 never left the branch, while the wording change itself broke
+ * nothing at all. The rule was satisfied the whole time.
+ *
+ * So they now assert the DISTINCTION the banner has to preserve — is a broadcast
+ * arriving, or is it not — and let the prose move. Anything that can be reworded
+ * without lying is not what a test should be pinned to.
  */
 test('follow banner: nothing is claimed before the first broadcast arrives', () => {
   const waiting = followBannerText('PXT466', { followed: null });
   assert.doesNotMatch(
     waiting,
-    /is showing that aircraft/,
+    /showing (that aircraft|its broadcast)/,
     'the banner must not claim to be showing a broadcast that has never arrived',
   );
   assert.match(waiting, /PXT466/, 'it still names the aircraft being followed');
-  assert.match(waiting, /no broadcast received yet/);
+  assert.match(waiting, /no broadcast/, 'and it still says that nothing has arrived');
 });
 
 test('follow banner: the feed’s own reason is carried when there is one', () => {
@@ -368,13 +378,14 @@ test('follow banner: the feed’s own reason is carried when there is one', () =
   assert.match(withReason, /rate limiting us/, 'a known reason beats a generic one');
 
   const without = followBannerText('PXT466', { followed: null });
-  assert.match(without, /crossed out until one arrives/, 'with no reason it still says what to expect');
+  assert.match(without, /no broadcast/, 'with no reason it still says nothing has arrived');
 });
 
 test('follow banner: once the broadcast arrives it says so, and says whose', () => {
   const live = followBannerText('PXT466', { followed: { hex: 'a1b2c3', callsign: 'PXT466' } });
-  assert.match(live, /is showing that aircraft's broadcast, not this device/);
-  assert.match(live, /PXT466/);
+  assert.match(live, /showing/, 'it says the panel is showing that aircraft');
+  assert.match(live, /PXT466/, 'and says which one');
+  assert.doesNotMatch(live, /no broadcast/, 'a live feed must not read like a waiting one');
 });
 
 test('follow banner: not following says nothing at all', () => {

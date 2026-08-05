@@ -70,6 +70,20 @@
  */
 export const RELEASES = [
   {
+    version: '1.30.0',
+    date: '2026-08-05',
+    headline: 'The scope tells you which aircraft is actually near you.',
+    changed: [
+      'Every aircraft on the scope used to be the same mark. Now the close ones are filled in solid — within six miles of the middle of the scope and within twelve hundred feet of your altitude. That is the real definition a flight deck uses for it, and it is the difference between an aeroplane somewhere in the county and one you could see out of the window.',
+      'An aircraft that is not broadcasting which way it is going is drawn as a diamond rather than a circle, which is the flight deck’s own mark for traffic whose heading is not known. A triangle still points along the track when there is one.',
+      'The (i) menu has a new section explaining every mark on the scope, including the two a real display draws that this one never will — the amber circle and the red square for traffic to act on. Both are worked out from how fast an aircraft is closing on you, and the broadcast does not carry that. It says where an aeroplane is, not when it would reach you.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.29.2',
     date: '2026-08-05',
     headline: 'FOLLOWING answers where you pressed, and stops eating the top of the panel.',
