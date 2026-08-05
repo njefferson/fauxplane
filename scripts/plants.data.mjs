@@ -899,6 +899,42 @@ export const PLANTS = [
     expect: /did not take a manual mode|is not driving the panel/,
   },
   {
+    // Noah photographed `ADS-B carries no attitude — pitch is n…` on the ADI.
+    // The identical fix already existed twenty lines away in the ATT FAIL
+    // branch; this branch is only reachable by following a real aircraft, so it
+    // was never on screen while the other one was being fixed.
+    name: 'reasons: the NO PITCH reason goes back to being truncated',
+    check: 'a crossed-out gauge states its whole reason',
+    gate: 'tests',
+    file: 'public/src/render/canvas.js',
+    find: '  if (lines.length < maxLines && line) lines.push(line);',
+    replace: '  if (lines.length < maxLines && line && lines.length === 0) lines.push(line);',
+    expect: /reasons cut off on the ADI|must use both lines|still truncated/,
+  },
+  {
+    // "19 more below" with nineteen aircraft in total and seven on screen. The
+    // count was measured one frame after render, and the list is built while
+    // the RADAR page is still hidden — where everything measures zero, so every
+    // row counts as below the fold.
+    name: 'list: the hidden-row count is measured on an unlaid-out page again',
+    check: 'the aircraft list counts what is actually below the fold',
+    file: 'public/src/panels/radar.js',
+    find: '    if (!rows.length || !list.clientHeight) {',
+    replace: '    if (!rows.length) {',
+    expect: /the count equals the TOTAL|more below" while \d+ of \d+ rows are actually hidden/,
+  },
+  {
+    // A row sliced through its own text against a hard container edge reads as
+    // broken rather than as scrollable — the same complaint as the value strip
+    // under the horizon, in the same session.
+    name: 'list: the scroller goes back to cutting a row in half',
+    check: 'the aircraft list ends on a row boundary',
+    file: 'public/src/panels/radar.js',
+    find: "      list.style.maxHeight = `${last.offsetTop + last.offsetHeight}px`;",
+    replace: '      list.style.maxHeight = `${LIST_MAX_PX()}px`;',
+    expect: /row\(s\) are cut through the middle by the list/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

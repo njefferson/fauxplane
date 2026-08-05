@@ -85,9 +85,32 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate, mou
     const why = attitude.pitchReason ?? attitude.reason ?? 'pitch unavailable';
     ctx.save();
     text(ctx, 'NO PITCH', cx, cy - r * 0.42, { size, weight: 700, colour: tokens.fail });
-    text(ctx, ellipsise(ctx, why, w - 12, { size: size * 0.78 }), cx, cy - r * 0.42 + size * 1.25, {
-      size: size * 0.78,
-      colour: tokens.fail,
+    /**
+     * WRAPPED, NOT TRUNCATED — the same fix as the full ATT FAIL branch above,
+     * which this branch never got.
+     *
+     * Noah, 2026-08-05, photographing the ADI while following an aircraft:
+     * "The red text is cutoff on the PFD when following an aircraft." It read
+     * `ADS-B carries no attitude — pitch is n…`, severed mid-word.
+     *
+     * A REASON IS THE ONE STRING ON A GAUGE THAT MUST NOT BE ABBREVIATED: the
+     * whole argument for crossing an instrument out rather than blanking it is
+     * that the panel says WHY, and half a why looks like a fault in the panel
+     * rather than an honest answer about the data.
+     *
+     * The lesson is where the bug was, not what it was. The identical defect
+     * was found and fixed twenty lines up, in the branch that runs when
+     * attitude is lost ENTIRELY — and this branch, which runs when only pitch
+     * is missing, kept calling `ellipsise`. A fix applied to the case in front
+     * of you is not applied to the case beside it; FOLLOW mode is the only way
+     * to reach this one, so it was never on screen while the other was.
+     */
+    const whyLines = wrapText(ctx, why, w - 16, { size: size * 0.78, maxLines: 2 });
+    whyLines.forEach((line, i) => {
+      text(ctx, line, cx, cy - r * 0.42 + size * 1.25 + i * size * 0.95, {
+        size: size * 0.78,
+        colour: tokens.fail,
+      });
     });
     text(ctx, `BANK ${roll >= 0 ? 'R' : 'L'} ${Math.abs(roll).toFixed(0)}°`, cx, cy + r * 0.42, {
       size: size * 1.1,

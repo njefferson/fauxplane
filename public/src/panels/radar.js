@@ -589,16 +589,97 @@ export function createRadar({
         return row;
       }),
     );
-    // How many rows are off the bottom of the scroller, measured AFTER they are
-    // in the DOM rather than guessed from a row-height constant that would go
-    // stale the first time the reader enlarges their text.
-    requestAnimationFrame(() => {
-      const hidden = [...list.querySelectorAll('.radar-row')].filter(
-        (r) => r.offsetTop + r.offsetHeight > list.scrollTop + list.clientHeight + 2,
-      ).length;
-      foot.textContent = hidden > 0 ? `${hidden} more below — scroll the list` : '';
-      foot.hidden = hidden === 0;
-    });
+    requestAnimationFrame(measureList);
+  }
+
+  /**
+   * HOW MANY ROWS ARE OFF THE BOTTOM, AND WHERE THE LIST SHOULD END.
+   *
+   * Noah, 2026-08-05, with a screenshot: "The list of aircraft is not looking
+   * correctly due to text alignment on the background or something." Two faults,
+   * and the first one is why the second was so hard to look at.
+   *
+   * IT SAID "19 more below" WITH 19 AIRCRAFT IN TOTAL AND SEVEN ON SCREEN. The
+   * count was taken in one `requestAnimationFrame` after the rows were added,
+   * and the panel renders the list whenever the feed answers — including while
+   * the RADAR page is `hidden`, where every element measures zero. With
+   * `clientHeight` at 0 EVERY row is "below the fold", so the count equals the
+   * total, and it stays that way until something happens to re-render. A number
+   * measured on an unlaid-out element is not a small error, it is a different
+   * quantity.
+   *
+   * So: refuse to answer when there is no layout to measure, and re-measure on
+   * the two events that change the answer — the reader scrolling, and the list
+   * getting a size (which is what happens the moment the page stops being
+   * hidden).
+   *
+   * AND THE LIST ENDS ON A ROW BOUNDARY. A fixed `max-height` cuts whichever row
+   * happens to straddle it, and a row sliced through its own text against a hard
+   * container edge reads as broken rather than as scrollable — the same
+   * complaint, in the same session, as the value strip under the horizon. The
+   * cap is now the tallest whole run of rows that fits inside it, measured, so
+   * the edge always falls in a gap.
+   */
+  function measureList() {
+    const rows = [...list.querySelectorAll('.radar-row')];
+    // No layout, no answer. Never a count computed against a zero height.
+    if (!rows.length || !list.clientHeight) {
+      foot.textContent = '';
+      foot.hidden = true;
+      return;
+    }
+    if (!list.dataset.capped) {
+      const budget = LIST_MAX_PX();
+      let fits = 0;
+      for (const r of rows) {
+        if (r.offsetTop + r.offsetHeight > budget) break;
+        fits += 1;
+      }
+      // At least one row, or a tall row on a small screen leaves an empty box.
+      const last = rows[Math.max(0, fits - 1)];
+      list.style.maxHeight = `${last.offsetTop + last.offsetHeight}px`;
+      list.dataset.capped = 'yes';
+    }
+    const hidden = rows.filter(
+      (r) => r.offsetTop + r.offsetHeight > list.scrollTop + list.clientHeight + 2,
+    ).length;
+    foot.textContent = hidden > 0 ? `${hidden} more below — scroll the list` : '';
+    foot.hidden = hidden === 0;
+  }
+
+  /** The cap the stylesheet would have applied, read from the element itself. */
+  function LIST_MAX_PX() {
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return 22 * rem;
+  }
+
+  /*
+   * THE TWO EVENTS THAT CHANGE THE ANSWER.
+   *
+   * Scrolling changes how many rows are below the fold. A resize is what
+   * happens when the RADAR page stops being `hidden` and the list gets a
+   * height for the first time — which is the exact moment the stale
+   * "19 more below" was computed against, and never revisited.
+   *
+   * ResizeObserver rather than a tab-change hook: it fires for the page
+   * appearing, for the device rotating, and for the reader changing their text
+   * size, and it cannot drift out of step with a list it is watching directly.
+   */
+  list.addEventListener('scroll', () => measureList(), { passive: true });
+  if (typeof ResizeObserver === 'function') {
+    /*
+     * IT MUST NOT RETRIGGER ITSELF. The first version of this cleared the cap
+     * and blanked `max-height` before re-measuring — which resizes the very
+     * element being observed, on every notification, forever. That is precisely
+     * the "ResizeObserver loop completed with undelivered notifications"
+     * warning this app already logs on an iPad, and writing a second source of
+     * it while the first is still unexplained would have made the original
+     * impossible to find.
+     *
+     * `measureList` sets the cap only when it is not already set, so the one
+     * resize it causes settles on the next notification and stops.
+     */
+    new ResizeObserver(() => measureList()).observe(list);
   }
 
   function rowDetail(a) {

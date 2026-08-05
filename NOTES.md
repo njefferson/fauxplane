@@ -9,10 +9,71 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.3, the instruments get the landscape screen, 2026-08-05
+## STAGED NOW — 1.28.4, a cut-off reason and a list that could not count, 2026-08-05
 
-**1.28.3 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
-1.28.1.
+**1.28.4 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.28.3.
+
+Noah, with two photographs: *"The red text is cutoff on the PFD when following
+an aircraft. The list of aircraft is not looking correctly due to text alignment
+on the background or something."*
+
+### The reason was truncated, and the fix already existed twenty lines away
+
+The ADI read `ADS-B carries no attitude — pitch is n…`, severed mid-word.
+
+**A reason is the one string on a gauge that must not be abbreviated.** The
+whole argument for crossing an instrument out rather than blanking it is that
+the panel says WHY; half a why looks like a fault in the panel rather than an
+honest answer about what a broadcast carries.
+
+**The interesting part is WHERE it was.** `wrapText` exists, it is correct, and
+it was written for exactly this defect — in the branch that runs when attitude
+is lost ENTIRELY. The branch beside it, which runs when only PITCH is missing,
+kept calling `ellipsise`. One is reachable by denying permissions; the other
+needs a real aircraft being followed, which no sandbox can do. **So the fix went
+to the case that was on screen and never to the case beside it** — and nothing
+was watching, because the check that would have caught it did not exist either.
+
+Now `reasons.test.mjs` wraps EVERY string in `FOLLOW_FAILS` at the width the ADI
+actually gives it and fails on any that carries a truncation mark. Over the
+data, not the drawing, with a deliberately over-wide monospace stand-in for
+`measureText` so anything passing here cannot fail on the real font.
+
+### "19 more below" with nineteen aircraft and seven on screen
+
+The count was taken one frame after the rows were added — and the list is built
+whenever the feed answers, **including while the RADAR page is `hidden`, where
+every element measures zero**. At `clientHeight` 0 every row is below the fold,
+so the count equals the TOTAL and stays wrong until something re-renders.
+
+**A number measured against an unlaid-out element is not slightly off, it is a
+different quantity.** It now refuses to answer without layout, and re-measures
+on the two events that change the answer: the reader scrolling, and the list
+gaining a size — which is what happens the moment the page stops being hidden.
+
+The gate check reproduces it the only way it can be reproduced: land on the PFD,
+let the traffic fixture arrive while RADAR is hidden, and only then switch.
+Measuring after a direct visit passes happily.
+
+**And the list ends on a row boundary now.** A fixed `max-height` cut whichever
+row straddled it, and a row sliced through its own text against a hard container
+edge reads as broken rather than scrollable — the same complaint, in the same
+session, as the value strip under the horizon.
+
+### The ResizeObserver that nearly became the bug it was fixing
+
+The first version of the re-measure cleared the cap and blanked `max-height`
+before measuring — which resizes the element being observed, on every
+notification, forever. That is precisely the *"ResizeObserver loop completed
+with undelivered notifications"* warning this app **already logs on an iPad and
+has never explained**. Writing a second source of it would have made the
+original impossible to find. `measureList` sets the cap only when it is not
+already set, so the one resize it causes settles on the next notification.
+
+---
+
+## 1.28.3 — the instruments get the landscape screen, 2026-08-05
 
 Noah, with a photograph of the PFD on an iPhone in landscape: *"This layout is
 unacceptable."* Reproduced at his exact size — **874x402** — and the numbers

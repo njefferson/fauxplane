@@ -68,6 +68,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.28.4',
+    date: '2026-08-05',
+    headline: 'The horizon finishes its sentence, and the aircraft list can count.',
+    changed: [
+      'Following an aircraft, the horizon says why it cannot show pitch — and that sentence was being cut off mid-word. It now wraps onto a second line and finishes. A crossed-out instrument that only half explains itself looks like a fault in the panel rather than an honest answer about what a broadcast carries.',
+      'The same fix already existed for the case where attitude is lost completely. It had never reached the case where only pitch is missing, which is the one that needs a real aircraft to see.',
+      'The aircraft list said "19 more below" while showing seven of nineteen. It was counting the rows while the RADAR page was still hidden, where everything measures as nothing, so every aircraft counted as off the bottom. It counts when it can actually see, and re-counts when the page appears or the list is scrolled.',
+      'And the list ends on a whole row instead of slicing one through the middle of its text.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.28.3',
     date: '2026-08-05',
     headline: 'On a phone held sideways, the instruments get the whole screen.',

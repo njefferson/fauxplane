@@ -614,6 +614,87 @@ async function seenIntro(context) {
  *      arrow-key contract for anyone driving it from a keyboard.
  */
 /**
+ * THE "HEARD RIGHT NOW" LIST COUNTS WHAT IS ACTUALLY HIDDEN, AND ENDS ON A ROW.
+ *
+ * Noah, 2026-08-05, with a screenshot: "The list of aircraft is not looking
+ * correctly due to text alignment on the background or something." Two faults
+ * behind that, and the first is what made the second so hard to look at.
+ *
+ * IT SAID "19 more below" WITH NINETEEN AIRCRAFT IN TOTAL AND SEVEN ON SCREEN.
+ * The count was measured one frame after the rows were added — and the panel
+ * renders the list whenever the feed answers, including while the RADAR page is
+ * `hidden`, where every element measures ZERO. At `clientHeight` 0 every row is
+ * below the fold, so the count equals the total and stays wrong until something
+ * re-renders. A number measured against an unlaid-out element is not slightly
+ * off, it is a different quantity.
+ *
+ * THE CHECK STARTS ON ANOTHER PAGE ON PURPOSE, because that is the only way to
+ * reproduce it: land on the PFD, let the traffic fixture arrive while RADAR is
+ * hidden, and only then switch. Measuring after a direct visit passes happily.
+ */
+async function checkHeardList(browser, base) {
+  const where = 'heard-list';
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: [] });
+  await seenIntro(context);
+  await context.route('**/api/traffic**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) }),
+  );
+  const page = await context.newPage();
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  // The list is built while RADAR is hidden. THEN show it.
+  await page.waitForTimeout(700);
+  await page.evaluate(() => document.querySelector('[data-page="radar"]').click());
+  await page.waitForTimeout(600);
+
+  const m = await page.evaluate(() => {
+    const list = document.querySelector('.radar-list');
+    const foot = document.querySelector('.radar-list-foot');
+    if (!list) return null;
+    const rows = [...list.querySelectorAll('.radar-row')];
+    const hidden = rows.filter((r) => r.offsetTop + r.offsetHeight > list.scrollTop + list.clientHeight + 2).length;
+    const listBottom = list.scrollTop + list.clientHeight;
+    // A row is SLICED if the visible edge falls strictly inside it.
+    const sliced = rows.filter((r) => r.offsetTop < listBottom - 2 && r.offsetTop + r.offsetHeight > listBottom + 2);
+    return {
+      total: rows.length,
+      hidden,
+      footText: (foot?.textContent ?? '').trim(),
+      footHidden: !!foot?.hidden,
+      sliced: sliced.length,
+      clientHeight: list.clientHeight,
+    };
+  });
+
+  if (!m) return fail(where, 'the aircraft list is missing');
+  if (!m.total) return fail(where, 'the aircraft list rendered no rows from the traffic fixture');
+  if (!m.clientHeight) return fail(where, 'the aircraft list has no height on a page the reader is looking at');
+
+  const claimed = /^(\d+) more below/.exec(m.footText);
+  if (m.hidden > 0) {
+    if (!claimed) {
+      fail(where, `${m.hidden} of ${m.total} rows are below the fold and the list says "${m.footText}"`);
+    } else if (Number(claimed[1]) !== m.hidden) {
+      fail(
+        where,
+        `the list says "${claimed[1]} more below" while ${m.hidden} of ${m.total} rows are actually hidden`
+          + (Number(claimed[1]) === m.total ? ' — the count equals the TOTAL, which is what measuring a hidden page looks like' : ''),
+      );
+    }
+  } else if (!m.footHidden && m.footText) {
+    fail(where, `nothing is below the fold and the list still says "${m.footText}"`);
+  }
+
+  if (m.sliced) {
+    fail(
+      where,
+      `${m.sliced} row(s) are cut through the middle by the list's own edge — a row sliced through its text `
+        + 'against a hard container edge reads as broken rather than as scrollable',
+    );
+  }
+  await context.close();
+}
+
+/**
  * THE CHROME AND PANEL LAYOUT CHECKS, ON VIEWPORTS WHERE THEIR DEFECTS EXIST.
  *
  * These were written inside the per-page sweep, and the plant harness reported
@@ -1359,6 +1440,7 @@ async function main() {
     // and a touch tap are different event paths, and the device this app is
     // built for only has one of them.
     await checkChromeLayout(browser, base);
+    await checkHeardList(browser, base);
     await checkRadarTap(browser, base, { touch: false });
     await checkRadarTap(browser, base, { touch: true });
     await checkCentrePicker(browser, base);
