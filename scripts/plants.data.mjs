@@ -891,13 +891,23 @@ export const PLANTS = [
     // text. Dropping the caveat leaves "66 reports" beside a local weather card,
     // which reads as sixty-six LOCAL advisories — a claim the app never made
     // and cannot support.
-    name: 'reports: the unfiltered-area caveat is dropped from the count line',
+    // RE-AIMED IN 1.37.1. It named the one-liner this used to be, and 1.37.0
+    // grew that into a branch — so the plant stopped matching the file and went
+    // UNPROVEN, which is a plant protecting nothing while still being counted.
+    // The whole sweep is what said so; a stale plant is invisible to everything
+    // else, because a `find` that matches nothing breaks nothing.
+    //
+    // It now breaks the guard rather than the sentence, so it covers BOTH
+    // answers this line can give: the nationwide caveat when the advisories
+    // could not be placed, and the count of how many are overhead when they
+    // could.
+    name: 'reports: the count line stops saying anything about the area at all',
     check: 'a feed that does not narrow to the area says so',
     gate: 'tests',
     file: 'public/src/data/wxtext.js',
-    find: "  const area = result.area === 'unfiltered' ? ` · ${UNFILTERED_NOTE}` : '';",
-    replace: "  const area = '';",
-    expect: /does not narrow|UNFILTERED|caveat/i,
+    find: "  if (result.area === 'unfiltered') {",
+    replace: '  if (false) {',
+    expect: /does not narrow|over your area|UNFILTERED|caveat/i,
   },
   {
     // THE DEFECT THIS FEATURE IS MOST LIKELY TO ROT INTO, and it rots into a
