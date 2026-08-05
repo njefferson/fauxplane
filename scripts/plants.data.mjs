@@ -292,7 +292,7 @@ export const PLANTS = [
     expect: /45s|600|remaining|left/i,
   },
   {
-    // FROM NOAH'S 1.21.1 DIAGNOSTICS REPORT. The panel said attitude.heading
+    // FROM the owner's 1.21.1 DIAGNOSTICS REPORT. The panel said attitude.heading
     // had failed because "this device reports no magnetic heading" — three
     // lines above a raw block reading `webkitCompassHeading 278.3`. His iPhone
     // has a compass; it had stopped SENDING while the page was backgrounded.
@@ -321,7 +321,7 @@ export const PLANTS = [
     expect: /never arrived|no broadcast received|showing that aircraft/i,
   },
   {
-    // NOAH PHOTOGRAPHED THIS: following DAL2229, every instrument crossed out
+    // the owner PHOTOGRAPHED THIS: following DAL2229, every instrument crossed out
     // at once, PWR ON. "This aircraft makes the whole display look broken
     // without any data, despite being 'turned on.'" The followed fields were
     // aged on the registry's SENSOR windows — heading's staleMs is 5 s because

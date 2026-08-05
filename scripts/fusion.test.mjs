@@ -763,7 +763,7 @@ test('the gyro is rotated by the mount too, or the two halves fight again', () =
 // So these assert against MEASURED NUMBERS from the owner's iPad, taken from its own
 // diagnostics report while it was held square in landscape.
 
-test('NOAH’S IPAD: an iPad held square in landscape reads roll near zero', () => {
+test('the owner’S IPAD: an iPad held square in landscape reads roll near zero', () => {
   // Raw accelerationIncludingGravity, after the iOS negation is undone —
   // exactly the vector in the report, and |g| 1.15 because he was holding it.
   const up = { x: 6.887, y: 0.351, z: 8.936 };
@@ -782,7 +782,7 @@ test('NOAH’S IPAD: an iPad held square in landscape reads roll near zero', () 
   assert.ok(fixed.pitch < -40 && fixed.pitch > -65, `pitch ${fixed.pitch}`);
 });
 
-test('NOAH’S DEVICES: all five measured reports read near level once fixed', () => {
+test('the owner’S DEVICES: all five measured reports read near level once fixed', () => {
   // Five separate diagnostics reports, two devices, both orientations. The
   // angle is what `window.orientation` said, which is the source the fix
   // prefers. Kept as a table because the value of these numbers is that they
@@ -836,7 +836,7 @@ test('screenToDevice is still the exact inverse after the sign flip', () => {
   }
 });
 
-test('NOAH’S IPAD: window.orientation wins where it exists, because iOS’s modern one lied', () => {
+test('the owner’S IPAD: window.orientation wins where it exists, because iOS’s modern one lied', () => {
   // Verbatim from the report: angle says 0, window.orientation says 90, and the
   // device really was turned a quarter turn.
   const ipad = resolveScreenAngle({ orientationAngle: 0, windowOrientation: 90 });
@@ -1323,7 +1323,7 @@ test('SIGN FLIP: resolving the accelerometer sign revokes alignment with the dis
 });
 
 /**
- * NOAH'S SYMPTOM, 2026-08-03: "Gentle rotation errors the horizon."
+ * THE REPORTED SYMPTOM:
  *
  * His ADI read `gravity 51° from the gyro — coasting on gyro` with the horizon
  * dozens of degrees over. Two separate delays stacked into the window he

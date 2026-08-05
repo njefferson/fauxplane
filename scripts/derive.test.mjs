@@ -648,7 +648,7 @@ test('OWNERSHIP: the device stops writing the fields a followed aircraft fills',
 });
 
 test('THE VSI REFUSES A RUNAWAY, and resets rather than sulking for ever', () => {
-  // THE PATH THAT PRODUCED 344,570 fpm ON NOAH'S IPAD, reproduced.
+  // THE PATH THAT PRODUCED 344,570 fpm ON the owner's IPAD, reproduced.
   //
   // A GPS fix arrives, then stops for a while — routine indoors. The FIELD
   // stays LIVE for its full sixty-second window, so `read` keeps answering,

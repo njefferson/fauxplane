@@ -886,7 +886,7 @@ const LAYOUT_VIEWPORTS = [
   // because every other check on this page is about existence, not size.
   { name: 'tablet-landscape', width: 1024, height: 768, fontScale: 1, short: false },
   /**
-   * NOAH'S IPAD, BOTH WAYS UP, WITH SAFARI'S CHROME TAKEN OFF.
+   * the owner's IPAD, BOTH WAYS UP, WITH SAFARI'S CHROME TAKEN OFF.
    *
    * 620 rather than 768: the tab strip and address bar are real and they put the
    * viewport in a band NOTHING in this gate covered — taller than the 34rem

@@ -558,7 +558,7 @@ body {
 }
 
 /*
- * THE SPACE UNDER THE SCOPE IS NOAH'S, AND IT STAYS EMPTY UNTIL HE FILLS IT.
+ * THE SPACE UNDER THE SCOPE IS the owner's, AND IT STAYS EMPTY UNTIL HE FILLS IT.
  *
  * The scope is a circle in a column that is taller than it is wide, so there is
  * room left over. That is not a defect, it is not slack to reclaim, and it is

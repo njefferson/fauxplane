@@ -46,7 +46,7 @@ async function clientIntervals() {
 }
 
 test('the followed aircraft outlives its own poll, or the panel crosses itself out', () => {
-  // NOAH PHOTOGRAPHED THIS. Following DAL2229: GS, LOAD G, ATT, GPS ALT, VS,
+  // the owner PHOTOGRAPHED THIS. Following DAL2229: GS, LOAD G, ATT, GPS ALT, VS,
   // HDG and TURN all crossed out at once, PWR ON, banner saying FOLLOWING —
   // "makes the whole display look broken without any data".
   //

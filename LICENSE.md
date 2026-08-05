@@ -2,7 +2,7 @@
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>
 
-Required Notice: Copyright © 2026 Noah Jefferson (https://github.com/njefferson/fauxplane)
+Required Notice: Copyright © 2026 the owner Jefferson (https://github.com/njefferson/fauxplane)
 
 > **Scope.** These terms cover this repository's own source and content — the
 > app in `public/` and the tooling in `scripts/`. They do NOT cover the data the
