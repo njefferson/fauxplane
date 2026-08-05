@@ -199,11 +199,16 @@ const REGISTRY = [
   { selector: '.dim-note', label: 'brightness note', min: 4.6, page: 'setup' },
   { selector: '.foot-item', label: 'footer text', min: 4.6 },
   { selector: '.foot-link', label: 'footer link', min: 4.6 },
-  { selector: '.ro-label', label: 'readout label', min: 4.6, page: 'pfd' },
-  { selector: '.ro-figure', label: 'readout value', min: 4.6, page: 'pfd' },
-  { selector: '.ro-unit', label: 'readout unit', min: 4.6, page: 'pfd' },
-  { selector: '.ro-reason', label: 'readout failure reason', min: 4.6, page: 'pfd' },
-  { selector: '.chip-fail', label: 'FAIL chip', min: 4.6, page: 'pfd' },
+  // THE READOUTS ARE NOT PAINTED ANY MORE (Noah, 2026-08-05), so there is no
+  // contrast to measure on them — a colour ratio on clipped 1px text is a
+  // number about nothing. They are still asserted, harder than before, by
+  // `checkValuesAreScreenReaderOnly` and by acceptance criterion 4: the text
+  // alternative must EXIST and be in the accessibility tree. Removing a
+  // registry row is normally the thing this gate is built to prevent, so the
+  // replacement assertion goes in the same commit.
+  // { selector: '.ro-label' | '.ro-figure' | '.ro-unit' } — visually hidden.
+  // `.ro-reason` and `.chip-fail` were here too, and go for the same reason as
+  // the three above: they are inside the visually hidden value strip now.
   // The airframe picker (Doctrine §4: a new fg/bg pair joins the gate in the
   // same commit as the code that renders it). Both states, because a pressed
   // button changes BOTH its fill and its text colour.
@@ -614,6 +619,67 @@ async function seenIntro(context) {
  *      arrow-key contract for anyone driving it from a keyboard.
  */
 /**
+ * THE VALUES EXIST AS TEXT, IN THE ACCESSIBILITY TREE, AND ARE NOT PAINTED.
+ *
+ * Noah, 2026-08-05: "I don't want to SEE all the words that are at the bottom
+ * for no other reason than for a screen reader to have access. I DO NOT NEED
+ * THEM BECAUSE I CAN FUCKING SEE THE GUAGES."
+ *
+ * A canvas is non-text content, so SC 1.1.1 requires a text alternative — it
+ * does NOT require that alternative to be painted. This check is what makes
+ * that distinction safe to act on, because "visually hidden" and "gone" are one
+ * careless edit apart and only one of them is allowed:
+ *
+ *   · `display: none` or `visibility: hidden` or `aria-hidden` DELETE the text
+ *     alternative and take acceptance criterion 4 with them. Any of those is a
+ *     failure here, however tidy the panel looks afterwards.
+ *   · The rows must still be REAL TEXT with their values and provenance, not an
+ *     empty box that satisfies a selector.
+ *   · Nothing in it may be focusable. An invisible tab stop sends a sighted
+ *     keyboard user somewhere with nothing to see, which is a worse defect than
+ *     the one hiding it solved.
+ *
+ * FIVE CONTRAST REGISTRY ROWS WERE REMOVED IN THE SAME COMMIT AS THIS CHECK.
+ * Removing registry rows is the thing this gate exists to prevent, so the
+ * replacement assertion is not optional and is not deferred: a colour ratio on
+ * clipped 1px text is a number about nothing, and this is what took its place.
+ */
+async function checkValuesAreScreenReaderOnly(page, where) {
+  const m = await page.evaluate(() => {
+    const strip = document.querySelector('.readouts');
+    if (!strip) return null;
+    const cs = getComputedStyle(strip);
+    const r = strip.getBoundingClientRect();
+    const rows = [...strip.querySelectorAll('.ro-label')].map((n) => n.textContent.trim()).filter(Boolean);
+    const text = (strip.textContent ?? '').replace(/\s+/g, ' ').trim();
+    return {
+      display: cs.display,
+      visibility: cs.visibility,
+      ariaHidden: strip.getAttribute('aria-hidden'),
+      paintedArea: Math.round(r.width * r.height),
+      rows: rows.length,
+      textLength: text.length,
+      focusables: strip.querySelectorAll('[tabindex]:not([tabindex="-1"]), a[href], button, input, select, textarea').length,
+      selfTabindex: strip.getAttribute('tabindex'),
+    };
+  });
+  if (!m) return fail(where, 'the value strip is missing — the canvas has no text alternative at all');
+
+  if (m.display === 'none') fail(where, 'the value strip is `display: none` — that deletes the canvas\u2019s text alternative');
+  if (m.visibility === 'hidden') fail(where, 'the value strip is `visibility: hidden` — that deletes it from the accessibility tree too');
+  if (m.ariaHidden === 'true') fail(where, 'the value strip is `aria-hidden` — the one thing it must never be');
+  if (m.rows < 4) fail(where, `the value strip carries only ${m.rows} labelled readouts — it is not a text alternative for the panel`);
+  if (m.textLength < 80) fail(where, `the value strip holds ${m.textLength} characters of text — too little to be standing in for the instruments`);
+  if (m.paintedArea > 400) {
+    fail(where, `the value strip is painting ${m.paintedArea}px\u00b2 — it is meant to be read, not seen, and that space belongs to the instruments`);
+  }
+  if (m.selfTabindex !== null && m.selfTabindex !== '-1') {
+    fail(where, 'the value strip is focusable — an invisible tab stop is worse than the layout it replaced');
+  }
+  if (m.focusables) fail(where, `${m.focusables} focusable element(s) inside the hidden value strip`);
+}
+
+/**
  * THE POWER SWITCH IS ON SCREEN, AND NOTHING IS DRAWN OVER IT.
  *
  * Noah, 2026-08-05, with an iPad both ways up: "Now the power button is too low
@@ -910,14 +976,11 @@ async function checkInstrumentsOwnTheScreen(page, where) {
     };
   });
   if (!m) return fail(where, 'the PFD row, value strip, footer or page is missing — the layout cannot be judged');
-  // One pixel of slack for sub-pixel rounding, not for a visible sliver.
-  if (m.stripTop < m.foldTop - 1) {
-    fail(
-      where,
-      `the value strip starts ${m.foldTop - m.stripTop}px above the fold — on a screen this short it is `
-        + 'a fragment of diagnostics cut off by the footer, and the instruments should have that space',
-    );
-  }
+  // THE STRIP IS NOT PAINTED AT ALL NOW, so "does it start below the fold" is
+  // no longer the question — `checkValuesAreScreenReaderOnly` asks the one that
+  // replaced it. Noah, 2026-08-05: "I don't want to SEE all the words that are
+  // at the bottom... I DO NOT NEED THEM BECAUSE I CAN FUCKING SEE THE GUAGES."
+
   // A few pixels of slack: the row is a flex child among siblings with gaps,
   // and this is about a panel that is visibly short, not about sub-pixel maths.
   if (m.rowH < m.visibleH - 20) {
@@ -1586,6 +1649,7 @@ async function main() {
             for (const o of overlaps) fail(where, o);
           }
 
+          if (name === 'pfd') await checkValuesAreScreenReaderOnly(page, where);
           if (name === 'setup') await checkBrightnessOnSetup(page, where);
 
           if (name === 'radar') {

@@ -279,7 +279,34 @@
           A scrollable region must be reachable and scrollable from the
           keyboard, so it is focusable and named.
         -->
-        <div class="readouts" id="pfd-readouts" role="group" aria-label="Flight values" tabindex="0"></div>
+        <!--
+          THE VALUES AS TEXT, FOR WHOEVER CANNOT SEE THE GAUGES — and only for
+          them. Noah, 2026-08-05: "Why do you not give the entire fucking height
+          to the horizon?? I don't want to SEE all the words that are at the
+          bottom for no other reason than for a screen reader to have access. I
+          DO NOT NEED THEM BECAUSE I CAN FUCKING SEE THE GUAGES."
+
+          He is right, and the reason they were ever visible was a confusion in
+          this file's own comment: a canvas is non-text content, so SC 1.1.1
+          requires a text alternative — it does NOT require that alternative to
+          be PAINTED. Every value, its units, its provenance and its failure
+          reason are still here, still real text, still in the accessibility
+          tree. They simply no longer take a band of glass from the instruments
+          they duplicate.
+
+          NOT `aria-hidden`, and never `display: none` — either would delete the
+          text alternative and take acceptance criterion 4 with it. Visually
+          hidden, which is a different thing.
+
+          NOT FOCUSABLE ANY MORE, either: `tabindex="0"` on an invisible box
+          sends a sighted keyboard user's focus somewhere with nothing to see,
+          which is a worse failure than the one it was solving. It was there to
+          make a scrolling region reachable, and there is no region to scroll.
+
+          Anyone who wants these numbers on screen has two places that exist for
+          it: BITE, and the diagnostics report behind the version stamp.
+        -->
+        <div class="readouts sr-only" id="pfd-readouts" role="group" aria-label="Flight values"></div>
       </section>
 
       <section id="page-atis" class="page page-cards" role="tabpanel" aria-labelledby="tab-atis" tabindex="0" hidden></section>

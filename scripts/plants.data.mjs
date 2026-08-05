@@ -1007,6 +1007,28 @@ export const PLANTS = [
    * cannot be written, say so here rather than leaving the check unmentioned.
    */
   {
+    // Noah, 2026-08-05: "I DO NOT NEED THEM BECAUSE I CAN FUCKING SEE THE
+    // GUAGES." Un-hiding the strip gives the duplicate its band of glass back.
+    name: 'values: the screen-reader strip is painted on the panel again',
+    check: 'the values are read, not seen',
+    file: 'public/styles.css',
+    find: '.readouts {\n  display: block;\n}',
+    replace: '.readouts {\n  display: block;\n  position: static;\n  width: auto;\n  height: auto;\n  clip: auto;\n}',
+    expect: /it is meant to be read, not seen/,
+  },
+  {
+    // The other direction, and the dangerous one: hiding it so well that it
+    // stops being a text alternative at all. A canvas is non-text content, so
+    // this would take acceptance criterion 4 with it — while making the panel
+    // look exactly as intended.
+    name: 'values: the text alternative is hidden from screen readers too',
+    check: 'visually hidden is not the same as gone',
+    file: 'public/index.html',
+    find: '<div class="readouts sr-only" id="pfd-readouts" role="group" aria-label="Flight values"></div>',
+    replace: '<div class="readouts sr-only" id="pfd-readouts" role="group" aria-label="Flight values" aria-hidden="true"></div>',
+    expect: /aria-hidden — the one thing it must never be|readouts/,
+  },
+  {
     name: 'BITE: the page stops reading the live store',
     check: 'BITE explains each failure rather than reporting all-clear',
     file: 'public/src/panels/bite.js',

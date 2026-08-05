@@ -584,39 +584,30 @@ body {
  * with no breakpoint deciding which. The instruments get the height back
  * without the text getting smaller or going away.
  */
+/*
+ * THE VALUE STRIP IS FOR WHOEVER CANNOT SEE THE GAUGES, AND ONLY FOR THEM.
+ *
+ * Noah, 2026-08-05: "Why do you not give the entire fucking height to the
+ * horizon?? I don't want to SEE all the words that are at the bottom for no
+ * other reason than for a screen reader to have access. I DO NOT NEED THEM
+ * BECAUSE I CAN FUCKING SEE THE GUAGES."
+ *
+ * He is right, and the confusion was in this file's own comments: a canvas is
+ * non-text content, so SC 1.1.1 requires a text alternative — it does NOT
+ * require that alternative to be PAINTED. Everything this rule used to do was
+ * rationing glass for a duplicate: a third of the panel, then a fifth, then a
+ * capped band, then a strip below the fold. Four arrangements, all of them
+ * answering "how much room should the duplicate get" instead of "why is the
+ * duplicate on screen".
+ *
+ * `.sr-only` in the markup does the hiding. What is left here is only what has
+ * to be UNDONE — the flex share, the height floor and the scroll region, each
+ * of which now describes a box nobody can see. The scroller especially: axe
+ * flags an unfocusable scrollable region, and making it focusable again would
+ * send a sighted keyboard user's focus into an invisible box.
+ */
 .readouts {
-  flex: 0 0 auto;
-  /* THE TARGET FLOOR IS THE FLOOR, even under flex pressure. This is a
-     focusable scroll region (SC 2.5.8 applies to it), and `min-height: 0` let
-     the layout crush it to 19px the moment the header grew by one control —
-     which is how adding the (i) button broke the PFD on a landscape phone.
-     A floor of one target still permits shrinking far below content height, so
-     the overflow-scroll this rule exists to enable is unaffected. */
-  min-height: var(--target);
-  /* A FIFTH OF THE PANEL, AT MOST — it was a third, and a third was still too
-     much on a landscape iPad where height is the scarce axis. Every value stays
-     reachable because the region scrolls; what it can no longer do is grow
-     until the horizon is a letterbox. */
-  max-height: 21%;
-  overflow-y: auto;
-  /* IT READS AS A BAND, not as clipped content. A grid of variable-height rows
-     cannot be capped at a whole number of them, so the last visible row is
-     usually cut — and a cut row against nothing looks like a rendering fault
-     rather than like a scroller. The rule above it says where the instruments
-     end and this begins. Same reasoning as the aircraft list, which needed its
-     count in words as well because "All (15)" beside seven rows was actively
-     misleading; nothing here claims a count. */
-  border-top: 1px solid var(--hairline);
-  padding-top: 0.4rem;
-  /* WIDE ENOUGH FOR THE WHOLE ROW ON ONE LINE, which is the point of the
-     compaction — narrower columns fit more across and gain nothing, because
-     each one then costs two lines when the provenance chip wraps. Measured:
-     13rem columns wrapped the chip and cost 103px a row; 15rem keep it on the
-     line at about 34px. */
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  display: grid;
-  gap: 0.3rem;
-  align-content: start;
+  display: block;
 }
 
 /* NARROW: stack rather than squeeze. Checked at the small-phone-at-200%-text

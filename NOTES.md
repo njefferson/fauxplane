@@ -9,10 +9,54 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.9, the fix I described was not the fix I made, 2026-08-05
+## STAGED NOW — 1.29.0, the value strip is not painted at all, 2026-08-05
 
-**1.28.9 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.29.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.28.3.
+
+Noah: *"Why do you not give the entire fucking height to the horizon?? I don't
+want to SEE all the words that are at the bottom for no other reason than for a
+screen reader to have access. I DO NOT NEED THEM BECAUSE I CAN FUCKING SEE THE
+GUAGES."*
+
+**He is right, and the confusion was in this repo's own comments.** A canvas is
+non-text content, so SC 1.1.1 requires a TEXT ALTERNATIVE — it does not require
+that alternative to be PAINTED. Every arrangement this strip has had was
+answering the wrong question:
+
+- a third of the panel (1.0.0 → 1.18.0),
+- a fifth, capped at 21% (1.19.1),
+- a band capped in rem (1.28.0 attempts),
+- a strip starting at the fold (1.28.0).
+
+**Four rationings of glass for a duplicate, and none of them asked why the
+duplicate was on screen at all.** It is `.sr-only` now. In the DOM, in the
+accessibility tree, complete — and not drawn.
+
+Measured, horizon height: **iPad landscape 264 → 364. Tablet 381 → 512.** About
+40% in both.
+
+### What replaced five contrast rows
+
+`.ro-label`, `.ro-figure`, `.ro-unit`, `.ro-reason` and `.chip-fail` came out of
+the contrast registry, because a colour ratio on clipped 1px text is a number
+about nothing. **Removing registry rows is exactly what this gate exists to
+prevent**, so the replacement went in the same commit:
+`checkValuesAreScreenReaderOnly` asserts the strip is not `display:none`, not
+`visibility:hidden`, not `aria-hidden`, still carries real labelled text, paints
+nothing, and contains no focusable element.
+
+**"Visually hidden" and "gone" are one careless edit apart and only one of them
+is allowed** — so there are plants in BOTH directions: one that paints it again,
+one that hides it from screen readers too.
+
+And `tabindex="0"` came off. It was there to make a scrolling region reachable;
+there is no region to scroll, and an invisible tab stop sends a sighted keyboard
+user somewhere with nothing to see.
+
+---
+
+## 1.28.9 — the fix I described was not the fix I made, 2026-08-05
 
 1.28.8 said the landscape overlap was fixed by giving `.pfd-screen`
 `flex: 1 0 auto` in the base rule. **It was not.** The plant for it came back

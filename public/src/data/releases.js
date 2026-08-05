@@ -68,6 +68,21 @@
  */
 export const RELEASES = [
   {
+    version: '1.29.0',
+    date: '2026-08-05',
+    headline: 'The instruments get the whole panel. The words are gone.',
+    changed: [
+      'The row of value cards along the bottom is no longer drawn. It was never there for you — it is the text version of the gauges, for a screen reader, and it was taking a band of glass from the instruments it duplicates.',
+      'It still exists, in full, for anyone using the panel by voice: every value, its units, whether it is live or derived, and the reason when it has failed. It is simply not painted any more.',
+      'The horizon is about 40% taller on a tablet for it, and the scope grows with it.',
+      'If you want those numbers on screen, they are on BITE and in the diagnostics report behind the version stamp — both of which show more than the strip ever did.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.28.9',
     date: '2026-08-05',
     headline: 'A correction: the last release explained a fix it had not made.',
