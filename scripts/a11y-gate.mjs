@@ -636,8 +636,34 @@ async function checkHeardList(browser, base) {
   const where = 'heard-list';
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: [] });
   await seenIntro(context);
+  /**
+   * ITS OWN FIXTURE, WITH ENOUGH AIRCRAFT TO OVERFLOW THE LIST.
+   *
+   * The shared `TRAFFIC_FIXTURE` has THREE, which is right for the tap-geometry
+   * checks and useless here: three rows never reach the bottom of the scroller,
+   * so nothing is ever below the fold and nothing is ever sliced. Written
+   * against it, this check passed while both of its plants stayed green — the
+   * sweep reported them UNPROVEN, which is the only reason it was noticed.
+   *
+   * A check whose FIXTURE cannot produce the condition is the same defect as a
+   * check measured on a viewport where the defect cannot appear, and this is
+   * the third shape of it in one session (hub LESSONS §54). Nineteen, because
+   * that is what Noah had on screen when he reported it.
+   */
+  const many = {
+    ...TRAFFIC_FIXTURE,
+    count: 19,
+    aircraft: Array.from({ length: 19 }, (_, i) => ({
+      ...TRAFFIC_FIXTURE.aircraft[0],
+      hex: `f0000${i.toString(16).padStart(2, '0')}`,
+      callsign: `TST${100 + i}`,
+      registration: `N${100 + i}TS`,
+      lat: 38.7 + (i + 1) * 0.02,
+      lon: -121.0 + (i + 1) * 0.01,
+    })),
+  };
   await context.route('**/api/traffic**', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) }),
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(many) }),
   );
   const page = await context.newPage();
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });

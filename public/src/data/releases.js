@@ -68,13 +68,27 @@
  */
 export const RELEASES = [
   {
+    version: '1.28.5',
+    date: '2026-08-05',
+    headline: 'The aircraft list can count now — the last release said it could, and it could not.',
+    changed: [
+      'It says how many aircraft are below the bottom of the list, and the number is right. 1.28.4 claimed to fix this and did not: it shipped an explanation that sounded good and was wrong, and the wrong explanation led to a fix for something that was never happening.',
+      'What was actually wrong: each row reports where it sits relative to whichever box around it is anchored — and the list was not anchored, so every row reported its position on the whole page instead. Those numbers are always bigger than the list is tall, so every aircraft counted as being off the bottom, which is why the count came out as the total every time.',
+      'The same wrong measurement decided where the list should end, so it also cut a row through the middle of its text. Both come from one line of styling, and both are right now.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.28.4',
     date: '2026-08-05',
     headline: 'The horizon finishes its sentence, and the aircraft list can count.',
     changed: [
       'Following an aircraft, the horizon says why it cannot show pitch — and that sentence was being cut off mid-word. It now wraps onto a second line and finishes. A crossed-out instrument that only half explains itself looks like a fault in the panel rather than an honest answer about what a broadcast carries.',
       'The same fix already existed for the case where attitude is lost completely. It had never reached the case where only pitch is missing, which is the one that needs a real aircraft to see.',
-      'The aircraft list said "19 more below" while showing seven of nineteen. It was counting the rows while the RADAR page was still hidden, where everything measures as nothing, so every aircraft counted as off the bottom. It counts when it can actually see, and re-counts when the page appears or the list is scrolled.',
+      'The aircraft list said "19 more below" while showing seven of nineteen. This release did not fix it and named the wrong cause — see 1.28.5.',
       'And the list ends on a whole row instead of slicing one through the middle of its text.',
     ],
     broken: [

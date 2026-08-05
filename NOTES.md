@@ -9,10 +9,68 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## STAGED NOW — 1.28.4, a cut-off reason and a list that could not count, 2026-08-05
+## STAGED NOW — 1.28.5, the list count, and a confident wrong diagnosis, 2026-08-05
 
-**1.28.4 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.28.5 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.28.3.
+
+**1.28.4 claimed to fix the aircraft list count and did not.** It named a cause,
+the cause was wrong, and the fix that followed addressed something that was
+never happening. The check written to prove it passed **vacuously** — and the
+only reason any of this was noticed is that the plant sweep reported both of its
+plants `UNPROVEN`.
+
+### The wrong diagnosis, and why it survived
+
+The story in 1.28.4 was: the list is built while the RADAR page is `hidden`,
+everything measures zero, so every row counts as below the fold. Plausible,
+consistent with the symptom, and **completely wrong**.
+
+**The actual cause is one line of CSS.** `offsetTop` is measured from the
+nearest POSITIONED ancestor, and `.radar-list` was not positioned — so the
+nearest one was somewhere up the page and every row reported a PAGE coordinate.
+Measured: the first row's `offsetTop` was **1187** on a 390px-wide phone, against
+a scroller `clientHeight` of 318. Every row is "below the fold" when compared
+that way, so the count came out as the TOTAL every single time, on any page, in
+any state. The row-cap was computed from the same offsets and was nonsense too,
+which is where the sliced row came from.
+
+`position: relative` on the list fixes both numbers. Measured after: 6 rows
+visible, `13 more below`, 6 + 13 = 19, nothing sliced.
+
+### The check passed because its FIXTURE could not produce the defect
+
+`checkHeardList` used the shared `TRAFFIC_FIXTURE` — which has **three
+aircraft**. Three rows never reach the bottom of a scroller, so nothing is ever
+below the fold and nothing is ever sliced. The check ran, asserted, and reported
+green over a condition it could not reach.
+
+**This is the third shape of hub LESSONS §54 in one session**, and the shapes
+are worth naming together because they do not look alike while you are writing
+them:
+
+- a check measured on a VIEWPORT where the defect cannot appear (the scope
+  check, at 1024x900),
+- a check that cannot fail in the HARNESS meant to prove it (the (i) placement,
+  under `--quick`),
+- a check whose FIXTURE cannot produce the condition (this one, three aircraft).
+
+Each is invisible in a green run. Each was caught by `plant.mjs` and by nothing
+else. **The sweep is not a formality — it has now found four defects in checks
+in a single day, three of them in checks written the same hour.**
+
+### And the deeper one: a plausible cause is not a cause
+
+The hidden-page story explained the symptom, matched the code, and was written
+into a release note as fact. The measurement that would have refuted it —
+printing an actual `offsetTop` — took one probe and was not run, because the
+explanation already felt finished. **A diagnosis that has not been measured is a
+guess wearing a diagnosis's clothes**, and this repo has the same lesson written
+about airplanes.live's terms from a different direction.
+
+---
+
+## 1.28.4 — a cut-off reason, and a list fix that did not work, 2026-08-05
 
 Noah, with two photographs: *"The red text is cutoff on the PFD when following
 an aircraft. The list of aircraft is not looking correctly due to text alignment

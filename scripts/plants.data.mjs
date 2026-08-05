@@ -916,12 +916,18 @@ export const PLANTS = [
     // count was measured one frame after render, and the list is built while
     // the RADAR page is still hidden — where everything measures zero, so every
     // row counts as below the fold.
-    name: 'list: the hidden-row count is measured on an unlaid-out page again',
+    // THE REAL CAUSE, and the first version of this plant aimed at the wrong
+    // one. `offsetTop` is measured from the nearest POSITIONED ancestor; with
+    // the list unpositioned every row reports a page coordinate and the count
+    // comes out as the total. Removing `position: relative` puts that back
+    // exactly, which the guard-removal plant never did — it stayed green, the
+    // sweep said UNPROVEN, and that is what sent anyone looking at the offsets.
+    name: 'list: the scroller stops being the origin for its own rows',
     check: 'the aircraft list counts what is actually below the fold',
-    file: 'public/src/panels/radar.js',
-    find: '    if (!rows.length || !list.clientHeight) {',
-    replace: '    if (!rows.length) {',
-    expect: /the count equals the TOTAL|more below" while \d+ of \d+ rows are actually hidden/,
+    file: 'public/styles.css',
+    find: '  position: relative;\n  display: flex;\n  flex-direction: column;\n  gap: 0.4rem;\n  max-height: 22rem;',
+    replace: '  display: flex;\n  flex-direction: column;\n  gap: 0.4rem;\n  max-height: 22rem;',
+    expect: /the count equals the TOTAL|more below" while \d+ of \d+ rows are actually hidden|cut through the middle/,
   },
   {
     // A row sliced through its own text against a hard container edge reads as

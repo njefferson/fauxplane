@@ -1522,6 +1522,15 @@ body[data-powered='true'] .gate {
 }
 
 .radar-list {
+  /* POSITIONED, so `offsetTop` on a row is measured from THIS box.
+     Without it the nearest positioned ancestor is somewhere up the page and
+     every row reports a page coordinate — 1187px for the first row on a phone —
+     which was then compared against the scroller's own height. Every row came
+     out "below the fold", so the list said "19 more below" with nineteen
+     aircraft in total and seven on screen (Noah, 2026-08-05), and the row-cap
+     computed from the same offsets was nonsense too.
+     One line, and it is load-bearing for two separate numbers. */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
