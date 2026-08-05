@@ -856,9 +856,19 @@ export const PLANTS = [
     // plant prefixed it and stayed GREEN — correctly, because the entry was
     // still in the list and still matched. A plant that does not actually
     // produce the defect proves nothing, and the sweep said so.
-    find: "      'At the largest text size on a small phone, the radar scope starts below the bottom of the screen and you have to scroll before any of it is visible. The radar page is not the cause and cannot fix it \\u2014 the header and tab strip alone take about two thirds of the screen at that setting. Fixing it means shrinking the chrome at large text, which changes every page.',\n",
+    //
+    // RE-AIMED IN 1.37.1, and how it broke is the lesson. It named the 200%-text
+    // line, and 1.37.1 FIXED that defect and retired its registry entry — so the
+    // find still matched, but it matched the copy in an older release's notes,
+    // where removing it breaks nothing because only the CURRENT release is
+    // checked. The plant went green while protecting nothing.
+    //
+    // A plant naming a defect can outlive the defect. It now names one that is
+    // still standing, and the first occurrence of this line IS the current
+    // release, because the list is newest-first.
+    find: "      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out \\u2014 those appear in their own group saying so, rather than being dropped.',\n",
     replace: "",
-    expect: /does not tell the reader about|scope-below-fold|STANDING/i,
+    expect: /does not tell the reader about|advisories-unplaceable|STANDING/i,
   },
   {
     // The other half: a registry entry with no explanation is a pattern nobody
@@ -868,8 +878,11 @@ export const PLANTS = [
     check: 'a standing defect is described, not just matched',
     gate: 'tests',
     file: 'public/src/data/releases.js',
-    find: "    why: 'At 200% text on a small phone the RADAR scope starts below the fold.",
-    replace: "    why: 'see notes.', unusedWhy: 'At 200% text on a small phone the RADAR scope starts below the fold.",
+    // Re-aimed in 1.37.1 for the same reason as the plant above: it named the
+    // `why` of a registry entry that release retired, so it stopped matching the
+    // file at all and reported itself stale rather than failing.
+    find: "    why: 'Some advisories name facilities the bundled table does not carry.",
+    replace: "    why: 'see notes.', unusedWhy: 'Some advisories name facilities the bundled table does not carry.",
     expect: /no explanation of what the defect actually is|described, not just matched/i,
   },
   {
