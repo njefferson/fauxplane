@@ -84,7 +84,7 @@ test('with NO calibration it says so', () => {
 });
 
 test('with a calibration applied it NEVER says "not levelled"', () => {
-  // THE BUG, as a single assertion. The owner's exact numbers.
+  // THE BUG, as a single assertion, with the numbers it was found at.
   const { describeLevelling } = setupWith({ pitchDeg: -46, rollDeg: 3.2, capturedAtScreenAngle: 90 }, 90);
   const d = describeLevelling();
   assert.equal(d.state, 'on');

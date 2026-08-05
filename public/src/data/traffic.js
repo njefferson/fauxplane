@@ -55,8 +55,8 @@ export const RADAR_RANGE_NM = [10, 20, 40, 80];
  *
  * THE REAL DE-CLUTTER, and the thing this scope was missing entirely. A flight
  * deck does not show every aircraft it can hear: the crew select a band, and
- * everything outside it is simply not displayed. The owner's screenshot had 56
- * aircraft on one scope; most of them would not be on a real ND at all.
+ * everything outside it is simply not displayed. A busy scope carries 56
+ * aircraft; most of them would not be on a real ND at all.
  *
  * The names and the numbers are the real ones. NORM is what a crew fly with,
  * ABOVE is selected before a climb, BELOW before a descent.

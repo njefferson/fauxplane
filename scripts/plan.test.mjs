@@ -41,7 +41,7 @@ test('PLAN: two aircraft far apart both keep their labels, below the symbol', ()
 });
 
 test('PLAN: NO TWO LABELS EVER OVERLAP — the defect, directly', () => {
-  // A dozen aircraft crammed into one small area, which is the owner's screenshot.
+  // A dozen aircraft crammed into one small area, which is the real case.
   const items = [];
   for (let i = 0; i < 12; i += 1) {
     items.push({ key: `k${i}`, x: 200 + (i % 4) * 6, y: 200 + Math.floor(i / 4) * 6, size: 5, text: `FLT${i}00 FL${300 + i}`, priority: -i });

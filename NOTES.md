@@ -700,7 +700,7 @@ coverage table showing `nav_qnh` on 34 of 60 and `nav_altitude_mcp` on 29 of 60
 
 ## PROMOTED — main is on 1.26.0, and four releases had never deployed, 2026-08-04
 
-**The owner said "Promote to main."** `main` fast-forwarded from 1.23.1 to **1.26.0**
+**Promoted to main.** `main` fast-forwarded from 1.23.1 to **1.26.0**
 and — this time — **the DEPLOY was verified green for that exact SHA**, not the
 push. Live at https://fauxplane.pages.dev. Staging is the same commit.
 
@@ -1127,7 +1127,7 @@ screenshot.
 
 ## PROMOTED — main reached 1.23.0, and the sweep got a selector, 2026-08-04
 
-**The owner said "Promote to main" on 2026-08-04**; `main` fast-forwarded cleanly
+**Promoted to main on 2026-08-04**; `main` fast-forwarded cleanly
 from 1.22.1 to **1.23.0**, live at https://fauxplane.pages.dev. Every gate ran
 against the exact commit, including the plant sweep WHOLE at 57/57 — a promote
 is the one moment that cost is obviously worth it.
@@ -1240,7 +1240,7 @@ AoA needs a groundspeed over 20 kt; there is no ambient light sensor. The three
 
 ## PROMOTED — main reached 1.22.1, 2026-08-04
 
-**The owner said "Promote to main" on 2026-08-04.** `main` fast-forwarded cleanly
+**Promoted to main on 2026-08-04.** `main` fast-forwarded cleanly
 from **1.15.0 to 1.22.1** — eleven releases, eighteen commits, no merge. Live at
 **https://fauxplane.pages.dev**; staging is the same commit.
 
@@ -4715,7 +4715,7 @@ one.** A real ND's traffic layer is TCAS, and it is far more austere:
   for a resolution advisory.
 - **An ALTITUDE BAND FILTER is the real de-clutter**, and we have nothing like
   it: normal shows roughly ±2700 ft, with ABOVE and BELOW switches that extend
-  it to +9900 or −9900. Most of the fifty-six aircraft in the owner's screenshot
+  it to +9900 or −9900. Most of the fifty-six aircraft on a busy scope
   would simply not be displayed on a real ND.
 - **It is toggle-able** — a TFC button on the EFIS control panel.
 - **Real Boeing ranges** are 10, 20, 40, 80, 160, 320 and 640 nm. Ours are 10,

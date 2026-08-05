@@ -826,7 +826,7 @@ export function createFusion(options = {}) {
     const disagreeDeg = Math.max(Math.abs(dPitch), Math.abs(dRoll));
     // Stillness the gate can trust is stillness that has LASTED. The
     // instantaneous flag above is one gyro sample beside one accel sample —
-    // and the owner's exact gesture, rhythmic leaning, crosses zero rate at every
+    // and rhythmic leaning crosses zero rate at every
     // reversal, which is precisely where the translational corruption peaks.
     // The corrupted sample presents as "still" for that instant and would
     // bypass the gate at the settled gain, three times the in-motion one.

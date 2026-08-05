@@ -217,8 +217,8 @@ async function boot() {
         // 25 Hz loop has published the fix, so `state.snapshot` still says
         // there is no position — and the winds fetch, which correctly refuses
         // to ask for a surrogate position, then declined and waited fifteen
-        // minutes for its next interval. The owner's screenshot showed exactly that:
-        // GPS PASS on the BITE page, "no position fix" on the winds row.
+        // minutes for its next interval, which shows up as GPS PASS on the BITE
+        // page beside a winds row still reporting no position fix.
         state.publishNow();
         // The cold-start boxes stop being used the moment a fix exists, and the
         // feeds are re-asked immediately rather than waiting out their interval.
