@@ -293,8 +293,7 @@ async function boot() {
   /**
    * THE BRIGHTNESS CONTROL, built here and MOUNTED on SETUP.
    *
-   * It was markup in index.html inside a `.bar-right` box beside the (i). The owner,
-   * 2026-08-05: "brightness can go in setup, and then (i) moved up?" That box
+   * It was markup in index.html inside a `.bar-right` box beside the (i). That box
    * wrapped onto a second row on every phone, costing a full row of chrome
    * above every instrument.
    *

@@ -4349,7 +4349,7 @@ report from the owner's device is the test that matters.
 Three things the owner asked in one message, and all three were defects rather than
 preferences.
 
-### "All the voice-over data does NOT need to fill MY screen"
+### The value strip was taking a third of the glass
 
 He was looking at an iPad where the right-hand column of value cards took a
 third of the display and the navigation display was a small box above it. The
@@ -4379,7 +4379,7 @@ hold 12rem floors, so the canvas and the plan view hung 50px out of their parent
 and straight through the strip below. The gate named both overlaps and the
 measured boxes are in the fix's comment.
 
-### "Why am I not seeing my first-time-run pop-up anymore?"
+### The first-run orientation had stopped appearing
 
 Because 1.12.0 moved it into the (i) menu at boot and nothing ever opened it.
 The orientation SURVIVED — which `plant.mjs` has been proving for six releases —
@@ -4738,7 +4738,7 @@ UAL1902 (N17254, a 737 MAX 8):
 
 The autopilot readout added in 1.11.0 was written entirely from adsb.lol's
 published field names, with no real response ever observed, and was carried as
-an explicit "might be zeroes across the board, and if so I pull it". It is not.
+an explicit open question — zeroes across the board would mean pulling it. It is not.
 A real aircraft broadcast its MCP altitude, its selected heading and the
 altimeter setting its crew was flying to. §7f's diagnostic-as-test is what
 settled it, on his device, in one paste.

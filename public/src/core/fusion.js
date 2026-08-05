@@ -800,9 +800,9 @@ export function createFusion(options = {}) {
     // An accelerometer measures SPECIFIC FORCE: gravity plus every linear
     // acceleration of the hand holding it. Lean a phone back and forth and the
     // measured vector SWINGS while its magnitude stays near one g — the
-    // corruption rotates the vector, it does not stretch it. The owner, hand-held:
-    // "leaning backward and forward make it look like I'm a rocket" — his
-    // diagnostics showed 1.01 g beside a 26.7° residual, so the magnitude gate
+    // corruption rotates the vector, it does not stretch it. Hand-held, tipping
+    // the device fore and aft threw the horizon like a launch: measured at
+    // 1.01 g beside a 26.7° residual, so the magnitude gate
     // above never fired while the direction was badly wrong.
     //
     // The instrument that CAN see it is the gyro: over seconds it is the more
@@ -870,8 +870,8 @@ export function createFusion(options = {}) {
     /**
      * ONCE THE GATE HAS CONCEDED, IT CONCEDES PROPERLY.
      *
-     * , with the ADI
-     * reading `gravity 51° from the gyro — coasting on gyro` and the horizon
+     * The failure it was written for: the ADI reading
+     * `gravity 51° from the gyro — coasting on gyro` while the horizon sat
      * dozens of degrees over.
      *
      * `disagreeSpent` is the filter CONCLUDING that its own propagated state is

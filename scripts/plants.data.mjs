@@ -733,8 +733,8 @@ export const PLANTS = [
     expect: /carries the hidden attribute and is painted anyway/,
   },
   {
-    // , with the ADI
-    // reading `gravity 51° from the gyro — coasting on gyro`. The budget bounds
+    // The failure it was written for: the ADI reading
+    // `gravity 51° from the gyro — coasting on gyro`. The budget bounds
     // how long a phone gyro is trusted with no absolute reference, and the
     // error a reader sees is roughly linear in it — measured, 4 s of budget
     // reaches 53° and 2 s stops at 32°. Doubling it is the defect.
@@ -876,10 +876,15 @@ export const PLANTS = [
     expect: /inside the tablist — that makes it a sixth tab/,
   },
   {
-    // ,
-    // and then "why are you bounding everything to the circle inside the radar
-    // instead of pushing everything down so I don't have to see all the
-    // diagnostics?" `auto` is what the rule held before, and it puts a sliced
+    // A LEFTOVER QUOTATION, removed 2026-08-05. The attribution in front of it
+    // had already been stripped, so the gate — which anchors on a name or a
+    // role — could not see the sentence still sitting here. A bare quotation
+    // with nothing attached is the one shape the pattern cannot catch, and the
+    // honest coverage note is in DOCTRINE §0d.
+    //
+    // The engineering fact, which is all this ever needed: on a short screen the
+    // instruments own the panel and the value strip begins at the fold.
+    // `auto` is what the rule held before, and it puts a sliced
     // value row back on the panel above the footer.
     name: 'layout: the value strip climbs back onto the instrument screen',
     check: 'on a short screen the instruments fill the panel and the values start below it',

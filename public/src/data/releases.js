@@ -28,11 +28,13 @@
  *
  * Three failures, each of which reads as perfectly reasonable while writing it:
  *
- *   · "YOU" QUIETLY BECAME THE PERSON WHO REPORTED THE BUG. "You asked why every
- *     runway looks the same." "You held the panel up next to your home screen."
- *     "You sent a photo of DAL2229." "Five things you said were wrong." The
- *     reader is not that person. He opens this list and is addressed as someone
- *     else, about events he was not present for.
+ *   · "YOU" QUIETLY BECAME THE PERSON WHO REPORTED THE BUG. Notes opened by
+ *     recounting what he had asked, what he had held up beside his home screen,
+ *     what he had photographed, what he had said was wrong. The reader is not
+ *     that person. He opens this list and is addressed as someone else, about
+ *     events he was not present for. (The offending sentences are not repeated
+ *     here — quoting them to illustrate the rule breaks it, which is how they
+ *     survived the first scrub.)
  *
  *   · "I" APPEARED AT ALL. "I measured both." "It covers exactly what I cannot
  *     reach from here." "I only wrote the test AFTER you found it. That is

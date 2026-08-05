@@ -648,8 +648,8 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
      *
      * The aircraft for every range are already here — one fetch covers the
      * widest scope, and a narrower one is a filter over it. This is also why
-     * "the radar loses everything when you change range" is gone at the root
-     * rather than patched: there is no request to fail.
+     * the scope emptying on a range change is gone at the root rather than
+     * patched: there is no request to fail.
      *
      * Returns the aircraft now shown, so a caller can redraw immediately.
      */
