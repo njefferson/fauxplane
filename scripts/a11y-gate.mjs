@@ -1157,23 +1157,44 @@ async function checkPanelPower(page, base) {
   // The switch reports its own state honestly after being pressed. Sensors will
   // not actually start in a headless browser with every permission denied, and
   // that is fine — this asserts the CONTROL, not the hardware.
+  /**
+   * POLLED, NOT SLEPT — the same defect as the update-strip check, found the
+   * same way and on the same day.
+   *
+   * This was `waitForTimeout(250)`, and 250 ms is a guess about how long a
+   * browser takes to flip a switch that also starts the sensors, asks for two
+   * permissions and requests a wake lock. It is plenty on an idle machine and
+   * it is not plenty under load — this check went RED on a promotion candidate
+   * and GREEN on the identical tree one minute later.
+   *
+   * An intermittently-red gate is worse than a broken one: it teaches everyone
+   * that red means "run it again". Waiting for the STATE makes the failure mean
+   * something — reaching this deadline is a switch that genuinely did not move.
+   */
+  const readSwitch = () =>
+    page.evaluate(() => {
+      const btn = document.getElementById('power-btn');
+      return { checked: btn.getAttribute('aria-checked'), text: btn.textContent.replace(/\s+/g, ' ').trim() };
+    });
+  const settleSwitch = async (want) => {
+    const deadline = Date.now() + 8000;
+    let seen = await readSwitch();
+    while (Date.now() < deadline && seen.checked !== want) {
+      await page.waitForTimeout(100);
+      seen = await readSwitch();
+    }
+    return seen;
+  };
+
   await page.evaluate(() => document.getElementById('power-btn').click());
-  await page.waitForTimeout(250);
-  const after = await page.evaluate(() => {
-    const btn = document.getElementById('power-btn');
-    return { checked: btn.getAttribute('aria-checked'), text: btn.textContent.replace(/\s+/g, ' ').trim() };
-  });
+  const after = await settleSwitch('true');
   if (after.checked !== 'true') fail(where, 'pressing the switch did not change aria-checked');
   if (!/\bON\b/i.test(after.text)) fail(where, `the switch still reads "${after.text}" after being switched on`);
 
   // And back off again. A switch that only goes one way is a button wearing a
   // switch's clothes.
   await page.evaluate(() => document.getElementById('power-btn').click());
-  await page.waitForTimeout(250);
-  const back = await page.evaluate(() => {
-    const btn = document.getElementById('power-btn');
-    return { checked: btn.getAttribute('aria-checked'), text: btn.textContent.replace(/\s+/g, ' ').trim() };
-  });
+  const back = await settleSwitch('false');
   if (back.checked !== 'false' || !/\bOFF\b/i.test(back.text)) {
     fail(where, `the switch will not go back off: aria-checked=${back.checked}, text "${back.text}"`);
   }
