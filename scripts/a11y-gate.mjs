@@ -245,6 +245,16 @@ const REGISTRY = [
   { selector: '.setup-current', label: 'setup levelling state', min: 4.6, page: 'setup' },
   { selector: '.setup-btn', label: 'setup button', min: 4.6, page: 'setup' },
   { selector: '.atis-station', label: 'ATIS station line', min: 4.6, page: 'atis' },
+  // The text reports (§4: a new fg/bg pair joins the gate in the same commit as
+  // the code that renders it). The state line's FAIL tone has its own row —
+  // amber on a card is a different pair from the ordinary one beside it.
+  { selector: '.wx-h', label: 'report block heading', min: 4.6, page: 'atis' },
+  // The AMBER "not available" state is NOT here, and cannot be: the ordinary
+  // sweep never presses PWR, so the feeds never start and every block stays in
+  // its "not asked yet" state. A registry row that cannot match is a failure,
+  // not a skip — which is the registry working. `checkWxText` brings its own
+  // conditions and measures that pair there.
+  { selector: ".wx-state:not([data-tone='fail'])", label: 'report block state', min: 4.6, page: 'atis' },
   { selector: '.atis-source', label: 'ATIS source line', min: 4.6, page: 'atis' },
   { selector: '.koll-value', label: 'Kollsman value', min: 4.6, page: 'atis' },
   { selector: '.koll-unit', label: 'Kollsman unit', min: 4.6, page: 'atis' },
@@ -957,6 +967,94 @@ async function checkNdMode(browser, base) {
   await context.close();
 }
 
+const WXTEXT_REGISTRY = [
+  { selector: ".wx-state[data-tone='fail']", label: 'report block state (not available, amber)', min: 4.6 },
+];
+
+/**
+ * THE TEXT REPORTS, IN THE TWO STATES THAT MUST NOT LOOK ALIKE.
+ *
+ * A block with nothing in it has two completely different causes — the sky is
+ * quiet, or the service did not answer — and a panel that showed the same words
+ * for both would be inventing an observation. `wxSummary` holds them apart and
+ * `wxtext.test.mjs` proves it; this proves the PAGE renders the difference, and
+ * measures the amber the refused state uses.
+ *
+ * Its own context, because the ordinary sweep never presses PWR: the feeds never
+ * start, every block stays in "not asked yet", and neither of these two states
+ * exists to be measured at all.
+ */
+async function checkWxText(browser, base) {
+  const where = 'wx-text';
+
+  const scene = async (payload) => {
+    const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, permissions: [] });
+    await seenIntro(context);
+    await context.route('**/api/wxtext**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) }),
+    );
+    const page = await context.newPage();
+    await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.getElementById('power-btn').click());
+    await page.waitForTimeout(900);
+    await page.evaluate(() => document.querySelector('[data-page="atis"]').click());
+    await page.waitForTimeout(400);
+    const m = await page.evaluate(() => {
+      const blocks = [...document.querySelectorAll('.wx-block')];
+      return blocks.map((b) => ({
+        heading: b.querySelector('.wx-h')?.textContent ?? '',
+        tone: b.querySelector('.wx-state')?.dataset.tone ?? null,
+        state: (b.querySelector('.wx-state')?.textContent ?? '').trim(),
+        bodyHidden: !!b.querySelector('.wx-body')?.hidden,
+        body: (b.querySelector('.wx-body')?.textContent ?? '').trim(),
+      }));
+    });
+    return { context, page, m };
+  };
+
+  // --- REFUSED: the service did not answer ---------------------------------
+  const refused = await scene({ ok: false, reason: 'the service answered with a document rather than reports' });
+  if (!refused.m.length) {
+    fail(where, 'the ATIS page carries no report blocks at all');
+  } else {
+    const tones = refused.m.map((b) => b.tone);
+    if (!tones.every((t) => t === 'fail')) {
+      fail(where, `a refused service left blocks in ${[...new Set(tones)].join(', ')} rather than the failed state`);
+    } else {
+      if (!refused.m.every((b) => /document rather than reports/.test(b.state))) {
+        fail(where, `a refusal does not carry its own reason: "${refused.m[0].state}"`);
+      }
+      if (!refused.m.every((b) => b.bodyHidden)) fail(where, 'a refused block is showing a report area with nothing in it');
+      await checkContrast(refused.page, WXTEXT_REGISTRY, where);
+      await checkNames(refused.page, where);
+    }
+  }
+  const refusedWords = refused.m[0]?.state ?? null;
+  await refused.context.close();
+
+  // --- QUIET: the service answered, and there is nothing to report ----------
+  const quiet = await scene({ ok: true, kind: 'pirep', count: 0, reports: [] });
+  if (!quiet.m.length) {
+    fail(where, 'the ATIS page carries no report blocks at all');
+  } else {
+    if (quiet.m.some((b) => b.tone === 'fail')) {
+      fail(where, 'a service that answered with nothing is being shown as a failure');
+    }
+    /**
+     * THE ONE THAT MATTERS. Both states render an empty block; if they render
+     * the same SENTENCE, the panel is claiming an observation nobody made.
+     */
+    if (refusedWords && quiet.m[0].state === refusedWords) {
+      fail(where, `a quiet sky and a refused service both say "${refusedWords}" — one of those is an observation nobody made`);
+    }
+    if (!quiet.m.every((b) => b.state.trim().length > 4)) {
+      fail(where, 'an empty block says nothing at all, so a reader cannot tell it from a broken one');
+    }
+    if (!quiet.m.every((b) => b.bodyHidden)) fail(where, 'an empty block is showing a report area with nothing in it');
+  }
+  await quiet.context.close();
+}
+
 /** Boot the panel with a chosen set of feed answers and permissions, powered on.
  *  Every EICAS scenario below is a REAL state of the app, reached through the
  *  real routes — nothing is injected into the strip it is about to measure. */
@@ -1666,6 +1764,11 @@ async function main() {
        */
       '/api/metar': { ok: false, reason: 'the weather service is not deployed in this harness' },
       '/api/winds': { ok: false, reason: 'the winds service is not deployed in this harness' },
+      // Same reasoning, and it also puts the report blocks into their AMBER
+      // "not available" state — which is the only way the ordinary sweep can
+      // reach that colour pair at all, since nothing else here makes a feed
+      // refuse on purpose.
+      '/api/wxtext': { ok: false, reason: 'the report service is not deployed in this harness' },
     },
   });
   await new Promise((r) => server.listen(0, r));
@@ -2009,6 +2112,7 @@ async function main() {
     await checkHeardList(browser, base);
     await checkEicas(browser, base);
     await checkNdMode(browser, base);
+    await checkWxText(browser, base);
     await checkRadarTap(browser, base, { touch: false });
     await checkRadarTap(browser, base, { touch: true });
     await checkCentrePicker(browser, base);

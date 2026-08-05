@@ -25,6 +25,7 @@
  */
 
 import { FALLBACK_ALTIMETER_INHG } from '../data/metar.js';
+import { WX_KINDS, wxSummary } from '../data/wxtext.js';
 import { createReadout, el } from '../render/dom.js';
 import { formatAge, inHgToHPa } from '../core/units.js';
 
@@ -140,6 +141,35 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
     pressureAlt: createReadout({ label: 'Pressure altitude', unit: 'ft', format: (v) => Math.round(v).toLocaleString() }),
   };
 
+  /**
+   * THE TEXT A FLIGHT DECK CARRIES, and the ATIS page is where it belongs —
+   * this is already the app's text-weather surface, and a seventh tab for three
+   * blocks of prose would be the thing §7e names as the mistake.
+   *
+   * ONE BLOCK PER KIND, each with its own state line, because they fail
+   * independently: PIREPs can answer while the forecast does not. A block with
+   * nothing in it says WHICH nothing — a quiet sky and a service that did not
+   * answer are different facts and neither may stand in for the other.
+   *
+   * `<pre>` because these are fixed-format reports. A PIREP's columns are what
+   * make it readable, and reflowing one into a paragraph destroys the only
+   * structure it has.
+   */
+  const wxBlocks = WX_KINDS.map((kind) => {
+    const state = el('p', { class: 'wx-state' });
+    const body = el('pre', { class: 'wx-body', tabindex: '0', 'aria-label': `${kind.label}, as filed` });
+    return {
+      kind,
+      state,
+      body,
+      root: el('section', { class: 'wx-block' }, [
+        el('h3', { class: 'wx-h', text: kind.label }),
+        state,
+        body,
+      ]),
+    };
+  });
+
   host.replaceChildren(
     el('section', { class: 'card', 'aria-labelledby': 'atis-h' }, [
       el('h2', { id: 'atis-h', text: 'Observation' }),
@@ -169,6 +199,14 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
       readouts.windsAloft.root,
       readouts.oat.root,
     ]),
+    el('section', { class: 'card', 'aria-labelledby': 'wx-h' }, [
+      el('h2', { id: 'wx-h', text: 'Reports and advisories' }),
+      el('p', {
+        class: 'atis-source',
+        text: 'As filed, from the US National Weather Service aviation weather service. Nothing here is summarised or reworded.',
+      }),
+      ...wxBlocks.map((b) => b.root),
+    ]),
   );
 
   return {
@@ -190,7 +228,7 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
       }
     },
 
-    render(snapshot, metarResult) {
+    render(snapshot, metarResult, wxText = null) {
       const f = snapshot.fields;
 
       const station = f['metar.station'];
@@ -239,6 +277,22 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
       } else {
         syncNote.textContent = koll?.reason ?? 'No altimeter setting.';
         syncNote.dataset.state = 'fail';
+      }
+
+      /**
+       * THE REPORTS. Rendered from whatever the source last got, per kind, and
+       * the state line always says which state it is in — waiting, refused,
+       * quiet, or a count with an age. A block that rendered nothing and said
+       * nothing would be indistinguishable from a quiet sky.
+       */
+      for (const b of wxBlocks) {
+        const result = wxText?.all?.find((x) => x.id === b.kind.id)?.result ?? null;
+        const said = wxSummary(b.kind, result, clock());
+        b.state.textContent = said.text;
+        b.state.dataset.tone = said.tone;
+        const reports = result?.ok ? result.reports ?? [] : [];
+        b.body.textContent = reports.join('\n\n');
+        b.body.hidden = reports.length === 0;
       }
 
       announcer.watch('Altimeter setting', f['metar.altimeter']);

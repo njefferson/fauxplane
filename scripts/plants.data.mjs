@@ -816,6 +816,32 @@ export const PLANTS = [
     expect: /the 0\.25 ring reads 3 and sits at 2\.5|old code rounded these/,
   },
   {
+    // THE DEFECT THIS FEATURE IS MOST LIKELY TO ROT INTO, and it rots into a
+    // LIE rather than into a blank: a service that did not answer, rendered
+    // with the same words as a quiet sky. "No pilot reports in the last three
+    // hours" from a feed nobody reached is an observation nobody made, which is
+    // the same defect as a fabricated number.
+    name: 'reports: a refused service is shown as a quiet sky',
+    check: 'a feed that did not answer never says there was nothing to report',
+    gate: 'tests',
+    file: 'public/src/data/wxtext.js',
+    find: "  if (!result.ok) return { tone: 'fail', text: `Not available — ${result.reason}` };",
+    replace: "  if (!result.ok) return { tone: 'empty', text: kind.empty };",
+    expect: /NEVER SAY THE SAME THING|quiet sky|tone/i,
+  },
+  {
+    // A 200 carrying a document is not a report, and rendering one puts
+    // "<!DOCTYPE html>" on the panel under the heading "Pilot reports". This
+    // exact shape has already fooled one adapter in this repo.
+    name: 'reports: a web page is accepted as a weather report',
+    check: 'a body that is not reports is refused rather than displayed',
+    gate: 'tests',
+    file: 'functions/api/wxtext.js',
+    find: "  if (/^\\s*<(?:!doctype|html|\\?xml)/i.test(text)) {",
+    replace: '  if (false) {',
+    expect: /document rather than reports|not refused/i,
+  },
+  {
     // A SWITCHED-OFF LAYER IS A FACT ABOUT THE PICTURE. Drop it from the
     // description and a reader using the panel by voice is told there are no
     // aircraft on a map whose traffic layer somebody turned off — which is a

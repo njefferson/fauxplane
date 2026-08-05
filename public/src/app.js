@@ -38,6 +38,7 @@ import { probeMagnetometer } from './sensors/magnetometer.js';
 import { crewAlerts } from './data/alerts.js';
 import { upReference } from './render/gauges/plan.js';
 import { createMetarSource } from './data/metar.js';
+import { createWxTextSource } from './data/wxtext.js';
 import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, followBannerText, lastKnownFix, ownAltitudeFt, radarCentre, rememberFix } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
@@ -234,6 +235,9 @@ async function boot() {
   // ---- feeds ---------------------------------------------------------------
   const metar = createMetarSource({ state, clock: now });
   const winds = createWindsSource({ state, clock: now });
+  /** Pilot reports, hazard advisories and forecasts — same publisher and terms
+   *  as METAR, and fetched on the same schedule. */
+  const wxText = createWxTextSource({ clock: now });
   const geoid = createGeoidSource({ state, clock: now });
   const traffic = createTrafficSource({ state, clock: now });
 
@@ -1047,7 +1051,7 @@ async function boot() {
     // actually differs.
     if (active === 'pfd') syncLevelUi();
     if (active === 'pfd') pfd.render(snapshot);
-    else if (active === 'atis') atis.render(snapshot, metar.last);
+    else if (active === 'atis') atis.render(snapshot, metar.last, wxText);
     else if (active === 'radar') radar.render(snapshot);
     else if (active === 'map') map.render();
     else if (active === 'setup') setup.render();
@@ -1253,7 +1257,12 @@ async function boot() {
       feedsStarted = true;
       await refreshMetar();
       await refreshWinds();
+      // The text reports ride the METAR interval. They are heavily cached at the
+      // edge — five to thirty minutes depending on the kind — so the schedule
+      // costs a public service almost nothing.
+      await wxText.refresh();
       setInterval(refreshMetar, METAR_INTERVAL_MS);
+      setInterval(() => wxText.refresh(), METAR_INTERVAL_MS);
       setInterval(refreshWinds, WINDS_INTERVAL_MS);
     }
 

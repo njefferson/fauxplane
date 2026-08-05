@@ -27,10 +27,82 @@ on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.33.0, the MAP page and a bundled basemap, 2026-08-05
+## STAGED NOW — 1.34.0, the text a flight deck reads, 2026-08-05
 
-**1.33.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.34.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.29.0.
+
+### PIREPs, SIGMETs/AIRMETs and TAFs, on ATIS
+
+Same publisher and same API as the METAR the altimeter setting already comes
+from — a US Government work, terms already read and recorded in
+`POLICIES.metar`. `POLICIES.wxtext` is a separate entry only because the PACING
+differs, and pacing is what those declarations are for: five minutes for pilot
+reports, fifteen for advisories, thirty for a forecast, each from how often the
+thing is ISSUED rather than from a preference.
+
+Rendered on ATIS because that is already the app's text-weather surface. A
+seventh tab for three blocks of prose is what §7e names as the mistake.
+
+### THE SHAPE HAS NEVER BEEN SEEN, and the design is built around that
+
+This sandbox cannot reach aviationweather.gov — its proxy refuses CONNECT,
+exactly as it does for adsb.lol. So no session has ever held one of these
+responses, and a field mapping written from memory would be a guess in a
+verdict's clothes. That mistake is already recorded in this file, about a
+provider's terms.
+
+**So it asks for `format=raw` rather than JSON, and the honest choice and the
+safe one turn out to be the same choice.** Raw is what a flight deck shows: a
+PIREP's columns are the only structure it has, and paraphrasing a hazard report
+is inventing one. There is no field mapping to be wrong about — the single
+remaining assumption is that the body is text that splits into reports, and that
+assumption is CHECKED rather than trusted:
+
+- a body that opens with `<!doctype`, `<html` or `<?xml` is REFUSED, not
+  displayed. A 200 carrying a web page is a question, not an answer, and that
+  exact shape has already fooled one adapter here;
+- a blank line separates reports when there is one, so a wrapped AIRMET stays
+  whole instead of becoming four fragments that each read like a truncated
+  warning; single-line feeds split per line;
+- `observed` carries the content type, the byte count and the first line on
+  every response, so the first real device teaches us the shape through the
+  diagnostics report rather than through another round of guessing.
+
+**`route.js` is the cautionary precedent** — built blind against an unreachable
+API and ending with the upstream call switched off. The difference is where the
+uncertainty sits: there the REQUEST shape was a hypothesis; here the request is
+a bbox and a format, and only the response was unknown. Raw text removes almost
+all of what was left.
+
+### The rule this feature exists to keep
+
+**A quiet sky and a service that did not answer must never produce the same
+words.** Both render an empty block; showing "No pilot reports in the last three
+hours" for a feed nobody reached is an observation nobody made, which is the same
+defect as a fabricated number. `wxSummary` has four states — waiting, refused,
+empty, and a count with an age — the unit suite holds them apart, and the a11y
+gate asserts the PAGE renders the difference by booting the panel twice and
+comparing the two sentences.
+
+### Two defects the gate found
+
+- **A 200 carrying `{ok: false, reason}` arrived as a success.** The client
+  spread the body and then wrote `ok: true` over the top of it, so a stated
+  refusal rendered as a quiet sky — the exact thing the feature is about. Found
+  because the gate's harness stubs every endpoint in precisely that shape.
+- **The amber "not available" tone cannot occur in the ordinary sweep**, because
+  the sweep never presses PWR, so the feeds never start and every block stays in
+  "not asked yet". A registry row that cannot match is a FAILURE rather than a
+  skip — which is the registry working — so that pair moved to `checkWxText`,
+  which brings its own conditions. Same shape as the EICAS strip, one release
+  earlier.
+
+---
+
+## Previously staged — 1.33.0, the MAP page and a bundled basemap, 2026-08-05
+
+**`main` is on 1.29.0.**
 
 ### A sixth tab, and why it earns one
 

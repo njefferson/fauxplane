@@ -47,6 +47,12 @@ const SOURCES = [
     href: 'https://aviationweather.gov/data/api/',
   },
   {
+    name: 'Pilot reports, advisories and forecasts',
+    detail:
+      'The same service, and shown exactly as filed — nothing is summarised or reworded, because paraphrasing a hazard report is inventing one. A block with nothing in it says which nothing: a quiet sky and a service that did not answer are different facts.',
+    href: 'https://aviationweather.gov/data/api/',
+  },
+  {
     name: 'Winds and temperature aloft',
     detail: 'Open-Meteo.',
     href: 'https://open-meteo.com/en/terms',

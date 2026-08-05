@@ -25,6 +25,21 @@ export const POLICIES = {
     identifies: true,
     honoursRetryAfter: true,
   },
+  /**
+   * PIREPs, SIGMETs/AIRMETs and TAFs — the SAME publisher and the SAME API as
+   * `metar` above, so this is not a new licensing question: a US Government
+   * work, terms already read. It is a separate entry only because the pacing
+   * differs, and pacing is what these declarations are for.
+   */
+  wxtext: {
+    source: 'NOAA Aviation Weather Center',
+    policyUrl: 'https://aviationweather.gov/data/api/',
+    // Per KIND, in wxtext.js — a forecast and a pilot report are not worth
+    // holding for the same length of time. This is the shortest of the three.
+    cacheSeconds: 300,
+    identifies: true,
+    honoursRetryAfter: true,
+  },
   winds: {
     source: 'Open-Meteo',
     policyUrl: 'https://open-meteo.com/en/terms',

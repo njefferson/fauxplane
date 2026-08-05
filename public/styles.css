@@ -2735,3 +2735,59 @@ body[data-powered='true'] .gate {
   font-size: 0.75rem;
   color: var(--text-3);
 }
+
+
+/* --- the text reports on ATIS -------------------------------------------- */
+
+.wx-block + .wx-block {
+  margin-top: 0.8rem;
+  border-top: 1px solid var(--hairline);
+  padding-top: 0.8rem;
+}
+
+.wx-h {
+  margin: 0 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.wx-state {
+  margin: 0 0 0.4rem;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+
+/* A block that did not answer is AMBER — something is degraded and the reader
+   should know. A block that answered with nothing is ordinary text, because a
+   quiet sky is not a fault, and colouring it as one would teach the reader to
+   ignore the colour on the day it matters. */
+.wx-state[data-tone='fail'] {
+  color: var(--stale);
+}
+
+/*
+ * AS FILED, IN A FIXED FONT, AND IT SCROLLS SIDEWAYS RATHER THAN REFLOWING.
+ *
+ * A PIREP's columns are the only structure it has; wrapping one into a
+ * paragraph destroys the thing that makes it readable. `tabindex` is on the
+ * element in the markup because this scroller really can overflow — SC 2.1.1,
+ * the same rule the EICAS strip follows.
+ */
+.wx-body {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  background: var(--page-alt);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text);
+  overflow-x: auto;
+  max-height: 14rem;
+  overflow-y: auto;
+  white-space: pre;
+}

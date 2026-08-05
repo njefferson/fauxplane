@@ -70,6 +70,23 @@
  */
 export const RELEASES = [
   {
+    version: '1.34.0',
+    date: '2026-08-05',
+    headline: 'The ATIS page carries the text a flight deck actually reads.',
+    changed: [
+      'Three new blocks under the weather: PILOT REPORTS, SIGMETS AND AIRMETS, and FORECASTS. Same service the altimeter setting already comes from, so nothing new had to be agreed with anybody.',
+      'Pilot reports are the reason this is here. They are the one observation in aviation made by a person rather than an instrument \u2014 somebody at 9,000 feet saying the ride is rough, or where the cloud tops are.',
+      'Every report is shown EXACTLY AS FILED, in a fixed font, columns intact. Nothing is summarised or reworded: paraphrasing a hazard report is inventing one, and the raw form is what you would see in a briefing anyway.',
+      'A block with nothing in it says WHICH nothing. "No pilot reports in the last three hours" and "not available \u2014 the service answered with a document" are different facts, and neither is allowed to stand in for the other.',
+      'Each block says how old it is and how many reports it has, and one failing does not take the other two with it.',
+    ],
+    broken: [
+      'Nothing here has ever been seen working. This sandbox cannot reach that service at all, so the app asks for the reports in their raw form \u2014 the shape a flight deck uses, and the one there is nothing to get wrong about \u2014 and reports exactly what came back if it does not understand it. The first device to open the page is the real test.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.33.0',
     date: '2026-08-05',
     headline: 'There is a MAP page, with the actual ground on it.',

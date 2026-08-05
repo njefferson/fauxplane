@@ -68,6 +68,7 @@ const SHELL = [
   '/src/data/alerts.js',
   '/src/data/metar.js',
   '/src/data/windsaloft.js',
+  '/src/data/wxtext.js',
   '/src/data/traffic.js',
   '/src/data/navdata.js',
   '/src/data/route.js',
