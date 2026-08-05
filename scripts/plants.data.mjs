@@ -889,8 +889,13 @@ export const PLANTS = [
     name: 'layout: the value strip climbs back onto the instrument screen',
     check: 'on a short screen the instruments fill the panel and the values start below it',
     file: 'public/styles.css',
-    find: '  .pfd-row {\n    min-height: 100%;\n  }',
-    replace: '  .pfd-row {\n    min-height: auto;\n  }',
+    // RE-AIMED. The rule this named (`min-height: 100%` on the row) was replaced
+    // when the controls moved out of the horizon's column and the `.pfd-screen`
+    // wrapper took over owning the panel. The harness reported it stale rather
+    // than passing, which is the behaviour that makes a stale plant visible
+    // instead of silently green.
+    find: '       the row grows to fill what is left and never shrinks past them. */\n    min-height: min-content;',
+    replace: '       the row grows to fill what is left and never shrinks past them. */\n    min-height: auto;',
     expect: /the value strip starts \d+px above the fold|is not filling the screen it was given/,
   },
   {
@@ -970,8 +975,8 @@ export const PLANTS = [
     name: 'PFD: the instrument wrapper stops taking the page height',
     check: 'the horizon is most of the panel, not merely bigger than the scope',
     file: 'public/styles.css',
-    find: '     growth, and the measurement is the only thing that says so. */\n  flex: 1 1 auto;\n  min-height: 0;',
-    replace: '     growth, and the measurement is the only thing that says so. */\n  min-height: 0;',
+    find: '     it — twice in one session now. */\n  flex: 1 0 auto;\n  min-height: 0;',
+    replace: '     it — twice in one session now. */\n  min-height: 0;',
     expect: /under half the screen it is on/,
   },
   {
@@ -1032,6 +1037,17 @@ export const PLANTS = [
     find: '<div class="readouts sr-only" id="pfd-readouts" role="group" aria-label="Flight values"></div>',
     replace: '<div class="readouts sr-only" id="pfd-readouts" role="group" aria-label="Flight values" aria-hidden="true"></div>',
     expect: /`aria-hidden` — the one thing it must never be/,
+  },
+  {
+    // The scope carries bundled airports at 40 and 80 nm whatever the feed
+    // does, so a sentence claiming it is empty contradicts what is on screen.
+    name: 'honesty: the refusal sentence claims an empty scope again',
+    check: 'the feed describes AIRCRAFT, not everything drawn on the scope',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: "      : ' No aircraft have been heard yet — anything on the scope is bundled airport data, not traffic.';",
+    replace: "      : ' Nothing has been heard yet, so the scope is empty rather than quiet.';",
+    expect: /scope is empty|No aircraft have been heard yet/,
   },
   {
     name: 'BITE: the page stops reading the live store',

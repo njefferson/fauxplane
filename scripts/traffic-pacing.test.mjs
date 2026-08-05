@@ -235,7 +235,10 @@ test('refusal: what is still on screen is stated, because it is still true', () 
   // true because the NEXT request failed. An empty scope and a stale one mean
   // completely different things.
   assert.match(explainTrafficRefusal('HTTP 429', { heard: 12 }), /12 aircraft on the scope are the last ones actually heard/);
-  assert.match(explainTrafficRefusal('HTTP 429', { heard: 0 }), /Nothing has been heard yet/);
+  // The wording moved from "nothing has been heard" to "no AIRCRAFT have been
+  // heard" when it turned out the scope is full of bundled airports whatever
+  // the feed does — see the pair of tests at the end of this file.
+  assert.match(explainTrafficRefusal('HTTP 429', { heard: 0 }), /No aircraft have been heard yet/);
 });
 
 test('refusal: a stand-off says we chose not to ask', () => {
@@ -492,4 +495,27 @@ test('follow: switching aircraft clears the previous one from EVERY field', asyn
     'these fields still name the aircraft the panel stopped following',
   );
   assert.match(failures.get('attitude.heading') ?? '', /N81AB/, 'heading must name the aircraft actually being followed');
+});
+
+/**
+ * THE REFUSAL SENTENCE MUST NOT CLAIM AN EMPTY SCOPE.
+ *
+ * At 40 or 80 nm the plan view draws every bundled airport as the small circle
+ * an aeronautical chart uses — dozens of them, from data that is always there
+ * and cannot be rate limited. The sentence said "the scope is empty rather than
+ * quiet" while fifty symbols were on it, which is the panel contradicting what
+ * a reader can plainly see.
+ *
+ * The feed governs AIRCRAFT. What else is drawn was never its to describe.
+ */
+test('a refusal with nothing heard does not claim the scope is empty', () => {
+  const text = explainTrafficRefusal('HTTP 429 rate limited', { heard: 0 });
+  assert.doesNotMatch(text, /scope is empty/i, 'airports are on the scope whatever the feed says');
+  assert.match(text, /no aircraft/i, 'it must say what is actually absent');
+});
+
+test('a refusal with aircraft still on the scope says they are ageing', () => {
+  const text = explainTrafficRefusal('HTTP 429 rate limited', { heard: 3 });
+  assert.match(text, /3 aircraft/, 'the ones already heard are real observations');
+  assert.match(text, /ageing/i);
 });

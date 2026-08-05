@@ -306,6 +306,7 @@ export function createPfd({
     const view = traffic() ?? {};
     if (!view.centre) return;
     drawPlan(planSurface.ctx, {
+      readiness: view.readiness ?? null,
       x: 0,
       y: 0,
       w: planSurface.width,
@@ -323,11 +324,26 @@ export function createPfd({
     });
     if (planCanvas) {
       const n = (view.aircraft ?? []).length;
+      /**
+       * THE FLAG IS DRAWN ON A CANVAS, so it must be in the name as well.
+       *
+       * The state was added to the picture and not to the label, which is the
+       * same defect as a value painted onto a canvas and never written as text
+       * — a reader using the panel by voice would have had no way to tell a
+       * quiet sky from a feed that is being refused.
+       *
+       * "No aircraft being heard" was also doing double duty for two different
+       * facts, exactly as the RADAR page's sentence was: nothing in range, and
+       * nothing answering. Those need different words.
+       */
+      const flag = view.readiness?.label && view.readiness.state !== 'contact' && view.readiness.state !== 'following'
+        ? ` Feed state: ${view.readiness.label}.`
+        : '';
       planCanvas.setAttribute(
         'aria-label',
         n
-          ? `Navigation display: ${n} aircraft within ${view.rangeNm ?? 40} nautical miles. The list on the RADAR page has each one as text.`
-          : 'Navigation display: no aircraft being heard within range.',
+          ? `Navigation display: ${n} aircraft within ${view.rangeNm ?? 40} nautical miles.${flag} The list on the RADAR page has each one as text.`
+          : `Navigation display: no aircraft within range.${flag}`,
       );
     }
   };

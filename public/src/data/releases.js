@@ -70,6 +70,22 @@
  */
 export const RELEASES = [
   {
+    version: '1.29.1',
+    date: '2026-08-05',
+    headline: 'The scope stops telling you it is empty while it is full of airports.',
+    changed: [
+      'When the aircraft feed is being turned away, the panel used to say the scope was empty. At 40 and 80 miles it is not — it is drawing every airport in the bundled database, dozens of small circles, from data that is always there and cannot be rate limited. It now says no AIRCRAFT have been heard, and that anything on the scope is airport data rather than traffic.',
+      'The state and the sentence explaining it are together. NO CONTACT · RETRY 6s used to sit above the scope with its explanation below, so on a phone you scrolled past the whole instrument to find out what it meant. Both are under the scope now, which also lifts the instrument up the page.',
+      'The navigation display beside the horizon carries the same state, drawn on the instrument the way ATT FAIL is. It had none at all before — the same scope, from the same data, said NO CONTACT on one page and nothing on the other.',
+      'That state is in the display\u2019s spoken description too, so it is not something only a sighted reader gets.',
+      'And the footer link says "More apps by Noah" again. A cleanup pass had rewritten his name out of it.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.29.0',
     date: '2026-08-05',
     headline: 'The instruments get the whole panel. The words are gone.',

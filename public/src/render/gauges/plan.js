@@ -218,7 +218,7 @@ export function runwayWidthPx(len) {
   return Math.max(2, Math.min(7, len * 0.13));
 }
 
-export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [] }) {
+export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [], readiness = null }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
   const r = Math.min(w, h) / 2 - 4;
@@ -251,6 +251,29 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
       colour: tokens['text-3'],
       align: 'left',
     });
+  }
+
+  /**
+   * THE FEED'S STATE, ON THE INSTRUMENT.
+   *
+   * The RADAR page has a chip saying NO CONTACT or AGEING with the retry
+   * countdown; the navigation display beside the horizon had NOTHING, so the
+   * same scope, drawn from the same data, said one thing on one page and was
+   * silent on the other. A reader on the PFD saw a scope with no aircraft on it
+   * and no way to tell a quiet sky from a feed that is being refused.
+   *
+   * Drawn ON the canvas rather than added beside it, because that is what an
+   * instrument does with a flag — the ADI carries ATT FAIL the same way — and
+   * because the PFD has no room for another row.
+   *
+   * Suppressed when the feed is healthy and has contacts: a flag that is always
+   * lit is furniture, and the aircraft themselves say CONTACT better than a word
+   * would.
+   */
+  if (readiness?.label && readiness.state !== 'contact' && readiness.state !== 'following') {
+    const size = Math.max(9, r * 0.075);
+    const tone = readiness.state === 'ageing' ? tokens.warn ?? tokens['text-2'] : tokens.fail;
+    text(ctx, readiness.label, x + 8, y + size + 6, { size, weight: 700, colour: tone, align: 'left' });
   }
 
   /**

@@ -22,10 +22,58 @@ sits on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.29.0, the value strip is not painted at all, 2026-08-05
+## STAGED NOW — 1.29.1, the scope stops contradicting itself, 2026-08-05
 
-**1.29.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
-1.28.3.
+**1.29.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+1.29.0.
+
+Four defects from one pair of screenshots, and the first is the honesty rule
+broken in the plainest possible way.
+
+### "The scope is empty" while fifty symbols are on it
+
+The refusal sentence read *the scope is empty rather than quiet*. At 40 and 80
+nm the plan view draws every bundled airport as the small circle an aeronautical
+chart uses — dozens of them, from data that is always present and cannot be rate
+limited. So the panel told a reader the scope was empty while he was looking at
+it full.
+
+**The chip was right and the sentence was wrong.** NO CONTACT is about aircraft;
+the sentence generalised it to everything drawn. The feed governs AIRCRAFT and
+nothing else on the scope was ever its to describe. Two unit tests now hold the
+wording to that, and a plant reverts it.
+
+### The state and its explanation were separated by the instrument
+
+The chip sat above the scope and the sentence explaining it below — on a phone,
+scrolling past the whole instrument to learn what `NO CONTACT · RETRY 6s` meant.
+
+**Lifting the text up was tried first and the a11y gate refused it**: at 200%
+text that put 16rem of controls above the scope against the 13rem ceiling, the
+instrument pushed down the page to unify a caption. Bringing the chip DOWN costs
+nothing and raises the instrument, because the chip's own row leaves the space
+above it.
+
+### The PFD's navigation display had no state at all
+
+The same scope, from the same data, said NO CONTACT on one page and was silent
+on the other. It carries the flag now, drawn on the canvas the way the ADI
+carries ATT FAIL — no extra row, and it is what an instrument does. The value is
+exposed from one computation rather than recomputed, for the same reason the
+runways are: two pictures of one truth is how they come to disagree.
+
+**And it went into the canvas's accessible name in the same commit**, because a
+flag painted on a canvas is invisible to a reader using the panel by voice —
+the identical defect as a number drawn and never written.
+
+### A byline the scrub had rewritten
+
+The footer read *More apps by the owner*. His name in product copy was never the
+violation and the earlier pass should not have touched it.
+
+---
+
+## 1.29.0 — the value strip is not painted at all, 2026-08-05
 
 **He is right, and the confusion was in this repo's own comments.** A canvas is
 non-text content, so SC 1.1.1 requires a TEXT ALTERNATIVE — it does not require

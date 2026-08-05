@@ -262,6 +262,8 @@ async function boot() {
       fromFix: !!radarCentre(state.snapshot.fields, traffic.followed, traffic.chosenPlace)?.fromFix,
       runways: radar.runways,
       trail: traffic.trail,
+      // The same flag the RADAR page's chip shows — see radar.js's `readiness`.
+      readiness: radar.readiness,
     }),
     readoutHost: $('pfd-readouts'),
     announcer,

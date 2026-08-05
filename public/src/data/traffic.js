@@ -1022,10 +1022,22 @@ export function explainTrafficRefusal(reason, { heard = 0 } = {}) {
   // WHAT IS STILL TRUE ON SCREEN. The aircraft already drawn are real
   // observations that did not stop being true because the next request failed,
   // and saying so is the difference between a stale scope and an empty sky.
+  /**
+   * "THE SCOPE IS EMPTY" WAS FALSE, and visibly so.
+   *
+   * At 40 or 80 nm the plan view draws every bundled airport as the small
+   * circle an aeronautical chart uses — dozens of them, from data that cannot
+   * be rate limited and is always there. So a reader looking at fifty symbols
+   * was told the scope was empty, which is the panel arguing with itself in the
+   * one way this app is not allowed to.
+   *
+   * The sentence has to be about AIRCRAFT, which is the only thing the feed
+   * governs. What is on the scope besides them was never the feed's to claim.
+   */
   const still =
     heard > 0
       ? ` The ${heard} aircraft on the scope are the last ones actually heard, and they are ageing.`
-      : ' Nothing has been heard yet, so the scope is empty rather than quiet.';
+      : ' No aircraft have been heard yet — anything on the scope is bundled airport data, not traffic.';
 
   return `${what}${why}${still}`;
 }

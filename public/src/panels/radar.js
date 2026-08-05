@@ -415,8 +415,27 @@ export function createRadar({
        */
       el('div', { class: 'radar-range', role: 'group', 'aria-label': 'Plan view range' }, rangeButtons),
       bandHost,
-      readyChip,
+      /**
+       * THE STATE AND ITS EXPLANATION ARE ONE THING, so they sit together.
+       *
+       * The chip was above the scope and the sentence explaining it was below —
+       * separated by the whole instrument, on a phone that means scrolling past
+       * the scope to find out what `NO CONTACT · RETRY 6s` meant. Two halves of
+       * one message, and the reader had to hold the first in their head while
+       * they went looking for the second.
+       *
+       * THEY MOVED DOWN TO THE SENTENCE, NOT THE OTHER WAY. Lifting the text up
+       * was tried first and the a11y gate refused it: at 200% text it put 16rem
+       * of controls above the scope against a 13rem ceiling — the instrument
+       * pushed down the page to unify a caption. Bringing the chip down instead
+       * costs the instrument nothing and RAISES it, because the chip's own row
+       * leaves the space above.
+       *
+       * The PFD's navigation display now carries the same state as a flag drawn
+       * on the canvas, so the fact is not confined to this page.
+       */
       canvas,
+      readyChip,
       status,
       attribution,
       el('div', { class: 'radar-centre' }, [
@@ -695,6 +714,17 @@ export function createRadar({
      *  draws the same ones rather than computing its own set. */
     get runways() {
       return runwayCache.list;
+    },
+    /**
+     * THE FEED'S STATE, so the PFD's navigation display can carry the same flag.
+     *
+     * It had none: the same scope, drawn from the same data, said NO CONTACT on
+     * one page and nothing at all on the other. Exposed rather than recomputed,
+     * for the reason the comment above gives about runways — two pictures of one
+     * truth is how they come to disagree.
+     */
+    get readiness() {
+      return readiness;
     },
     setRange,
     /** Hear about every range change, whichever surface made it. */
