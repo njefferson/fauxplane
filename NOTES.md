@@ -9,6 +9,57 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
+## PROMOTED — main is on 1.26.0, and four releases had never deployed, 2026-08-04
+
+**Noah said "Promote to main."** `main` fast-forwarded from 1.23.1 to **1.26.0**
+and — this time — **the DEPLOY was verified green for that exact SHA**, not the
+push. Live at https://fauxplane.pages.dev. Staging is the same commit.
+
+### The failure that made him ask
+
+He sent a screenshot of BITE with no self-test button on it and asked:
+*"What. Button."*
+
+He was on **1.24.0**. Four releases — 1.24.1, 1.25.0, 1.25.1, 1.26.0 — had been
+pushed, reported as shipped, and **never deployed**. Every one of those pushes
+was genuinely verified the way LESSONS §2 demands: read the remote, confirm the
+range line, confirm the SHA. All true. All about the wrong thing. **A push
+landing and the site updating are different facts** and only the first was ever
+checked.
+
+### What blocked them was a gate this session wired that afternoon
+
+The privacy check, newly added to `deploy.yml`, failed on a release note reading
+*"they are still not diagnosed, only absent"* — about ResizeObserver warnings.
+The pattern read `they are ... diagnosed` as a disclosure about a person.
+
+**The compounding shape is the part worth carrying:** a session that adds a hard
+gate to a pipeline has just added a new way for its own work to silently not
+arrive, and is at its LEAST likely to check, because it has just watched that
+gate pass locally. The gate ran on the runner against a file the local run had
+not yet seen.
+
+### Fixed in the gate, not in the sentence
+
+Rewording the note would have unblocked him in a minute and left the same
+landmine in a SHARED gate for every repo that adopts it — and taught the next
+session that the way past a privacy check is to rephrase. `diagnosed` now
+requires a following `with`, which keeps every real disclosure and releases the
+ordinary engineering sense (a bug is diagnosed; a cache is diagnosed). **Tested
+both directions on a scratch repo** — six real disclosures still caught, five
+engineering sentences now pass.
+
+### What stops it recurring
+
+`handoff-check.mjs` gained a fifth obligation, **`deploy-green`**: for every
+branch pushed, check the deploy for that exact SHA and see it CONCLUDE, before
+saying anything shipped. `deploy-url` already covered misreading a log you
+opened; this covers never opening one, which is the failure that hid for four
+releases. Hub LESSONS §53, and it is in both CLAUDE.md indexes because those are
+loaded every session while LESSONS must be opened.
+
+---
+
 ## STAGED NOW — 1.26.0, a self test Noah runs, 2026-08-04
 
 **1.26.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on

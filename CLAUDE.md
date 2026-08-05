@@ -203,6 +203,19 @@ belonging to any other one. Do not inline it (the CSP forbids that), do not move
 it below `app.js`, and do not "simplify" its empty cases — each one exists to
 stop it forcing a reload it should not.
 
+**A PUSH IS NOT A RELEASE. CHECK THE DEPLOY FOR THAT EXACT SHA.** Four releases
+— 1.24.1 through 1.26.0 — were pushed, reported as shipped, and never deployed.
+Every push was verified against the remote, correctly; every deploy had failed on
+the privacy gate wired that same afternoon, on the phrase *"they are still not
+diagnosed"* in a release note. Noah stayed on 1.24.0 through all four and found
+out by asking *"What. Button."* about a feature that had never left the branch.
+
+The trap generalises: **a session that adds a hard gate to this pipeline has just
+added a new way for its own work to silently not arrive**, and is at its least
+likely to look, because it watched that gate pass locally. Nothing on staging or
+main is shipped until its run CONCLUDES green — hub LESSONS §53, and
+`handoff-check.mjs` will not pass without `--ack=deploy-green`.
+
 The workflow runs `npm test`. It does NOT run the accessibility gate, which
 needs a browser the runner would have to download; that gate is run locally
 before every push and its result is reported in the handoff. Do not describe CI
