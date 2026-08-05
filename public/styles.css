@@ -558,16 +558,22 @@ body {
 }
 
 /*
- * THE SPACE UNDER THE SCOPE IS the owner's, AND IT STAYS EMPTY UNTIL HE FILLS IT.
+ * THE SPACE UNDER THE SCOPE WAS RESERVED, AND EICAS IS WHAT IT WAS RESERVED FOR.
  *
- * The scope is a circle in a column that is taller than it is wide, so there is
- * room left over. That is not a defect, it is not slack to reclaim, and it is
- * not an invitation to stretch the plan view, add a caption, move a control into
- * it or "balance" the column. It is reserved.
+ * The scope is a circle in a column taller than it is wide, so there is room
+ * left over. From 1.29.0 that room was held empty on purpose — not slack to
+ * reclaim, not an invitation to stretch the plan view or "balance" the column.
+ * The owner filled it in 1.31.0 with the crew alerting list, which is what sits
+ * under the navigation display on the aircraft this panel is modelled on.
  *
- * A session that finds empty space and fills it is making a product decision
- * that belongs to the owner — the same rule as the hub's §0c, one level down.
- * Leave it.
+ * THE RESERVATION STILL STANDS FOR EVERYTHING ELSE. `.pfd-eicas` is the only
+ * thing allowed in here. A session that finds the strip empty and puts a caption,
+ * a control or a second instrument in the gap is making a product decision that
+ * belongs to the owner — the same rule as the hub's §0c, one level down.
+ *
+ * And EICAS costs the circle NOTHING while the column is taller than it is wide,
+ * because the diameter is the smaller of the two sides. That is why the strip is
+ * intrinsic height below the canvas rather than an overlay on it.
  */
 .pfd-plan {
   flex: 1 1 0;
@@ -579,6 +585,90 @@ body {
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
 }
+
+/*
+ * THE EICAS STRIP. Intrinsic height — `0 0 auto` — so it takes exactly what its
+ * messages need and never competes with the scope for the column's growth. When
+ * it is empty it is `hidden` and takes nothing at all.
+ *
+ * THE CAP IS THE LEFTOVER, MEASURED. The scope is a circle whose diameter is
+ * the SMALLER of its box's two sides, so height below the canvas is free right
+ * up until the box turns square — and free is exactly the space this strip was
+ * allowed to claim. On a 1024x768 tablet the ND column is 375 wide and the plan
+ * row 451 tall, so the leftover is 76px; the first cap was `33%`, which came out
+ * at 87 and took 42px straight off the circle. The accessibility gate reported
+ * the ND as 375x364 — shorter than it was wide — which is what that looks like.
+ *
+ * 4.75rem is 76px at the default type size and stays proportional above it. Past
+ * the cap the strip SCROLLS rather than growing, so the instrument's size is a
+ * function of the instrument and not of how bad the day is. `pfd.js` makes it
+ * focusable only while it is actually scrolling.
+ *
+ * `0 1 auto` — it may shrink when the column is short, and never grows into
+ * space the scope could use.
+ */
+.pfd-eicas {
+  flex: 0 1 auto;
+  max-height: 4.75rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--page-alt);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.eicas-msg {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+/* The flight-deck message: short, upper case, and the thing scanned for. It
+   never wraps — a message code broken across two lines stops being one. */
+.eicas-code {
+  flex: 0 0 auto;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.eicas-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-2);
+}
+
+/*
+ * AMBER FOR AWARENESS, and there is no red rule here on purpose — nothing this
+ * panel can detect needs immediate action, so lighting the colour that means it
+ * would devalue the colour. `alerts.js` says why at greater length.
+ *
+ * `--stale` is the palette's amber role. It is used here for its HUE, not for
+ * its provenance meaning, and the code beside it always carries the message in
+ * words — the colour is never the only channel (Doctrine §4, and the night
+ * palette's own note that deutan cannot separate live from fail).
+ */
+.eicas-msg[data-level='caution'] .eicas-code {
+  color: var(--stale);
+}
+
+.eicas-msg[data-level='status'] .eicas-code {
+  color: var(--text);
+}
+
+/* THERE IS NO `[data-level='warning']` RULE, and its absence is deliberate.
+   Nothing in `alerts.js` emits the red tier, so a rule for it would be colour
+   nobody has ever seen — unmeasured by the contrast gate, because the gate
+   fails on a selector matching nothing. The rule arrives in the same commit as
+   the first message that justifies it, with its registry row. `alerts.test.mjs`
+   asserts that every level the module CAN emit has a rule here, so this cannot
+   drift into a message rendering with no colour at all. */
 
 /*
  * THE VALUE STRIP, along the bottom and full width.

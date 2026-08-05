@@ -70,6 +70,23 @@
  */
 export const RELEASES = [
   {
+    version: '1.31.0',
+    date: '2026-08-05',
+    headline: 'The space under the radar is a crew alerting display now.',
+    changed: [
+      'On a 747 the screen under the navigation display is EICAS — engine indications and crew alerting messages. This panel has no engine, so it gets the alerting half: a short list of what is wrong, most urgent first, in the flight deck\u2019s amber.',
+      'It only carries what you cannot already see from the horizon. The altimeter is set on the ATIS page, so a dial left off the field\u2019s setting is invisible from here \u2014 and it makes every altitude on the panel wrong by about a thousand feet per inch. That one now says so, with both numbers and how far out you are.',
+      'The others: no station reporting a setting at all, a sensor permission that was refused rather than absent, no position fix, and following an aircraft that has not been heard from yet.',
+      'When nothing is wrong it shows nothing, exactly as a real one does. It is also silent until you press PWR \u2014 a panel that is off has nothing to report.',
+      'It costs the scope no height. The radar is a circle in a taller box, and the strip fits in the room left over.',
+      'And the navigation display\u2019s feed flag now works before you have visited the RADAR page. It was reading a value that only got written while that page was on screen, so on a fresh start the horizon\u2019s scope said nothing at all about a feed that was being refused \u2014 which is what the flag was added for.',
+    ],
+    broken: [
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.30.0',
     date: '2026-08-05',
     headline: 'The scope tells you which aircraft is actually near you.',

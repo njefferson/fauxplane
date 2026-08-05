@@ -9,23 +9,117 @@ feeds. It is not a simulator and it is not certified for anything.
 
 ---
 
-## RESERVED — the space under the radar is the owner's
+## CLAIMED — the space under the radar is EICAS, and nothing else
 
-The scope is a circle in a column taller than it is wide, so 1.29.0 leaves room
-below it. **That room is reserved and stays empty until he says what goes there.**
-It is not slack to reclaim, not a reason to stretch the plan view, not somewhere
-to move a control or add a caption, and not a "balance" problem.
+The scope is a circle in a column taller than it is wide, so 1.29.0 left room
+below it. That room was reserved until the owner said what went there; he named it
+in the plan approved on 2026-08-05, and 1.31.0 built it: the **crew alerting half
+of EICAS**, which is what sits under the navigation display on the aircraft this
+panel is modelled on.
 
-A session that finds empty space and fills it is making a product decision that
-belongs to the owner. Same rule as the hub's §0c, one level down. The comment
-sits on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
+**THE RESERVATION STILL STANDS FOR EVERYTHING ELSE.** `.pfd-eicas` is the only
+thing allowed in that space. It is still not slack to reclaim, still not a reason
+to stretch the plan view, and still not somewhere to move a control or add a
+caption — and the strip being empty most of the time is not an invitation either.
+A session that finds it blank and fills it is making a product decision that
+belongs to the owner, same rule as the hub's §0c one level down. The comment sits
+on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.30.0, proximate traffic, and 1.29.2 had never deployed, 2026-08-05
+## STAGED NOW — 1.31.0, the EICAS crew alerting strip, 2026-08-05
 
-**1.30.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
+**1.31.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.29.0.
+
+### The rule that decides what may go in the strip
+
+Without one it becomes the value strip again — a band of glass restating what is
+drawn beside it. So: **a message earns its place only if the condition is real,
+is degrading something, and is NOT already visible on the page the reader is
+looking at.**
+
+That last clause is the whole design. The PFD already crosses out every failed
+field with its reason, draws ATT FAIL on the horizon, prints the levelling offset
+on the ADI, and since 1.29.1 flags the traffic feed on the ND itself. What it
+cannot show is anything true on the OTHER pages — which is what this list is for:
+
+- **ALTIMETER**, the one genuine flight-deck alert this panel can raise. The
+  Kollsman is set on ATIS; a dial off the field's setting makes every altitude
+  wrong by about a thousand feet per inch and is invisible from the horizon. Both
+  numbers and the error are named, because "check altimeter" without them is a
+  chore rather than an alert. Tolerance is one dial click, 0.011 inHg.
+- **ALTIMETER STD** — no station reporting a setting at all, so 29.92 is standard
+  rather than measured.
+- **MOTION SENSORS** — the word DENIED, which the ADI structurally cannot carry.
+  A refused permission and a phone with no gyroscope produce an identical flag,
+  and only one of them is something the reader can undo.
+- **POSITION** — no fix, so the scope and the weather are measured from the home
+  reference.
+- **NO BROADCAST** — following an aircraft that has not been heard.
+- The traffic feed's flag, as STATUS rather than caution, because the ND already
+  carries it. **Verbatim, with no detail of its own**: `radarReadiness`'s label is
+  the whole fact, and a second shorter sentence would be two wordings of one state.
+
+### Two tiers, and the third is deliberately never emitted
+
+Nothing here emits RED. This is a phone clamped to a desk; no condition it can
+detect requires immediate action, and lighting that colour for a rate-limited feed
+would devalue it on the day something does. There is no `[data-level='warning']`
+rule in the stylesheet either — an unemitted colour cannot be measured, because
+the contrast gate fails on a selector matching nothing. `alerts.test.mjs` asserts
+that every level the module CAN emit has a rule, so the tier and its colour arrive
+together or not at all.
+
+### What the accessibility gate found, in order
+
+Every one of these was a real defect and none would have been caught by reading:
+
+1. **The strip lit on a panel that was OFF.** Every field is seeded FAIL when the
+   store is constructed, deliberately, so a cold app raised the whole list on its
+   first frame and never cleared it. `crewAlerts` now takes `powered` and returns
+   nothing without it — the first rule in the function rather than an edge case.
+2. **A scrolling region a keyboard could not reach** (SC 2.1.1). `tabindex` is set
+   only while the content actually overflows, and removed when it fits — a
+   permanent one is the opposite mistake and this app has already made it once.
+3. **The strip was taking height off the scope.** The cap was `33%`, which came
+   out at 87px where the leftover is 76 — the ND measured 375x364, shorter than it
+   was wide. The cap is `4.75rem` now, which is the leftover measured at 1024x768,
+   and the gate asserts the plan view never comes out shorter than it is wide.
+4. **The details were written as prose and a SINGLE message overflowed the cap.**
+   Rewritten in flight-deck register with `·` separators; the suite now fails any
+   detail over 78 characters.
+5. **`offsetTop` again.** The gate's clipping measurement used it, and it is
+   relative to the nearest POSITIONED ancestor — the strip is not positioned, so
+   every row read as clipped whatever the cap was. Third time in this repo; 1.28.5
+   diagnosed it as a hidden-page measurement and shipped the wrong explanation.
+   Viewport-relative rects cannot be fooled by it.
+
+The check runs three scenarios rather than one, because piling every condition
+into a single run puts three messages in a strip that holds two and the contrast
+sampler then reads pixels nobody can see — that is how it first reported plain
+white text at 1.59:1.
+
+### And a real defect in 1.29.1 that EICAS surfaced
+
+`radar.readiness` was a variable assigned inside `radar.render`, which only runs
+while RADAR is the visible page. On the PFD it was whatever RADAR had last left
+behind — and on a fresh load, `{ tappable: false }` with no state at all.
+
+**So the navigation display's feed flag, added in 1.29.1 precisely so the PFD
+would stop being silent about a refused feed, was silent about a refused feed
+until the reader visited RADAR.** The exact defect it was written to fix,
+reintroduced by where the value was kept rather than by what it computed.
+
+It is a getter that computes on demand now, so the chip, the tap handler, the ND
+flag and EICAS are four readers of one fact rather than four copies of it — which
+is what `radarReadiness`'s own header says it is for.
+
+---
+
+## Previously staged — 1.30.0, proximate traffic, and 1.29.2 had never deployed, 2026-08-05
+
+**`main` is on 1.29.0.**
 
 ### 1.29.2 WAS PUSHED, VERIFIED AGAINST THE REMOTE, AND NEVER SHIPPED
 

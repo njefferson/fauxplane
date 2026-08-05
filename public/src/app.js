@@ -35,6 +35,7 @@ import { probeBattery } from './sensors/battery.js';
 import { probeNetwork, watchNetwork } from './sensors/network.js';
 import { probeMagnetometer } from './sensors/magnetometer.js';
 
+import { crewAlerts } from './data/alerts.js';
 import { createMetarSource } from './data/metar.js';
 import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, followBannerText, lastKnownFix, radarCentre, rememberFix } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
@@ -242,6 +243,18 @@ async function boot() {
   const planCanvas = $('pfd-plan');
   const planSurface = createSurface(planCanvas);
 
+  /** Set once, inside the power-on gesture, when a sensor permission is refused.
+   *  Null means nothing was refused — NOT that nothing was asked. */
+  let motionDenied = null;
+
+  /**
+   * WHETHER THE PANEL HAS BEEN SWITCHED ON. Declared up here rather than beside
+   * `startSensors` because EICAS reads it: every field is seeded FAIL before
+   * power, so a crew alerting list that does not know about the switch lights
+   * on the first frame of a cold app and never goes out.
+   */
+  let started = false;
+
   const pfd = createPfd({
     canvas,
     surface,
@@ -266,6 +279,26 @@ async function boot() {
       readiness: radar.readiness,
     }),
     readoutHost: $('pfd-readouts'),
+    /**
+     * EICAS. Every input is something this file already holds and no panel
+     * does: the feed's readiness, what the selected station is reporting, and
+     * whether a permission was refused. `crewAlerts` is pure and decides the
+     * list; app.js only hands it the facts.
+     */
+    eicasHost: $('pfd-eicas'),
+    alerts: () =>
+      crewAlerts(state.snapshot.fields, {
+        // A COLD PANEL RAISES NOTHING. Every field is seeded FAIL before power,
+        // so without this the strip lights on the first frame and never goes out.
+        powered: started,
+        readiness: radar.readiness,
+        // The station's OWN setting, not the dial's. Comparing the dial to
+        // itself would make the alert impossible to raise.
+        stationAltimeterInHg: metar.last?.ok ? metar.last.altimeterInHg : null,
+        motionDenied,
+        followLabel: traffic.followLabel,
+        following: !!traffic.followed,
+      }),
     announcer,
     // Only reported when it is actually in force; a levelling captured in the
     // other screen orientation is not being applied and must not claim to be.
@@ -1086,7 +1119,6 @@ async function boot() {
   }
   if (!introSeen) info.open({ scrollTo: '.gate-first' });
 
-  let started = false;
   const startSensors = async () => {
     if (started) return;
     started = true;
@@ -1104,6 +1136,22 @@ async function boot() {
     for (const [what, verdict] of results) {
       if (verdict !== 'granted') announcer.say(`${what} permission ${verdict}; those instruments will show FAIL`);
     }
+
+    /**
+     * THE VERDICT IS KEPT, not just spoken once.
+     *
+     * It used to be announced into the live region and dropped on the floor. A
+     * reader who missed the announcement — or who was not using a screen reader
+     * at all — then had a horizon reading ATT FAIL with no way to learn that the
+     * cause was a permission they declined, which is the one failure on this
+     * panel they can undo. EICAS says so, from this.
+     */
+    const refused = results.filter(([, verdict]) => verdict !== 'granted').map(([what]) => what);
+    // Terse on purpose: it goes in a flight-deck message strip a column wide,
+    // not in a paragraph. "Motion denied", not "Motion access was denied."
+    motionDenied = refused.length
+      ? `${refused.join(' and ')} ${results.find(([, v]) => v !== 'granted')[1]}`
+      : null;
 
     if (!feedsStarted) {
       feedsStarted = true;

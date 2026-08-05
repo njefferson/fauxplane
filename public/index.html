@@ -239,6 +239,32 @@
                      value through the same setter. -->
                 <div id="pfd-range" class="pfd-range" role="group" aria-label="Navigation display range"></div>
               </div>
+              <!--
+                EICAS — THE CREW ALERTING LIST, in the space this column has had
+                spare since 1.29.0.
+
+                THE SPACE WAS RESERVED AND THIS IS WHAT IT WAS RESERVED FOR. On a
+                747 the display under the ND is EICAS; this panel has no engine,
+                so the alerting half is the whole of it. Nothing else may claim
+                this room — see the comment on `.pfd-plan` in styles.css.
+
+                IT COSTS THE SCOPE NOTHING, and that is measured rather than
+                hoped: the plan view is a circle whose diameter is the SMALLER of
+                its box's two sides, and this column is taller than it is wide.
+                Height taken from below the canvas comes out of the leftover, not
+                out of the circle, right up until the box turns square.
+
+                REAL TEXT, NOT PAINTED ON THE CANVAS. An alert list is text; a
+                canvas is non-text content and would need a parallel alternative
+                to exist somewhere else — which is the duplication that cost this
+                panel a band of glass for twelve releases.
+
+                HIDDEN WHEN EMPTY, exactly as a real EICAS is blank when nothing
+                is wrong. `aria-label` carries the summary so a reader using the
+                panel by voice is told "none" rather than finding an element that
+                has silently vanished.
+              -->
+              <div id="pfd-eicas" class="pfd-eicas" role="group" aria-label="Crew alerts: none." hidden></div>
             </div>
           </div>
           <!--

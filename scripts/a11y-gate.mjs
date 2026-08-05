@@ -859,6 +859,214 @@ async function checkHeardList(browser, base) {
   await context.close();
 }
 
+const EICAS_REGISTRY = [
+  { selector: ".eicas-msg[data-level='caution'] .eicas-code", label: 'EICAS caution message (amber)', min: 4.6 },
+  { selector: ".eicas-msg[data-level='status'] .eicas-code", label: 'EICAS status message', min: 4.6 },
+  { selector: '.eicas-detail', label: 'EICAS message detail', min: 4.6 },
+];
+
+/** Boot the panel with a chosen set of feed answers and permissions, powered on.
+ *  Every EICAS scenario below is a REAL state of the app, reached through the
+ *  real routes — nothing is injected into the strip it is about to measure. */
+async function eicasScene(browser, base, { metar, traffic, geolocation = null }) {
+  const context = await browser.newContext({
+    viewport: { width: 1024, height: 768 },
+    permissions: geolocation ? ['geolocation'] : [],
+    ...(geolocation ? { geolocation } : {}),
+  });
+  await seenIntro(context);
+  await context.route('**/api/metar**', (route) => route.fulfill(metar));
+  await context.route('**/api/traffic**', (route) => route.fulfill(traffic));
+  const page = await context.newPage();
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  // POWER ON FIRST. A cold panel raises nothing at all — every field is seeded
+  // FAIL before the switch, so measuring an unpowered panel measures the wrong
+  // instrument. The gate found that by doing exactly that.
+  await page.evaluate(() => document.getElementById('power-btn').click());
+  await page.waitForTimeout(1200);
+
+  const m = await page.evaluate(() => {
+    const strip = document.querySelector('#pfd-eicas');
+    const plan = document.querySelector('#pfd-plan');
+    if (!strip || !plan) return null;
+    const box = plan.getBoundingClientRect();
+    const rows = [...strip.querySelectorAll('.eicas-msg')];
+    return {
+      hidden: !!strip.hidden,
+      height: Math.round(strip.getBoundingClientRect().height),
+      name: strip.getAttribute('aria-label') ?? '',
+      levels: rows.map((n) => n.dataset.level),
+      codes: [...strip.querySelectorAll('.eicas-code')].map((n) => n.textContent.trim()),
+      empties: rows.filter((n) => !n.textContent.trim()).length,
+      /**
+       * HOW MANY ROWS THE CAP CUTS OFF, and this is NOT by itself a defect —
+       * the strip is capped at the leftover height it was allowed to claim and
+       * SCROLLS past it, so on a bad day some rows are below the edge on
+       * purpose. Two things about it are defects, and both are asserted below:
+       * the FIRST row must never be cut (it is the most urgent message), and
+       * anything cut must be reachable, which means the strip must scroll and
+       * be focusable.
+       *
+       * It also decides what may be MEASURED. The contrast sampler reads a
+       * screenshot, so sampling a clipped row reads pixels nobody can see and
+       * returns a ratio about nothing — which is how this check first reported
+       * plain white text at 1.59:1.
+       *
+       * RECTS, NOT `offsetTop`. `offsetTop` is relative to the nearest
+       * POSITIONED ancestor, and the strip is not positioned — so it measured
+       * from somewhere up the page and called every row clipped whatever the
+       * cap was. Third time this property has bitten this repo; 1.28.5
+       * diagnosed it as a hidden-page measurement and shipped the wrong
+       * explanation. A viewport-relative rect cannot be fooled by it.
+       */
+      clipped: rows.filter((n) => n.getBoundingClientRect().bottom > strip.getBoundingClientRect().bottom + 2).length,
+      firstClipped: rows.length
+        ? rows[0].getBoundingClientRect().bottom > strip.getBoundingClientRect().bottom + 2
+        : false,
+      scrollable: strip.scrollHeight > strip.clientHeight + 1,
+      focusable: strip.getAttribute('tabindex') === '0',
+      planW: Math.round(box.width),
+      planH: Math.round(box.height),
+    };
+  });
+  return { context, page, m };
+}
+
+const OK_METAR = {
+  status: 200,
+  contentType: 'application/json',
+  body: JSON.stringify({
+    ok: true,
+    stations: [{ id: 'KSMF', name: 'Sacramento', lat: 38.7, lon: -121.59, altimeterHpa: 1019.6, tempC: 21, dewpointC: 9, windDirDeg: 200, windSpeedKt: 8, observedAt: '2099-01-01T00:00:00.000Z', raw: 'KSMF 051553Z 20008KT 10SM CLR 21/09 A3011' }],
+  }),
+};
+const NO_STATION_METAR = { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, stations: [] }) };
+const OK_TRAFFIC = { status: 200, contentType: 'application/json', body: JSON.stringify(TRAFFIC_FIXTURE) };
+const REFUSED_TRAFFIC = { status: 502, contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'upstream refused' }) };
+
+const HOME = { latitude: 38.68, longitude: -121.0, accuracy: 8 };
+
+/**
+ * EICAS — THE CREW ALERTING STRIP, IN THREE REAL STATES.
+ *
+ * IT CANNOT LIVE IN THE PER-PAGE SWEEP. Its contrast rows would be asserted on
+ * every page and viewport, and a registry selector matching nothing is a
+ * FAILURE — so on any run where the panel happened to be healthy the gate would
+ * go red about a strip that was correctly empty. The registry's strictness is
+ * the point; this is the shape of check that has to bring its own conditions
+ * (hub LESSONS §54).
+ *
+ * THREE SCENARIOS RATHER THAN ONE, and the reason is a measurement one. Piling
+ * every condition into a single run puts three messages in a strip capped at
+ * two, so the third is CLIPPED — and a contrast sampler reading a screenshot at
+ * a clipped row reads pixels nobody can see. That is how this check first
+ * reported white text at 1.59:1. Each level is now measured in a state where
+ * its message is the one on screen.
+ */
+async function checkEicas(browser, base) {
+  const where = 'eicas';
+
+  // --- CAUTION: no station altimeter, and no position fix -------------------
+  {
+    const { context, page, m } = await eicasScene(browser, base, { metar: NO_STATION_METAR, traffic: OK_TRAFFIC });
+    if (!m) {
+      fail(where, 'the EICAS strip or the navigation display is missing from the PFD');
+    } else if (m.hidden || !m.levels.includes('caution')) {
+      fail(
+        where,
+        'no CAUTION with no station altimeter and no position fix — the strip is '
+          + `${m.hidden ? 'hidden' : `showing ${m.codes.join(', ') || 'nothing'}`}, and those are conditions it exists to report`,
+      );
+    } else {
+      if (m.empties) fail(where, `${m.empties} alert row(s) rendered with no text at all`);
+      /**
+       * THE MOST URGENT MESSAGE IS NEVER THE ONE BELOW THE EDGE. Rows past the
+       * cap scroll, which is the design; the top of the list being cut in half
+       * is not, and it is what a reader would actually be looking at.
+       */
+      if (m.firstClipped) {
+        fail(where, `the FIRST crew alert (${m.codes[0] ?? '?'}) is cut off by the strip's own cap — the most urgent message must be whole`);
+      }
+      if (m.clipped && !m.scrollable) {
+        fail(where, `${m.clipped} of ${m.levels.length} alert row(s) are past the cap and the strip does not scroll — they are unreachable`);
+      }
+      if (!/^Crew alerts: /.test(m.name) || /none/.test(m.name)) {
+        fail(where, `the strip says "${m.name}" while showing ${m.levels.length} message(s) — a reader using the panel by voice is told the wrong thing`);
+      }
+      /**
+       * THE SCOPE DID NOT PAY FOR THIS. The plan view is a circle whose diameter
+       * is the SMALLER of its box's two sides, so height taken below the canvas
+       * is free right up until the box turns square. Past that every pixel the
+       * strip takes comes off the circle, which is what the space was reserved
+       * against. Measured at 375 wide against 451 tall on this viewport: 76px of
+       * leftover, which is what the strip's cap is set to.
+       */
+      if (m.planH < m.planW) {
+        fail(
+          where,
+          `the navigation display is ${m.planW}x${m.planH} — shorter than it is wide, so the EICAS strip is `
+            + 'taking height off the scope rather than out of the leftover it was allowed to claim',
+        );
+      }
+      /** SC 2.1.1: a scrolling region a keyboard cannot reach is content a
+       *  keyboard cannot read — and a tabindex on one that does NOT scroll is
+       *  the opposite mistake, which this app has already made once. */
+      if (m.scrollable !== m.focusable) {
+        fail(
+          where,
+          m.scrollable
+            ? 'the EICAS strip scrolls and is not keyboard focusable'
+            : 'the EICAS strip is keyboard focusable while its content fits — focus lands somewhere with nothing to read',
+        );
+      }
+      await checkContrast(page, EICAS_REGISTRY.filter((r) => !r.selector.includes('status')), where);
+      await checkTargets(page, where);
+      await checkNames(page, where);
+    }
+    await context.close();
+  }
+
+  // --- STATUS: the traffic feed refusing, and nothing else wrong ------------
+  {
+    const { context, page, m } = await eicasScene(browser, base, { metar: OK_METAR, traffic: REFUSED_TRAFFIC, geolocation: HOME });
+    if (!m || m.hidden || !m.levels.includes('status')) {
+      fail(
+        where,
+        'no STATUS message with the traffic feed refusing — the strip is '
+          + `${!m || m.hidden ? 'hidden' : `showing ${m.codes.join(', ') || 'nothing'}`}`,
+      );
+    } else {
+      // The traffic flag is the only message with no detail — its label carries
+      // the whole fact — so it is one line and must always fit.
+      if (m.firstClipped) fail(where, 'the status message is cut off by the strip\'s own cap');
+      else await checkContrast(page, EICAS_REGISTRY.filter((r) => r.selector.includes('status')), where);
+    }
+    await context.close();
+  }
+
+  /**
+   * --- EMPTY: everything healthy, and the strip must go away ----------------
+   *
+   * This is the half worth having. Nobody ships a strip that fails to appear;
+   * what ships is a strip that never leaves.
+   */
+  {
+    const { context, m } = await eicasScene(browser, base, { metar: OK_METAR, traffic: OK_TRAFFIC, geolocation: HOME });
+    if (!m) {
+      fail(where, 'the EICAS strip is missing entirely on a healthy panel — it must exist and be hidden, not be absent');
+    } else if (!m.hidden || m.height > 0) {
+      fail(
+        where,
+        `the EICAS strip is still on screen (${m.height}px) with the feeds healthy and a fix granted, showing: `
+          + `${m.codes.join(', ') || '(nothing)'} — a strip that always has something in it stops being read`,
+      );
+    } else if (!/none/.test(m.name)) {
+      fail(where, `the hidden strip's accessible name is "${m.name}" — with nothing outstanding it must say so, not vanish silently`);
+    }
+    await context.close();
+  }
+}
+
 /**
  * THE CHROME AND PANEL LAYOUT CHECKS, ON VIEWPORTS WHERE THEIR DEFECTS EXIST.
  *
@@ -1707,6 +1915,7 @@ async function main() {
     // built for only has one of them.
     await checkChromeLayout(browser, base);
     await checkHeardList(browser, base);
+    await checkEicas(browser, base);
     await checkRadarTap(browser, base, { touch: false });
     await checkRadarTap(browser, base, { touch: true });
     await checkCentrePicker(browser, base);

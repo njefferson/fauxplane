@@ -816,6 +816,45 @@ export const PLANTS = [
     expect: /the 0\.25 ring reads 3 and sits at 2\.5|old code rounded these/,
   },
   {
+    // EICAS's whole design is the clause "not already visible on the page the
+    // reader is looking at". Dropping the power gate is the fastest way to lose
+    // it: every field is seeded FAIL before the switch, so the strip lights on
+    // the first frame of a cold app and never goes out — furniture, and it
+    // LOOKS like a working instrument, which is why nothing else would catch it.
+    name: 'eicas: the crew alert list stops respecting the power switch',
+    check: 'a panel that is off raises no crew alerts',
+    gate: 'tests',
+    file: 'public/src/data/alerts.js',
+    find: '  if (!powered) return [];',
+    replace: '  if (false) return [];',
+    expect: /A PANEL THAT IS OFF|powered/i,
+  },
+  {
+    // The other half: a strip that never has anything in it is as useless as
+    // one that always does, and an empty list is indistinguishable from a
+    // healthy panel from the outside. Caught by the a11y gate, which boots the
+    // panel with the feeds actually refusing and looks for the messages.
+    name: 'eicas: the crew alert list goes permanently empty',
+    check: 'real conditions produce real messages, on the instrument',
+    file: 'public/src/data/alerts.js',
+    find: '  const out = [];',
+    replace: '  const out = [];\n  if (true) return out;',
+    expect: /no CAUTION with no station altimeter|crew alert/i,
+  },
+  {
+    // The altimeter alert is the one genuine flight-deck message here, and its
+    // tolerance is what stops it firing on a single dial click. Widened to an
+    // inch it can never fire at all — the alert quietly stops existing while
+    // every other test about its wording keeps passing.
+    name: 'eicas: the altimeter tolerance widens until the alert cannot fire',
+    check: 'a Kollsman off the field setting is reported',
+    gate: 'tests',
+    file: 'public/src/data/alerts.js',
+    find: 'export const KOLLSMAN_TOLERANCE_INHG = 0.011;',
+    replace: 'export const KOLLSMAN_TOLERANCE_INHG = 1.0;',
+    expect: /altimeter-set|the two categories|dial step/i,
+  },
+  {
     // Two categories is the whole of what ADS-B can honestly support, and the
     // filled mark is the only thing carrying the difference. Collapsing it puts
     // the scope back to one shape for every aeroplane in the county — which is

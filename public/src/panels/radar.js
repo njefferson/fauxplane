@@ -45,6 +45,9 @@ export function createRadar({
    * because this panel is built before the poller exists.
    */
   nextAttemptInS = () => null,
+  /** Only for ageing the "heard Ns ago" phrase when readiness is asked for from
+   *  a page this panel is not rendering. `render` has the snapshot's own clock. */
+  clock = () => Date.now(),
 }) {
   let rangeNm = RADAR_RANGE_NM[2];
   let lastDrawnAt = 0;
@@ -65,8 +68,36 @@ export function createRadar({
    * screen reader. This is the SEEN copy; `status` is the SPOKEN one.
    */
   const readyChip = el('p', { class: 'radar-ready', 'aria-hidden': 'true', text: 'LISTENING' });
-  /** The last readiness computed, so the tap handler and the chip cannot disagree. */
-  let readiness = { tappable: false };
+
+  /**
+   * THE FEED'S STATE, COMPUTED ON DEMAND RATHER THAN CACHED BY `render`.
+   *
+   * It used to be a variable assigned inside `render`, which only runs while
+   * RADAR is the visible page — so on the PFD it was whatever RADAR last left
+   * behind, and on a fresh load it was `{ tappable: false }` with no state at
+   * all. The navigation display's feed flag, added in 1.29.1 precisely so the
+   * PFD would stop being silent about a refused feed, was therefore silent
+   * about a refused feed until the reader visited RADAR — the exact defect it
+   * was written to fix, reintroduced by where the value was kept.
+   *
+   * Found by the accessibility gate while measuring the crew alerting strip,
+   * which asked for the traffic state on a page RADAR had never rendered.
+   *
+   * Computing it here keeps the function's own rule — ONE computation, read by
+   * the chip, the tap handler, the ND flag and EICAS. Four readers of one fact
+   * is fine; four copies of it is how they come to disagree.
+   */
+  const computeReadiness = () => {
+    const result = traffic.last;
+    return radarReadiness({
+      result,
+      aircraft: withinBand(traffic.nearby, lastOwnAltFt, bandId),
+      nearbyAt: result?.nearbyAt ?? null,
+      now: clock(),
+      following: traffic.followLabel,
+      nextAttemptInS: nextAttemptInS(),
+    });
+  };
   const list = el('div', { class: 'radar-list', role: 'group', 'aria-label': 'Aircraft heard, nearest first', tabindex: '0' });
   /** Outside the scroller on purpose: a "scroll for more" that itself scrolls
    *  out of view is the one place it must not be. */
@@ -246,7 +277,7 @@ export function createRadar({
     // THE SAME PREDICATE THE CHIP SHOWS. Asking a second question here is how
     // an indicator that says "tap to follow" ends up on a scope that ignores
     // taps — two opinions about one fact, which is hub LESSONS 42.
-    if (!readiness.tappable || !result?.centre) return;
+    if (!computeReadiness().tappable || !result?.centre) return;
     const rect = canvas.getBoundingClientRect();
     // THE SAME SET THE SCOPE IS DRAWING. Hit-testing the unfiltered list would
     // follow an aircraft the band is hiding — a tap on empty space picking
@@ -744,7 +775,7 @@ export function createRadar({
      * truth is how they come to disagree.
      */
     get readiness() {
-      return readiness;
+      return computeReadiness();
     },
     setRange,
     /** Hear about every range change, whichever surface made it. */
@@ -766,15 +797,11 @@ export function createRadar({
       lastOwnAltFt = ownAltFt;
       const aircraft = withinBand(traffic.nearby, ownAltFt, bandId);
 
-      // ONE COMPUTATION, READ BY THE CHIP AND BY THE TAP. See radarReadiness.
-      readiness = radarReadiness({
-        result,
-        aircraft,
-        nearbyAt: result?.nearbyAt ?? null,
-        now: snapshot.t,
-        following: traffic.followLabel,
-        nextAttemptInS: nextAttemptInS(),
-      });
+      // ONE COMPUTATION, READ BY THE CHIP, THE TAP, THE ND FLAG AND EICAS —
+      // through `computeReadiness`, so no reader can be looking at a different
+      // answer than another. `lastOwnAltFt` is set just above, so this sees the
+      // same banding the draw below does.
+      const readiness = computeReadiness();
       readyChip.textContent = readiness.label;
       readyChip.dataset.state = readiness.state;
       // THE CHIP SAYS WHETHER A TAP WOULD DO ANYTHING, because "populated" and

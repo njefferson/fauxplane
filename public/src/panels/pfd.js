@@ -17,6 +17,7 @@
  */
 
 import { formatAge } from '../core/units.js';
+import { alertsSummary } from '../data/alerts.js';
 import { drawAdi } from '../render/gauges/adi.js';
 import { drawPlan } from '../render/gauges/plan.js';
 import { drawGMeter, drawVsi } from '../render/gauges/vsi.js';
@@ -34,6 +35,11 @@ export function createPfd({
   planSurface = null,
   planCanvas = null,
   traffic = () => ({ aircraft: [], centre: null, rangeNm: 40, fromFix: false, followedHex: null }),
+  /** The EICAS strip's host, and the list to put in it. Both optional: the unit
+   *  tests construct this panel without a document, and a panel with no strip
+   *  simply has no alerting display rather than a broken one. */
+  eicasHost = null,
+  alerts = () => [],
 }) {
   let peakG = null;
 
@@ -299,6 +305,66 @@ export function createPfd({
    * without one) and when the centre is unknown, which is the honest state
    * before the first fix rather than a ring drawn around nowhere.
    */
+  /**
+   * EICAS — the crew alerting list, under the navigation display.
+   *
+   * `alerts.js` decides WHAT is in the list and why; this only draws it. The
+   * split is the same one every other instrument here keeps: the rule is pure
+   * and testable without a browser, the rendering is not.
+   *
+   * REBUILT WHOLESALE EACH FRAME rather than diffed. The list is at most five
+   * short rows and this runs on a render that already redraws four canvases;
+   * a diff here would be machinery guarding nothing.
+   *
+   * HIDDEN WHEN EMPTY, which is the state a real EICAS is in most of the time.
+   * The accessible name still carries the summary, so "none" is something a
+   * reader can be told rather than an element that has disappeared.
+   */
+  const lastAlertKey = { value: null };
+  const drawEicas = () => {
+    if (!eicasHost) return;
+    const list = alerts() ?? [];
+    eicasHost.setAttribute('aria-label', alertsSummary(list));
+    eicasHost.hidden = list.length === 0;
+
+    // The strip is inside a live region's reach, so rebuilding identical nodes
+    // every frame would re-announce them. The key is what a reader would hear.
+    const key = list.map((a) => `${a.level}|${a.text}|${a.detail}`).join('\n');
+    if (key === lastAlertKey.value) return;
+    lastAlertKey.value = key;
+
+    eicasHost.replaceChildren(
+      ...list.map((a) =>
+        // The detail span is omitted rather than emptied when there is none:
+        // an empty element still takes the row's gap and still answers a
+        // selector, which is how a contrast registry ends up measuring nothing.
+        el('p', { class: 'eicas-msg', 'data-level': a.level }, [
+          el('span', { class: 'eicas-code', text: a.text }),
+          ...(a.detail ? [el('span', { class: 'eicas-detail', text: a.detail })] : []),
+        ]),
+      ),
+    );
+
+    /**
+     * FOCUSABLE ONLY WHEN IT ACTUALLY SCROLLS (SC 2.1.1).
+     *
+     * The strip caps its height and scrolls past the cap, and a scrolling region
+     * a keyboard cannot reach is content a keyboard cannot read — axe caught it
+     * on the two short viewports, where three messages already overflow.
+     *
+     * BUT A PERMANENT `tabindex="0"` IS THE OPPOSITE MISTAKE, and this app has
+     * made it once already: the value strip carried one while invisible, sending
+     * a sighted keyboard user's focus to a box with nothing in it. So the
+     * attribute tracks the real condition, measured after the rows are in the
+     * DOM, and comes off the moment the content fits.
+     */
+    if (eicasHost.scrollHeight > eicasHost.clientHeight + 1) {
+      eicasHost.setAttribute('tabindex', '0');
+    } else {
+      eicasHost.removeAttribute('tabindex');
+    }
+  };
+
   const drawSide = () => {
     if (!planSurface) return;
     planSurface.begin();
@@ -353,6 +419,7 @@ export function createPfd({
     render(snapshot) {
       draw(snapshot.fields);
       drawSide();
+      drawEicas();
       updateReadouts(snapshot.fields);
       updateAlt(snapshot.fields, snapshot.t);
       announcer.watch('Attitude', snapshot.fields['attitude.pitch']);
