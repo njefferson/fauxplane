@@ -2309,12 +2309,62 @@ body[data-powered='true'] .gate {
   border: 2px solid var(--rail);
   border-radius: var(--radius);
 }
+/*
+ * THE DIALOG NO LONGER SCROLLS — the region inside it does.
+ *
+ * It used to scroll as a whole, so the heading, the Close button and any notice
+ * about there being more all scrolled away with the content. That is the one
+ * arrangement in which a "more below" line cannot work, and it is why nothing
+ * told the reader this panel continues past the bottom of the screen.
+ */
 .info[open] {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   padding: 0.9rem 1rem 1rem;
+  overflow: hidden;
+}
+
+.info-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  /* Belt and braces, NOT load-bearing — and the comment here used to claim it
+     was. A flex item's automatic minimum size is already zero once it is a
+     scroll container, so `overflow-y` below is what actually lets this shrink.
+     Measured: a plant removing this line changed nothing and the sweep said so.
+     Kept because it costs nothing and states the intent. */
+  min-height: 0;
+  /* THIS is the load-bearing one. Without it the content is clipped by the
+     dialog's `overflow: hidden` and there is no way to reach the rest. */
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/*
+ * THE SECTIONS MUST NOT SHRINK, and this is not a tidy-up.
+ *
+ * A column flex container squashes its children to fit before it overflows, so
+ * with the default `flex-shrink: 1` the whole panel silently compressed into
+ * the available height instead of scrolling — nothing was ever below the fold,
+ * the region never scrolled, and the "more below" line was counting a fold that
+ * did not exist. It measured as working while the reader could still not reach
+ * the bottom.
+ */
+.info-scroll > * {
+  flex: 0 0 auto;
+}
+
+/* Outside the scroller, like the aircraft list's and the report block's — a
+   "scroll for more" that itself scrolls out of view is the one place it must
+   not be. */
+.info-more {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-2);
 }
 .info::backdrop {
   background: rgba(0, 0, 0, 0.72);
@@ -2423,9 +2473,21 @@ body[data-powered='true'] .gate {
    together, both reserved in either state so pressing one never changes its
    size and never reflows the row under a finger already moving. */
 
+/*
+ * A GRID, SO THE TILES LINE UP IN COLUMNS.
+ *
+ * It was a wrapping flex row, so every button was as wide as its own label and
+ * nothing lined up: "C172 (18)" and "B738 (5)" start at different places on
+ * consecutive rows, and the eye has no column to run down. With thirty airframes
+ * overhead that is thirty ragged edges.
+ *
+ * `auto-fill` with a floor rather than a fixed count, because the label widths
+ * are what they are and the reader's text size moves them — three columns on a
+ * phone, more on a tablet, and every tile in a column the same width.
+ */
 .radar-picker {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
   gap: 0.5rem;
   margin: 0 0 0.6rem;
 }

@@ -1480,4 +1480,90 @@ export const PLANTS = [
     replace: '  if (false) {',
     expect: /IF NOTHING PLACED|not pretend to be sorted|UNFILTERED/i,
   },
+  {
+    // The identifier that never rendered once on any device. Putting the floor
+    // back below the threshold it is checked against makes the gate
+    // unsatisfiable again, silently.
+    name: 'airports: the ident size floor drops below the legibility minimum',
+    check: 'an ident is legible at every size a real device has',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: '  return Math.max(AIRPORT_IDENT_MIN_PX, r * 0.026);',
+    replace: '  return Math.max(8, r * 0.026);',
+    expect: /draws idents at|floor is below the minimum|legibility/i,
+  },
+  {
+    // The plumbing. No gate can see a canvas, so if the chart stops asking for
+    // idents every field goes back to an anonymous circle in silence.
+    name: 'airports: the MAP page stops naming its fields',
+    check: 'the map page asks for idents',
+    gate: 'tests',
+    file: 'public/src/panels/map.js',
+    find: '      airportIdents: true,',
+    replace: '',
+    expect: /no longer names its airports|airportIdents/i,
+  },
+  {
+    // A row ordered by count rearranges itself under the reader every time an
+    // aircraft comes or goes.
+    name: 'picker: the airframe tiles go back to count order',
+    check: 'the tiles are alphabetical, not by count',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: "    return a.label.localeCompare(b.label, 'en');",
+    replace: '    return b.count - a.count;',
+    expect: /alphabetical|rearrange|three B738s must not outrank/i,
+  },
+  {
+    // The ragged edges he reported twice. A wrapping flex row sizes every tile
+    // to its own label, so no two rows share a column.
+    name: 'picker: the airframe tiles go back to a ragged flex row',
+    check: 'the tiles line up in columns',
+    file: 'public/styles.css',
+    find: '  display: grid;\n  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));\n  gap: 0.5rem;\n  margin: 0 0 0.6rem;',
+    replace: '  display: flex;\n  flex-wrap: wrap;\n  gap: 0.5rem;\n  margin: 0 0 0.6rem;',
+    expect: /do not line up in columns/,
+  },
+  {
+    // The tallest surface in the app, ending flush against the bottom edge with
+    // nothing saying it continues.
+    name: 'info: the (i) menu stops saying that it scrolls',
+    check: 'the (i) menu says how much is below',
+    file: 'public/src/panels/info.js',
+    find: '    moreBelow.hidden = below <= 0;',
+    replace: '    moreBelow.hidden = true;',
+    expect: /continues past the bottom of the screen|scroll notice/,
+  },
+  {
+    // The arrangement in which the notice cannot work: it scrolls away with the
+    // thing it is describing.
+    // RE-AIMED TWICE, and both misses were the same mistake: naming a line that
+    // is not the one doing the work.
+    //
+    //   1. `overflow-y: auto` back on the DIALOG — green, because the inner
+    //      region still constrains the height, so the dialog never overflowed
+    //      and no fault was produced at all.
+    //   2. `min-height: 0` off the scroller — green, because a flex item's
+    //      automatic minimum is ALREADY zero once it is a scroll container.
+    //      The CSS comment claiming that line was load-bearing was wrong, and
+    //      this is what proved it.
+    //
+    // The line that actually matters is the one that makes it a scroll
+    // container. Without it the content is clipped by the dialog's
+    // `overflow: hidden` and the end of the panel cannot be reached at all —
+    // which every other measurement on this dialog reads as fine.
+    name: 'info: the scrolling region stops scrolling and just clips',
+    // NAMED FOR THE ASSERTION THAT ACTUALLY FIRES. Taking the overflow off the
+    // inner region does not leave it clipping — it makes the DIALOG the thing
+    // that scrolls, which is the exact arrangement the notice cannot survive,
+    // because it then scrolls away with the content it is describing. The gate
+    // says so in those words, and this expectation used not to accept them:
+    // the harness reported it red-for-a-different-reason, which is the harness
+    // working.
+    check: 'the dialog does not scroll as a whole',
+    file: 'public/styles.css',
+    find: '  min-height: 0;\n  /* THIS is the load-bearing one. Without it the content is clipped by the\n     dialog\'s `overflow: hidden` and there is no way to reach the rest. */\n  overflow-y: auto;',
+    replace: '  min-height: 0;',
+    expect: /scrolls as a whole|will not scroll|clipped away|continues past the bottom/,
+  },
 ];

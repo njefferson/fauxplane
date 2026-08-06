@@ -359,8 +359,46 @@ export const RUNWAY_MIN_PX = 14;
  * runway at range — so nothing about it has to stay a fixed number of pixels.
  * It stays 3.5 on the small scope and grows with the glass.
  */
-export function airportSymbolR(r) {
-  return Math.max(3.5, r * 0.016);
+export function airportSymbolR(r, { labelled = false } = {}) {
+  // A LABELLED field gets a slightly bigger mark, because the label has to hang
+  // off something. 3.5px beside 11px text reads as a speck with a caption.
+  return Math.max(labelled ? 5 : 3.5, r * 0.016);
+}
+
+/**
+ * How big an airport's identifier is drawn, and whether it is drawn at all.
+ *
+ * ---------------------------------------------------------------------------
+ * THE FIRST VERSION OF THIS NEVER RENDERED ONCE, ON ANY DEVICE
+ * ---------------------------------------------------------------------------
+ *
+ * It gated on `symR > 5 && identSize >= 9`, with `identSize = max(8, r*0.026)`.
+ * The floor of 8 is BELOW the threshold of 9, so the size test could only pass
+ * via the scaled term — needing a scope radius of 346px. Measured, in CSS
+ * pixels, which is what this renderer draws in:
+ *
+ *     PFD plan scope, phone landscape    r =  66
+ *     MAP page, phone landscape          r = 108
+ *     PFD plan scope, phone portrait     r = 141
+ *     RADAR page, phone                  r = 168
+ *     MAP page, phone portrait           r = 168
+ *     PFD plan scope, tablet             r = 184
+ *     MAP page, tablet 1024x900          r = 295
+ *
+ * Nothing reaches it. Every airport on every device has been an anonymous
+ * circle since the day idents were added, while the release note said they
+ * "carry their identifier now, where there is room for it". There was never
+ * room, and no check could see it — a canvas is invisible to the a11y gate.
+ *
+ * SO THE CALLER DECIDES, not a radius. The radius never could: the PFD's little
+ * scope on a phone (141) is LARGER than the MAP page in landscape (108), so no
+ * threshold separates "the austere scope beside the horizon" from "the chart".
+ * That distinction is about what the page is FOR, and only the page knows.
+ */
+export const AIRPORT_IDENT_MIN_PX = 11;
+
+export function airportIdentSize(r) {
+  return Math.max(AIRPORT_IDENT_MIN_PX, r * 0.026);
 }
 
 /** Kept for the tests and callers that measured the old constant. */
@@ -378,7 +416,18 @@ export function runwayWidthPx(len) {
   return Math.max(2, Math.min(7, len * 0.13));
 }
 
-export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [], readiness = null, mode = 'plan', up = null, wind = null, basemap = null, layers = null }) {
+export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [], readiness = null, mode = 'plan', up = null, wind = null, basemap = null, layers = null,
+  /**
+   * NAME THE AIRPORTS, or leave them as marks.
+   *
+   * OFF by default, so the PFD's scope and the RADAR page stay the austere
+   * traffic displays they are meant to be — a TCAS scope does not label the
+   * ground. The MAP page turns it on, because a chart whose fields are
+   * anonymous circles answers "there is a field here" when the reader asked
+   * "which field is that". See `airportIdentSize` for why this is the caller's
+   * decision and not a size threshold.
+   */
+  airportIdents = false }) {
   /**
    * TWO GEOMETRIES, ONE RENDERER.
    *
@@ -573,9 +622,9 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
    * so the small scope beside the horizon keeps its austere dots and the map
    * page gets a usable chart.
    */
-  const symR = airportSymbolR(r);
-  const identSize = Math.max(8, r * 0.026);
-  const showIdents = symR > 5 && identSize >= 9;
+  const showIdents = airportIdents;
+  const symR = airportSymbolR(r, { labelled: showIdents });
+  const identSize = airportIdentSize(r);
   ctx.lineWidth = 1.5;
   for (const d of byAirport.values()) {
     if (d.len >= RUNWAY_MIN_PX) continue;

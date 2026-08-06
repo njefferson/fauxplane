@@ -397,13 +397,35 @@ export function airframeGroups(aircraft) {
     };
   });
 
-  // Most numerous first — what is most of overhead is the most interesting
-  // thing to look at. The untyped bucket sorts LAST whatever its count, because
-  // it is an absence of information rather than an airframe.
+  /**
+   * ALPHABETICAL. It used to be most-numerous-first, on the reasoning that what
+   * is most of overhead is the most interesting thing to look at — and that is
+   * true of ONE glance and wrong for a control.
+   *
+   * These buttons are a place you go looking for a particular airframe, and the
+   * counts change every few seconds as aircraft come and go, so a
+   * count-ordered row REARRANGES ITSELF under the reader. The thing you are
+   * reaching for moves, and the row you learned last time is not the row you
+   * get this time. Alphabetical is stable: B738 is always between B737 and
+   * B748, whatever the sky is doing.
+   *
+   * PLAIN DICTIONARY ORDER, deliberately NOT numeric collation. These read as
+   * codes, not as numbers: numeric-aware sorting puts C25B and C82R before
+   * C150, because it compares 25 and 82 against 150. Measured on the codes
+   * actually overhead one evening, that is the difference between
+   *
+   *     C150 C152 C172 C182 C25B C27J C30J C340 C408 C82R C82S
+   *
+   * and a list nobody could scan. A reader looking for a Cessna 172 runs down
+   * the C1s; there is no arithmetic in it.
+   *
+   * The untyped bucket still sorts LAST whatever it is called, because it is an
+   * absence of information rather than an airframe.
+   */
   return out.sort((a, b) => {
     if (a.id === UNTYPED) return 1;
     if (b.id === UNTYPED) return -1;
-    return b.count - a.count || a.label.localeCompare(b.label);
+    return a.label.localeCompare(b.label, 'en');
   });
 }
 

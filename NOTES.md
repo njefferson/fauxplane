@@ -37,7 +37,7 @@ eight releases missed, and What's New carries all eight.
 
 ## STAGED NOW — 1.36.0, the fault that stopped being published, 2026-08-05
 
-**1.37.2 is on staging: https://staging.fauxplane.pages.dev**
+**1.37.3 is on staging: https://staging.fauxplane.pages.dev**
 
 ### A defect that was still true fell out of the app's own broken list
 
@@ -112,6 +112,86 @@ was individually fine while the thing the reader wanted was off the screen.
 So `checkScopeOnScreen` measures the OUTCOME — is the instrument on the glass —
 rather than any of the properties that add up to it, and a plant putting
 `--target` back on a relative unit was watched going red about exactly that.
+
+### Four reported from the device, and one of them had never worked at all
+
+**The airframe tiles.** A wrapping flex row sizes every tile to its own label,
+so no two rows share a column — reported twice before anything measured it.
+A grid with `auto-fill` columns, and now asserted by the a11y gate: group the
+tiles by their top edge and every column position must share one left edge.
+
+**Their order.** Most-numerous-first is right for one glance and wrong for a
+control: the counts change every few seconds, so the button being reached for
+MOVES between renders. Alphabetical is stable. The collation is deliberately
+NOT numeric — that puts C25B and C82R above C150, because it compares 25 and 82
+against 150, and nobody scans a list of codes arithmetically.
+
+**The airport identifiers had never rendered once, on any device.** The gate was
+`symR > 5 && identSize >= 9` with `identSize = max(8, r * 0.026)` — a floor
+BELOW the threshold it is checked against, so only the scaled term could satisfy
+it, needing a scope radius of 346px. Measured, in CSS pixels:
+
+- PFD plan scope, phone landscape — 66
+- MAP page, phone landscape — 108
+- PFD plan scope, phone portrait — 141
+- RADAR page, phone — 168
+- MAP page, phone portrait — 168
+- PFD plan scope, tablet — 184
+- MAP page, tablet 1024x900 — 295
+
+Nothing reaches it. 1.35.0's note said fields "carry their identifier now, where
+there is room for it" and there was never room. A canvas is invisible to the
+a11y gate, so nothing could have caught it but a unit test, and there was no
+test on that function at all.
+
+**A RADIUS COULD NEVER HAVE SEPARATED THEM.** The comment said the small scope
+beside the horizon keeps austere dots while the map page gets a usable chart —
+but the PFD's scope on a phone (141) is LARGER than the MAP page in landscape
+(108). That distinction is about what a page is FOR, so it is now the caller's
+decision: `airportIdents`, off by default, on for the chart.
+
+**The case that decides it is `WST`.** It is the first word of
+`WST ISSUANCES EXPD`, which follows two areas in a real bulletin — and it
+resolves, as Westerly, Rhode Island. A terminator that read points until one
+failed to look up would have taken it as a vertex.
+
+**The (i) panel never said it scrolls**, and could not have: it scrolled as a
+whole, so any notice would have scrolled away with the content it described.
+The sections moved into their own region; the heading and the notice stay put.
+Three things went wrong building it, all found by measuring:
+
+- **`offsetTop` is relative to the nearest POSITIONED ancestor**, and the
+  scroller is not positioned — so counting sections below the fold compared a
+  distance from the DIALOG against the scroller's own `scrollTop`. It produced a
+  plausible number, which is the worst kind of wrong.
+- **A column flex container squashes its children before it overflows.** With
+  the default `flex-shrink`, the whole panel compressed into the available
+  height instead of scrolling: nothing was ever below the fold and the notice
+  was counting a fold that did not exist. The first green run was green on a
+  fabricated count.
+- **`min-height: 0` is NOT load-bearing here** and the comment claimed it was. A
+  flex item's automatic minimum is already zero once it is a scroll container.
+  A plant removing it changed nothing, and that is what proved the comment wrong.
+
+**`.info-more` is deliberately not a contrast row.** `checkContrast` grows the
+viewport to the document height before sampling — correct, and what makes a tall
+modal measurable — but that removes the overflow, the notice's ResizeObserver
+correctly hides it, and the row reports "matched nothing" about an element
+behaving exactly as designed. **The measuring apparatus destroys the condition.**
+It needs no row anyway: it is `--text-2` on `--surface`, the identical pair
+`.info-body` already carries on the same background.
+
+### A gate that is sometimes red for no reason
+
+`checkEicas` waited a flat 1200 ms after power-on and then measured. Under load
+that overran, and the gate reported "the strip is hidden" about a panel that was
+working — it failed once and passed on the next run with nothing changed.
+
+**That is worse than a missing check**, because the only way to work with it is
+to re-run until green, which is the habit that makes a real failure invisible.
+It now waits for the CONDITION with a bounded timeout and a deliberate fallback,
+so a scene that genuinely raises nothing is still measured rather than timing
+out. Three consecutive clean runs before it was believed.
 
 ### 1.37.0 placed NOTHING, and the fixture is why
 

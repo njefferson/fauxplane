@@ -323,6 +323,23 @@ const INFO_REGISTRY = [
   { selector: '.info-close', label: 'info close button', min: 4.6 },
 ];
 
+/**
+ * `.info-more` IS DELIBERATELY NOT A REGISTRY ROW, and this note exists so the
+ * next session does not helpfully add one and hit the same wall.
+ *
+ * It CANNOT be measured by this machinery. `checkContrast` grows the viewport to
+ * the document height before sampling — which is correct, and is what makes a
+ * tall modal measurable at all — but that removes the overflow, the notice's
+ * ResizeObserver correctly hides it, and the row then reports "matched nothing"
+ * about an element behaving exactly as designed. The measuring apparatus
+ * destroys the condition it is trying to measure.
+ *
+ * It needs no row anyway: the notice is `--text-2` on the dialog's `--surface`,
+ * which is the identical pair `.info-body` already carries on the same
+ * background, one row above in INFO_REGISTRY. The colour IS measured; adding a
+ * second element with the same two tokens would measure it twice.
+ */
+
 /* ------------------------------------------------------- colour arithmetic */
 
 const lin = (c) => {
@@ -818,6 +835,18 @@ async function checkHeardList(browser, base) {
    * the third shape of it in one session (hub LESSONS §54). Nineteen, because
    * that is what the owner had on screen when he reported it.
    */
+  /**
+   * AND ENOUGH AIRFRAME TYPES TO FILL THE PICKER. It carried none, so every
+   * aircraft fell into the untyped bucket, the picker saw fewer than two groups
+   * and rendered NOTHING — so the row of tiles below it was never measured by
+   * anything, and it shipped ragged. Exactly the defect this fixture's own note
+   * describes, one row further down the page.
+   *
+   * The codes are real ones, chosen so the ORDER is discriminating: numeric
+   * collation would hoist C25B above C150, and alphabetical is what the reader
+   * scans.
+   */
+  const TYPES = ['C172', 'B738', 'A320', 'C150', 'C25B', 'B06', 'E75L', 'B763'];
   const many = {
     ...TRAFFIC_FIXTURE,
     count: 19,
@@ -826,6 +855,8 @@ async function checkHeardList(browser, base) {
       hex: `f0000${i.toString(16).padStart(2, '0')}`,
       callsign: `TST${100 + i}`,
       registration: `N${100 + i}TS`,
+      type: TYPES[i % TYPES.length],
+      description: null,
       lat: 38.7 + (i + 1) * 0.02,
       lon: -121.0 + (i + 1) * 0.01,
     })),
@@ -856,10 +887,68 @@ async function checkHeardList(browser, base) {
       footHidden: !!foot?.hidden,
       sliced: sliced.length,
       clientHeight: list.clientHeight,
+      /**
+       * THE AIRFRAME TILES, AND WHETHER THEY LINE UP.
+       *
+       * They were a wrapping flex row, so every tile was as wide as its own
+       * label and consecutive rows started at different places — thirty ragged
+       * edges with no column for the eye to run down. Reported twice from a
+       * real iPad before anything measured it.
+       *
+       * Measured as: group the tiles by their top edge, and every column
+       * position must share one left edge across all rows.
+       */
+      picker: (() => {
+        const tiles = [...document.querySelectorAll('.radar-pick')];
+        if (tiles.length < 4) return { tiles: tiles.length };
+        const rows = new Map();
+        for (const t of tiles) {
+          const r = t.getBoundingClientRect();
+          const top = Math.round(r.top);
+          if (!rows.has(top)) rows.set(top, []);
+          rows.get(top).push(Math.round(r.left));
+        }
+        const byColumn = new Map();
+        for (const lefts of rows.values()) {
+          lefts.forEach((left, i) => {
+            if (!byColumn.has(i)) byColumn.set(i, new Set());
+            byColumn.get(i).add(left);
+          });
+        }
+        const ragged = [...byColumn.entries()].filter(([, lefts]) => lefts.size > 1);
+        return {
+          tiles: tiles.length,
+          rows: rows.size,
+          ragged: ragged.map(([i, lefts]) => `column ${i}: ${[...lefts].join('/')}`),
+          order: tiles.map((t) => t.textContent.trim().replace(/\s*\(\d+\)$/, '')),
+        };
+      })(),
     };
   });
 
   if (!m) return fail(where, 'the aircraft list is missing');
+
+  // --- the airframe tiles ---------------------------------------------------
+  if (!m.picker || m.picker.tiles < 4) {
+    fail(where, `the airframe picker rendered ${m.picker?.tiles ?? 0} tiles — the fixture no longer exercises it`);
+  } else {
+    if (m.picker.rows < 2) {
+      fail(where, 'the airframe tiles all fit one row here, so their alignment is not being measured');
+    }
+    if (m.picker.ragged.length) {
+      fail(where, `the airframe tiles do not line up in columns — ${m.picker.ragged.join('; ')}`);
+    }
+    // Alphabetical, with "All" first. A row ordered by count rearranges itself
+    // under the reader every time the sky changes.
+    const named = m.picker.order.slice(1);
+    const sorted = [...named].sort((a, b) => a.localeCompare(b, 'en'));
+    if (named.join() !== sorted.join()) {
+      fail(where, `the airframe tiles are not in alphabetical order: ${named.join(' ')}`);
+    }
+    if (m.picker.order[0] !== 'All') {
+      fail(where, `the first airframe tile is "${m.picker.order[0]}" — "All" must lead the row`);
+    }
+  }
   if (!m.total) return fail(where, 'the aircraft list rendered no rows from the traffic fixture');
   if (!m.clientHeight) return fail(where, 'the aircraft list has no height on a page the reader is looking at');
 
@@ -1380,7 +1469,32 @@ async function eicasScene(browser, base, { metar, traffic, geolocation = null })
   // FAIL before the switch, so measuring an unpowered panel measures the wrong
   // instrument. The gate found that by doing exactly that.
   await page.evaluate(() => document.getElementById('power-btn').click());
-  await page.waitForTimeout(1200);
+  /**
+   * WAIT FOR THE CONDITION, NOT FOR A DURATION.
+   *
+   * This was a flat 1200 ms, which is a RACE: the strip only fills once the
+   * feeds have answered (or refused) and a frame has rendered, and under load
+   * that overran the wait. The gate then reported "the strip is hidden" about a
+   * panel that was working — it failed once and passed on the next run with
+   * nothing changed.
+   *
+   * A GATE THAT IS SOMETIMES RED FOR NO REASON IS WORSE THAN A MISSING ONE,
+   * because the only way to work with it is to re-run until it goes green,
+   * which is the habit that makes a real failure invisible. Hub LESSONS 61 is
+   * the same mechanism one step further on: measure a thing when it is ready,
+   * never after a guess at how long it takes.
+   *
+   * The fallback is deliberate — a scene that genuinely raises nothing (a quiet
+   * panel) never satisfies this, and must still be measured rather than time
+   * out as an error.
+   */
+  await page
+    .waitForFunction(() => {
+      const strip = document.querySelector('#pfd-eicas');
+      return !!strip && !strip.hidden && strip.querySelectorAll('.eicas-msg').length > 0;
+    }, { timeout: 4000 })
+    .catch(() => {});
+  await page.waitForTimeout(250);
 
   const m = await page.evaluate(() => {
     const strip = document.querySelector('#pfd-eicas');
@@ -2702,6 +2816,68 @@ async function checkInfoMenu(page, base) {
   if (!opened.hasFirstRun) fail(where, 'the first-run instructions did not survive into the (i) menu');
   if (!opened.hasWhatsNew) fail(where, 'the (i) menu carries no release notes (Doctrine §7d)');
   if (!opened.hasSources) fail(where, 'the (i) menu does not say where the numbers come from (Doctrine §7e)');
+
+  /**
+   * IT SAYS THAT IT SCROLLS.
+   *
+   * This is the tallest surface in the app and it ends flush against the bottom
+   * edge of the glass, so a reader who does not think to swipe never reaches the
+   * licence, the accessibility statement, or the link to the other apps. Nothing
+   * said so, and nothing here noticed — every other check on this dialog looks
+   * at what IS on screen.
+   *
+   * Asserted on the SCROLLER rather than the dialog, because the dialog used to
+   * be the scroller and that is precisely the arrangement in which the notice
+   * cannot work: it scrolls away with the thing it describes.
+   */
+  const scroll = await page.evaluate(() => {
+    const box = document.querySelector('.info-scroll');
+    const more = document.querySelector('.info-more');
+    const dlg = document.querySelector('dialog.info');
+    if (!box) return { missing: true };
+    /**
+     * CAN THE BOTTOM ACTUALLY BE REACHED? Not "does it overflow" — a region
+     * that overflows and does NOT scroll is content clipped away with no way
+     * back to it, which looks identical from every other measurement here.
+     * Drive it to the bottom and see whether the last section arrives.
+     */
+    const last = box.lastElementChild;
+    box.scrollTop = box.scrollHeight;
+    // Rectangles, not `offsetTop` — this box is not a positioned ancestor, so
+    // `offsetTop` measures from the dialog and comparing it to this element's
+    // own scrollTop mixes coordinate systems. That mistake made this check fail
+    // on a working panel the first time it ran.
+    const reached = last
+      ? last.getBoundingClientRect().bottom <= box.getBoundingClientRect().bottom + 4
+      : true;
+    box.scrollTop = 0;
+    return {
+      reachable: reached,
+      overflows: box.scrollHeight > box.clientHeight + 1,
+      moreShown: !!more && !more.hidden,
+      moreText: more?.textContent ?? '',
+      focusable: box.getAttribute('tabindex') === '0',
+      // The dialog itself must NOT be the scroller any more, or the notice is
+      // inside the thing it is describing again.
+      dialogScrolls: !!dlg && dlg.scrollHeight > dlg.clientHeight + 1,
+    };
+  });
+  if (scroll.missing) {
+    fail(where, 'the (i) menu has no scrolling region — its notice would scroll away with the content');
+  } else if (scroll.dialogScrolls) {
+    fail(where, 'the (i) dialog scrolls as a whole, so anything saying "more below" scrolls out of view with it');
+  } else if (scroll.overflows) {
+    if (!scroll.reachable) {
+      fail(where, 'the (i) menu overflows but will not scroll — the end of it is clipped away with no way to reach it');
+    }
+    if (!scroll.moreShown) {
+      fail(where, 'the (i) menu continues past the bottom of the screen and says nothing about it');
+    } else if (!/more section/.test(scroll.moreText)) {
+      fail(where, `the (i) menu's scroll notice does not say how much is below: "${scroll.moreText.trim()}"`);
+    }
+    if (!scroll.focusable) fail(where, 'the (i) menu scrolls but is not keyboard reachable (SC 2.1.1)');
+
+  }
 
   await checkContrast(page, INFO_REGISTRY, where);
   await checkTargets(page, where);

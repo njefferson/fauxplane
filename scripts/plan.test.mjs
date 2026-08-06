@@ -13,6 +13,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { placeLabels, RUNWAY_MIN_PX, runwayWidthPx } from '../public/src/render/gauges/plan.js';
 
@@ -246,4 +247,88 @@ test('tap slop: the nearest aircraft still wins in a cluster', () => {
   const far = { hex: 'far001', lat: 38.62, lon: -121.5 };
   const hit = hitTestAircraft([far, near], geom, 175, 178);
   assert.equal(hit.hex, 'near01', 'a wider radius must not stop the closest mark winning');
+});
+
+// ---------------------------------------------------------------------------
+// Airport marks, and the identifier that never once appeared
+// ---------------------------------------------------------------------------
+
+import { AIRPORT_IDENT_MIN_PX, airportIdentSize, airportSymbolR } from '../public/src/render/gauges/plan.js';
+
+/**
+ * SCOPE RADII MEASURED FROM THE RUNNING APP, in CSS pixels — which is what this
+ * renderer draws in, because the surface applies the device pixel ratio as a
+ * transform rather than handing the drawing code buffer pixels.
+ *
+ * These are the whole point of the test below. The first version of the ident
+ * gate required a radius of 346 to draw anything, and NOTHING here reaches it —
+ * so the feature shipped, was described in a release note, and never rendered
+ * once on any device. A canvas is invisible to the accessibility gate, so this
+ * is the only place it could have been caught.
+ */
+const REAL_SCOPES = [
+  { where: 'PFD plan scope, phone landscape', r: 66 },
+  { where: 'MAP page, phone landscape', r: 108 },
+  { where: 'PFD plan scope, phone portrait', r: 141 },
+  { where: 'RADAR page, phone', r: 168 },
+  { where: 'MAP page, phone portrait', r: 168 },
+  { where: 'PFD plan scope, tablet', r: 184 },
+  { where: 'MAP page, tablet', r: 295 },
+];
+
+test('AN IDENT IS LEGIBLE AT EVERY SIZE A REAL DEVICE ACTUALLY HAS', () => {
+  // The check that was missing. Not "is the formula reasonable" — is the text
+  // big enough to read on the scopes this app is rendered on.
+  for (const s of REAL_SCOPES) {
+    assert.ok(
+      airportIdentSize(s.r) >= AIRPORT_IDENT_MIN_PX,
+      `${s.where} (r=${s.r}) draws idents at ${airportIdentSize(s.r).toFixed(1)}px`,
+    );
+  }
+});
+
+test('the floor is AT OR ABOVE the legibility minimum, which is what broke before', () => {
+  // The original was `max(8, r * 0.026)` gated on `>= 9`. A floor BELOW the
+  // threshold means the floor can never satisfy it, so the gate could only be
+  // met by the scaled term — and no scope is big enough. A floor that cannot
+  // pass its own gate is a feature that cannot run.
+  assert.ok(airportIdentSize(0) >= AIRPORT_IDENT_MIN_PX, 'the floor is below the minimum it is checked against');
+  assert.equal(airportIdentSize(0), AIRPORT_IDENT_MIN_PX);
+});
+
+test('a LABELLED field gets a bigger mark than an unlabelled one', () => {
+  // A speck with a caption reads as a caption with a speck. The austere scopes
+  // keep the smaller mark, because nothing hangs off it.
+  for (const s of REAL_SCOPES) {
+    assert.ok(
+      airportSymbolR(s.r, { labelled: true }) > airportSymbolR(s.r),
+      `${s.where}: labelled and unlabelled marks are the same size`,
+    );
+  }
+});
+
+test('the mark still grows with the glass, and never shrinks below its floor', () => {
+  assert.equal(airportSymbolR(0), 3.5, 'the austere floor');
+  assert.equal(airportSymbolR(0, { labelled: true }), 5, 'the labelled floor');
+  assert.ok(airportSymbolR(2000) > airportSymbolR(200), 'a big canvas gets a bigger mark');
+});
+
+test('THE MAP PAGE ASKS FOR IDENTS, and nothing else can check that it does', () => {
+  // A canvas is invisible to the accessibility gate, so if this option stopped
+  // being passed, every field on the chart would go back to being an anonymous
+  // circle and every gate would stay green — which is exactly how the first
+  // version of it shipped unnoticed. Reading the source is the only reach there
+  // is; `traffic-pacing.test.mjs` does the same for the poll schedule.
+  const src = readFileSync(new URL('../public/src/panels/map.js', import.meta.url), 'utf8');
+  assert.match(src, /airportIdents:\s*true/, 'the MAP page no longer names its airports');
+});
+
+test('and the AUSTERE scopes do not', () => {
+  // PLAN beside the horizon and the RADAR page are traffic displays. A TCAS
+  // scope does not label the ground, and turning this on there would be a
+  // second opinion about what those pages are for.
+  for (const f of ['../public/src/panels/pfd.js', '../public/src/panels/radar.js']) {
+    const src = readFileSync(new URL(f, import.meta.url), 'utf8');
+    assert.doesNotMatch(src, /airportIdents:\s*true/, `${f} turned on airport idents`);
+  }
 });

@@ -14,7 +14,9 @@ test('groups by type code, counting each', () => {
   assert.equal(groups.length, 2);
   assert.deepEqual(
     groups.map((g) => [g.id, g.count]),
-    [['B738', 2], ['A320', 1]],
+    // Alphabetical by label — "Airbus A320" before "Boeing 737-800" — not by
+    // count. See the ordering test below for why.
+    [['A320', 1], ['B738', 2]],
   );
 });
 
@@ -49,7 +51,11 @@ test('a tie between two descriptions breaks alphabetically, not by insertion', (
   assert.equal(second[0].label, 'Alpha', 'the same set in a different order gave a different label');
 });
 
-test('sorted by count, most numerous first', () => {
+test('SORTED ALPHABETICALLY, NOT BY COUNT — the row must not rearrange itself', () => {
+  // It was most-numerous-first, which is right for one glance and wrong for a
+  // control: the counts change every few seconds as aircraft come and go, so
+  // the button a reader is reaching for MOVES between renders, and the row they
+  // learned last time is not the row they get this time.
   const groups = airframeGroups([
     ac('a', 'A320', 'Airbus A320'),
     ac('b', 'B738', 'Boeing 737-800'),
@@ -57,7 +63,32 @@ test('sorted by count, most numerous first', () => {
     ac('d', 'B738', 'Boeing 737-800'),
     ac('e', 'A320', 'Airbus A320'),
   ]);
-  assert.deepEqual(groups.map((g) => g.id), ['B738', 'A320']);
+  assert.deepEqual(groups.map((g) => g.id), ['A320', 'B738'], 'three B738s must not outrank two A320s');
+});
+
+test('THE ORDER SURVIVES THE SKY CHANGING, which is the whole point', () => {
+  // The same airframes with different counts must come back in the same order.
+  const order = (counts) => airframeGroups(
+    Object.entries(counts).flatMap(([code, n]) =>
+      Array.from({ length: n }, (_, i) => ac(`${code}${i}`, code, code))),
+  ).map((g) => g.id);
+
+  const a = order({ B738: 9, A320: 1, C172: 4 });
+  const b = order({ B738: 1, A320: 7, C172: 2 });
+  assert.deepEqual(a, b, 'the row rearranged itself when the counts changed');
+  assert.deepEqual(a, ['A320', 'B738', 'C172']);
+});
+
+test('DICTIONARY ORDER, NOT NUMERIC — C25B does not come before C150', () => {
+  // The discriminating case, from codes actually overhead one evening. Numeric
+  // collation compares 25 and 82 against 150 and hoists C25B and C82R to the
+  // top of the Cessnas, which is not how anyone scans a list of codes.
+  const codes = ['C172', 'C150', 'C25B', 'C182', 'C340', 'C82R', 'C408', 'C152', 'C27J', 'C30J', 'C82S'];
+  const groups = airframeGroups(codes.map((c, i) => ac(String(i), c, c)));
+  assert.deepEqual(
+    groups.map((g) => g.id),
+    ['C150', 'C152', 'C172', 'C182', 'C25B', 'C27J', 'C30J', 'C340', 'C408', 'C82R', 'C82S'],
+  );
 });
 
 // ---------------------------------------------------------------------------

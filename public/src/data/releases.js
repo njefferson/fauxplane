@@ -120,6 +120,25 @@ export const STANDING = [
  */
 export const RELEASES = [
   {
+    version: '1.37.3',
+    date: '2026-08-06',
+    headline: 'The airframe tiles line up, the airports on the map have names, and the (i) panel says when there is more to read.',
+    changed: [
+      'THE AIRFRAME TILES LINE UP IN COLUMNS. Every tile used to be as wide as its own label, so no two rows started in the same place \u2014 thirty ragged edges with nothing for the eye to run down.',
+      'AND THEY ARE IN ALPHABETICAL ORDER instead of most-common-first. Ordering them by how many are overhead means the row rearranges itself every few seconds as aircraft come and go, so the button you are reaching for moves. C172 now sits between C152 and C182 whatever the sky is doing.',
+      'AIRPORTS ON THE MAP CARRY THEIR NAME. This was supposed to have arrived four releases ago and it never once appeared on any screen: the rule that decided whether there was room for the label could only be satisfied by a display about twice the size of an iPad, so every field on every device has been an anonymous circle the whole time. The map page names them now, and the mark they hang off is a little bigger. The two traffic scopes stay deliberately bare \u2014 a traffic display does not label the ground.',
+      'THE (i) PANEL SAYS WHEN THERE IS MORE BELOW, and how much. It is the tallest thing in the app and it ends flush against the bottom of the screen, so unless you thought to swipe it you would never reach the licence, the accessibility statement or the link to the other apps. It now works like the aircraft list and the report blocks: the heading and the notice stay put and only the middle scrolls.',
+    ],
+    broken: [
+      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out \u2014 those appear in their own group saying so, rather than being dropped.',
+      '"Over your area" is generous on purpose. It uses the rectangle an advisory\u2019s area fits inside rather than its exact outline, so a warning that passes close by is included. Being told about one that misses you costs a line; not being told about one that does not is the failure worth avoiding.',
+      'At the largest text size the tab strip is still three rows, so the radar page opens with the top of the scope on screen rather than the whole of it. Better than none of it, and not finished.',
+      'Airport names can overlap where fields are close together, and at the widest range there are a lot of them. The range buttons are the answer for now.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.37.2',
     date: '2026-08-06',
     headline: 'The advisories are actually sorted now — the last release could not place a single one of them.',

@@ -188,103 +188,124 @@ export function createInfo({ trigger, onDiagnostics }) {
     onDiagnostics?.();
   });
 
+  /**
+   * "MORE BELOW" LIVES OUTSIDE THE SCROLLER, which is why there is a scroller.
+   *
+   * This dialog used to scroll as a whole — heading, sections and Close button
+   * together — and nothing said so. It is the tallest surface in the app and it
+   * ends flush against the bottom edge, so a reader who does not think to swipe
+   * simply never sees the licence, the accessibility statement, or the link to
+   * the other apps. Reported from a real iPad.
+   *
+   * The rest of the app already has the answer and its own rule: say how much is
+   * below, and put that line where it cannot scroll out of view — the aircraft
+   * list's "18 more below", the report block's "145 more lines below". A notice
+   * inside the thing it describes is the one place it must not be, so the
+   * sections move into their own scrolling region and the heading and this line
+   * stay put.
+   */
+  const scroller = el('div', { class: 'info-scroll', tabindex: '-1' }, [
+    firstRunHost,
+
+      // NOT wrapped in section(): the card carries its own heading, and wrapping
+      // it produced "WHAT'S NEW" immediately above "What's new".
+      whatsNew.root,
+
+      section('Where the numbers come from', [
+        el('p', {
+          class: 'info-body',
+          text:
+            'Every value on screen comes from a sensor in this device or from one of these feeds. Nothing is simulated, and a reading that is missing says so rather than being filled in.',
+        }),
+        sourcesList,
+      ]),
+
+      section('Reading the traffic scope', [
+        el('ul', { class: 'info-sources' }, SYMBOLS.map((s) => el('li', {}, [
+          el('strong', { text: s.name }),
+          el('span', { text: ` — ${s.detail}` }),
+        ]))),
+        el('p', {
+          class: 'info-body info-small',
+          text:
+            'A real display also draws an amber circle and a red square for traffic it wants you to act on. This one never will, and that is not a gap being filled in later: those two are decided by how fast an aircraft is closing on you, and an ADS-B broadcast does not carry it. It says where an aeroplane is, not when it will reach you. Colouring one red from a guess would be exactly the invented number this panel refuses to show.',
+        }),
+      ]),
+
+      section('If something looks wrong', [
+        el('p', {
+          class: 'info-body',
+          text:
+            'The diagnostics report is the whole panel state as text, including why each missing value is missing. Send that rather than a photograph — a picture cannot show the reasons.',
+        }),
+        diagBtn,
+      ]),
+
+      /**
+       * THE LINK BACK TO THE HUB ( )
+       *
+       * The hub's own rule: "This hub links OUT to every sibling app, and each
+       * app links back." Only the accessibility statement pointed there, buried
+       * in the small print, which is a link to a POLICY rather than to the place
+       * the other apps live. Somebody who likes this one had no way to find out
+       * there are others.
+       *
+       * Its own section rather than a line in the small print, because it is an
+       * offer and the small print is the disclaimers.
+       */
+      section('More of the owner’s apps', [
+        el('p', { class: 'info-body' }, [
+          el('span', { text: 'This is one of several free apps. They all live in one place: ' }),
+          el('a', {
+            class: 'info-link info-link-target',
+            href: 'https://noahjefferson.pages.dev',
+            rel: 'noopener',
+            target: '_blank',
+            text: 'noahjefferson.pages.dev',
+          }),
+        ]),
+      ]),
+
+      section('Accessibility, and the small print', [
+        el('p', { class: 'info-body' }, [
+          el('a', {
+            class: 'info-link',
+            href: 'https://noahjefferson.pages.dev/accessibility',
+            rel: 'noopener',
+            target: '_blank',
+            text: 'Accessibility statement',
+          }),
+        ]),
+        el('p', {
+          class: 'info-body info-small',
+          text: 'Not a simulator · not certified for anything · never for navigation.',
+        }),
+        // The licence, required by §7e item 7. It was missing from the first
+        // build of this menu — caught by checking this app against the doctrine
+        // section written from it, which is the only reason it is here.
+        el('p', { class: 'info-body info-small' }, [
+          el('span', { text: 'Free to use, never sold. Licensed PolyForm Noncommercial 1.0.0. ' }),
+          el('a', {
+            class: 'info-link',
+            href: 'https://github.com/njefferson/fauxplane',
+            rel: 'noopener',
+            target: '_blank',
+            text: 'Source on GitHub',
+          }),
+        ]),
+        el('p', { class: 'info-body info-small', text: `Version ${VERSION}` }),
+      ]),
+  ]);
+  const moreBelow = el('p', { class: 'info-more', role: 'status', hidden: '' });
+
   const dialog = el('dialog', { class: 'info', 'aria-labelledby': 'info-h' }, [
     el('div', { class: 'info-head' }, [
       el('h2', { class: 'info-title', id: 'info-h', text: 'About this panel' }),
       closeTop,
     ]),
 
-    firstRunHost,
-
-    // NOT wrapped in section(): the card carries its own heading, and wrapping
-    // it produced "WHAT'S NEW" immediately above "What's new".
-    whatsNew.root,
-
-    section('Where the numbers come from', [
-      el('p', {
-        class: 'info-body',
-        text:
-          'Every value on screen comes from a sensor in this device or from one of these feeds. Nothing is simulated, and a reading that is missing says so rather than being filled in.',
-      }),
-      sourcesList,
-    ]),
-
-    section('Reading the traffic scope', [
-      el('ul', { class: 'info-sources' }, SYMBOLS.map((s) => el('li', {}, [
-        el('strong', { text: s.name }),
-        el('span', { text: ` — ${s.detail}` }),
-      ]))),
-      el('p', {
-        class: 'info-body info-small',
-        text:
-          'A real display also draws an amber circle and a red square for traffic it wants you to act on. This one never will, and that is not a gap being filled in later: those two are decided by how fast an aircraft is closing on you, and an ADS-B broadcast does not carry it. It says where an aeroplane is, not when it will reach you. Colouring one red from a guess would be exactly the invented number this panel refuses to show.',
-      }),
-    ]),
-
-    section('If something looks wrong', [
-      el('p', {
-        class: 'info-body',
-        text:
-          'The diagnostics report is the whole panel state as text, including why each missing value is missing. Send that rather than a photograph — a picture cannot show the reasons.',
-      }),
-      diagBtn,
-    ]),
-
-    /**
-     * THE LINK BACK TO THE HUB ( )
-     *
-     * The hub's own rule: "This hub links OUT to every sibling app, and each
-     * app links back." Only the accessibility statement pointed there, buried
-     * in the small print, which is a link to a POLICY rather than to the place
-     * the other apps live. Somebody who likes this one had no way to find out
-     * there are others.
-     *
-     * Its own section rather than a line in the small print, because it is an
-     * offer and the small print is the disclaimers.
-     */
-    section('More of the owner’s apps', [
-      el('p', { class: 'info-body' }, [
-        el('span', { text: 'This is one of several free apps. They all live in one place: ' }),
-        el('a', {
-          class: 'info-link info-link-target',
-          href: 'https://noahjefferson.pages.dev',
-          rel: 'noopener',
-          target: '_blank',
-          text: 'noahjefferson.pages.dev',
-        }),
-      ]),
-    ]),
-
-    section('Accessibility, and the small print', [
-      el('p', { class: 'info-body' }, [
-        el('a', {
-          class: 'info-link',
-          href: 'https://noahjefferson.pages.dev/accessibility',
-          rel: 'noopener',
-          target: '_blank',
-          text: 'Accessibility statement',
-        }),
-      ]),
-      el('p', {
-        class: 'info-body info-small',
-        text: 'Not a simulator · not certified for anything · never for navigation.',
-      }),
-      // The licence, required by §7e item 7. It was missing from the first
-      // build of this menu — caught by checking this app against the doctrine
-      // section written from it, which is the only reason it is here.
-      el('p', { class: 'info-body info-small' }, [
-        el('span', { text: 'Free to use, never sold. Licensed PolyForm Noncommercial 1.0.0. ' }),
-        el('a', {
-          class: 'info-link',
-          href: 'https://github.com/njefferson/fauxplane',
-          rel: 'noopener',
-          target: '_blank',
-          text: 'Source on GitHub',
-        }),
-      ]),
-      el('p', { class: 'info-body info-small', text: `Version ${VERSION}` }),
-    ]),
-
+    scroller,
+    moreBelow,
     closeBottom,
   ]);
 
@@ -296,6 +317,40 @@ export function createInfo({ trigger, onDiagnostics }) {
     trigger.focus();
   }
   for (const b of [closeTop, closeBottom]) b.addEventListener('click', close);
+
+  /**
+   * How much is still below, in SECTIONS rather than pixels — that is what the
+   * reader is missing, and it is the same shape as "18 more below" on the
+   * aircraft list and "145 more lines below" on a report block.
+   *
+   * Re-run on scroll as well as on open, so it disappears at the bottom instead
+   * of promising more when there is none.
+   */
+  const updateMore = () => {
+    // No layout, no answer — never a count computed against a zero height.
+    if (!scroller.clientHeight) return;
+    /**
+     * MEASURED WITH RECTS, NOT `offsetTop`.
+     *
+     * `offsetTop` is relative to the nearest POSITIONED ancestor, and this
+     * scroller is not positioned — so it reports a distance from the dialog and
+     * comparing it against this element's own `scrollTop` mixes two coordinate
+     * systems. It produced a plausible-looking count, which is the worst kind of
+     * wrong: nothing looks broken and the number means nothing.
+     *
+     * Viewport rectangles are in one system by definition.
+     */
+    const fold = scroller.getBoundingClientRect().bottom;
+    const below = [...scroller.children].filter((c) => c.getBoundingClientRect().top >= fold - 4).length;
+    moreBelow.textContent = below > 0 ? `${below} more section${below === 1 ? '' : 's'} below — scroll this panel` : '';
+    moreBelow.hidden = below <= 0;
+    // SC 2.1.1: focusable only while it actually scrolls. `-1` otherwise, so the
+    // dialog can still move focus into it without putting an empty stop in the
+    // tab order.
+    scroller.setAttribute('tabindex', scroller.scrollHeight > scroller.clientHeight + 1 ? '0' : '-1');
+  };
+  scroller.addEventListener('scroll', updateMore, { passive: true });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(updateMore).observe(scroller);
 
   function open({ scrollTo = null } = {}) {
     dialog.hidden = false;
@@ -309,6 +364,9 @@ export function createInfo({ trigger, onDiagnostics }) {
     // accident must be one key from leaving.
     closeTop.focus();
     if (scrollTo) dialog.querySelector(scrollTo)?.scrollIntoView({ block: 'start' });
+    // After the dialog has layout, which is the only moment this can be counted.
+    updateMore();
+    requestAnimationFrame(updateMore);
   }
 
   dialog.hidden = true;

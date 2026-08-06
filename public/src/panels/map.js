@@ -264,6 +264,9 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
       wind: view.wind ?? null,
       basemap,
       layers: on,
+      // THIS PAGE IS THE CHART, so its fields are named. The PFD's little scope
+      // and the RADAR page are traffic displays and stay austere.
+      airportIdents: true,
     });
 
     const off = MAP_LAYERS.filter((l) => !on[l.id]).map((l) => l.label);
