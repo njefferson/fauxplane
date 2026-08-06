@@ -27,6 +27,92 @@ on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
+## STAGED NOW — 1.38.1, the map ranges out properly, 2026-08-06
+
+**https://staging.fauxplane.pages.dev**
+
+### The value-strip rule is about DUPLICATION, not placement
+
+A groundspeed readout on the navigation display was refused, citing the comment
+in `plan.js` that said putting a number in an ND corner "because a real ND has
+them there" is the value strip's mistake in a smaller box. Full stop, no
+qualification. That sentence was too wide, and it was load-bearing enough to
+stop a real improvement.
+
+What the value strip actually did wrong is recorded twice in this repo. It
+painted a **screen-reader text alternative onto the glass** — eight rows of it,
+354px of a 659px page — and the diagnosis beside that measurement is narrower
+than the rule that got derived from it: most of it was duplication, groundspeed
+being the GS tape and indicated altitude being the ALT tape.
+
+So the rule that survives is the one `alerts.js` already states for EICAS: **a
+thing earns its glass only if it is not already visible on the page the reader is
+looking at.** That is a test about duplication, and it gives a different answer
+per surface:
+
+- **PFD inset** — a speed tape is inches to its left. Duplication. No readout.
+- **MAP page** — no speed appears anywhere on it. New information. Drawn.
+
+`plan.js`'s wind block has always been justified this way, in those words: "The
+wind aloft is not anywhere on this page." The groundspeed is the same argument
+applied to the same page; the only reason it read as a contradiction is that the
+comment above it had generalised from one case into a law.
+
+Both the comment and the paragraph further down this file have been corrected in
+place, because a wrong rule left in the record is the thing a future session
+reads.
+
+### The airport declutter — a real EFIS sheds the insignificant, not the distant
+
+`runwaysNear` kept the forty NEAREST runways. Measured against the shipped
+bundle from its own declared reference point, runways in range were:
+
+- 10 nm — 1
+- 20 nm — 9
+- 40 nm — 36
+- 80 nm — 107, of which **71 are beyond 40 nm**
+
+So at the widest scope all 71 distant fields were dropped in favour of near
+ones, and 80 nm was the 40 nm picture drawn at half scale. That is exactly what
+was reported from the device, and the failure mode is silent by nature: the
+scope still draws runways and still looks right.
+
+`DECLUTTER_FLOORS_FT` now raises a runway-length floor with the range — nothing
+below 40 nm, 3000 ft at 40, 5000 ft at 80 — using `length_ft`, which is already
+on every record, so no join and no new data. Survivors: **1, 9, 29, 31**, and 22
+of the 31 at 80 nm are beyond 40 nm. Roughly constant density, and the fields
+finally reach the edge of the scope.
+
+Two things the floors are held to. An **unrecorded length is not assumed to
+clear the floor** — that would be a synthetic data path wearing a helpful face —
+and the count cap behind the floors is now a **backstop** at 120 that reports
+what it dropped, because a scope quietly showing a subset is the defect the
+floors were added to fix.
+
+The four survivor counts are asserted against the **real bundle** rather than a
+fixture. A fixture would go on passing while the app on the device drew the
+40 nm picture at half scale, which is the whole regression.
+
+### Where the checks live
+
+The corner is a canvas, so `groundspeedReadout` is pure and `plan.test.mjs`
+holds it: no reading draws nothing, zero knots is a measurement, a stale speed
+still draws. The **wiring** is a source check — which page passes the option —
+because a helper can be perfect and unused, and that is how the airport idents
+shipped unnoticed for four releases.
+
+`describeMap` and the corner take their number from the same function, so the
+glass and the spoken description cannot name different speeds. That is the
+defect `selectTape` was extracted to stop on the PFD one release earlier.
+
+Eight new plants, each watched going red about its own thing: the inset given a
+groundspeed, the map page losing one, the readout drawing a FAILED reading,
+zero treated as absent, the description dropping the number, the declutter
+reverting to nearest-N, an unknown length assumed long, and the backstop
+truncating in silence. 8/8 caught.
+
+---
+
 ## PROMOTED — main is on 1.35.0, and staging is on 1.36.0, 2026-08-05
 
 `main` moved 1.29.0 → 1.35.0 in one fast-forward: 14 commits, 8 releases
@@ -781,11 +867,17 @@ give every bearing on the display a different meaning.
 
 ### What MAP does NOT show, and why
 
-A real ND puts GS and TAS in the top-left corner. **They are not drawn**, and
-that is a decision rather than an omission: groundspeed, altitude, vertical speed
-and heading are all tapes a few inches to the left on the same page. Copying them
-into an ND corner because a real ND has them there is the value strip's mistake
-in a smaller box.
+> **CORRECTED IN 1.38.1 — this paragraph was over-broad and was then cited to
+> refuse something it should not have.** See "The value-strip rule is about
+> DUPLICATION, not placement" under 1.38.1 below. The corrected form: the PFD's
+> inset draws no speed because the speed tape is inches to its left; the MAP
+> page draws groundspeed because nothing on that page shows a speed at all.
+
+A real ND puts GS and TAS in the top-left corner. **On the PFD's inset they are
+not drawn**, and that is a decision rather than an omission: groundspeed,
+altitude, vertical speed and heading are all tapes a few inches to the left on
+the same page. Copying them into that corner because a real ND has them there
+would repeat what the reader is already looking at.
 
 **The wind IS drawn**, for the opposite reason — it is the one number on this
 display that is nowhere else on the PFD. The arrow points the way the wind is
