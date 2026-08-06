@@ -1187,7 +1187,11 @@ export const PLANTS = [
     file: 'public/styles.css',
     find: '  position: relative;\n  display: flex;\n  flex-direction: column;\n  gap: 0.4rem;\n  max-height: 22rem;',
     replace: '  display: flex;\n  flex-direction: column;\n  gap: 0.4rem;\n  max-height: 22rem;',
-    expect: /the count equals the TOTAL|more below" while \d+ of \d+ rows are actually hidden|cut through the middle/,
+    // WIDENED once the gate stopped measuring with the same broken arithmetic
+    // as the app. It now reports the sharper truth — "nothing is below the fold
+    // and the list still says 19 more below" — which the old expectation, written
+    // against the old wording, did not accept.
+    expect: /nothing is below the fold and the list still says|the count equals the TOTAL|more below" while \d+ of \d+ rows are actually hidden|cut through the middle/,
   },
   {
     // A row sliced through its own text against a hard container edge reads as

@@ -876,10 +876,27 @@ async function checkHeardList(browser, base) {
     const foot = document.querySelector('.radar-list-foot');
     if (!list) return null;
     const rows = [...list.querySelectorAll('.radar-row')];
-    const hidden = rows.filter((r) => r.offsetTop + r.offsetHeight > list.scrollTop + list.clientHeight + 2).length;
-    const listBottom = list.scrollTop + list.clientHeight;
+    /**
+     * MEASURED WITH RECTANGLES, BECAUSE THE APP MEASURES WITH `offsetTop`.
+     *
+     * This check used the same `offsetTop` arithmetic the list itself uses, so
+     * when that arithmetic broke BOTH were wrong in the same direction and
+     * agreed with each other. The sweep caught it: unposition the list and the
+     * page says "19 more below" with nothing below at all, while this check
+     * computed 19 too and passed.
+     *
+     * `offsetTop` is relative to the nearest POSITIONED ancestor, which is the
+     * list only while the list is positioned — exactly the thing being checked.
+     * A gate that verifies a number by recomputing it the same way verifies
+     * nothing; viewport rectangles do not depend on that at all.
+     */
+    const lb = list.getBoundingClientRect();
+    const hidden = rows.filter((r) => r.getBoundingClientRect().bottom > lb.bottom + 2).length;
     // A row is SLICED if the visible edge falls strictly inside it.
-    const sliced = rows.filter((r) => r.offsetTop < listBottom - 2 && r.offsetTop + r.offsetHeight > listBottom + 2);
+    const sliced = rows.filter((r) => {
+      const rr = r.getBoundingClientRect();
+      return rr.top < lb.bottom - 2 && rr.bottom > lb.bottom + 2;
+    });
     return {
       total: rows.length,
       hidden,

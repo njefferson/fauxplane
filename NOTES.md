@@ -113,6 +113,43 @@ So `checkScopeOnScreen` measures the OUTCOME — is the instrument on the glass 
 rather than any of the properties that add up to it, and a plant putting
 `--target` back on a relative unit was watched going red about exactly that.
 
+### A gate that verified a number by recomputing it the same way
+
+The 1.37.3 sweep came back **113/114**, and the miss is the best one this
+session found.
+
+`list: the scroller stops being the origin for its own rows` removes
+`position: relative` from `.radar-list`. Reproduced by serving a modified
+stylesheet — the app's CSP correctly refuses an injected inline style, which is
+the CSP working:
+
+- as shipped: 13 of 19 rows below the fold, and the list says "13 more below"
+- unpositioned: **the list says "19 more below" with ZERO rows actually below**
+
+A glaring defect, and the gate passed. It computed the hidden count with the
+SAME `offsetTop` arithmetic the list itself uses, so when that arithmetic broke
+both were wrong in the same direction and agreed with each other. **A check that
+verifies a number by recomputing it the same way verifies nothing.**
+
+`offsetTop` is relative to the nearest POSITIONED ancestor — which is the list
+only while the list is positioned, which is exactly what the plant removes. The
+gate now measures with viewport rectangles, which do not depend on that at all,
+and the plant goes red with a sharper sentence than the old one: *nothing is
+below the fold and the list still says "19 more below"*.
+
+**This is the third `offsetTop` bug in one day** — the (i) panel's section count
+and the gate's own row count and this. The rule is worth stating plainly: an
+element's `offsetTop` is only meaningful relative to a container you have
+positioned ON PURPOSE, and any measurement that mixes it with that container's
+own `scrollTop` or `clientHeight` is a coordinate-system error waiting for
+somebody to move a `position`.
+
+**It stopped being caught between 1.37.2 and 1.37.3**, and the cause was giving
+the heard-list fixture real airframe types so the picker would render — which
+changed the layout enough that the two identical-but-wrong numbers still
+matched. A fixture improvement blunted a distant check, which is hub LESSONS §38
+in a new costume.
+
 ### Four reported from the device, and one of them had never worked at all
 
 **The airframe tiles.** A wrapping flex row sizes every tile to its own label,
