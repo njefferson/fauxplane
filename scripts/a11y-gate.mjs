@@ -1103,7 +1103,20 @@ async function checkWxText(browser, base) {
           area: 'unfiltered',
           count: 3,
           reports: [
-            'CONVECTIVE SIGMET 4W\nVALID UNTIL 2155Z\nCA\nFROM RBL-LIN-MOD-OAK-PYE-RBL',
+            // LONG ON PURPOSE, because the group has to actually overflow for
+            // the scroll notice to be checkable. A real convective SIGMET runs
+            // to this sort of length; a three-line fixture would leave the
+            // affordance unmeasured, which is how it went missing.
+            'CONVECTIVE SIGMET 4W\nVALID UNTIL 2155Z\nCA\nFROM RBL-LIN-MOD-OAK-PYE-RBL\n'
+              + 'AREA SEV TS MOV FROM 24025KT. TOPS ABV FL450.\n'
+              + 'HAIL TO 1.5 IN POSS. WIND GUSTS TO 55 KT POSS.\n'
+              + 'OUTLOOK VALID 2155-0155\nFROM RBL-LIN-MOD-OAK-PYE-RBL\n'
+              + 'WST ISSUANCES EXPD. REFER TO MOST RECENT ACUS01 KWNS\n'
+              + 'FOR SYNOPSIS AND METEOROLOGICAL DETAILS.\n'
+              + 'CONTINUED DEVELOPMENT EXPECTED THROUGH THE PERIOD.\n'
+              + 'AREA TS MOV LTL. TOPS TO FL420.\n'
+              + 'ADDITIONAL LINES SO THIS BLOCK IS TALLER THAN ITS CAP.\n'
+              + 'AND ONE MORE, TO BE SURE OF IT AT EVERY TEXT SIZE.',
             'CONVECTIVE SIGMET 21E\nVALID UNTIL 2155Z\nNY OH\nFROM BUF-BDL-CRG-CEW-BNA-CLE-BUF',
             'AIRMET TANGO FOR TURB\nFROM ZZZQ-ZZZR-ZZZQ',
           ],
@@ -1127,6 +1140,40 @@ async function checkWxText(browser, base) {
       // the disclosure is shut.
       farTextPresent: /BUF-BDL/.test(document.querySelector(".wx-group[data-where='far'] .wx-body")?.textContent ?? ''),
       unknownReason: (document.querySelector(".wx-group[data-where='unknown'] .wx-body")?.textContent ?? ''),
+      /**
+       * THE SCROLL NOTICE, on a group that really does overflow.
+       *
+       * It went missing the moment the groups stopped being re-measured every
+       * render, and nothing here noticed: the block still rendered, still
+       * scrolled, and was capped by the stylesheet's fallback instead of on a
+       * line boundary — so the last visible line was sliced through its own
+       * glyphs with nothing saying more followed. Reported from a real iPad.
+       *
+       * Measured on whichever group overflows, because which one does depends on
+       * the fixture, and a check pinned to a particular group would go quiet the
+       * next time the fixture changed.
+       */
+      overflowing: [...document.querySelectorAll('.wx-group')]
+        .map((g) => {
+          const pre = g.querySelector('.wx-body');
+          const more = g.querySelector('.wx-more');
+          if (!pre || pre.scrollHeight <= pre.clientHeight + 1) return null;
+          return {
+            where: g.dataset.where,
+            moreShown: !!more && !more.hidden,
+            moreText: more?.textContent ?? '',
+            focusable: pre.getAttribute('tabindex') === '0',
+            // Capped on a WHOLE line, not mid-glyph.
+            onLineBoundary: (() => {
+              const line = Number.parseFloat(getComputedStyle(pre).lineHeight) || 0;
+              const cs = getComputedStyle(pre);
+              const padY = Number.parseFloat(cs.paddingTop) + Number.parseFloat(cs.paddingBottom);
+              if (!line) return false;
+              return Math.abs(((pre.clientHeight - padY) / line) - Math.round((pre.clientHeight - padY) / line)) < 0.15;
+            })(),
+          };
+        })
+        .filter(Boolean),
       // The state line of the block that OWNS the groups, not of whichever
       // block happens to come first on the page.
       state: (document.querySelector('.wx-group')?.closest('.wx-block')?.querySelector('.wx-state')?.textContent ?? ''),
@@ -1172,6 +1219,24 @@ async function checkWxText(browser, base) {
     }
     if (placed.flatVisible) {
       fail(where, 'the flat report list is still visible under the groups, so every advisory is on the page twice');
+    }
+
+    // The scroll affordance, on whichever group overflows.
+    if (!placed.overflowing.length) {
+      fail(where, 'no placed group overflows, so the scroll notice cannot be checked — the fixture no longer exercises it');
+    }
+    for (const g of placed.overflowing) {
+      if (!g.moreShown) {
+        fail(where, `the "${g.where}" group scrolls and says nothing about it — a reader sees a block cut off with no way to know more follows`);
+      } else if (!/more line/.test(g.moreText)) {
+        fail(where, `the "${g.where}" group's scroll notice does not say how much is below it: "${g.moreText.trim()}"`);
+      }
+      if (!g.focusable) {
+        fail(where, `the "${g.where}" group scrolls but is not keyboard reachable (SC 2.1.1)`);
+      }
+      if (!g.onLineBoundary) {
+        fail(where, `the "${g.where}" group is capped mid-line, so its last visible line is sliced through its own glyphs`);
+      }
     }
 
     // Every group heading is a fg/bg pair, and the disclosure is a CONTROL — so

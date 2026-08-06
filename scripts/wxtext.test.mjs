@@ -346,9 +346,34 @@ test('an empty group is not rendered at all, rather than as a heading with nothi
 });
 
 test('an unplaceable advisory carries its REASON into the group', () => {
-  const [report] = placeReports([UNPLACEABLE], ARIZONA_BOX, lookup).groups[0].reports;
+  // Alongside one that DID place — a block where nothing places is not grouped
+  // at all, which is the rule the next test is about.
+  const out = placeReports([OVER_ARIZONA, UNPLACEABLE], ARIZONA_BOX, lookup);
+  const [report] = out.groups.find((g) => g.where === 'unknown').reports;
   assert.equal(report.where, 'unknown');
   assert.match(report.reason, /ZZZQ/, 'the reader is told which name could not be found');
+});
+
+test('IF NOTHING PLACED, IT IS NOT GROUPED — a heading over every report sorts nothing', () => {
+  // The state a real panel shipped in: "0 over your area, 16 that could not be
+  // placed", every advisory under one heading. That heading carries no
+  // information and it buries the sentence that is actually true of the block.
+  const out = placeReports([UNPLACEABLE, 'AIRMET SIERRA\nFROM ZZZX-ZZZY-ZZZX'], ARIZONA_BOX, lookup);
+  assert.equal(out.placed, false, 'a block where nothing could be sorted must not pretend to be sorted');
+  assert.deepEqual(out.groups, []);
+  assert.equal(out.all.length, 2, 'and every report is still there to render flat');
+
+  // The count line goes back to the nationwide caveat, which is the honest thing
+  // to say when none of them could be narrowed.
+  const said = wxSummary(WX_KINDS[1], { ok: true, count: 2, at: 0, area: 'unfiltered' }, 0, out);
+  assert.ok(said.text.includes(UNFILTERED_NOTE));
+});
+
+test('ONE that places is enough to bring the groups back', () => {
+  // It self-heals rather than needing a threshold nobody can reason about.
+  const out = placeReports([UNPLACEABLE, OVER_ARIZONA], ARIZONA_BOX, lookup);
+  assert.equal(out.placed, true);
+  assert.deepEqual(out.groups.map((g) => g.where), ['near', 'unknown']);
 });
 
 test('WITHOUT THE TABLE NOTHING IS GROUPED — it does not fall back to an order it invented', () => {

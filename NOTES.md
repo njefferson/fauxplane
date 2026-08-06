@@ -37,7 +37,7 @@ eight releases missed, and What's New carries all eight.
 
 ## STAGED NOW — 1.36.0, the fault that stopped being published, 2026-08-05
 
-**1.37.1 is on staging: https://staging.fauxplane.pages.dev**
+**1.37.2 is on staging: https://staging.fauxplane.pages.dev**
 
 ### A defect that was still true fell out of the app's own broken list
 
@@ -112,6 +112,85 @@ was individually fine while the thing the reader wanted was off the screen.
 So `checkScopeOnScreen` measures the OUTCOME — is the instrument on the glass —
 rather than any of the properties that add up to it, and a plant putting
 `--target` back on a relative unit was watched going red about exactly that.
+
+### 1.37.0 placed NOTHING, and the fixture is why
+
+The first real `airsigmet` response any session has seen, read off the device on
+2026-08-06: **0 over your area, 16 that could not be placed.** Every vertex in
+them was resolvable. The feature shipped green on every gate and did not work at
+all.
+
+**A real bulletin is ONE CONTINUOUS LINE.** The reconstruction this was built
+from had line breaks, and the parser bounded each clause at a newline — so on the
+real feed that bound did nothing at all. The clause ran on into the prose after
+the polygon (`…ABQ-60S FTI AREA TS MOV LTL`), where `AREA` and `TS` are
+ident-shaped words that are not places. And because the match was greedy it
+consumed the whole bulletin, so the OUTLOOK's area and `AREA 2` were never even
+looked for: **one clause found where there were three.**
+
+Hub LESSONS 64 for the third time in this repo. The fixture was tidier than the
+feed, and the tidying was the line breaks.
+
+**What ends a clause is the polygon CLOSING**, which was in the evidence the
+whole time — it was already asserted as a property in the test file and never
+used as the parser's terminator. Six of six full lines close on the point they
+open with, including both offset and ident: `60S FTI-…-60S FTI`,
+`30ESE HLC-…-30ESE HLC`, `40W PMM-…-40W PMM`.
+
+**The case that decides the design is `WST`.** It follows two of those areas as
+the first word of `WST ISSUANCES EXPD`, and it RESOLVES — Westerly, Rhode Island.
+A terminator that read points until one failed to look up would have taken it as
+a vertex and stretched a Kansas polygon to the east coast. The closure stops
+first, and nothing else would have.
+
+Three more faults found while fixing it, each measured rather than reasoned:
+
+- **`FROM` is itself ident-shaped**, so the scan walked out of one polygon and
+  into the next, merging an Arizona cell with a Gulf one.
+- **The boilerplate contains the word FROM** — `REFER TO MOST RECENT ACUS01 KWNS
+  FROM STORM PREDICTION CENTER` — which read as an area line is pure junk and
+  alone makes a bulletin unplaceable. Rejected by requiring three points and at
+  least one hyphen; that phrase has no hyphen anywhere.
+- **A dangling offset paired across a line break**, so `…CEW-50SSE` followed by
+  `WST ISSUANCES` INVENTED a vertex 50 nm south-south-east of Rhode Island. An
+  offset and its ident are one point and are never written apart.
+
+**And a product rule:** when nothing places at all, the block stops pretending to
+sort and goes back to the flat list with the nationwide note. A "Could not place"
+heading over every single report sorts nothing and buries the one sentence that
+is true of the block. It self-heals — one advisory placing brings the groups back.
+
+### The scroll notice, and a fix that broke a different thing
+
+Reported from the device: the "N more lines below — scroll this block" note is
+under FORECASTS and not under the advisories.
+
+1.37.0's signature guard stopped the groups being rebuilt every frame, which was
+right — it was what let the `Elsewhere` disclosure stay open. But `measure` was
+inside the guard, so it ran exactly once, immediately after the nodes were
+inserted and before they had any layout. `capPre` correctly returns early on a
+zero height and nothing ever called it again.
+
+**Three things went missing together**, not one: the notice, the cap on a whole
+LINE boundary, and the SC 2.1.1 `tabindex`. The block was left capped by the
+stylesheet's fallback, which slices the last line through its own glyphs — the
+same defect the aircraft list had in 1.28.x.
+
+Rebuild on change, measure every render. The flat body has always been measured
+every render, which is exactly why it kept its notice while the groups lost
+theirs, and the difference was visible in the screenshot.
+
+### Two plants that were green for instructive reasons
+
+- **The `FROM` terminator plant passed.** Its only coverage lived in a fixture
+  that was corrected to close — and a closing clause stops on its own closure
+  long before it reaches the next `FROM`, so the rule was never exercised.
+  **Correcting a fixture can delete a rule's only test.** A non-closing pair was
+  added and the plant then went red.
+- **`plants.data.mjs` had three ARRAY HOLES**, from appends that left `},,`.
+  `filter` and `map` skip holes, so nothing was ever silently skipped and the
+  102/102 sweep stands — but `PLANTS.length` overcounted, and a sparse array is
+  the one shape where `filter(p => !p)` reports zero holes while holes exist.
 
 ### Fixing a defect DISARMS the plants that named it
 

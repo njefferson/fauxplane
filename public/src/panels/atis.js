@@ -173,8 +173,10 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
       body,
       more,
       groups,
-      /** What is currently BUILT in `groups` — see the render loop. */
+      /** What is currently BUILT in `groups`, and the handles to re-measure it
+       *  — see the render loop. */
       signature: null,
+      built: [],
       root: el('section', { class: 'wx-block' }, [
         el('h3', { class: 'wx-h', text: kind.label }),
         state,
@@ -460,14 +462,32 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
             .join('|');
           if (b.signature !== signature) {
             b.signature = signature;
-            const built = placement.groups.map(renderGroup);
-            b.groups.replaceChildren(...built.map((g) => g.root));
-            for (const g of built) g.measure();
+            b.built = placement.groups.map(renderGroup);
+            b.groups.replaceChildren(...b.built.map((g) => g.root));
           }
+          /**
+           * MEASURED EVERY RENDER, REBUILT ONLY ON CHANGE — and the two must not
+           * be tied together.
+           *
+           * `measure` used to sit inside the guard above, so it ran exactly once:
+           * immediately after `replaceChildren`, when the nodes had just been
+           * inserted and had no layout. `capPre` correctly returns early on a
+           * zero height, and then nothing ever called it again. Three things went
+           * missing together — the "N more lines below" line, the cap on a whole
+           * LINE boundary, and the SC 2.1.1 `tabindex` — so the block was capped
+           * by the stylesheet's fallback instead, which slices the last line
+           * through its own glyphs and says nothing about the rest.
+           *
+           * The flat body has always been measured on every render, which is why
+           * it kept its notice while the groups lost theirs. This is that cadence,
+           * restored, without giving back the rebuild that shut the disclosure.
+           */
+          for (const g of b.built ?? []) g.measure();
           b.groups.hidden = placement.groups.length === 0;
         } else {
           if (b.signature !== null) {
             b.signature = null;
+            b.built = [];
             b.groups.replaceChildren();
           }
           b.groups.hidden = true;

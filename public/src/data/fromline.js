@@ -45,24 +45,19 @@
 
 import { compassBearing, destinationPoint } from '../core/units.js';
 
-/**
- * `FROM` through to the end of ITS OWN LINE, and no further.
- *
- * A bulletin has several — the advisory's own area and each OUTLOOK's and each
- * numbered AREA's — and every one is a real polygon on its own line. Every
- * captured line is one line; none wraps.
- *
- * THE LINE BOUND IS LOAD-BEARING. A clause allowed to run past the newline
- * swallows whatever prose follows — `MOD TURB BTN FL180 AND FL400` tokenises
- * into four ident-shaped words, none of which is a place, and an advisory whose
- * polygon resolved perfectly is then reported as unplaceable. Measured: without
- * this bound that exact line produced a five-word clause.
- */
-const FROM_CLAUSE = /\bFROM\s+([^\n]+)/g;
+/** Every `FROM`, wherever it sits. A bulletin has several — its own area, each
+ *  OUTLOOK's, and each numbered `AREA n...FROM`. */
+const FROM_WORD = /\bFROM\b/g;
 
-/** Prose sometimes follows the polygon on the same line, after a full stop or a
- *  comma. Nothing before one of those has ever been anything but points. */
-const CLAUSE_END = /[.,]/;
+/** One word of the raw text. Points and prose are both made of these. */
+const TOKEN = /[A-Z0-9]+/g;
+
+/** A polygon needs at least this many points, and at least one HYPHEN joining
+ *  two of them. Both exist to reject the phrase "…ACUS01 KWNS FROM STORM
+ *  PREDICTION CENTER FOR SYNOPSIS…", which is real text from a real bulletin and
+ *  contains the word FROM in prose. It has no hyphen anywhere and reads as one
+ *  ident followed by words. See `readClause`. */
+const MIN_POINTS = 3;
 
 /** An offset token: digits, then a 16-point compass name, and nothing else. */
 const OFFSET = /^(\d{1,3})(N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)$/;
@@ -72,17 +67,106 @@ const OFFSET = /^(\d{1,3})(N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)$
 const IDENT = /^(?=.*[A-Z])[A-Z0-9]{2,5}$/;
 
 /**
+ * Read ONE clause, starting just after a `FROM`.
+ *
+ * ---------------------------------------------------------------------------
+ * THE CLAUSE ENDS WHERE THE POLYGON CLOSES, and that is an observation
+ * ---------------------------------------------------------------------------
+ *
+ * Every real area line captured so far closes on the point it opened with:
+ *
+ *     RSK-DMN-60SSE SSO-50S TUS-30SE BZA-50NNW PGS-RSK
+ *     BUF-BDL-CRG-CEW-BNA-CLE-BUF
+ *     END-ARG-LIT-MCB-CEW-210S CEW-50SSE LEV-100ESE PSX-END
+ *     60S FTI-60SSW CME-10ENE DMN-40SW ABQ-60S FTI      <- offset repeats too
+ *     30ESE HLC-40SW ICT-…-30ESE HLC
+ *     40W PMM-BVT-70NNW ARG-40N END-40ESE HLC-40W PMM
+ *
+ * Six of six, and the seventh — `30W PHX-…-BZA-30W` — is a capture that stops
+ * mid-point, which is what makes the exception meaningful rather than awkward.
+ *
+ * THIS REPLACED A BOUND AT THE NEWLINE, WHICH THE REAL FEED DOES NOT HAVE. The
+ * fixture this was built from was a reconstruction with line breaks added; an
+ * actual bulletin arrives as ONE continuous line, so that bound did nothing and
+ * every clause ran on into the prose after it. `…ABQ-60S FTI AREA TS MOV LTL`
+ * put AREA and TS into the polygon, neither is a place, and sixteen advisories
+ * out of sixteen reported themselves unplaceable while every one of their
+ * vertices was resolvable. Worse, the greedy match consumed the whole bulletin,
+ * so the OUTLOOK's area and `AREA 2` were never even looked for.
+ *
+ * WHY NOT JUST STOP AT THE FIRST WORD THAT IS NOT A PLACE? Because `WST` — the
+ * first word of `WST ISSUANCES EXPD`, which follows two of the areas above — is
+ * an airport in the shipped table and resolves. A terminator built on the lookup
+ * would swallow it as a vertex and move the polygon. The closure stops first.
+ *
+ * @returns {string|null} the clause text, or null if this `FROM` was prose
+ */
+function readClause(upper, from) {
+  TOKEN.lastIndex = from;
+  const points = [];
+  let pending = null;
+  let hyphen = false;
+  let prevEnd = from;
+  /** End of the last token that belongs to the polygon. A prose word that stops
+   *  the scan is NOT part of it; a dangling offset at the very end of the input
+   *  IS, because it is half of a point the text was cut through. */
+  let end = from;
+  let m;
+
+  while ((m = TOKEN.exec(upper)) !== null) {
+    const token = m[0];
+    const gap = upper.slice(prevEnd, m.index);
+    if (gap.includes('-')) hyphen = true;
+    prevEnd = m.index + token.length;
+
+    // A NEW CLAUSE STARTS HERE, so this one is over. `FROM` is four letters and
+    // therefore ident-shaped: without this the scan walked out of one polygon
+    // and into the next, merging an Arizona area with a Gulf one into a single
+    // shape covering everything between them.
+    if (token === 'FROM') break;
+
+    if (OFFSET.test(token)) {
+      pending = token;
+      end = prevEnd; // provisional: real if the input ends here
+      continue;
+    }
+    if (!IDENT.test(token)) break; // prose — the polygon ended before this word
+
+    // AN OFFSET AND ITS IDENT ARE ONE POINT AND ARE NEVER WRITTEN APART. Where a
+    // line break falls between them the text was cut, and pairing across it
+    // INVENTS a vertex: `…CEW-50SSE` followed by `WST ISSUANCES EXPD` reads as
+    // 50 nm south-south-east of Westerly, Rhode Island, which drags a polygon
+    // over Oklahoma and the Gulf into New England. The offset stays dangling,
+    // which is what says the line was truncated.
+    if (pending && gap.includes('\n')) break;
+
+    const point = pending ? `${pending} ${token}` : token;
+    pending = null;
+    points.push(point);
+    end = prevEnd;
+
+    // CLOSED. Everything after this is the bulletin's prose.
+    if (points.length >= MIN_POINTS && point === points[0]) break;
+  }
+
+  if (points.length < MIN_POINTS || !hyphen) return null;
+  return upper.slice(from, end).trim();
+}
+
+/**
  * Every `FROM` clause in a bulletin, as raw token strings.
  * Exported because "did we find the clause at all" is a different failure from
  * "we found it and could not resolve it", and the panel says which.
  */
 export function fromClauses(text) {
   if (typeof text !== 'string') return [];
+  const upper = String(text).toUpperCase();
   const out = [];
-  for (const m of String(text).toUpperCase().matchAll(FROM_CLAUSE)) {
-    const cut = m[1].search(CLAUSE_END);
-    const body = (cut === -1 ? m[1] : m[1].slice(0, cut)).trim();
-    if (body) out.push(body);
+  FROM_WORD.lastIndex = 0;
+  let m;
+  while ((m = FROM_WORD.exec(upper)) !== null) {
+    const clause = readClause(upper, m.index + m[0].length);
+    if (clause) out.push(clause);
   }
   return out;
 }
@@ -240,9 +324,17 @@ export function placeAdvisory(text, box, lookup) {
   const points = [];
   const unresolved = [];
   let touches = false;
+  let open = false;
   for (const clause of clauses) {
     const r = resolveClause(clause, lookup);
     if (polygonTouchesBox(r.points, box)) touches = true;
+    // A POLYGON THAT DOES NOT CLOSE MAY BE MISSING A VERTEX. Every area line
+    // seen in full returns to the point it opened with, so one that does not is
+    // either cut short or is a shape this parser has never met — and both of
+    // those are "we are not sure how far this reaches", never "it is elsewhere".
+    const first = r.points[0];
+    const last = r.points.at(-1);
+    if (!first || !last || first.lat !== last.lat || first.lon !== last.lon) open = true;
     points.push(...r.points);
     unresolved.push(...r.unresolved);
   }
@@ -267,6 +359,14 @@ export function placeAdvisory(text, box, lookup) {
       points,
       unresolved,
       reason: `the part that could be placed is elsewhere, but ${describeUnresolved(unresolved)} — so it may reach further than this shows`,
+    };
+  }
+  if (open) {
+    return {
+      where: 'unknown',
+      points,
+      unresolved,
+      reason: 'the part that could be placed is elsewhere, but its area does not close, so it may reach further than this shows',
     };
   }
   return { where: 'far', points, unresolved, reason: null };

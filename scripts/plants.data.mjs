@@ -1309,7 +1309,7 @@ export const PLANTS = [
     // and the check it aims at were satisfied by any FAIL anywhere on the page,
     // and the feed rows supply one in this build whatever BITE does.
     expect: /BITE reports "(orientation|heading|motion|geo)" as PASS with every permission denied/,
-  },,
+  },
   {
     // THE ONE THAT MATTERS MOST IN THIS FEATURE. An advisory nobody could place
     // is filed with the ones that are elsewhere — which is the panel claiming a
@@ -1391,7 +1391,7 @@ export const PLANTS = [
     find: '          if (b.signature !== signature) {\n            b.signature = signature;',
     replace: '          if (true) {\n            b.signature = signature;',
     expect: /disclosure does not open|measured 1\.00:1/,
-  },,
+  },
   {
     // THE REGRESSION THIS APP ALREADY SHIPPED FOR TWENTY RELEASES. Putting the
     // touch-target floor back on a relative unit makes every target 88px at
@@ -1407,5 +1407,77 @@ export const PLANTS = [
     find: '  --target: 44px;',
     replace: '  --target: 2.75rem;',
     expect: /none of it is visible without scrolling|of the \d+px scope is on screen/,
+  },
+  {
+    // THE BUG REPORTED FROM A REAL IPAD. Tying `measure` to the rebuild guard
+    // runs it exactly once, immediately after the nodes are inserted and before
+    // they have any layout — so `capPre` returns early and nothing calls it
+    // again. The block still renders and still scrolls, which is why every other
+    // check stayed green.
+    name: 'advisories: the placed groups are measured once instead of every render',
+    check: 'a group that scrolls says so, and is capped on a line',
+    file: 'public/src/panels/atis.js',
+    find: '          for (const g of b.built ?? []) g.measure();',
+    replace: '',
+    expect: /scrolls and says nothing about it|capped mid-line|not keyboard reachable/,
+  },
+  {
+    // The terminator. Without the closure the clause runs into the prose after
+    // the polygon — on the real feed that is `AREA TS MOV LTL`, which is four
+    // ident-shaped words and none of them a place.
+    name: 'advisories: the clause no longer ends where its polygon closes',
+    check: 'prose after an area line never becomes a vertex',
+    gate: 'tests',
+    file: 'public/src/data/fromline.js',
+    find: '    if (points.length >= MIN_POINTS && point === points[0]) break;',
+    replace: '    void MIN_POINTS;',
+    expect: /THREE POLYGONS|NEVER BECOMES A VERTEX|unresolved|ELSEWHERE, not unplaceable/i,
+  },
+  {
+    // The phantom. "REFER TO MOST RECENT ACUS01 KWNS FROM STORM PREDICTION
+    // CENTER" is real boilerplate in a real bulletin, and read as an area line
+    // it makes the whole advisory unplaceable however well its polygons resolve.
+    name: 'advisories: a FROM in prose is accepted as a polygon',
+    check: 'the word FROM in prose yields no polygon',
+    gate: 'tests',
+    file: 'public/src/data/fromline.js',
+    find: '  if (points.length < MIN_POINTS || !hyphen) return null;',
+    replace: '  if (!points.length) return null;',
+    expect: /IS PROSE|STORM|PREDICTION|THREE POLYGONS/i,
+  },
+  {
+    // Walking out of one polygon and into the next. `FROM` is four letters and
+    // therefore ident-shaped, so without this an Arizona cell and a Gulf cell
+    // merge into one shape covering everything between them.
+    name: 'advisories: the scan runs through the next FROM into its clause',
+    check: 'a new FROM ends the clause before it',
+    gate: 'tests',
+    file: 'public/src/data/fromline.js',
+    find: "    if (token === 'FROM') break;",
+    replace: '',
+    expect: /TESTED ON ITS OWN|THREE POLYGONS|'near' !== 'far'/i,
+  },
+  {
+    // Pairing an offset with the next line's first word INVENTS a vertex, and
+    // `50SSE` + `WST` puts one 50 nm off Rhode Island — dragging a polygon over
+    // Oklahoma and the Gulf into New England.
+    name: 'advisories: a dangling offset pairs across a line break',
+    check: 'an offset and its ident are one point, never written apart',
+    gate: 'tests',
+    file: 'public/src/data/fromline.js',
+    find: "    if (pending && gap.includes('\\n')) break;",
+    replace: '',
+    expect: /every FROM line in a bulletin is found|CEW-50SSE|WST/i,
+  },
+  {
+    // A heading over every single report sorts nothing and buries the one
+    // sentence that is true of the block.
+    name: 'advisories: a block where nothing placed is grouped anyway',
+    check: 'nothing placed means it is not grouped',
+    gate: 'tests',
+    file: 'public/src/data/wxtext.js',
+    find: '  if (list.length && byWhere.near.length === 0 && byWhere.far.length === 0) {',
+    replace: '  if (false) {',
+    expect: /IF NOTHING PLACED|not pretend to be sorted|UNFILTERED/i,
   },
 ];

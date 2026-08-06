@@ -120,6 +120,26 @@ export const STANDING = [
  */
 export const RELEASES = [
   {
+    version: '1.37.2',
+    date: '2026-08-06',
+    headline: 'The advisories are actually sorted now — the last release could not place a single one of them.',
+    changed: [
+      'THE ADVISORIES REALLY DO GET SORTED. 1.37.0 added the grouping and then failed to place a single warning: sixteen out of sixteen came back as "could not be placed" on a panel in California, while every place they named was one the app knows perfectly well. They now land where they belong.',
+      'The reason is worth knowing, because it explains why it looked fine here. Each warning draws its area as a line of beacons, and the app was told that line ends where the line of text ends. It does not \u2014 a real warning arrives as one long unbroken run of text, so the area line ran on into the sentences after it and picked up ordinary words like "AREA" and "TS" as if they were places. Worse, it swallowed the whole warning in one go, so the second and third areas in it were never even looked for.',
+      'What ends an area line is the area itself closing. Every real one comes back round to the beacon it started from, and that turned out to be the only reliable full stop in the whole format. It also solves the two traps underneath: the words after an area are skipped rather than mistaken for places, and one of those words is "WST" \u2014 which really is an airport in Rhode Island, so anything that tested places by looking them up would have stretched a Kansas warning to the east coast.',
+      'The word "from" also appears in the boilerplate at the bottom of every warning \u2014 "refer to the most recent bulletin from Storm Prediction Center". That was being read as an area of its own, made of nothing but ordinary words, and it alone was enough to make the whole warning unplaceable.',
+      'THE "SCROLL THIS BLOCK" NOTE IS BACK UNDER THE ADVISORIES. It was under the forecasts and not under these, so that block was cut off at a fixed height, sliced through the middle of a line, with nothing saying more was below. It also ends on a whole line again and can be reached from a keyboard.',
+      'When not one warning can be placed, the app stops pretending to sort them and goes back to showing the plain list with the note explaining the service sends them nationwide. A heading saying "could not place" above every single one sorts nothing and hides the sentence that is actually true.',
+    ],
+    broken: [
+      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out \u2014 those appear in their own group saying so, rather than being dropped.',
+      '"Over your area" is generous on purpose. It uses the rectangle an advisory\u2019s area fits inside rather than its exact outline, so a warning that passes close by is included. Being told about one that misses you costs a line; not being told about one that does not is the failure worth avoiding.',
+      'At the largest text size the tab strip is still three rows, so the radar page opens with the top of the scope on screen rather than the whole of it. Better than none of it, and not finished.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.37.1',
     date: '2026-08-05',
     headline: 'At the largest text size the radar scope is on screen. It has not been for twenty releases.',

@@ -176,6 +176,24 @@ export function placeReports(reports, box, lookup) {
     const out = placeAdvisory(text, box, lookup);
     (byWhere[out.where] ?? byWhere.unknown).push({ text, where: out.where, reason: out.reason });
   }
+
+  /**
+   * IF NOTHING COULD BE PLACED, DO NOT GROUP AT ALL.
+   *
+   * A "Could not place" heading over EVERY report is a heading carrying no
+   * information — it sorts nothing, and it buries the one sentence that is
+   * actually true of the block, which is that the service sends these
+   * nationwide. That is exactly what shipped: a real panel read "0 over your
+   * area, 16 that could not be placed" with all sixteen under one heading.
+   *
+   * So this falls back to the flat list and `UNFILTERED_NOTE` — the honest state
+   * this block had before any of it existed. It self-heals: the moment one
+   * advisory places, the groups come back.
+   */
+  if (list.length && byWhere.near.length === 0 && byWhere.far.length === 0) {
+    return { placed: false, groups: [], all: list, near: 0, unknown: byWhere.unknown.length, far: 0 };
+  }
+
   return {
     placed: true,
     groups: PLACEMENT_GROUPS.map((g) => ({ ...g, reports: byWhere[g.where] })).filter((g) => g.reports.length),

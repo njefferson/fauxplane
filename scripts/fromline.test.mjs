@@ -92,17 +92,21 @@ test('FROM is found MID-LINE, which is where a numbered area puts it', () => {
   assert.deepEqual(fromClauses(GULF), ['END-ARG-LIT-MCB-CEW-210S CEW-50SSE LEV-100ESE PSX-END']);
 });
 
-test('A CLAUSE STOPS AT THE END OF ITS LINE — hazard prose is not part of the polygon', () => {
-  // Measured before the bound existed: this exact line produced a clause with
-  // MOD, TURB, BTN and FL180 in it. Four ident-shaped words, none of them a
-  // place, so an advisory whose polygon resolved perfectly reported itself as
-  // unplaceable — the safe direction, and still wrong.
+test('A CLAUSE STOPS WHERE ITS POLYGON CLOSES — hazard prose is not part of it', () => {
+  // This line produced a clause with MOD, TURB, BTN and FL180 in it. Four
+  // ident-shaped words, none of them a place, so an advisory whose polygon
+  // resolved perfectly reported itself as unplaceable.
+  //
+  // It was fixed once by bounding the clause at the newline, which worked here
+  // and did NOTHING on the real feed, because a real bulletin is one line. The
+  // closure is what actually ends a clause; this passes for the right reason
+  // now, and `REAL_FEED_BULLETIN` below is what proves it.
   const wrapped = 'FROM BUF-BDL-CLE-BUF\nMOD TURB BTN FL180 AND FL400';
   assert.deepEqual(fromClauses(wrapped), ['BUF-BDL-CLE-BUF']);
   assert.deepEqual(resolveClause(fromClauses(wrapped)[0], lookup).unresolved, []);
 });
 
-test('prose after a full stop on the SAME line is not part of the polygon either', () => {
+test('prose after a full stop is not part of the polygon either', () => {
   assert.deepEqual(fromClauses('FROM BUF-BDL-CLE-BUF. WST ISSUANCES POSS'), ['BUF-BDL-CLE-BUF']);
 });
 
@@ -258,12 +262,34 @@ test('EACH POLYGON IS TESTED ON ITS OWN — the areas of one bulletin are not po
   // vertices into one bounding box claims all of New Mexico and west Texas,
   // where the bulletin says nothing. Measured: this box came back `near`.
   const between = { latMin: 34.5, latMax: 35.5, lonMin: -104, lonMax: -103 };
-  const twoAreas = 'FROM 30W PHX-60E PHX-PHX\n\nFROM END-ARG-LIT-MCB-CEW-END';
+  // BOTH CELLS CLOSE on the point they open with, because every real area line
+  // does. The first version of this fixture did not — it was written before the
+  // closure was read out of the captured lines — and an unclosed polygon is now
+  // correctly reported as one that may reach further than it shows.
+  const twoAreas = 'FROM 30W PHX-60E PHX-40N TUS-30W PHX\n\nFROM END-ARG-LIT-MCB-CEW-END';
   assert.equal(placeAdvisory(twoAreas, between, lookup).where, 'far');
 
   // …and each cell still places itself, so the tighter test did not lose one.
   assert.equal(placeAdvisory(twoAreas, { latMin: 32, latMax: 35, lonMin: -113, lonMax: -110 }, lookup).where, 'near');
   assert.equal(placeAdvisory(twoAreas, { latMin: 35, latMax: 37, lonMin: -99, lonMax: -97 }, lookup).where, 'near');
+});
+
+test('A NEW FROM ENDS THE CLAUSE BEFORE IT, even when that one never closed', () => {
+  // `FROM` is four letters and therefore ident-shaped. Without a terminator the
+  // scan walks out of one polygon and into the next, merging a Buffalo area and
+  // a Gulf one into a single shape covering everything between them.
+  //
+  // ONLY A NON-CLOSING FIRST CLAUSE REACHES THIS. A closed one stops on its own
+  // closure long before the next FROM — which is how the previous version of
+  // this coverage was lost: the fixture it lived in was corrected to close, and
+  // took the only test of this rule with it. The plant went green and said so.
+  const two = 'FROM BUF-BDL-CLE\n\nFROM END-ARG-LIT-END';
+  assert.deepEqual(fromClauses(two), ['BUF-BDL-CLE', 'END-ARG-LIT-END']);
+
+  // And the merged shape really would have spanned the country.
+  const first = resolveClause(fromClauses(two)[0], lookup);
+  assert.equal(first.points.length, 3);
+  assert.ok(Math.min(...first.points.map((p) => p.lon)) > -83, 'the first clause reached past Ohio');
 });
 
 test('A PARTIAL POLYGON THAT ALREADY TOUCHES IS NEAR, and it is certain', () => {
@@ -353,4 +379,98 @@ test('the table records where it came from and under what licence', () => {
   assert.equal(TABLE.source.name, 'OurAirports');
   assert.match(TABLE.source.licence, /Unlicense/);
   assert.ok(TABLE.source.sha256.navaids, 'no checksum for the file this was built from');
+});
+
+// ---------------------------------------------------------------------------
+// THE REAL FEED — one bulletin, on ONE LINE, exactly as the service sent it
+// ---------------------------------------------------------------------------
+
+/**
+ * Read off the owner's device on 2026-08-06, from the advisories block. This is
+ * the first `airsigmet` response any session has seen, and it broke every
+ * assumption the reconstruction above encoded.
+ *
+ * IT HAS NO INTERNAL NEWLINES. The reconstruction in `wxtext.test.mjs` has them,
+ * and the parser was built to bound each clause at one — so on the real feed
+ * that bound did nothing, the greedy match swallowed the whole bulletin, and
+ * only ONE clause was found instead of three. The panel reported 16 advisories
+ * out of 16 as unplaceable while every vertex in them was resolvable.
+ *
+ * Hub LESSONS 64, third time in this repo: the fixture was tidier than the feed.
+ */
+const REAL_FEED_BULLETIN =
+  '060155 SIGC CONVECTIVE SIGMET 6C VALID UNTIL 0355Z NM FROM 60S FTI-60SSW CME-10ENE DMN-40SW ABQ-60S FTI '
+  + 'AREA TS MOV LTL. TOPS TO FL420. OUTLOOK VALID 060355-060755 AREA 1...FROM 30ESE HLC-40SW ICT-30E AMA-50SW '
+  + 'TCC-50E ABQ-30NNW CIM-40N LAA-30ESE HLC WST ISSUANCES EXPD. REFER TO MOST RECENT ACUS01 KWNS FROM STORM '
+  + 'PREDICTION CENTER FOR SYNOPSIS AND METEOROLOGICAL DETAILS. AREA 2...FROM 40W PMM-BVT-70NNW ARG-40N END-40ESE '
+  + 'HLC-40W PMM WST ISSUANCES EXPD. REFER TO MOST RECENT ACUS01 KWNS FROM STORM PREDICTION CENTER FOR SYNOPSIS AND';
+
+test('THE REAL BULLETIN YIELDS THREE POLYGONS, and the prose between them yields none', () => {
+  assert.deepEqual(fromClauses(REAL_FEED_BULLETIN), [
+    '60S FTI-60SSW CME-10ENE DMN-40SW ABQ-60S FTI',
+    '30ESE HLC-40SW ICT-30E AMA-50SW TCC-50E ABQ-30NNW CIM-40N LAA-30ESE HLC',
+    '40W PMM-BVT-70NNW ARG-40N END-40ESE HLC-40W PMM',
+  ]);
+});
+
+test('each real clause CLOSES on the point it opened with', () => {
+  // This is the property the parser terminates on, so it is asserted on the
+  // real text rather than taken on trust.
+  for (const clause of fromClauses(REAL_FEED_BULLETIN)) {
+    const { points } = resolveClause(clause, lookup);
+    assert.deepEqual(points.at(0), points.at(-1), `${clause} does not close`);
+  }
+});
+
+test('"…KWNS FROM STORM PREDICTION CENTER…" IS PROSE, and yields no polygon at all', () => {
+  // The word FROM appears twice in this bulletin's boilerplate. Read as an area
+  // line it produces a clause of pure junk, which would make the whole advisory
+  // unplaceable no matter how well its real polygons resolved.
+  const clauses = fromClauses(REAL_FEED_BULLETIN);
+  assert.ok(!clauses.some((c) => /STORM|PREDICTION|CENTER|SYNOPSIS/.test(c)), `prose became a polygon: ${clauses}`);
+
+  // On its own, with nothing else to find.
+  assert.deepEqual(fromClauses('REFER TO MOST RECENT ACUS01 KWNS FROM STORM PREDICTION CENTER FOR SYNOPSIS'), []);
+});
+
+test('THE PROSE AFTER A POLYGON NEVER BECOMES A VERTEX', () => {
+  // `AREA TS MOV LTL` and `WST ISSUANCES EXPD` follow two of these areas. The
+  // first version of this parser put AREA and TS into the polygon and reported
+  // the advisory unplaceable.
+  const { points, unresolved } = resolveClause(fromClauses(REAL_FEED_BULLETIN)[0], lookup);
+  assert.deepEqual(unresolved, []);
+  assert.equal(points.length, 5);
+});
+
+test('WST IS AN AIRPORT IN THE SHIPPED TABLE, and that is why the terminator is CLOSURE and not the lookup', () => {
+  // `WST ISSUANCES EXPD` follows two areas in this bulletin, and WST resolves —
+  // Westerly, Rhode Island. A parser that read points until one failed to
+  // resolve would take it as a vertex and drag a Kansas polygon to New England.
+  assert.ok(lookup('WST'), 'WST no longer resolves; this test no longer proves what it says');
+  const kansas = fromClauses(REAL_FEED_BULLETIN)[1];
+  assert.ok(!kansas.endsWith('WST'), 'the clause swallowed WST');
+  const { points } = resolveClause(kansas, lookup);
+  const east = Math.max(...points.map((p) => p.lon));
+  assert.ok(east < -95, `a vertex came out at ${east} — the polygon reached the east coast`);
+});
+
+test('every ident in the real bulletin resolves against the SHIPPED table', () => {
+  // Fourteen of them, checked rather than assumed. If any were missing the
+  // advisory would honestly report "could not place" — the table is not widened
+  // to make this pass.
+  for (const clause of fromClauses(REAL_FEED_BULLETIN)) {
+    assert.deepEqual(resolveClause(clause, lookup).unresolved, [], clause);
+  }
+});
+
+test('AND THE WHOLE POINT: the real bulletin is ELSEWHERE, not unplaceable', () => {
+  // New Mexico, Kansas and the Gulf. Before this it read "0 over your area,
+  // 16 that could not be placed" on a panel in California.
+  const out = placeAdvisory(REAL_FEED_BULLETIN, NORCAL, lookup);
+  assert.equal(out.where, 'far');
+  assert.deepEqual(out.unresolved, []);
+  assert.equal(out.reason, null);
+
+  // …and it really is near the ground it covers.
+  assert.equal(placeAdvisory(REAL_FEED_BULLETIN, { latMin: 34, latMax: 36, lonMin: -107, lonMax: -105 }, lookup).where, 'near');
 });
