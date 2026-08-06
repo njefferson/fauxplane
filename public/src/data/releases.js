@@ -120,6 +120,26 @@ export const STANDING = [
  */
 export const RELEASES = [
   {
+    version: '1.38.1',
+    date: '2026-08-06',
+    headline: 'Ranging the map out to 80 miles now shows you airfields you could not see at 40, and the map carries your groundspeed.',
+    changed: [
+      'AT 80 MILES THE MAP SHOWS AIRFIELDS THAT ARE ACTUALLY 80 MILES AWAY. It kept the nearest few dozen and nothing else, so widening the range drew the same handful of near fields smaller and told you nothing new — at the widest scope there were seventy-one airfields in range that never appeared at all.',
+      'It now sheds the small strips as you range out instead of the distant fields, which is what a real navigation display does: everything within 20 miles, anything with a runway over about half a mile at 40, and over a mile at 80. Roughly the same number of marks at every range, but at 80 miles twenty-two of them are past where the old scope stopped.',
+      'YOUR GROUNDSPEED IS ON THE MAP PAGE, top left. It is the one page with no speed anywhere on it — the flight display has the speed tape a couple of inches away, so it deliberately does not repeat it there. It appears only when there is a real reading, and when you are following a flight it is that aircraft’s.',
+      'If the map ever has to leave airfields off because there are too many to draw at once, it says how many. A scope quietly showing you a selection is the thing this release exists to fix.',
+    ],
+    broken: [
+      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out — those appear in their own group saying so, rather than being dropped.',
+      '"Over your area" is generous on purpose. It uses the rectangle an advisory’s area fits inside rather than its exact outline, so a warning that passes close by is included.',
+      'The reports and advisories are still fixed to Northern California wherever you are, so away from home they are somebody else’s weather. That is next.',
+      'The ground map and the airfield database still stop at the edge of Northern California, so ranging out from somewhere else shows empty scope. Also next.',
+      'At the largest text size the tab strip is still three rows, so the radar page opens with the top of the scope on screen rather than the whole of it.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.38.0',
     date: '2026-08-06',
     headline: 'The navigation display can be switched off, the speed tape says which speed it is, and the autopilot targets are on the instruments.',

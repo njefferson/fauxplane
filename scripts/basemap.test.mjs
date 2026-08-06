@@ -155,6 +155,44 @@ test('a missing ground map is stated, never quietly absent', () => {
   assert.match(said, /1 aircraft/, 'and it is still a map with traffic on it');
 });
 
+test('THE SPOKEN DESCRIPTION CARRIES THE GROUNDSPEED THE CORNER DRAWS', () => {
+  /**
+   * A reader who cannot see the canvas gets this sentence and nothing else, so
+   * a number added to the glass and not to the sentence is a number they do not
+   * have. Both go through `groundspeedReadout`, so they cannot come apart — the
+   * defect `selectTape` was extracted to stop on the PFD, where the tape and its
+   * description chose their speed independently.
+   *
+   * SPELLED OUT, because "GS 441" is read aloud as two letters and a number.
+   */
+  const said = describeMap({ mode: 'map', up: { label: 'TRK UP' }, count: 2, rangeNm: 40, groundspeed: { value: 441.4, provenance: 'LIVE' } });
+  assert.match(said, /groundspeed 441 knots/);
+  assert.doesNotMatch(said, /GS 441/, 'the abbreviation belongs on the glass, not in speech');
+});
+
+test('and says nothing at all when there is no speed to say', () => {
+  // Not "groundspeed unavailable" — the corner draws nothing, so the sentence
+  // claims nothing. A description of a picture describes the picture.
+  const failed = describeMap({ mode: 'map', up: { label: 'TRK UP' }, count: 0, rangeNm: 40, groundspeed: { value: null, provenance: 'FAIL', reason: 'no fix yet' } });
+  assert.doesNotMatch(failed, /groundspeed/i);
+  assert.doesNotMatch(describeMap({ mode: 'map', up: { label: 'TRK UP' }, count: 0, rangeNm: 40 }), /groundspeed/i);
+});
+
+test('a stale speed says so in the sentence too', () => {
+  const said = describeMap({ mode: 'map', up: { label: 'TRK UP' }, count: 0, rangeNm: 40, groundspeed: { value: 12, provenance: 'STALE' } });
+  assert.match(said, /groundspeed 12 knots, stale/);
+});
+
+test('A TRUNCATED PICTURE SAYS SO', () => {
+  // The range floors are the real declutter and are a stated policy; the count
+  // cap behind them is a backstop, and a scope quietly showing a subset is the
+  // defect the floors were added to fix.
+  const said = describeMap({ mode: 'plan', up: null, count: 0, rangeNm: 80, runwaysDropped: 14 });
+  assert.match(said, /14 more runways are in range than the map draws at once/);
+  assert.doesNotMatch(describeMap({ mode: 'plan', up: null, count: 0, rangeNm: 80 }), /more runways/,
+    'nothing dropped means no claim at all, not a zero');
+});
+
 test('every layer switch has a distinct label whose name OPENS with it', () => {
   // SC 2.5.3. These are flight-deck abbreviations, so "tap ARPT" only has an
   // answer if the spoken name contains the word on the button — and a name that

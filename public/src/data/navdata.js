@@ -135,11 +135,66 @@ export function parseLatLon(text) {
  * Filtered by distance from the CENTRE, and the caller passes the display
  * range — so this returns what is on the scope, not what is in the region.
  */
-export function runwaysNear(data, centre, rangeNm, limit = 40) {
+
+/**
+ * HOW SHORT A RUNWAY MAY BE AND STILL BE DRAWN, at each display range.
+ *
+ * ---------------------------------------------------------------------------
+ * A REAL EFIS DECLUTTERS BY SIGNIFICANCE, NEVER BY COUNT
+ * ---------------------------------------------------------------------------
+ *
+ * This used to keep the forty NEAREST runways and nothing else, which meant
+ * widening the range showed you nothing new — it drew the same forty smaller.
+ * Measured against the shipped bundle from its own declared reference point,
+ * runways in range:
+ *
+ *     10 nm     1
+ *     20 nm     9
+ *     40 nm    36
+ *     80 nm   107, of which 71 are beyond 40 nm
+ *
+ * So at 80 nm every one of those 71 distant fields was dropped in favour of
+ * forty near ones, and the scope was the 40 nm scope drawn half-size. That is
+ * what was reported from the device, and it was exactly right.
+ *
+ * A real display sheds the INSIGNIFICANT as it ranges out — it never hides a
+ * major field because small strips happened to be nearer. Runway length is the
+ * proxy for that and it is already on every record, so no join is needed.
+ * Survivors with these floors: 1, 9, 29, 31 — roughly constant density, and at
+ * 80 nm twenty-two of them are beyond 40 nm, so the fields finally reach the
+ * edge of the scope. `airport-picker.test.mjs` asserts those four numbers
+ * against the real bundle, so "nothing new appears at 80" cannot come back
+ * silently.
+ *
+ * Ordered widest first so the lookup is a `find`.
+ */
+export const DECLUTTER_FLOORS_FT = Object.freeze([
+  { rangeNm: 80, minLengthFt: 5000 },
+  { rangeNm: 40, minLengthFt: 3000 },
+  { rangeNm: 0, minLengthFt: 0 },
+]);
+
+/** The floor for a display range. Exported so the choice is testable without a
+ *  browser — a canvas is invisible to the accessibility gate. */
+export function minRunwayLengthFt(rangeNm) {
+  return (DECLUTTER_FLOORS_FT.find((f) => rangeNm >= f.rangeNm) ?? DECLUTTER_FLOORS_FT.at(-1)).minLengthFt;
+}
+
+/**
+ * The BACKSTOP, not the policy. The floors above are what actually declutters;
+ * this only stops a dense metropolitan area painting a wall of marks. When it
+ * bites it is reported to the caller rather than silently truncating — a scope
+ * quietly showing a subset is the defect this whole change is about.
+ */
+export function runwaysNear(data, centre, rangeNm, limit = 120) {
   if (!centre || !Number.isFinite(centre.lat) || !Number.isFinite(centre.lon)) return [];
+  const floor = minRunwayLengthFt(rangeNm);
   const out = [];
   for (const r of data?.runways ?? []) {
     if (r.closed) continue;
+    // SIGNIFICANCE, at this range. A runway shorter than the floor is not drawn
+    // — that is the room the distant fields need.
+    if ((r.length_ft ?? 0) < floor) continue;
     if (!Number.isFinite(r.le_lat) || !Number.isFinite(r.le_lon)) continue;
     if (!Number.isFinite(r.he_lat) || !Number.isFinite(r.he_lon)) continue;
     // The midpoint, so a long runway half inside the ring still counts.
@@ -154,9 +209,13 @@ export function runwaysNear(data, centre, rangeNm, limit = 40) {
       distanceNm: d,
     });
   }
-  // Nearest first, then capped: a scope centred on the Bay Area can reach a
-  // hundred runways at 80 nm, and past a point they are ink rather than
-  // information. The cap is stated to the caller by being a parameter.
   out.sort((a, b) => a.distanceNm - b.distanceNm);
-  return out.slice(0, limit);
+  const kept = out.slice(0, limit);
+  // WHAT THE BACKSTOP DROPPED, said rather than swallowed. A non-enumerable
+  // property, so every existing caller — and every test that deep-compares the
+  // array — is untouched, while a caller that wants to report it can.
+  if (out.length > kept.length) {
+    Object.defineProperty(kept, 'dropped', { value: out.length - kept.length, enumerable: false });
+  }
+  return kept;
 }

@@ -32,7 +32,7 @@
 
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
-import { drawPlan, hitTestAircraft, upReference } from '../render/gauges/plan.js';
+import { drawPlan, groundspeedReadout, hitTestAircraft, upReference } from '../render/gauges/plan.js';
 import { RADAR_RANGE_NM } from '../data/traffic.js';
 
 /**
@@ -65,16 +65,30 @@ export const MAP_LAYERS = [
  * page can produce is testable without a browser — the same reason
  * `radarReadiness` and `crewAlerts` are.
  */
-export function describeMap({ mode, up, count, rangeNm, off = [], basemapMissing = false }) {
+export function describeMap({ mode, up, count, rangeNm, off = [], basemapMissing = false, groundspeed = null, runwaysDropped = 0 }) {
   const parts = [`Map, ${mode === 'map' ? `${(up?.label ?? 'north up').toLowerCase()}` : 'north up and centred'}`];
   if (mode === 'map' && up?.reason) parts.push(up.reason);
   parts.push(`${rangeNm} nautical mile range`);
+  /**
+   * THE SAME FUNCTION DECIDES BOTH, so the corner and the sentence can never
+   * disagree — the pattern `selectTape` established on the PFD, where the tape
+   * and its spoken description once chose independently and could name
+   * different speeds. Spelled out here because "GS 441" is a flight-deck
+   * abbreviation and speech synthesis reads it as two letters.
+   */
+  const gs = groundspeedReadout(groundspeed);
+  if (gs) parts.push(`groundspeed ${gs.kt} knots${gs.stale ? ', stale' : ''}`);
   parts.push(count === 1 ? '1 aircraft' : `${count} aircraft`);
   // A SWITCHED-OFF LAYER IS A FACT ABOUT THE PICTURE. Without this, a reader
   // using the panel by voice is told there are no aircraft on a map whose
   // traffic layer somebody turned off — which is a different thing entirely.
   if (off.length) parts.push(`${off.join(', ')} turned off`);
   if (basemapMissing) parts.push('the ground map is not loaded');
+  // A TRUNCATED PICTURE SAYS SO. The range floors do the real decluttering and
+  // are a stated policy; the count cap behind them is a backstop against a
+  // dense metropolitan area, and a scope quietly showing a subset is the exact
+  // defect the floors were added to fix.
+  if (runwaysDropped > 0) parts.push(`${runwaysDropped} more runways are in range than the map draws at once`);
   return `${parts.join('. ')}.`;
 }
 
@@ -244,6 +258,19 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
     const up = upReference(state.snapshot.fields, ndMode);
     const aircraft = view.aircraft ?? [];
 
+    /**
+     * THE ONE PAGE THAT MAY SHOW GROUNDSPEED, because it is the one page with
+     * no speed anywhere else on it. The PFD's inset has a speed tape inches
+     * away and passes nothing — that is the duplication the rule forbids, and
+     * `groundspeedReadout` carries the whole argument.
+     *
+     * Read straight from the store rather than from the traffic view, because
+     * the store is where ownership already moves: following an aircraft writes
+     * ITS groundspeed into this same field, or FAILs it with the reason. One
+     * source owns the field, so one read is right in both modes.
+     */
+    const groundspeed = state.snapshot.fields['position.groundspeed'] ?? null;
+
     drawPlan(surface.ctx, {
       x: 0,
       y: 0,
@@ -267,12 +294,25 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
       // THIS PAGE IS THE CHART, so its fields are named. The PFD's little scope
       // and the RADAR page are traffic displays and stay austere.
       airportIdents: true,
+      groundspeed,
     });
 
     const off = MAP_LAYERS.filter((l) => !on[l.id]).map((l) => l.label);
     canvas.setAttribute(
       'aria-label',
-      describeMap({ mode: ndMode, up, count: on.traffic ? aircraft.length : 0, rangeNm: view.rangeNm ?? 40, off, basemapMissing: !basemap }),
+      describeMap({
+        mode: ndMode,
+        up,
+        count: on.traffic ? aircraft.length : 0,
+        rangeNm: view.rangeNm ?? 40,
+        off,
+        basemapMissing: !basemap,
+        groundspeed,
+        // Set by `runwaysNear` when its backstop cap bit — see the comment there
+        // about why it is non-enumerable and why it is reported rather than
+        // swallowed.
+        runwaysDropped: view.runways?.dropped ?? 0,
+      }),
     );
 
     /**

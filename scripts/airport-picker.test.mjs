@@ -9,9 +9,10 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { parseLatLon, searchAirports, runwaysNear } from '../public/src/data/navdata.js';
+import { minRunwayLengthFt, parseLatLon, searchAirports, runwaysNear } from '../public/src/data/navdata.js';
 
 const AIRPORTS = [
   { ident: 'KSFO', icao_code: 'KSFO', iata_code: 'SFO', name: 'San Francisco International Airport', municipality: 'San Francisco', type: 'large_airport', lat: 37.6, lon: -122.4 },
@@ -138,6 +139,10 @@ test('runways: no centre means no runways, never a guess', () => {
 test('runways: nearest first, and capped so a busy area is not solid ink', () => {
   const many = { runways: Array.from({ length: 60 }, (_, i) => ({
     airport_ident: `R${i}`,
+    // Long enough to clear the 80 nm floor, because this test is about the
+    // BACKSTOP and not about the floors — one clearing the other's condition
+    // would have measured nothing.
+    length_ft: 9000,
     closed: false,
     le_lat: 38.70 + i * 0.001,
     le_lon: -121.59,
@@ -149,4 +154,77 @@ test('runways: nearest first, and capped so a busy area is not solid ink', () =>
   for (let i = 1; i < near.length; i += 1) {
     assert.ok(near[i].distanceNm >= near[i - 1].distanceNm, 'nearest first');
   }
+});
+
+test('THE BACKSTOP SAYS WHAT IT DROPPED', () => {
+  /**
+   * A scope quietly showing a subset is the defect this whole change is about,
+   * so the cap reports itself and the MAP page's text alternative reads it.
+   * Non-enumerable on purpose — every deep-equal in this file predates it.
+   */
+  const many = { runways: Array.from({ length: 60 }, (_, i) => ({
+    airport_ident: `R${i}`,
+    length_ft: 9000,
+    closed: false,
+    le_lat: 38.70 + i * 0.001,
+    le_lon: -121.59,
+    he_lat: 38.69 + i * 0.001,
+    he_lon: -121.59,
+  })) };
+  assert.equal(runwaysNear(many, { lat: 38.6954, lon: -121.591 }, 80, 40).dropped, 20);
+  assert.equal(runwaysNear(many, { lat: 38.6954, lon: -121.591 }, 80, 200).dropped, undefined,
+    'nothing dropped means no claim, not a zero');
+});
+
+// ---------------------------------------------------------------------------
+// The declutter: SIGNIFICANCE, not count
+// ---------------------------------------------------------------------------
+
+test('the floor rises with the range, and the boundaries belong to the wider band', () => {
+  assert.equal(minRunwayLengthFt(10), 0);
+  assert.equal(minRunwayLengthFt(20), 0);
+  assert.equal(minRunwayLengthFt(39), 0);
+  assert.equal(minRunwayLengthFt(40), 3000, 'a range EQUAL to a floor gets that floor');
+  assert.equal(minRunwayLengthFt(79), 3000);
+  assert.equal(minRunwayLengthFt(80), 5000);
+  assert.equal(minRunwayLengthFt(160), 5000, 'above the widest band, the widest floor');
+});
+
+test('a runway with no recorded length is dropped once there is a floor, never assumed long', () => {
+  // There is no synthetic data path: an unknown length is not a long runway.
+  // At 10 nm the floor is zero, so it draws — nothing has been assumed there.
+  const unknown = { runways: [{ airport_ident: 'ZZZZ', closed: false, le_lat: 38.70, le_lon: -121.59, he_lat: 38.69, he_lon: -121.59 }] };
+  const centre = { lat: 38.6954, lon: -121.591 };
+  assert.equal(runwaysNear(unknown, centre, 10).length, 1);
+  assert.equal(runwaysNear(unknown, centre, 80).length, 0);
+});
+
+test('AT 80 NM THE DISTANT FIELDS ACTUALLY APPEAR — measured on the shipped bundle', () => {
+  /**
+   * THE REGRESSION THIS EXISTS TO CATCH is silent by nature: reverting to
+   * nearest-N leaves a scope that still draws runways, still looks right, and
+   * has simply stopped showing anything beyond 40 nm. Nobody notices from a
+   * screenshot. So the numbers are asserted against the REAL bundle rather
+   * than a fixture — a fixture would go on passing while the app on the device
+   * drew the 40 nm picture at half scale.
+   *
+   * Before the floors: 1, 9, 36 and 107 runways were in range at these four
+   * scopes and the nearest FORTY were kept, so all 71 fields beyond 40 nm
+   * vanished at the widest range.
+   */
+  const bundle = JSON.parse(readFileSync(new URL('../public/data/navdata.json', import.meta.url), 'utf8'));
+  const centre = bundle.meta.home;
+
+  const kept = (rangeNm) => runwaysNear(bundle, centre, rangeNm);
+  assert.deepEqual([10, 20, 40, 80].map((r) => kept(r).length), [1, 9, 29, 31],
+    'roughly constant density across the four scopes, not a count that stops growing');
+
+  const wide = kept(80);
+  assert.equal(wide.filter((r) => r.distanceNm > 40).length, 22,
+    'THE WHOLE POINT: ranging out to 80 shows fields the 40 nm scope could not');
+  assert.equal(wide.dropped, undefined, 'the backstop does not bite on this region at all');
+
+  // And every survivor at the widest range really clears the floor, rather than
+  // the count coming out right for some other reason.
+  assert.ok(wide.every((r) => r.lengthFt >= 5000));
 });

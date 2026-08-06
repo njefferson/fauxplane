@@ -15,7 +15,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { placeLabels, RUNWAY_MIN_PX, runwayWidthPx } from '../public/src/render/gauges/plan.js';
+import { groundspeedReadout, placeLabels, RUNWAY_MIN_PX, runwayWidthPx } from '../public/src/render/gauges/plan.js';
 
 /** A monospace-ish stand-in: every glyph six pixels wide. */
 const measure = (t) => t.length * 6;
@@ -330,5 +330,86 @@ test('and the AUSTERE scopes do not', () => {
   for (const f of ['../public/src/panels/pfd.js', '../public/src/panels/radar.js']) {
     const src = readFileSync(new URL(f, import.meta.url), 'utf8');
     assert.doesNotMatch(src, /airportIdents:\s*true/, `${f} turned on airport idents`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// The groundspeed readout, and the surface that may have it
+// ---------------------------------------------------------------------------
+
+const gsField = (value, provenance = 'LIVE') => ({ value, provenance, ageMs: 0 });
+
+test('THE READOUT REFUSES A NUMBER NOBODY MEASURED', () => {
+  // The rule that shapes the whole app, on the one instrument that would
+  // otherwise be happy to print a stale zero: a missing reading draws NOTHING
+  // here, exactly as the wind arrow does, rather than a crossed-out box in the
+  // corner of a chart.
+  assert.equal(groundspeedReadout(null), null);
+  assert.equal(groundspeedReadout(undefined), null);
+  assert.equal(groundspeedReadout({ value: null, provenance: 'FAIL', reason: 'waiting for a second fix' }), null);
+  assert.equal(groundspeedReadout({ value: null, provenance: 'LIVE' }), null, 'LIVE with no number is still no number');
+  assert.equal(groundspeedReadout({ value: Number.NaN, provenance: 'LIVE' }), null);
+});
+
+test('it rounds to a whole knot and keeps the number beside the words', () => {
+  assert.deepEqual(groundspeedReadout(gsField(441.4)), { text: 'GS 441', kt: 441, stale: false });
+  assert.deepEqual(groundspeedReadout(gsField(0)), { text: 'GS 0', kt: 0, stale: false },
+    'stationary is a measurement, not an absence — this desk reads it all day');
+});
+
+test('a STALE speed is still drawn, and says it is stale', () => {
+  // It is the last thing actually measured. Removing it would replace a true
+  // number with nothing; the tone and the spoken description carry the age.
+  const said = groundspeedReadout(gsField(120, 'STALE'));
+  assert.equal(said.kt, 120);
+  assert.equal(said.stale, true);
+});
+
+test('DERIVED is drawn like any other real number', () => {
+  // Differenced from two fixes is still a measurement — see geo.js.
+  assert.equal(groundspeedReadout(gsField(37, 'DERIVED')).stale, false);
+});
+
+test('ONLY THE MAP PAGE PASSES IT, and that is the whole duplication rule', () => {
+  /**
+   * A canvas is invisible to the accessibility gate, so the source is the only
+   * reach there is — the same argument as the airport idents above.
+   *
+   * The PFD's inset has a speed tape inches to its left. A groundspeed in its
+   * corner is the value strip's actual mistake: a number repeated on the page
+   * the reader is already looking at. The MAP page has no speed anywhere, so
+   * there it is new information.
+   */
+  /**
+   * The OPTIONS OBJECT ONLY, not the whole file — the PFD has a groundspeed
+   * readout in its strip and a groundspeed rung on its speed ladder, both of
+   * which are correct and neither of which is this. A file-wide grep would
+   * have failed on those and been "fixed" by loosening it until it measured
+   * nothing.
+   */
+  const callArgs = (f) => {
+    const src = readFileSync(new URL(f, import.meta.url), 'utf8');
+    // The CALL, not the import — each page names its own surface, and the PFD's
+    // is `planSurface`.
+    const at = src.search(/\bdrawPlan\([A-Za-z]/);
+    assert.notEqual(at, -1, `${f} no longer calls drawPlan`);
+    // Balanced parentheses rather than a guess at the closing indentation —
+    // the first version assumed four spaces and reported the RADAR page as
+    // clean when it had simply failed to find the call at all.
+    let depth = 0;
+    let i = src.indexOf('(', at);
+    for (; i < src.length; i += 1) {
+      if (src[i] === '(') depth += 1;
+      else if (src[i] === ')') {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    assert.ok(depth === 0 && i < src.length, `${f}: could not find the end of the drawPlan call`);
+    return src.slice(at, i);
+  };
+  assert.match(callArgs('../public/src/panels/map.js'), /\bgroundspeed\b/, 'the MAP page stopped passing its groundspeed');
+  for (const f of ['../public/src/panels/pfd.js', '../public/src/panels/radar.js']) {
+    assert.doesNotMatch(callArgs(f), /\bgroundspeed\b/, `${f} put a groundspeed on a scope that already has one beside it`);
   }
 });

@@ -416,6 +416,44 @@ export function runwayWidthPx(len) {
   return Math.max(2, Math.min(7, len * 0.13));
 }
 
+/**
+ * THE GROUNDSPEED READOUT IN THE MAP'S TOP CORNER — what it says, or nothing.
+ *
+ * ---------------------------------------------------------------------------
+ * THE RULE IS ABOUT DUPLICATION, NOT ABOUT PLACEMENT
+ * ---------------------------------------------------------------------------
+ *
+ * This readout was refused once, on a reading of the value-strip lesson as
+ * "numbers do not belong in an ND corner". That was too wide. What the strip
+ * did wrong was paint a screen-reader text alternative on the glass — eight
+ * rows of it — and nearly all of it repeated a tape a few inches away.
+ *
+ * The rule that survives is the one `alerts.js` states: a thing earns its glass
+ * only if it is NOT ALREADY VISIBLE on the page the reader is looking at. That
+ * gives different answers per surface, which is the point:
+ *
+ *   PFD inset — the speed tape is inches to the left. Duplication. Refused.
+ *   MAP page  — no speed appears anywhere on it. Drawn.
+ *
+ * The wind two hundred lines below has always been justified this way, in those
+ * words. This readout is the same argument, applied to the same page.
+ *
+ * GS ONLY, NEVER AIRSPEED. On the MAP page the reader is on a desk, where TAS
+ * and CAS correctly FAIL for want of air data, or following, where they FAIL by
+ * design because this device's weather is not the aircraft's. A permanently
+ * crossed-out airspeed in the corner of a chart is furniture.
+ *
+ * Returns null when there is nothing to say, so a FAIL draws nothing at all
+ * rather than a crossed-out box — the same rule the wind arrow follows.
+ */
+export function groundspeedReadout(field) {
+  if (!field || field.provenance === 'FAIL' || !Number.isFinite(field.value)) return null;
+  const kt = Math.round(field.value);
+  // `kt` as well as `text`, so the spoken description does not have to take the
+  // abbreviation back off the front of a string somebody may later reword.
+  return { text: `GS ${kt}`, kt, stale: field.provenance === 'STALE' };
+}
+
 export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, followedHex, fromFix, centreLabel = null, ownAltFt = null, trail = [], runways = [], readiness = null, mode = 'plan', up = null, wind = null, basemap = null, layers = null,
   /**
    * NAME THE AIRPORTS, or leave them as marks.
@@ -427,7 +465,15 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
    * "which field is that". See `airportIdentSize` for why this is the caller's
    * decision and not a size threshold.
    */
-  airportIdents = false }) {
+  airportIdents = false,
+  /**
+   * THE READER'S OWN GROUNDSPEED, and only the MAP page passes it.
+   *
+   * Null everywhere else, which is not an oversight — see `groundspeedReadout`.
+   * Whether this number duplicates something depends on what surrounds the
+   * canvas, and only the caller knows that.
+   */
+  groundspeed = null }) {
   /**
    * TWO GEOMETRIES, ONE RENDERER.
    *
@@ -528,6 +574,8 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   }
 
   /**
+   * --- THE TOP LEFT CORNER: the reader's groundspeed, then the feed's state.
+   *
    * THE FEED'S STATE, ON THE INSTRUMENT.
    *
    * The RADAR page has a chip saying NO CONTACT or AGEING with the retry
@@ -543,11 +591,30 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
    * Suppressed when the feed is healthy and has contacts: a flag that is always
    * lit is furniture, and the aircraft themselves say CONTACT better than a word
    * would.
+   *
+   * THE GROUNDSPEED TAKES THE FIRST LINE AND THE FLAG MOVES DOWN — NEITHER IS
+   * EVER SUPPRESSED FOR THE OTHER. They are unrelated facts: one is how fast
+   * the reader is going, the other is that a feed is not answering, and a
+   * corner that can only hold one of them would hide a failure behind a number
+   * or a number behind a failure. Both are short; the corner holds two lines.
    */
-  if (readiness?.label && readiness.state !== 'contact' && readiness.state !== 'following') {
+  {
     const size = Math.max(9, r * 0.075);
-    const tone = readiness.state === 'ageing' ? tokens.warn ?? tokens['text-2'] : tokens.fail;
-    text(ctx, readiness.label, x + 8, y + size + 6, { size, weight: 700, colour: tone, align: 'left' });
+    /**
+     * NOT GATED ON MAP MODE, deliberately. Whether a speed duplicates something
+     * is a fact about the PAGE, not about which way the scope is pointing — the
+     * MAP page shows no speed anywhere in either mode, and the PFD's inset
+     * shows one in both. The caller passing this at all IS the decision.
+     */
+    const gs = groundspeedReadout(groundspeed);
+    const lines = [];
+    if (gs) lines.push({ label: gs.text, tone: gs.stale ? tokens.stale ?? tokens['text-2'] : tokens.text });
+    if (readiness?.label && readiness.state !== 'contact' && readiness.state !== 'following') {
+      lines.push({ label: readiness.label, tone: readiness.state === 'ageing' ? tokens.warn ?? tokens['text-2'] : tokens.fail });
+    }
+    for (const [i, line] of lines.entries()) {
+      text(ctx, line.label, x + 8, y + size + 6 + i * (size + 3), { size, weight: 700, colour: line.tone, align: 'left' });
+    }
   }
 
   /**
@@ -916,14 +983,20 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   }
 
   /**
-   * --- THE WIND, and it is the one number on this display that is NOT on the
-   * PFD already.
+   * --- THE WIND.
    *
-   * Groundspeed, altitude, vertical speed and heading are all tapes a few
-   * inches to the left; putting them in an ND corner because a real ND has them
-   * there would be the value strip's mistake in a smaller box. The wind aloft
-   * is not anywhere on this page — it lives on ATIS — and it is what makes the
-   * difference between where the nose points and where the aeroplane goes.
+   * Altitude, vertical speed and heading are all tapes a few inches to the left
+   * on the PFD, so they are not repeated in its inset's corner. The wind aloft
+   * is not anywhere on either page — it lives on ATIS — and it is what makes
+   * the difference between where the nose points and where the aeroplane goes.
+   *
+   * THE TEST IS DUPLICATION, NOT PLACEMENT, and this comment used to get that
+   * wrong: it said an ND corner readout would be "the value strip's mistake in
+   * a smaller box", full stop, and that sentence was then cited to refuse the
+   * groundspeed readout on the MAP page — a page with no speed on it anywhere.
+   * The strip's mistake was repeating tapes that were already on screen. See
+   * `groundspeedReadout`, which applies the same test and gets a different
+   * answer per surface, exactly as this block always has.
    *
    * THE ARROW POINTS THE WAY THE WIND IS GOING, which is the opposite of the
    * direction it is REPORTED from: a "240" wind blows from 240 towards 060. A

@@ -1644,4 +1644,92 @@ export const PLANTS = [
     replace: ".page-pfd[data-inset='off'] .pfd-side {\n  flex: 38 1 0;\n  min-width: 14rem;\n}",
     expect: /freed nothing|still on screen|inset/i,
   },
+  {
+    // THE RULE IS ABOUT DUPLICATION, NOT PLACEMENT. The PFD's inset has a speed
+    // tape inches to its left, so a groundspeed in its corner is the value
+    // strip's actual mistake: a number repeated on the page already showing it.
+    name: 'nd: the PFD inset is given a groundspeed to draw',
+    check: 'only the MAP page passes a groundspeed',
+    gate: 'tests',
+    file: 'public/src/panels/pfd.js',
+    find: '      wind: view.wind ?? null,',
+    replace: "      wind: view.wind ?? null,\n      groundspeed: view.fields?.['position.groundspeed'] ?? null,",
+    expect: /ONLY THE MAP PAGE PASSES IT|already has one beside it/i,
+  },
+  {
+    // The reverse: the one page that may show it stops.
+    name: 'nd: the MAP page stops passing its groundspeed',
+    check: 'only the MAP page passes a groundspeed',
+    gate: 'tests',
+    file: 'public/src/panels/map.js',
+    find: '      airportIdents: true,\n      groundspeed,',
+    replace: '      airportIdents: true,',
+    expect: /stopped passing its groundspeed/i,
+  },
+  {
+    // There is no synthetic data path. A FAILED reading draws NOTHING here —
+    // not a zero, not a crossed-out box in the corner of a chart.
+    name: 'nd: the groundspeed readout draws a FAILED reading',
+    check: 'the readout refuses a number nobody measured',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: "  if (!field || field.provenance === 'FAIL' || !Number.isFinite(field.value)) return null;",
+    replace: '  if (!field) return null;',
+    expect: /REFUSES A NUMBER NOBODY MEASURED|says nothing at all when there is no speed/i,
+  },
+  {
+    // Stationary is a measurement. This desk reads zero all day, and a
+    // truthiness guard would replace a true number with an absence.
+    name: 'nd: the groundspeed readout treats zero as no reading',
+    check: 'zero knots is a measurement',
+    gate: 'tests',
+    file: 'public/src/render/gauges/plan.js',
+    find: "  if (!field || field.provenance === 'FAIL' || !Number.isFinite(field.value)) return null;",
+    replace: "  if (!field || field.provenance === 'FAIL' || !field.value) return null;",
+    expect: /stationary is a measurement|rounds to a whole knot/i,
+  },
+  {
+    // A number on the glass that is not in the sentence is a number the reader
+    // using speech does not have.
+    name: 'nd: the map description drops the groundspeed the corner draws',
+    check: 'the spoken description carries the groundspeed',
+    gate: 'tests',
+    file: 'public/src/panels/map.js',
+    find: "  if (gs) parts.push(`groundspeed ${gs.kt} knots${gs.stale ? ', stale' : ''}`);",
+    replace: '',
+    expect: /SPOKEN DESCRIPTION CARRIES THE GROUNDSPEED/i,
+  },
+  {
+    // THE REGRESSION THAT IS SILENT BY NATURE: nearest-N still draws runways,
+    // still looks right, and has simply stopped showing anything beyond 40 nm.
+    name: 'navdata: the airport declutter reverts to nearest-N',
+    check: 'at 80 nm the distant fields actually appear',
+    gate: 'tests',
+    file: 'public/src/data/navdata.js',
+    find: '    if ((r.length_ft ?? 0) < floor) continue;',
+    replace: '',
+    expect: /DISTANT FIELDS ACTUALLY APPEAR|constant density/i,
+  },
+  {
+    // A runway with no recorded length is not a long runway. Defaulting it
+    // through the floor is a synthetic data path wearing a helpful face.
+    name: 'navdata: an unrecorded runway length is assumed to clear the floor',
+    check: 'an unknown length is never assumed long',
+    gate: 'tests',
+    file: 'public/src/data/navdata.js',
+    find: '    if ((r.length_ft ?? 0) < floor) continue;',
+    replace: '    if ((r.length_ft ?? Infinity) < floor) continue;',
+    expect: /never assumed long|no recorded length/i,
+  },
+  {
+    // A scope quietly showing a subset is the defect the floors were added to
+    // fix, so the backstop reports itself.
+    name: 'navdata: the backstop truncates without saying so',
+    check: 'the backstop says what it dropped',
+    gate: 'tests',
+    file: 'public/src/data/navdata.js',
+    find: "    Object.defineProperty(kept, 'dropped', { value: out.length - kept.length, enumerable: false });",
+    replace: '',
+    expect: /BACKSTOP SAYS WHAT IT DROPPED|TRUNCATED PICTURE SAYS SO/i,
+  },
 ];
