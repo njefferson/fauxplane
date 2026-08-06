@@ -318,6 +318,28 @@
               <span class="power-state" id="power-state">OFF</span>
             </button>
               <span class="pfd-controls-sep" aria-hidden="true"></span>
+              <!--
+                THE ND INSET SWITCH.
+
+                A real 747 has the PFD and the ND on TWO SEPARATE DISPLAYS. The
+                small navigation display in this column is not a 747 idea at all
+                — it is a G1000 INSET MAP, which is what a single-screen light
+                aircraft does when it has not got a second screen, and on a
+                G1000 it is a softkey you can switch off.
+
+                It is ON by default because the owner likes having both. The switch
+                exists because the inset takes its width FROM the horizon: the
+                column reserves 14rem, which on a 402px phone leaves the horizon
+                about 160px. Turning it off gives that back.
+
+                A SWITCH RATHER THAN A BUTTON, and it says which state it is in
+                rather than what pressing it would do — the same shape as PWR
+                beside it, for the same reason.
+              -->
+              <button type="button" role="switch" aria-checked="true" id="pfd-inset" class="pfd-level-btn">
+                <span class="pfd-inset-word">ND</span>
+                <span class="pfd-inset-state" id="pfd-inset-state">ON</span>
+              </button>
               <button type="button" id="pfd-level" class="pfd-level-btn">Level the horizon</button>
               <button type="button" id="pfd-level-clear" class="pfd-level-btn pfd-level-clear" hidden>Clear levelling</button>
               <p id="pfd-level-status" class="pfd-level-status" role="status" aria-live="polite"></p>

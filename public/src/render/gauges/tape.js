@@ -17,6 +17,23 @@ import { failFlag, roundRect, staleBand, text } from '../canvas.js';
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 /**
+ * MAY A SELECTED-VALUE BUG BE DRAWN AT ALL?
+ *
+ * Pure and exported because it is the honesty rule on these instruments and a
+ * canvas is invisible to the accessibility gate — so this is the only place the
+ * decision can be checked. A bug marks a target the crew set; drawing one for a
+ * value nobody broadcast would put an invented intention on the instrument
+ * whose whole job is to say where the aircraft is going.
+ *
+ * FAIL and a missing field draw nothing. STALE still draws, in the stale tone,
+ * because a target from a minute ago is still the target — it is the aircraft's
+ * position that went stale, not the crew's decision.
+ */
+export function showsSelected(field) {
+  return !!field && field.provenance !== 'FAIL' && Number.isFinite(field.value);
+}
+
+/**
  * @param side  'left' | 'right' — which way the digit box points.
  * @param step  units between minor ticks
  * @param major every Nth tick is labelled
@@ -24,7 +41,19 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  */
 export function drawVerticalTape(
   ctx,
-  { x, y, w, h, tokens, field, label, unit, step = 10, major = 5, span = 100, side = 'left', format = (v) => String(Math.round(v)) },
+  { x, y, w, h, tokens, field, label, unit, step = 10, major = 5, span = 100, side = 'left', format = (v) => String(Math.round(v)),
+    /**
+     * THE SELECTED VALUE — what the crew dialled in, not what the aircraft is
+     * doing. A real PFD draws it twice: a bug on the tape at that value, and the
+     * number boxed above the tape so it is readable when the bug is off-scale.
+     *
+     * A FIELD, NOT A NUMBER, so a FAIL or a STALE selection is handled like
+     * every other value in this app rather than by the caller remembering to
+     * check. Nothing is drawn unless it is genuinely known — a bug at a value
+     * nobody broadcast would be an invented target on the one instrument whose
+     * whole job is to say where you are going.
+     */
+    selected = null },
 ) {
   ctx.save();
   ctx.fillStyle = tokens.surface;
@@ -90,7 +119,53 @@ export function drawVerticalTape(
       });
     }
   }
+
+  /**
+   * THE SELECTED-VALUE BUG, drawn inside the same clip as the ticks so it slides
+   * off the ends of the tape instead of floating over the heading.
+   *
+   * A HOLLOW BRACKET, not a filled shape. The digit box at the centre is filled
+   * and the track bug on the heading tape is a filled diamond; a third filled
+   * mark would be a shape argument nobody can win. An outline reads as "where
+   * this is going", which is what a target is.
+   */
+  if (showsSelected(selected)) {
+    const sy = cy - (selected.value - value) * pxPerUnit;
+    const s = Math.max(5, w * 0.13);
+    ctx.strokeStyle = selected.provenance === 'STALE' ? tokens.stale : tokens.primary;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (side === 'left') {
+      ctx.moveTo(x + w - 2, sy - s);
+      ctx.lineTo(x + w - 2 - s, sy - s);
+      ctx.lineTo(x + w - 2 - s, sy + s);
+      ctx.lineTo(x + w - 2, sy + s);
+    } else {
+      ctx.moveTo(x + 2, sy - s);
+      ctx.lineTo(x + 2 + s, sy - s);
+      ctx.lineTo(x + 2 + s, sy + s);
+      ctx.lineTo(x + 2, sy + s);
+    }
+    ctx.stroke();
+  }
   ctx.restore();
+
+  /**
+   * AND THE SELECTED VALUE AS A NUMBER, above the tape.
+   *
+   * The bug alone is useless the moment the target is further away than half the
+   * tape's span — which on the altitude tape is 600 ft, so a climb to a cleared
+   * level is off-scale for most of it. A real PFD boxes the number for exactly
+   * that reason, and it is the part a crew reads.
+   */
+  if (showsSelected(selected)) {
+    const size = Math.max(10, Math.min(15, w * 0.22));
+    text(ctx, format(selected.value), x + w / 2, y + labelSize + size * 1.1, {
+      size,
+      weight: 700,
+      colour: selected.provenance === 'STALE' ? tokens.stale : tokens.primary,
+    });
+  }
 
   // The digit box: the current value, always at the centre line, which is what
   // makes a tape readable at a glance.
@@ -133,7 +208,10 @@ export function drawVerticalTape(
  * and no heading at all, so the tape shows the track — and it must say TRK
  * rather than silently presenting one as the other.
  */
-export function drawHeadingTape(ctx, { x, y, w, h, tokens, heading, track, label = 'HDG', spanDeg = 90 }) {
+export function drawHeadingTape(ctx, { x, y, w, h, tokens, heading, track, label = 'HDG', spanDeg = 90,
+  /** What the crew dialled in. Same contract as the vertical tape's — a field,
+   *  so an absent or stale selection needs no special case at the call site. */
+  selected = null }) {
   ctx.save();
   ctx.fillStyle = tokens.surface;
   roundRect(ctx, x, y, w, h, 6);
@@ -208,6 +286,34 @@ export function drawHeadingTape(ctx, { x, y, w, h, tokens, heading, track, label
     ctx.lineTo(tx - s, y + h * 0.55);
     ctx.closePath();
     ctx.fill();
+  }
+
+  /**
+   * THE SELECTED-HEADING BUG, and it is a DIFFERENT SHAPE from the track bug on
+   * purpose.
+   *
+   * Track is a filled diamond a few lines above. Two marks on one scale that
+   * mean different things must be distinguishable by shape alone — a reader who
+   * cannot separate colours still has to be able to tell "where I am going" from
+   * "where I was told to go". This is the hollow bracket the vertical tape uses
+   * for the same quantity, so the two tapes agree with each other.
+   *
+   * It is CLAMPED to the ends like the track bug: a target ninety degrees away
+   * is off the visible arc, and a bug that vanished would read as no target at
+   * all rather than as one you have to turn a long way for.
+   */
+  if (showsSelected(selected)) {
+    const delta = ((selected.value - value + 540) % 360) - 180;
+    const sx = clamp(cx + delta * pxPerDeg, x + 8, x + w - 8);
+    ctx.strokeStyle = selected.provenance === 'STALE' ? tokens.stale : tokens.primary;
+    ctx.lineWidth = 2;
+    const s = h * 0.15;
+    ctx.beginPath();
+    ctx.moveTo(sx - s, y + h * 0.55 + s);
+    ctx.lineTo(sx - s, y + h * 0.55 - s);
+    ctx.lineTo(sx + s, y + h * 0.55 - s);
+    ctx.lineTo(sx + s, y + h * 0.55 + s);
+    ctx.stroke();
   }
   ctx.restore();
 

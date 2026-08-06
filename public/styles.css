@@ -522,6 +522,29 @@ body {
 }
 
 /*
+ * THE INSET SWITCHED OFF — the horizon gets the width back.
+ *
+ * The ND column reserves `min-width: 14rem`, which on a 402px phone is 224px of
+ * it, leaving the horizon about 160. That is the squeeze: the inset is not
+ * beside the horizon, it is taken OUT of it.
+ *
+ * Both the floor and the flex share have to go, not just the visibility — a
+ * hidden child inside a column that still claims 38% and 14rem gives back
+ * nothing at all. EICAS stays: it is the crew alerting list, it is not the
+ * inset, and it is hidden on its own terms when there is nothing to say. With
+ * both gone the column has no content and collapses to zero, which is the state
+ * the switch is for.
+ */
+.page-pfd[data-inset='off'] .pfd-plan-row {
+  display: none;
+}
+
+.page-pfd[data-inset='off'] .pfd-side {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/*
  * WHERE THE RANGE BUTTONS GO, AND IT DEPENDS ON WHICH AXIS IS SCARCE.
  *
  * Measured both ways, as the diameter of the
@@ -929,6 +952,21 @@ body {
     flex: 0 0 auto;
     height: 60vh;
     min-height: 10rem;
+  }
+  /*
+   * WITH THE INSET OFF THE HORIZON TAKES SOME OF THE ROOM BACK, and 68vh is
+   * measured rather than chosen: at 402x754 the PFD page is 952px tall at both
+   * 60vh and 68vh, because something below absorbs the difference, and only
+   * past 68 does the page start growing again. So this is 61px of extra horizon
+   * for nothing.
+   *
+   * Not the whole 45vh the inset gave up — the page still scrolls by about 200
+   * either way, and a horizon that filled the screen would push the controls
+   * and the values off the bottom. The switch's real win here is the scroll:
+   * the page goes from 1567px to 952.
+   */
+  .page-pfd[data-inset='off'] .pfd-canvas {
+    height: 68vh;
   }
   .pfd-plan-row {
     flex: 0 0 auto;

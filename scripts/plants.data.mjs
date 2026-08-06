@@ -1570,4 +1570,78 @@ export const PLANTS = [
     replace: '  min-height: 0;',
     expect: /scrolls as a whole|will not scroll|clipped away|continues past the bottom/,
   },
+  {
+    // A real PFD's left tape is AIRSPEED and never groundspeed — groundspeed is
+    // a readout in the ND corner. Hard-coding GS here puts a real number in the
+    // position a pilot reads as airspeed: honest about what, wrong about where.
+    // RE-AIMED. The first version broke the call site while the unit tests only
+    // exercised the helper, so the wiring was unverified and the plant stayed
+    // green — the helper was tested, its USE was not. It now breaks the shared
+    // ladder, which both the tape and the spoken description read, and the
+    // accessibility gate catches the half a canvas cannot hide.
+    name: 'pfd: the speed ladder goes back to always saying GS',
+    check: 'the speed tape names which speed it is',
+    gate: 'tests',
+    file: 'public/src/panels/pfd.js',
+    find: "    ['CAS', fields['speed.cas']],\n    ['TAS', fields['speed.tas']],",
+    replace: '',
+    expect: /LADDER REALLY CONTAINS THE AIRSPEEDS|CAS|TAS/i,
+  },
+  {
+    // The ladder's fallback must be returned even when it too has failed, so the
+    // tape draws its own cross under an honest heading. Returning nothing leaves
+    // the caller with no label at all.
+    name: 'pfd: a tape with everything failed returns no rung',
+    check: 'the tape crosses itself out under an honest heading',
+    gate: 'tests',
+    file: 'public/src/panels/pfd.js',
+    find: '  return ladder.find(([, f]) => f && f.provenance !== \'FAIL\') ?? ladder[ladder.length - 1];',
+    replace: '  return ladder.find(([, f]) => f && f.provenance !== \'FAIL\') ?? [];',
+    expect: /last rung|honest heading|FAIL|undefined/i,
+  },
+  {
+    // THE HONESTY RULE ON THESE INSTRUMENTS. A bug marks a target the crew set;
+    // drawing one for a value nobody broadcast puts an invented intention on the
+    // display whose job is to say where the aircraft is going.
+    name: 'pfd: a selected-value bug is drawn for a FAILED field',
+    check: 'a bug is drawn only for a target somebody set',
+    gate: 'tests',
+    file: 'public/src/render/gauges/tape.js',
+    find: "  return !!field && field.provenance !== 'FAIL' && Number.isFinite(field.value);",
+    replace: '  return !!field;',
+    expect: /target somebody actually set|showsSelected|not broadcasting|false !== true/i,
+  },
+  {
+    // Zero is a real selected value — a heading bug on 000 is north, not an
+    // absent target. A truthiness guard silently loses it.
+    name: 'pfd: the selected bug guard tests truthiness instead of finiteness',
+    check: 'zero is a real selected value',
+    gate: 'tests',
+    file: 'public/src/render/gauges/tape.js',
+    find: "  return !!field && field.provenance !== 'FAIL' && Number.isFinite(field.value);",
+    replace: "  return !!field && field.provenance !== 'FAIL' && !!field.value;",
+    expect: /zero is a real selected value|true !== false/i,
+  },
+  {
+    // A preference that fails closed silently removes an instrument from someone
+    // who never touched the switch.
+    name: 'pfd: the ND inset defaults to OFF when nothing is stored',
+    check: 'the inset defaults on',
+    gate: 'tests',
+    file: 'public/src/panels/pfd.js',
+    find: "    return storage?.getItem(INSET_KEY) !== 'off';",
+    replace: "    return storage?.getItem(INSET_KEY) === 'on';",
+    expect: /DEFAULTS ON|nothing stored|true !== false/i,
+  },
+  {
+    // The switch has to actually take the instrument away and give the room to
+    // somebody. Hiding the row while the column keeps its 14rem floor frees
+    // nothing at all.
+    name: 'pfd: the inset switch hides the ND but frees no space',
+    check: 'the inset switch buys something',
+    file: 'public/styles.css',
+    find: ".page-pfd[data-inset='off'] .pfd-side {\n  flex: 0 1 auto;\n  min-width: 0;\n}",
+    replace: ".page-pfd[data-inset='off'] .pfd-side {\n  flex: 38 1 0;\n  min-width: 14rem;\n}",
+    expect: /freed nothing|still on screen|inset/i,
+  },
 ];

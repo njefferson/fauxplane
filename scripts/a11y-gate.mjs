@@ -1759,6 +1759,138 @@ async function checkChromeLayout(browser, base) {
 }
 
 /**
+ * THE SPOKEN DESCRIPTION NAMES THE SPEED THE TAPE IS SHOWING.
+ *
+ * The left tape is a labelled SELECTION — CAS, then TAS, then GS — because a
+ * real PFD's speed tape is airspeed and never groundspeed, and this app cannot
+ * always compute one. The canvas's text alternative is the whole instrument for
+ * a reader who cannot see it, so it has to name the SAME quantity the glass
+ * does. Both were hard-coded to groundspeed; fixing only the drawing would have
+ * left the panel telling two people two different things.
+ *
+ * This is also the only reach there is: the tape's heading is painted on a
+ * canvas, and a canvas is invisible to every other check here.
+ */
+async function checkSpeedTapeName(browser, base) {
+  const where = 'speed-tape';
+  const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });
+  await seenIntro(context);
+  const page = await context.newPage();
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.getElementById('power-btn')?.click());
+  await page.waitForTimeout(1400);
+
+  const alt = await page.evaluate(() => document.querySelector('.pfd-canvas')?.getAttribute('aria-label') ?? '');
+  if (!alt) {
+    fail(where, 'the primary flight display carries no text alternative');
+  } else if (!/(Groundspeed|True airspeed|Calibrated airspeed)/.test(alt)) {
+    fail(where, `the flight display does not name which speed it is showing: "${alt.slice(0, 120)}"`);
+  } else if (/Groundspeed/.test(alt) && /True airspeed|Calibrated airspeed/.test(alt)) {
+    fail(where, 'the text alternative names two different speeds at once — the tape shows one');
+  }
+  await context.close();
+}
+
+/**
+ * THE ND INSET SWITCH ACTUALLY TAKES THE INSTRUMENT AWAY, AND REMEMBERS.
+ *
+ * A real 747 has the PFD and the ND on two separate displays; the small
+ * navigation display in the PFD's column is a G1000-style inset, and on a G1000
+ * it is a softkey you can turn off. The reason it needs one here is measured:
+ * that column reserves 14rem, which on a 402px phone is 224 of them.
+ *
+ * BROUGHT CONDITIONS, because the switch's whole effect is a state nothing else
+ * in the sweep ever sets. And an OUTCOME check rather than a property one — not
+ * "is the class applied" but "is the instrument gone and did the page get its
+ * room back", which is the thing that would still be true after a redesign.
+ */
+async function checkInsetSwitch(browser, base) {
+  /**
+   * BOTH LAYOUTS, because they are genuinely different arrangements and the
+   * switch has to work in each. In portrait `.pfd-row` is dissolved with
+   * `display: contents` and the ND is stacked BELOW the horizon, so the space it
+   * gives back is scroll; side by side it is a column beside the horizon with a
+   * 14rem floor, and the space it gives back is width. A check that only ever
+   * visited one of them left the other's rule unexercised — a plant on it stayed
+   * green and the sweep said so.
+   */
+  for (const vp of [
+    { name: 'portrait', width: 402, height: 754 },
+    { name: 'side-by-side', width: 1024, height: 768 },
+  ]) {
+    await checkInsetSwitchAt(browser, base, vp);
+  }
+}
+
+async function checkInsetSwitchAt(browser, base, vp) {
+  const where = `nd-inset/${vp.name}`;
+  const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, permissions: [] });
+  await seenIntro(context);
+  const page = await context.newPage();
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+
+  const read = () =>
+    page.evaluate(() => {
+      const btn = document.getElementById('pfd-inset');
+      const plan = document.querySelector('.pfd-plan');
+      const canvas = document.querySelector('.pfd-canvas');
+      if (!btn || !plan || !canvas) return { missing: true };
+      const p = plan.getBoundingClientRect();
+      return {
+        checked: btn.getAttribute('aria-checked'),
+        name: (btn.textContent ?? '').replace(/\s+/g, ' ').trim(),
+        planVisible: p.width > 0 && p.height > 0,
+        horizonH: Math.round(canvas.getBoundingClientRect().height),
+        horizonW: Math.round(canvas.getBoundingClientRect().width),
+        docH: document.documentElement.scrollHeight,
+      };
+    });
+
+  const on = await read();
+  if (on.missing) {
+    fail(where, 'the PFD has no ND inset switch');
+    await context.close();
+    return;
+  }
+  if (on.checked !== 'true') fail(where, `the inset switch starts at aria-checked="${on.checked}" — it must default ON`);
+  if (!on.planVisible) fail(where, 'the navigation display is not drawn with the inset switched on');
+
+  await page.evaluate(() => document.getElementById('pfd-inset').click());
+  await page.waitForTimeout(400);
+  const off = await read();
+
+  if (off.checked !== 'false') fail(where, 'pressing the inset switch did not change its state');
+  if (off.planVisible) {
+    fail(where, 'the inset switch says OFF and the navigation display is still on screen');
+  }
+  if (off.name === on.name) {
+    fail(where, `the switch reads "${off.name}" in both states — it must say which state it is in`);
+  }
+  /**
+   * IT HAS TO BUY SOMETHING. A switch that hides the instrument and gives the
+   * space to nobody has not solved the complaint it exists for.
+   */
+  if (!(off.docH < on.docH || off.horizonH > on.horizonH || off.horizonW > on.horizonW)) {
+    fail(
+      where,
+      `turning the inset off freed nothing: the page is ${off.docH}px either way and the horizon stayed `
+        + `${off.horizonW}x${off.horizonH}`,
+    );
+  }
+
+  // AND IT IS REMEMBERED. A display preference that resets on every reload is a
+  // control the reader has to keep pressing.
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  const after = await read();
+  if (after.checked !== 'false' || after.planVisible) {
+    fail(where, 'the inset switch forgot its setting across a reload');
+  }
+  await context.close();
+}
+
+/**
  * AT 200% TEXT THE RADAR SCOPE IS ON SCREEN.
  *
  * ---------------------------------------------------------------------------
@@ -2624,6 +2756,8 @@ async function main() {
     // built for only has one of them.
     await checkChromeLayout(browser, base);
     await checkScopeOnScreen(browser, base);
+    await checkInsetSwitch(browser, base);
+    await checkSpeedTapeName(browser, base);
     await checkHeardList(browser, base);
     await checkEicas(browser, base);
     await checkNdMode(browser, base);

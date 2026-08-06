@@ -26,6 +26,70 @@ import { createReadout, describeField, el } from '../render/dom.js';
 
 const withAge = (field) => (field ? { ...field, ageText: formatAge(field.ageMs) } : field);
 
+/**
+ * WHICH OF SEVERAL GENUINELY DIFFERENT QUANTITIES IS ON A TAPE.
+ *
+ * Both moving tapes make the same choice: take the best one that is actually
+ * available, and put its NAME on the tape's own heading. It is a selection shown
+ * on its label, never a substitution — a pilot must never have to guess which of
+ * three they are reading.
+ *
+ * Pure and exported because a canvas is invisible to the accessibility gate, so
+ * this is the only place the choice can be checked. The last entry is the
+ * fallback and is returned even when it too has failed, so the tape draws its
+ * own cross under an honest heading rather than nothing at all.
+ */
+/**
+ * The speed ladder, in ONE place — because the tape and the canvas's text
+ * alternative both have to name the same quantity.
+ *
+ * They did not. The tape was hard-coded to groundspeed and so was the spoken
+ * description, so fixing only the drawing would have left a reader who cannot
+ * see the canvas being told "Groundspeed" while the glass said CAS. The two
+ * descriptions of one instrument have to come from one decision.
+ */
+export function speedLadderFor(fields) {
+  return [
+    ['CAS', fields['speed.cas']],
+    ['TAS', fields['speed.tas']],
+    ['GS', fields['position.groundspeed']],
+  ];
+}
+
+export function selectTape(ladder) {
+  return ladder.find(([, f]) => f && f.provenance !== 'FAIL') ?? ladder[ladder.length - 1];
+}
+
+/**
+ * THE ND INSET PREFERENCE.
+ *
+ * Injectable storage and a pure default, exactly like `loadSaved`/`saveMount`
+ * in setup.js — so both halves are testable without a browser, and a private
+ * window with no storage at all is a normal starting state rather than an error.
+ *
+ * DEFAULT ON. Anything unreadable, corrupt, or simply absent means ON: the
+ * inset is what the panel has always had, and a preference that fails closed
+ * would silently remove an instrument.
+ */
+const INSET_KEY = 'fauxplane.nd-inset';
+
+export function loadInset(storage = globalThis.localStorage) {
+  try {
+    return storage?.getItem(INSET_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+export function saveInset(on, storage = globalThis.localStorage) {
+  try {
+    storage?.setItem(INSET_KEY, on ? 'on' : 'off');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function createPfd({
   canvas,
   surface,
@@ -158,14 +222,38 @@ export function createPfd({
       mount: mountOffset(),
     });
 
+    /**
+     * WHICH SPEED IS ON THE TAPE IS A REAL DECISION TOO, and it used to be
+     * decided once, in the source, as groundspeed.
+     *
+     * A REAL PFD'S LEFT TAPE IS AIRSPEED AND NEVER GROUNDSPEED. Groundspeed is a
+     * small readout in the navigation display's corner. Hard-coding GS here put
+     * a real number in the position a pilot reads as airspeed — the panel was
+     * honest about WHAT it was showing and wrong about WHERE.
+     *
+     * The fix is the ladder the altitude tape below already uses, for the same
+     * reason and in the same words: a SELECTION shown on the tape's own heading,
+     * never a substitution. Best first:
+     *
+     *   CAS  calibrated airspeed — what an airspeed indicator shows, once
+     *        pressure altitude and temperature are known
+     *   TAS  true airspeed — needs winds aloft where the aircraft actually is
+     *   GS   groundspeed — the GPS reading, which is what a desk has
+     *
+     * On a stationary desk it lands on GS and says GS. While following an
+     * aircraft, CAS and TAS are correctly FAIL (this device's weather is not the
+     * aircraft's), so it lands on GS there too — and the heading says so rather
+     * than letting the position imply airspeed.
+     */
+    const [speedLabel, speedField] = selectTape(speedLadderFor(fields));
     drawVerticalTape(ctxOf(surface), {
       x: pad,
       y: pad,
       w: tapeW,
       h: bodyH - pad,
       tokens: t,
-      field: withAge(fields['position.groundspeed']),
-      label: 'GS',
+      field: withAge(speedField),
+      label: speedLabel,
       unit: 'kt',
       step: 10,
       major: 2,
@@ -188,7 +276,7 @@ export function createPfd({
       ['MSL', fields['altitude.msl']],
       ['GPS ALT', fields['position.altitudeGeometric']],
     ];
-    const [altLabel, altField] = ladder.find(([, f]) => f && f.provenance !== 'FAIL') ?? ladder[ladder.length - 1];
+    const [altLabel, altField] = selectTape(ladder);
     drawVerticalTape(ctxOf(surface), {
       x: W - pad - tapeW - vsiW - pad,
       y: pad,
@@ -203,6 +291,12 @@ export function createPfd({
       span: 1200,
       side: 'right',
       format: (v) => String(Math.round(v)),
+      // WHAT THE CREW DIALLED IN. Broadcast by many aircraft and, until now,
+      // shown only as a text row beside the panel — which is where a value goes
+      // when nobody has decided what it MEANS. On a real PFD it is a bug on this
+      // tape and a number above it, because the gap between where you are and
+      // where you were cleared to is the thing being read.
+      selected: withAge(fields['nav.selectedAltitude']),
     });
 
     drawVsi(ctxOf(surface), {
@@ -237,6 +331,10 @@ export function createPfd({
       heading: withAge(dirField),
       track: withAge(fields['position.track']),
       label: dirLabel,
+      // The heading bug, for the same reason the altitude bug exists: the crew's
+      // intent belongs on the instrument that shows the quantity, not in a list
+      // beside it.
+      selected: withAge(fields['nav.selectedHeading']),
     });
 
     const g = fields['motion.gLoad'];
@@ -288,7 +386,15 @@ export function createPfd({
       describeField('Pitch', fields['attitude.pitch'], { unit: 'degrees', format: (v) => v.toFixed(1) }),
       describeField('Roll', fields['attitude.roll'], { unit: 'degrees', format: (v) => v.toFixed(1) }),
       describeField('Heading', fields['attitude.heading'], { unit: 'degrees magnetic', format: (v) => String(Math.round(v)) }),
-      describeField('Groundspeed', fields['position.groundspeed'], { unit: 'knots', format: (v) => String(Math.round(v)) }),
+      (() => {
+        // THE SAME SELECTION THE TAPE MADE. A reader who cannot see the canvas
+        // gets this sentence instead of the instrument, so naming a different
+        // quantity from the one drawn would be the panel telling two people two
+        // different things.
+        const [label, field] = selectTape(speedLadderFor(fields));
+        const spoken = { CAS: 'Calibrated airspeed', TAS: 'True airspeed', GS: 'Groundspeed' }[label] ?? label;
+        return describeField(spoken, field, { unit: 'knots', format: (v) => String(Math.round(v)) });
+      })(),
       describeField('GPS altitude', fields['position.altitudeGeometric'], { unit: 'feet', format: (v) => String(Math.round(v)) }),
       describeField('Vertical speed', fields['vsi.rate'], { unit: 'feet per minute', format: (v) => String(Math.round(v)) }),
       describeField('Load factor', fields['motion.gLoad'], { unit: 'g', format: (v) => v.toFixed(2) }),

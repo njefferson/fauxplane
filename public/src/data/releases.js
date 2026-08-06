@@ -120,6 +120,27 @@ export const STANDING = [
  */
 export const RELEASES = [
   {
+    version: '1.38.0',
+    date: '2026-08-06',
+    headline: 'The navigation display can be switched off, the speed tape says which speed it is, and the autopilot targets are on the instruments.',
+    changed: [
+      'THE NAVIGATION DISPLAY BESIDE THE HORIZON IS NOW A SWITCH, marked ND, next to PWR. A real 747 has the flight display and the navigation display on two separate screens; the small one tucked in beside the horizon is what a single-screen light aircraft does instead. Leave it on and nothing changes. Turn it off and the flight display page stops being two instruments you scroll between \u2014 on a phone the page goes from about twice the height of the screen to a little over one, and the horizon itself gets taller.',
+      'THE SPEED TAPE NOW SAYS WHICH SPEED IT IS SHOWING. It always showed groundspeed, and a real aeroplane never puts groundspeed there \u2014 that position is airspeed, and a pilot reads it as airspeed. It now works exactly like the altitude tape beside it: it takes the best speed actually available and puts its name at the top. Calibrated airspeed if the weather and the altimeter allow it, true airspeed if the winds do, and groundspeed otherwise \u2014 which on a desk is what you have, and it now says so.',
+      'The spoken description of the panel names the same speed the tape does. Both were fixed to groundspeed, so correcting only the picture would have left anyone using the panel by voice being told something different from what is on the glass.',
+      'WHAT THE CREW HAS DIALLED IN IS ON THE INSTRUMENTS NOW, not in a list beside them. When you follow a flight that broadcasts them, the altitude they are cleared to appears as a marker on the altitude tape with the number above it, and the heading they have selected appears as a marker on the compass. It is a hollow bracket so it can never be confused with the solid diamond that marks your track.',
+      'A marker is only ever drawn for a target an aircraft actually broadcast. One drawn from a value nobody sent would be an invented intention on the display whose whole job is to say where the aeroplane is going.',
+    ],
+    broken: [
+      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out \u2014 those appear in their own group saying so, rather than being dropped.',
+      '"Over your area" is generous on purpose. It uses the rectangle an advisory\u2019s area fits inside rather than its exact outline, so a warning that passes close by is included.',
+      'The reports and advisories are still fixed to Northern California wherever you are, so away from home they are somebody else\u2019s weather. That is next.',
+      'At 80 miles the map still shows only the nearest few dozen airfields, so widening the range mostly just makes them smaller. That is next too.',
+      'At the largest text size the tab strip is still three rows, so the radar page opens with the top of the scope on screen rather than the whole of it.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '1.37.3',
     date: '2026-08-06',
     headline: 'The airframe tiles line up, the airports on the map have names, and the (i) panel says when there is more to read.',

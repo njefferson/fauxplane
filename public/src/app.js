@@ -49,7 +49,7 @@ import { loadModel, magneticField } from './data/wmm.js';
 
 import { createSurface } from './render/canvas.js';
 import { createAnnouncer, el } from './render/dom.js';
-import { createPfd } from './panels/pfd.js';
+import { createPfd, loadInset, saveInset } from './panels/pfd.js';
 import { createAtis } from './panels/atis.js';
 import { createBite } from './panels/bite.js';
 import { createMap } from './panels/map.js';
@@ -419,6 +419,33 @@ async function boot() {
   const levelBtn = $('pfd-level');
   const levelClearBtn = $('pfd-level-clear');
   const levelStatus = $('pfd-level-status');
+
+  /**
+   * THE ND INSET SWITCH. Sets a state on the PFD page rather than styling the
+   * column directly, so the whole layout consequence lives in one CSS rule that
+   * can be read in one place — see `.page-pfd[data-inset='off']`.
+   *
+   * The canvas is re-measured after the toggle because the horizon's box has
+   * just changed size and `createSurface` only re-reads on its own observer,
+   * which fires a frame later; drawing once more here means the reader never
+   * sees a frame of the old geometry stretched into the new box.
+   */
+  const insetBtn = $('pfd-inset');
+  const insetState = $('pfd-inset-state');
+  const pfdPage = document.getElementById('page-pfd');
+  let insetOn = loadInset();
+  const syncInset = () => {
+    pfdPage.dataset.inset = insetOn ? 'on' : 'off';
+    insetBtn.setAttribute('aria-checked', insetOn ? 'true' : 'false');
+    insetState.textContent = insetOn ? 'ON' : 'OFF';
+  };
+  insetBtn.addEventListener('click', () => {
+    insetOn = !insetOn;
+    saveInset(insetOn);
+    syncInset();
+    announcer.say(insetOn ? 'Navigation display shown.' : 'Navigation display hidden. The horizon has the full width.');
+  });
+  syncInset();
 
   /**
    * THE PFD'S LEVELLING LINE, from setup's single description.
