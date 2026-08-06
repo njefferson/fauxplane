@@ -113,6 +113,45 @@ So `checkScopeOnScreen` measures the OUTCOME — is the instrument on the glass 
 rather than any of the properties that add up to it, and a plant putting
 `--target` back on a relative unit was watched going red about exactly that.
 
+### Fixing a defect DISARMS the plants that named it
+
+The whole sweep on the 1.37.1 tree came back 99/102, and two of the three misses
+were caused by 1.37.1's own fix. Retiring the 200%-text entry from `STANDING`
+left two plants aimed at text that no longer meant anything:
+
+- **One reported itself stale** — its `find` named the registry entry's `why`,
+  which the release deleted, so it matched nothing. A `find` that matches nothing
+  breaks nothing, so no gate has anything to go red about; only the sweep says so.
+- **One went GREEN, which is worse.** Its `find` still matched — the same
+  sentence survives in OLDER releases' notes — but only the CURRENT release is
+  checked against the registry, so deleting a copy from a past entry produces no
+  fault at all. It passed while protecting nothing.
+
+**The moment you are least likely to look at a plant is the moment you fix the
+thing it guards**, because a fix feels like the end of that defect's story rather
+than the start of its plants going stale. Both were re-aimed at
+`advisories-unplaceable`, which is still standing, and each was watched going red.
+
+**The first re-aim attempt failed a third way, and it is worth writing down.**
+The replacement `find` was hand-typed from the release note, which turned that
+line's `\u2014` escape into a real em dash — so the string looked identical in a
+diff and matched nothing. Plant targets are now built from the file's own bytes
+rather than retyped. A `find` string is not prose; it is a byte sequence, and a
+character that RENDERS the same is not the same.
+
+**Five plants this session turned out to be protecting nothing**, each for a
+different reason, and the list is the useful part:
+
+- it prefixed a line instead of removing it, so the entry was still there
+- it broke a generator that no gate runs
+- it deleted an ident the airport fallback resolved anyway
+- it named a defect a later release fixed
+- it named a line a later release grew into a branch
+
+Only the first is the classic "plant too weak". The rest are aiming failures, and
+every one of them was invisible until a WHOLE sweep — which is the argument for
+running it whole rather than `--changed`, restated with numbers.
+
 **The first plant for it stayed GREEN and the sweep said so.** It prefixed the
 line rather than removing it, so the entry was still in the list and still
 matched — a plant that does not produce the defect proves nothing. Same shape as
