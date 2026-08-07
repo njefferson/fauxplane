@@ -1959,4 +1959,29 @@ export const PLANTS = [
     replace: '      ...broadcastSpread(0),',
     expect: /every row shows the same badge|not reading it/i,
   },
+  {
+    /**
+     * SC 2.5.3 ITSELF, WHICH NOTHING GUARDED UNTIL NOW.
+     *
+     * `checkNames` has enforced label-in-name across every page since the gate
+     * was written, and no plant had ever aimed at it — so the rule was
+     * unverified evidence, and 2.1.0 then EDITED it (from `textContent` to
+     * `innerText`, because the old reading welded a composite button's boxes
+     * into a string appearing nowhere on screen). Changing an unguarded check
+     * is how a gate quietly stops checking, and a whole sweep could not have
+     * caught it: a sweep only reports plants that exist.
+     *
+     * The target is the map's GND switch, whose `aria-label` opens with the
+     * word on the button precisely so voice control has an answer. Dropping
+     * that prefix is hub LESSONS 29 in its original costume — a name that
+     * merely MENTIONS the abbreviation somewhere passes by accident — and it
+     * cost a sibling app a release.
+     */
+    name: 'a11y: a control’s name stops containing the word printed on it',
+    check: 'SC 2.5.3, label in name',
+    file: 'public/src/panels/map.js',
+    find: "  { id: 'basemap', label: 'GND', name: 'GND — ground: coastline, lakes, rivers and built-up areas' },",
+    replace: "  { id: 'basemap', label: 'GND', name: 'Ground: coastline, lakes, rivers and built-up areas' },",
+    expect: /SC 2\.5\.3: control shows "GND"/,
+  },
 ];
