@@ -877,10 +877,17 @@ export const PLANTS = [
      *
      * It aged out at the exact moment the release notes were rewritten, which
      * is 66's other half — nobody re-reads the harness while writing a note.
+     * WHAT ACTUALLY HAS TO BE TRUE is that the FIRST match lands inside the
+     * NEWEST release entry, because the harness replaces the first occurrence
+     * and only the newest entry is checked against the registry. A `broken`
+     * line stops being unique the moment the next release carries the defect
+     * forward — which happened one release later — and that is fine, as long as
+     * the newest entry is first in `RELEASES`, which it is.
+     *
      * RE-AIM THIS IN THE SAME COMMIT as any release that edits `broken`, take
      * the bytes from the file rather than retyping them (the old target was a
      * `\u2014` escape and the current notes carry a real em dash, which look
-     * identical in a diff), and check the line appears ONCE.
+     * identical in a diff), and check where the first match lands.
      */
     find: "      'The bundled ground map and airfields cover Northern California only, so outside it the scope is bare. Everything driven by a feed \u2014 weather, reports, aircraft, the instruments \u2014 works wherever you are.',\n",
     replace: "",
@@ -1910,8 +1917,13 @@ export const PLANTS = [
     name: 'radar: the list height cap is locked after the first measurement',
     check: 'the list still ends in a gap after the rows change',
     file: 'public/src/panels/radar.js',
-    find: '    delete list.dataset.capped;\n    requestAnimationFrame(measureList);',
-    replace: '    requestAnimationFrame(measureList);',
+    // AIMED AT THE GUARD, not at one of the two invalidation paths. The first
+    // version removed `renderList`'s `delete` and the ResizeObserver's covered
+    // for it, so the gate stayed green — a plant that a redundant path repairs
+    // proves nothing about either. This restores the original defect exactly:
+    // computed once, ever.
+    find: '    if (!list.dataset.capped) {',
+    replace: '    if (!list.dataset.capped && !list.style.maxHeight) {',
     expect: /cut through the middle|was not re-derived/i,
   },
   {
@@ -1940,8 +1952,11 @@ export const PLANTS = [
     name: 'gate: the aircraft fixture goes back to nineteen identical broadcasts',
     check: 'the fixture can produce the condition it is measuring',
     file: 'scripts/a11y-gate.mjs',
-    find: '      groundspeedKt: i % 5 === 0 ? null : 120 + i * 17,',
-    replace: '      groundspeedKt: 400,',
+    // The spread is behind ONE call so this can neutralise all of it. Planting
+    // a single field left the other four varying, the badges still differed,
+    // and the gate stayed green — proving nothing about the fixture at all.
+    find: '      ...broadcastSpread(i),',
+    replace: '      ...broadcastSpread(0),',
     expect: /every row shows the same badge|not reading it/i,
   },
 ];

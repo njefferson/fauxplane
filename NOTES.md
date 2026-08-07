@@ -101,6 +101,35 @@ promote (hub LESSONS §51), and one existing plant aged out because this release
 edited the line it named — re-aimed in the same commit and watched going red
 again, per §66.
 
+### AND THE FIRST TWO PLANTS FOR THE NEW CHECKS BOTH CAME BACK UNPROVEN
+
+Both of the checks written for this release were unfailable on their first
+attempt, and both for the reason the release itself is about. This is the third
+time in one session, so it is recorded rather than fixed quietly.
+
+- **The post-filter slicing check pressed the FIRST unselected airframe tile**,
+  which was alphabetically A320 — two aircraft. A two-row list is shorter than
+  its own cap, so nothing is below the fold and nothing can be sliced. It now
+  presses the LARGEST group, one type is deliberately dominant in the fixture,
+  and there is a guard that FAILS when the filtered list is under four rows —
+  because a fixture can stop being dominant again and the check must say so
+  rather than pass.
+- **The fixture plant changed ONE of five varying fields.** The other four went
+  on varying, the badges still differed, and the gate stayed green — proving
+  nothing about whether the fixture is load-bearing. The whole spread is behind
+  one `broadcastSpread(i)` call now, so a single edit can neutralise all of it.
+
+A third: the plant for the locked height cap removed `renderList`'s
+invalidation, and the ResizeObserver's covered for it. **A plant a redundant
+path repairs proves nothing about either path**, so it aims at the guard in
+`measureList` instead, which restores the original defect exactly — computed
+once, ever.
+
+**The pattern across all three: a plant is only evidence if it can reach the
+condition, and "I wrote the check, so I know what breaks it" is exactly the
+belief the harness exists to replace.** Each was found by the sweep reporting
+UNPROVEN, and by nothing else.
+
 ---
 
 ## Previously staged — 2.0.0, the region stops being Northern California, 2026-08-06

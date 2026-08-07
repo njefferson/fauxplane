@@ -850,7 +850,42 @@ async function checkHeardList(browser, base) {
    * collation would hoist C25B above C150, and alphabetical is what the reader
    * scans.
    */
+  /**
+   * ONE TYPE DOMINATES, so filtering by it still OVERFLOWS the list.
+   *
+   * The first version cycled eight types evenly, which gave each of them two or
+   * three aircraft — and a two-row list has nothing below its cap, so nothing
+   * can be sliced and the post-filter check could not fail. That is the same
+   * defect as the uniform-rows fixture it was written to fix, committed one
+   * function later and caught by its own plant coming back UNPROVEN.
+   */
   const TYPES = ['C172', 'B738', 'A320', 'C150', 'C25B', 'B06', 'E75L', 'B763'];
+  const typeFor = (i) => (i % 3 === 1 ? 'C172' : TYPES[i % TYPES.length]);
+
+  /**
+   * WHAT EACH AIRCRAFT BROADCASTS, and why it is one call rather than eight
+   * fields inline.
+   *
+   * Nineteen IDENTICAL aircraft is what this fixture used to be, and it made
+   * the sliced-row check below unfailable: rows of one height always let a cap
+   * land in a gap. Varying the broadcast sets does two jobs — the detail lines
+   * wrap differently, and the depth badge has a real spread to show.
+   *
+   * Behind ONE line so a plant can neutralise it in one edit. The first attempt
+   * planted a single field and the other four went on varying, so the badges
+   * still differed and the gate stayed green — a plant too weak to prove the
+   * fixture is load-bearing is not evidence that it is.
+   */
+  const broadcastSpread = (i) => ({
+    groundspeedKt: i % 5 === 0 ? null : 120 + i * 17,
+    trackDeg: i % 4 === 0 ? null : (i * 37) % 360,
+    altGeomFt: i % 3 === 0 ? null : 1200 + i * 900,
+    altBaroFt: i % 3 === 0 ? 1200 + i * 900 : null,
+    verticalRateFpm: i % 6 === 0 ? null : (i % 2 ? 1 : -1) * (64 * i),
+    navSelectedAltitudeFt: i % 7 === 0 ? 24000 : null,
+    navSelectedHeadingDeg: i % 7 === 0 ? 110 : null,
+    navQnhHpa: i % 7 === 0 ? 1013 : null,
+  });
   const many = {
     ...TRAFFIC_FIXTURE,
     count: 19,
@@ -859,7 +894,7 @@ async function checkHeardList(browser, base) {
       hex: `f0000${i.toString(16).padStart(2, '0')}`,
       callsign: `TST${100 + i}`,
       registration: `N${100 + i}TS`,
-      type: TYPES[i % TYPES.length],
+      type: typeFor(i),
       description: null,
       lat: 38.7 + (i + 1) * 0.02,
       lon: -121.0 + (i + 1) * 0.01,
@@ -882,14 +917,7 @@ async function checkHeardList(browser, base) {
        * lines are different lengths and wrap differently, and the depth badge
        * has a real spread to show instead of nineteen identical marks.
        */
-      groundspeedKt: i % 5 === 0 ? null : 120 + i * 17,
-      trackDeg: i % 4 === 0 ? null : (i * 37) % 360,
-      altGeomFt: i % 3 === 0 ? null : 1200 + i * 900,
-      altBaroFt: i % 3 === 0 ? 1200 + i * 900 : null,
-      verticalRateFpm: i % 6 === 0 ? null : (i % 2 ? 1 : -1) * (64 * i),
-      navSelectedAltitudeFt: i % 7 === 0 ? 24000 : null,
-      navSelectedHeadingDeg: i % 7 === 0 ? 110 : null,
-      navQnhHpa: i % 7 === 0 ? 1013 : null,
+      ...broadcastSpread(i),
     })),
   };
   await context.route('**/api/traffic**', (route) =>
@@ -1097,15 +1125,36 @@ async function checkHeardList(browser, base) {
    * function was green.
    */
   const pressed = await page.evaluate(() => {
-    const tile = [...document.querySelectorAll('.radar-pick')].find((t) => t.getAttribute('aria-pressed') === 'false');
-    if (!tile) return null;
+    /**
+     * THE BIGGEST GROUP, not the first one. Pressing whichever tile happened to
+     * come first alphabetically left a two-row list — and a list shorter than
+     * its own cap has nothing below the fold, so nothing can be sliced and the
+     * check below cannot fail. The guard on `after.rows` is what caught that,
+     * and it stays there rather than being replaced by this: a fixture can stop
+     * being dominant again.
+     */
+    const tiles = [...document.querySelectorAll('.radar-pick')].filter((t) => t.getAttribute('aria-pressed') === 'false');
+    if (!tiles.length) return null;
+    const count = (t) => Number(/\((\d+)\)/.exec(t.textContent)?.[1] ?? 0);
+    const tile = tiles.reduce((best, t) => (count(t) > count(best) ? t : best), tiles[0]);
     tile.click();
     return tile.textContent.trim();
   });
   if (!pressed) {
     fail(where, 'no unselected airframe tile to press — the fixture no longer exercises the filter');
   } else {
-    await page.waitForTimeout(400);
+    /**
+     * AND THEN THE VIEWPORT MOVES, which is the other half of the report.
+     *
+     * A filter press alone changes WHICH rows are shown; narrowing the viewport
+     * changes how TALL they are, because the detail lines wrap. Both are things
+     * the reader does — filter, rotate, change text size — and both invalidate
+     * a cap that was measured against the old rows. Doing only the first left
+     * the outcome to whether a boundary happened to land badly, which is a
+     * gate that passes by luck.
+     */
+    await page.setViewportSize({ width: 460, height: 900 });
+    await page.waitForTimeout(500);
     const after = await page.evaluate(() => {
       const list = document.querySelector('.radar-list');
       const rows = [...list.querySelectorAll('.radar-row')];
@@ -1118,8 +1167,8 @@ async function checkHeardList(browser, base) {
         }).length,
       };
     });
-    if (!after.rows) {
-      fail(where, `pressing ${pressed} emptied the list — the fixture's airframe filter matches nothing`);
+    if (after.rows < 4) {
+      fail(where, `pressing ${pressed} left ${after.rows} row(s) — too few to overflow the list, so nothing here can be sliced and this check cannot fail`);
     } else if (after.sliced) {
       fail(where, `after pressing ${pressed}, ${after.sliced} row(s) are cut through the middle — the list's height cap was not re-derived for the new rows`);
     }
