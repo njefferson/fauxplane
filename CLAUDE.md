@@ -114,6 +114,16 @@ which are 400s charged to a shared egress address rather than visible errors.
 a dozen named places — which is how 82°N and the antimeridian were found at all.
 Hub LESSONS §67.
 
+**THE HEARD LIST SAYS WHAT EACH AIRCRAFT WOULD ACTUALLY DRIVE** (2.1.0).
+`broadcastDepth` in `data/traffic.js` scores a row from the fields the follow
+path already puts or fails by name. TWO GROUPS on purpose — the flying four
+(groundspeed, ground track, geometric altitude, vertical rate) decide whether
+the panel comes alive, and crew intent is rare enough that one score out of
+seven would make a good target read as poor. **It counts `altGeomFt` alone and
+that is the finding, not an inconsistency**: `altLabel` shows
+`altBaroFt ?? altGeomFt`, so an aircraft sending only a pressure altitude
+DISPLAYS one while following it FAILs the altitude tape.
+
 **The bundled ground stays regional and now SAYS SO** — the MAP page's note and
 its text alternative, and the RADAR picker, where "not found" and "not in the
 bundle" are different answers. `insideBundle` returns null when nobody can tell,
@@ -192,7 +202,7 @@ rather than assumed. adsb.lol call routes **plausible**, which is their word and
 belongs on screen — an inference from a callsign is not a filed flight plan.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 576 unit tests over the pure logic, including the magnetic model
+- `npm test` — 583 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
   palettes x 6 pages, including the acceptance criteria, plus the checks that
