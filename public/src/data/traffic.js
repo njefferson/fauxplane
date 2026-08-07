@@ -310,6 +310,94 @@ export const FOLLOW_FAILS = {
   'aoa.angle': 'angle of attack needs pitch, and ADS-B does not broadcast it',
 };
 
+/**
+ * WHAT FOLLOWING THIS AIRCRAFT WOULD ACTUALLY DRIVE.
+ *
+ * ---------------------------------------------------------------------------
+ * A ROW THAT IS MISSING THINGS JUST LOOKS SHORTER
+ * ---------------------------------------------------------------------------
+ *
+ * Pressing a row hands the whole panel over to somebody else's aeroplane, and
+ * what comes alive depends entirely on what that aeroplane broadcasts. The list
+ * gave no clue: `rowDetail` pushes only the bits that exist, so an aircraft
+ * broadcasting almost nothing produces a line that is merely shorter than its
+ * neighbour's. The only way to find out was to follow it and watch the
+ * instruments cross themselves out.
+ *
+ * ---------------------------------------------------------------------------
+ * TWO GROUPS, BECAUSE ONE SCORE WOULD MAKE EVERYTHING LOOK MEDIOCRE
+ * ---------------------------------------------------------------------------
+ *
+ * THE FLYING NUMBERS are what decide whether the panel is worth looking at:
+ * groundspeed, ground track, geometric altitude, vertical rate. Track is worth
+ * more than one instrument on its own — the two derivations below it, turn rate
+ * and bank (and G from bank), have nothing to work from without it.
+ *
+ * CREW INTENT is the jackpot and is genuinely rare: the altitude and heading
+ * dialled into the autopilot, and the altimeter setting the crew is using.
+ * Folding these into one score out of seven would make a perfectly good target
+ * read as poor, which would train the reader to ignore the badge.
+ *
+ * ---------------------------------------------------------------------------
+ * IT COUNTS GEOMETRIC ALTITUDE ONLY, AND THAT IS NOT AN OVERSIGHT
+ * ---------------------------------------------------------------------------
+ *
+ * `altLabel` shows `altBaroFt ?? altGeomFt`, so an aircraft broadcasting only a
+ * barometric altitude DISPLAYS one in the list — while the follow path refuses
+ * to substitute baro for geometric (they are different quantities) and FAILs
+ * the altitude tape. The row showed an altitude and the panel then said it had
+ * none, which is the single most misleading case here and the one this function
+ * exists to surface. **Do not "fix" the inconsistency with `altLabel`** — it is
+ * the finding.
+ *
+ * Pure, so it is testable without a browser or a feed, and so the badge and the
+ * spoken name cannot disagree about what an aircraft carries.
+ */
+export const DEPTH_FLYING = Object.freeze([
+  ['groundspeedKt', 'groundspeed'],
+  ['trackDeg', 'ground track'],
+  ['altGeomFt', 'geometric altitude'],
+  ['verticalRateFpm', 'vertical rate'],
+]);
+
+export const DEPTH_INTENT = Object.freeze([
+  ['navSelectedAltitudeFt', 'selected altitude'],
+  ['navSelectedHeadingDeg', 'selected heading'],
+  ['navQnhHpa', 'altimeter setting'],
+]);
+
+export function broadcastDepth(a) {
+  // FINITENESS, NEVER TRUTHINESS. A vertical rate of 0 is level flight and a
+  // ground track of 000 is due north; both are broadcasts, and a truthy test
+  // would report them as silence.
+  const has = (k) => Number.isFinite(a?.[k]);
+  const flying = DEPTH_FLYING.filter(([k]) => has(k));
+  const intent = DEPTH_INTENT.filter(([k]) => has(k));
+  return {
+    flying: flying.length,
+    flyingTotal: DEPTH_FLYING.length,
+    intent: intent.length,
+    intentTotal: DEPTH_INTENT.length,
+    missing: DEPTH_FLYING.filter(([k]) => !has(k)).map(([, label]) => label),
+  };
+}
+
+/**
+ * The badge, and the sentence a reader who cannot see it gets instead.
+ *
+ * SC 1.4.1: the badge is an abbreviation carrying real information, so the
+ * appearance can never be the only place it lives. Both come from one call, so
+ * they cannot drift.
+ */
+export function describeDepth(a) {
+  const d = broadcastDepth(a);
+  const badge = d.intent > 0 ? `${d.flying}/${d.flyingTotal} +AP` : `${d.flying}/${d.flyingTotal}`;
+  const parts = [`broadcasts ${d.flying} of ${d.flyingTotal} flight instruments`];
+  if (d.missing.length) parts.push(`no ${d.missing.join(', no ')}`);
+  if (d.intent > 0) parts.push('and what the crew has selected');
+  return { badge, spoken: parts.join(', '), ...d };
+}
+
 const clampRange = (nm) => {
   const allowed = RADAR_RANGE_NM;
   return allowed.includes(nm) ? nm : allowed[2];

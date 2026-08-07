@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { UNTYPED, airframeGroups, filterByAirframe } from '../public/src/data/traffic.js';
+import { DEPTH_FLYING, DEPTH_INTENT, UNTYPED, airframeGroups, describeDepth, filterByAirframe } from '../public/src/data/traffic.js';
 
 const ac = (hex, type, description) => ({ hex, type, description });
 
@@ -177,4 +177,99 @@ test('filtering is case-insensitive, matching how groups were built', () => {
 
 test('a type that is no longer up there returns nothing rather than throwing', () => {
   assert.deepEqual(filterByAirframe([ac('a', 'B738', 'x')], 'B744'), []);
+});
+
+// ---------------------------------------------------------------------------
+// WHAT FOLLOWING THIS AIRCRAFT WOULD ACTUALLY DRIVE
+// ---------------------------------------------------------------------------
+
+/**
+ * The list gave no clue what a row would get you, because `rowDetail` pushes
+ * only the fields that exist — an aircraft broadcasting almost nothing produced
+ * a line that was merely SHORTER than its neighbour's. The only way to find out
+ * was to follow it and watch the panel cross itself out.
+ *
+ * Every one of these is a decision that puts a badge on screen, so every one is
+ * pure and checked here rather than by looking at a phone.
+ */
+const full = {
+  groundspeedKt: 441,
+  trackDeg: 92,
+  altGeomFt: 35000,
+  verticalRateFpm: -640,
+  navSelectedAltitudeFt: 24000,
+  navSelectedHeadingDeg: 110,
+  navQnhHpa: 1013,
+};
+
+test('a full broadcast is 4 of 4 with the crew intent flagged', () => {
+  const d = describeDepth(full);
+  assert.equal(d.flying, 4);
+  assert.equal(d.intent, 3);
+  assert.equal(d.badge, '4/4 +AP');
+  assert.match(d.spoken, /4 of 4/);
+  assert.match(d.spoken, /crew has selected/);
+  assert.deepEqual(d.missing, []);
+});
+
+test('and a bare position is 0 of 4, with every absence NAMED', () => {
+  // The sentence a reader using speech gets. "0/4" alone tells them a number;
+  // the names tell them which instruments will be blank.
+  const d = describeDepth({ lat: 38.7, lon: -121 });
+  assert.equal(d.badge, '0/4');
+  assert.deepEqual(d.missing, ['groundspeed', 'ground track', 'geometric altitude', 'vertical rate']);
+  assert.match(d.spoken, /no groundspeed/);
+  assert.doesNotMatch(d.spoken, /crew has selected/, 'nothing was selected, so nothing is claimed');
+});
+
+test('BARO-ONLY ALTITUDE COUNTS AS NO ALTITUDE, which is the whole point', () => {
+  /**
+   * THE ONE THAT IS INVISIBLE EVEN TO A CAREFUL READER. `altLabel` shows
+   * `altBaroFt ?? altGeomFt`, so this aircraft DISPLAYS an altitude in the
+   * list — while the follow path refuses to substitute barometric for
+   * geometric (they are different quantities) and FAILs the altitude tape. The
+   * row showed a number and the panel then said it had none.
+   *
+   * If someone ever "fixes" the inconsistency with `altLabel`, this fails, and
+   * it should.
+   */
+  const baroOnly = { ...full, altGeomFt: null, altBaroFt: 35000 };
+  const d = describeDepth(baroOnly);
+  assert.equal(d.flying, 3);
+  assert.equal(d.badge, '3/4 +AP');
+  assert.ok(d.missing.includes('geometric altitude'));
+});
+
+test('ZERO AND NEGATIVE ARE BROADCASTS, not silence', () => {
+  // Level flight is a vertical rate of 0, due north is a track of 000, and an
+  // aircraft on the ramp has a groundspeed of 0. A truthiness guard reports all
+  // three as "not broadcasting", which is a lie about a transponder that is
+  // working perfectly.
+  const d = describeDepth({ groundspeedKt: 0, trackDeg: 0, altGeomFt: 0, verticalRateFpm: -0 });
+  assert.equal(d.flying, 4);
+  assert.equal(d.badge, '4/4');
+});
+
+test('a missing or malformed aircraft is 0 of 4 rather than a crash', () => {
+  // This runs inside a 25 Hz render over whatever the feed sent.
+  assert.equal(describeDepth(undefined).flying, 0);
+  assert.equal(describeDepth(null).badge, '0/4');
+  assert.equal(describeDepth({ groundspeedKt: 'fast', trackDeg: Number.NaN }).flying, 0);
+});
+
+test('crew intent alone never inflates the flying score', () => {
+  // The +AP marker is a bonus, not a substitute. An aircraft broadcasting its
+  // selected altitude and nothing else drives no instrument at all.
+  const d = describeDepth({ navSelectedAltitudeFt: 24000 });
+  assert.equal(d.flying, 0);
+  assert.equal(d.badge, '0/4 +AP');
+});
+
+test('the two groups are the fields FOLLOW actually consumes', () => {
+  // Two lists of the same thing is how one of them ends up scoring a field the
+  // panel never reads. These are the keys `traffic.js` puts or fails by name.
+  assert.deepEqual(DEPTH_FLYING.map(([k]) => k),
+    ['groundspeedKt', 'trackDeg', 'altGeomFt', 'verticalRateFpm']);
+  assert.deepEqual(DEPTH_INTENT.map(([k]) => k),
+    ['navSelectedAltitudeFt', 'navSelectedHeadingDeg', 'navQnhHpa']);
 });

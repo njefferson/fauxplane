@@ -27,12 +27,22 @@
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
 import { drawPlan, altLabel, hitTestAircraft } from '../render/gauges/plan.js';
-import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, explainTrafficRefusal, filterByAirframe, ownAltitudeFt, radarReadiness, withinBand } from '../data/traffic.js';
+import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, describeDepth, explainTrafficRefusal, filterByAirframe, ownAltitudeFt, radarReadiness, withinBand } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
 import { loadNavdata, parseLatLon, runwaysNear, searchAirports } from '../data/navdata.js';
 import { insideBundle, queryCentre } from '../data/position.js';
 
 const fmt = (v, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '—');
+
+/**
+ * THE BADGE NEEDS ONE SENTENCE, AND IT GOES WHERE THE READER ALREADY LOOKS.
+ *
+ * `4/4 +AP` is an abbreviation, and an abbreviation with no legend is a puzzle.
+ * This rides on the note that is already above the rows rather than becoming a
+ * key somewhere else — a legend in the (i) menu explaining a badge on the RADAR
+ * page is two screens for one idea.
+ */
+const DEPTH_HINT = 'The number is how many of the four flight instruments it broadcasts; +AP means it also sends what the crew has dialled in.';
 
 export function createRadar({
   host,
@@ -605,9 +615,19 @@ export function createRadar({
     if (keys === lastKeys) {
       // Same aircraft, new numbers: update text in place.
       for (const a of aircraft) {
-        const node = list.querySelector(`[data-hex="${a.hex}"] .radar-row-detail`);
+        const row = list.querySelector(`[data-hex="${a.hex}"]`);
+        if (!row) continue;
+        const node = row.querySelector('.radar-row-detail');
         if (node) node.textContent = rowDetail(a);
+        const badge = row.querySelector('.radar-depth');
+        if (badge) badge.textContent = describeDepth(a).badge;
+        row.setAttribute('aria-label', rowName(a, a.callsign ?? a.registration ?? a.hex.toUpperCase()));
       }
+      // A DETAIL LINE THAT REWRAPS CHANGES A ROW'S HEIGHT without changing the
+      // row set, so the cap has to be re-derived here too. This path is the
+      // common one — it runs on every sweep.
+      delete list.dataset.capped;
+      measureList();
       return;
     }
     lastKeys = keys;
@@ -644,8 +664,8 @@ export function createRadar({
       class: 'radar-list-head',
       text:
         shown.length === all.length
-          ? `${all.length} aircraft, nearest first. Press one to follow it.`
-          : `${shown.length} of ${all.length} aircraft, nearest first. Press one to follow it.`,
+          ? `${all.length} aircraft, nearest first. Press one to follow it. ${DEPTH_HINT}`
+          : `${shown.length} of ${all.length} aircraft, nearest first. Press one to follow it. ${DEPTH_HINT}`,
     });
 
     list.replaceChildren(
@@ -671,13 +691,20 @@ export function createRadar({
             },
           },
           [
-            el('span', { class: 'radar-row-name', text: name }),
-            el('span', { class: 'radar-row-detail', text: rowDetail(a) }),
+            el('div', { class: 'radar-row-main' }, [
+              el('span', { class: 'radar-row-name', text: name }),
+              el('span', { class: 'radar-row-detail', text: rowDetail(a) }),
+            ]),
+            el('span', { class: 'radar-depth', text: describeDepth(a).badge }),
           ],
         );
+        row.setAttribute('aria-label', rowName(a, name));
         return row;
       }),
     );
+    // THE ROW SET CHANGED, so the height that made the cap land in a gap may
+    // not any more — see `measureList`.
+    delete list.dataset.capped;
     requestAnimationFrame(measureList);
   }
 
@@ -725,7 +752,23 @@ export function createRadar({
       }
       // At least one row, or a tall row on a small screen leaves an empty box.
       const last = rows[Math.max(0, fits - 1)];
-      list.style.maxHeight = `${last.offsetTop + last.offsetHeight}px`;
+      const cap = `${last.offsetTop + last.offsetHeight}px`;
+      /**
+       * WRITE ONLY IF IT CHANGED, which is what makes recomputing safe.
+       *
+       * The cap used to be computed ONCE and locked with `dataset.capped`,
+       * never cleared. That is why a row was still being sliced: the moment the
+       * rows change height — a filter pressed, the feed swapping in a different
+       * set, the device rotated, the reader's text size moved — the locked
+       * `max-height` no longer lands in a gap, and nothing ever recomputed it.
+       *
+       * The lock was there to stop a ResizeObserver loop, and it was aimed at
+       * the wrong thing. What loops is WRITING to the observed element on every
+       * notification; a write that changes nothing is what keeps it going
+       * forever. Comparing first means a settled list writes once and then goes
+       * quiet, while a genuinely changed one is re-derived.
+       */
+      if (list.style.maxHeight !== cap) list.style.maxHeight = cap;
       list.dataset.capped = 'yes';
     }
     const hidden = rows.filter(
@@ -756,26 +799,66 @@ export function createRadar({
   list.addEventListener('scroll', () => measureList(), { passive: true });
   if (typeof ResizeObserver === 'function') {
     /*
-     * IT MUST NOT RETRIGGER ITSELF. The first version of this cleared the cap
-     * and blanked `max-height` before re-measuring — which resizes the very
-     * element being observed, on every notification, forever. That is precisely
-     * the "ResizeObserver loop completed with undelivered notifications"
-     * warning this app already logs on an iPad, and writing a second source of
-     * it while the first is still unexplained would have made the original
-     * impossible to find.
+     * IT MUST NOT RETRIGGER ITSELF — and the first two attempts at that were
+     * both wrong, in opposite directions.
      *
-     * `measureList` sets the cap only when it is not already set, so the one
-     * resize it causes settles on the next notification and stops.
+     * The first cleared the cap and BLANKED `max-height` before re-measuring,
+     * which resizes the observed element on every notification, forever. That
+     * is the "ResizeObserver loop completed with undelivered notifications"
+     * warning this app already logs on an iPad.
+     *
+     * The second — the fix for that — refused to recompute at all once the cap
+     * was set. It stopped the loop and broke the feature: rotation and a change
+     * of text size are exactly when row heights move, and they are exactly the
+     * notifications this observer exists to receive. The cap stayed at its
+     * first value and sliced a row, which is what was reported from a real
+     * device.
+     *
+     * What actually loops is WRITING on every notification. So this invalidates
+     * and re-derives, and `measureList` writes only when the value differs: a
+     * genuine change costs one extra notification and then goes quiet, and a
+     * notification that changes nothing costs no write at all.
      */
-    new ResizeObserver(() => measureList()).observe(list);
+    new ResizeObserver(() => {
+      delete list.dataset.capped;
+      measureList();
+    }).observe(list);
+  }
+
+  /**
+   * WHAT PRESSING THIS ROW WOULD ACTUALLY GET YOU, and the name that says it.
+   *
+   * SC 2.5.3 REQUIRES THE VISIBLE WORDS TO BE IN THE NAME, and this button
+   * shows three separate things: the callsign, the detail line and the depth
+   * badge. So the name is BUILT FROM THE SAME PIECES, in the same order, and
+   * then explains the badge — which makes containment structural rather than
+   * something a later edit can quietly break.
+   *
+   * The badge is left visible to a screen reader rather than `aria-hidden`,
+   * because with an `aria-label` on the button its children are not announced
+   * anyway; hiding it would be a no-op dressed up as a decision.
+   */
+  function rowName(a, name) {
+    const depth = describeDepth(a);
+    return `${name} ${rowDetail(a)} ${depth.badge} — ${depth.spoken}.`;
   }
 
   function rowDetail(a) {
     const bits = [];
     if (Number.isFinite(a.distanceNm)) bits.push(`${fmt(a.distanceNm, 1)} nm`);
     if (Number.isFinite(a.bearingDeg)) bits.push(`${String(Math.round(a.bearingDeg)).padStart(3, '0')}°`);
+    /**
+     * THE LIST SAYS `ft`, THE SCOPE DOES NOT, and that is deliberate.
+     *
+     * `altLabel` is right for a canvas: a TCAS scope has no room for units and
+     * the convention is universal. In this row it landed between `188°` and
+     * `172 kt` as a bare `100`, the only number on the line carrying no unit at
+     * all — so it read as anything from a heading to a count.
+     *
+     * `GND` and a flight level are already unambiguous and are left alone.
+     */
     const alt = altLabel(a);
-    if (alt) bits.push(alt);
+    if (alt) bits.push(/^\d+$/.test(alt) ? `${alt} ft` : alt);
     if (Number.isFinite(a.groundspeedKt)) bits.push(`${Math.round(a.groundspeedKt)} kt`);
     if (a.type) bits.push(a.type);
     return bits.join(' · ');

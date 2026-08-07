@@ -1216,8 +1216,12 @@ export const PLANTS = [
     name: 'list: the scroller goes back to cutting a row in half',
     check: 'the aircraft list ends on a row boundary',
     file: 'public/src/panels/radar.js',
-    find: "      list.style.maxHeight = `${last.offsetTop + last.offsetHeight}px`;",
-    replace: '      list.style.maxHeight = `${LIST_MAX_PX()}px`;',
+    // RE-AIMED when `measureList` learned to re-derive the cap instead of
+    // locking it, so the old target line no longer exists. Hub LESSONS 66: a
+    // plant ages out at exactly the moment somebody edits what it guards, so it
+    // is re-aimed in the SAME commit and watched going red again.
+    find: "      const cap = `${last.offsetTop + last.offsetHeight}px`;",
+    replace: '      const cap = `${LIST_MAX_PX()}px`;',
     expect: /row\(s\) are cut through the middle by the list/,
   },
   {
@@ -1852,5 +1856,92 @@ export const PLANTS = [
     find: '    must: /bundled (?:ground|airfield|map)|Northern California only|outside (?:it|the region)/i,',
     replace: '    must: /a defect nobody has ever published/i,',
     expect: /does not tell the reader about|bundled-region|STANDING/i,
+  },
+  {
+    // THE MOST MISLEADING CASE IN THE LIST. `altLabel` shows baro-or-geometric,
+    // so this aircraft DISPLAYS an altitude — while following it FAILs the
+    // altitude tape, because baro and geometric are different quantities and
+    // the follow path refuses to substitute one for the other.
+    name: 'depth: the badge counts a barometric altitude as an altitude',
+    check: 'baro-only altitude counts as no altitude',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: '  const has = (k) => Number.isFinite(a?.[k]);',
+    replace: "  const has = (k) => Number.isFinite(k === 'altGeomFt' ? (a?.altGeomFt ?? a?.altBaroFt) : a?.[k]);",
+    expect: /BARO-ONLY ALTITUDE COUNTS AS NO ALTITUDE|geometric altitude/i,
+  },
+  {
+    // Level flight is a vertical rate of 0 and due north is a track of 000. A
+    // truthiness guard calls a working transponder silent.
+    name: 'depth: the badge treats a zero broadcast as silence',
+    check: 'zero and negative are broadcasts',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: '  const has = (k) => Number.isFinite(a?.[k]);',
+    replace: '  const has = (k) => !!a?.[k];',
+    expect: /ZERO AND NEGATIVE ARE BROADCASTS|4\/4/i,
+  },
+  {
+    // Folding the rare crew-intent fields into one score out of seven makes a
+    // perfectly good target read as poor, which trains the reader to ignore
+    // the badge entirely.
+    name: 'depth: crew intent is folded into one score out of seven',
+    check: 'the flying four and crew intent are scored apart',
+    gate: 'tests',
+    file: 'public/src/data/traffic.js',
+    find: '  const badge = d.intent > 0 ? `${d.flying}/${d.flyingTotal} +AP` : `${d.flying}/${d.flyingTotal}`;',
+    replace: '  const badge = `${d.flying + d.intent}/${d.flyingTotal + d.intentTotal}`;',
+    expect: /4\/4|crew intent alone|full broadcast/i,
+  },
+  {
+    // The badge is an abbreviation carrying real information, so it can never
+    // be the only place that information lives (SC 1.4.1 / 2.5.3).
+    name: 'depth: the badge is carried by appearance only',
+    check: 'the row name says what the badge shows',
+    file: 'public/src/panels/radar.js',
+    find: '    return `${name} ${rowDetail(a)} ${depth.badge} — ${depth.spoken}.`;',
+    replace: '    return `${name} ${rowDetail(a)}`;',
+    expect: /omit the badge the row displays|appearance only|SC 2\.5\.3/i,
+  },
+  {
+    // THE DEFECT THAT WAS REPORTED FROM A REAL DEVICE while this gate was
+    // green: a cap computed once is correct for exactly the row set it was
+    // measured against, and pressing a filter replaces them.
+    name: 'radar: the list height cap is locked after the first measurement',
+    check: 'the list still ends in a gap after the rows change',
+    file: 'public/src/panels/radar.js',
+    find: '    delete list.dataset.capped;\n    requestAnimationFrame(measureList);',
+    replace: '    requestAnimationFrame(measureList);',
+    expect: /cut through the middle|was not re-derived/i,
+  },
+  {
+    // The list is prose, not a scope. A bare number between `188°` and `172 kt`
+    // reads as anything at all.
+    name: 'radar: the list altitude loses its unit',
+    check: 'every number on the detail line carries a unit',
+    file: 'public/src/panels/radar.js',
+    find: "    if (alt) bits.push(/^\\d+$/.test(alt) ? `${alt} ft` : alt);",
+    replace: '    if (alt) bits.push(alt);',
+    expect: /number with no unit/i,
+  },
+  {
+    /**
+     * THE FIXTURE IS LOAD-BEARING, and this plant is what says so.
+     *
+     * These nineteen aircraft used to be identical but for their callsigns, so
+     * every row was the same height and the sliced-row check could only ever
+     * pass — it was green while the defect was on a real device. Making them
+     * uniform again must go RED, and the check it trips is the badge spread:
+     * nineteen identical badges means the fixture stopped exercising anything.
+     *
+     * A fixture that cannot produce the condition is the same defect as a check
+     * run on a viewport where the condition cannot appear (hub LESSONS 54).
+     */
+    name: 'gate: the aircraft fixture goes back to nineteen identical broadcasts',
+    check: 'the fixture can produce the condition it is measuring',
+    file: 'scripts/a11y-gate.mjs',
+    find: '      groundspeedKt: i % 5 === 0 ? null : 120 + i * 17,',
+    replace: '      groundspeedKt: 400,',
+    expect: /every row shows the same badge|not reading it/i,
   },
 ];

@@ -25,7 +25,7 @@
  * making a product decision that is not its own.
  */
 
-export const VERSION = '2.0.0';
+export const VERSION = '2.1.0';
 
 /** Cache name for the service worker. Bumping VERSION invalidates the shell. */
 export const CACHE_NAME = `fauxplane-${VERSION}`;

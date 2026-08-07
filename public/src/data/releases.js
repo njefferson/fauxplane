@@ -140,6 +140,26 @@ export const STANDING = [
  */
 export const RELEASES = [
   {
+    version: '2.1.0',
+    date: '2026-08-07',
+    headline: 'Every aircraft in the list now says how much of the panel it would actually drive, and the list stops cutting a row in half.',
+    changed: [
+      'EACH AIRCRAFT SHOWS WHAT IT IS BROADCASTING, as a number on the right of its row. Pressing a row hands the whole panel over to that aeroplane, but what comes alive depends entirely on what it sends — and there was no way to tell before you pressed it. A row for an aircraft sending almost nothing simply looked shorter than the one above it.',
+      'The number is how many of the four flight instruments it feeds: speed, direction of travel, altitude and climb rate. 4/4 drives everything. 1/4 gives you a panel of crossed-out boxes. A few aircraft also send what their crew has dialled into the autopilot, and those are marked +AP — that is the one to pick if you want to watch a real jet fly an approach.',
+      'ONE CASE WAS ACTIVELY MISLEADING. An aircraft can send a pressure altitude without sending a satellite one; the list showed that altitude quite happily, and then following it left the altitude tape blank. Those two are different measurements and the panel has always refused to swap one for the other. The number now counts the one that actually works, so that aircraft reads 3/4 instead of looking complete.',
+      'THE LIST STOPS SLICING A ROW THROUGH THE MIDDLE. Where the list ends is worked out so the edge falls in the gap between two rows — but it was worked out once and never again, so filtering by airframe, turning the tablet, or changing your text size left it cutting through whatever row had moved into that spot.',
+      'The altitude in the list carries its unit. It sat between a bearing and a speed as a bare number, the only value on the line with nothing saying what it was.',
+    ],
+    broken: [
+      'The bundled ground map and airfields cover Northern California only, so outside it the scope is bare. Everything driven by a feed — weather, reports, aircraft, the instruments — works wherever you are.',
+      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out — those appear in their own group saying so, rather than being dropped.',
+      '"Over your area" is generous on purpose. It uses the rectangle an advisory’s area fits inside rather than its exact outline, so a warning that passes close by is included.',
+      'At the largest text size the tab strip is still three rows, so the radar page opens with the top of the scope on screen rather than the whole of it.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
+  {
     version: '2.0.0',
     date: '2026-08-06',
     headline: 'The weather follows you. Everywhere it said "your area", it meant Northern California — now it means yours.',

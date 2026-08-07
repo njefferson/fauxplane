@@ -27,7 +27,83 @@ on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 2.0.0, the region stops being Northern California, 2026-08-06
+## STAGED NOW — 2.1.0, what each aircraft is actually broadcasting, 2026-08-07
+
+**https://staging.fauxplane.pages.dev**
+
+### The list gave no clue what pressing a row would get you
+
+Two complaints from one screenshot, and they are the same complaint. `rowDetail`
+builds its line by pushing only the bits that exist, so **an aircraft
+broadcasting almost nothing produced a row that was merely SHORTER than its
+neighbour's.** Pressing it hands the whole panel over; the only way to learn
+that half the instruments would cross themselves out was to try it.
+
+`broadcastDepth` scores what following would actually drive, from the fields
+`traffic.js` already puts or fails by name. **Two groups, not one.** The flying
+four — groundspeed, ground track, geometric altitude, vertical rate — are what
+decide whether the panel is worth looking at, and ground track is worth more
+than one instrument because turn rate, bank and G all derive from it. Crew
+intent is three more and is genuinely rare; folding it into one score out of
+seven would make a perfectly good target read as poor, which trains a reader to
+ignore the badge.
+
+**The case worth knowing about is invisible even to a careful reader.**
+`altLabel` shows `altBaroFt ?? altGeomFt`, so an aircraft broadcasting only a
+barometric altitude DISPLAYS one in the list — while the follow path refuses to
+substitute baro for geometric and FAILs the altitude tape. The row showed a
+number and the panel then said it had none. `broadcastDepth` counts `altGeomFt`
+alone, and that divergence from `altLabel` is the finding rather than an
+inconsistency to tidy away.
+
+### The list cap was computed once and locked
+
+The sliced row was real. `measureList` derived the row-boundary cap and locked
+it with `dataset.capped`, never cleared — so it was correct for exactly the row
+set it was measured against. Press a filter chip, rotate the tablet, change the
+text size, or let the feed swap the aircraft, and the `max-height` no longer
+lands in a gap.
+
+The lock existed to stop a ResizeObserver loop and was aimed at the wrong thing.
+**What loops is WRITING to the observed element on every notification**, so the
+cap is re-derived and written only when the value differs: a settled list writes
+once and goes quiet, a changed one is recomputed.
+
+### The gate was green while the defect was on a device — twice over
+
+`checkHeardList` already had a sliced-row check. Its fixture built nineteen
+aircraft **identical but for callsign, type and position**, so every row was the
+same height and a cap computed against them always landed in a gap. It measured
+once, immediately after that cap was computed, and never pressed a filter. **A
+fixture that cannot produce the condition is the same defect as a check run on a
+viewport where the condition cannot appear** — hub LESSONS §54, written in this
+repo, one function above the fixture that had it.
+
+The fixture now varies what each aircraft broadcasts, which does two jobs: rows
+differ in height, and the badge has a real spread to show. The check presses a
+filter chip and re-measures. A plant makes the fixture uniform again and the
+gate goes RED on the badge spread, so the fixture is now load-bearing rather
+than incidental.
+
+### And `checkNames` was reading a string that appears nowhere on screen
+
+Adding the badge made six controls fail SC 2.5.3 — on `textContent`, which welds
+a composite button's boxes into `UAL32815.0 nm · 332° · FL340 · 452 kt · B7394/4`.
+No user sees that; no sentence anybody would write contains it. The check now
+reads `innerText` — the RENDERED text, with the layout's own breaks — and
+collapses whitespace on both sides, because the criterion is about the words a
+voice-control user says and they cannot hear the difference between a space and
+a line break. The row's name is then built from the same pieces in the same
+order, so containment is structural.
+
+**The measuring instrument moved**, so the whole sweep is required before any
+promote (hub LESSONS §51), and one existing plant aged out because this release
+edited the line it named — re-aimed in the same commit and watched going red
+again, per §66.
+
+---
+
+## Previously staged — 2.0.0, the region stops being Northern California, 2026-08-06
 
 **https://staging.fauxplane.pages.dev**
 

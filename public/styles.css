@@ -1925,9 +1925,9 @@ body[data-powered='true'] .gate {
 }
 .radar-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   min-height: var(--target);
   padding: 0.5rem 0.75rem;
   background: var(--surface-2);
@@ -1937,6 +1937,29 @@ body[data-powered='true'] .gate {
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+.radar-row-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  /* A COLUMN FLEX CHILD SQUASHES BEFORE IT WRAPS. Without this the detail line
+     is compressed by the badge beside it instead of wrapping, on exactly the
+     narrow screen where it has the least room. */
+  min-width: 0;
+}
+/* WHAT FOLLOWING THIS AIRCRAFT WOULD DRIVE — see `broadcastDepth`.
+   NOT a provenance tone and not an alert tone: a sparse broadcast is a fact
+   about somebody else's transponder, not a fault in this panel, and borrowing
+   amber for it would spend the one colour that means "be aware" on furniture. */
+.radar-depth {
+  flex: 0 0 auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-2);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 .radar-row-name {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

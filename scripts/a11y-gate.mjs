@@ -222,6 +222,10 @@ const REGISTRY = [
   { selector: ".radar-band-btn[aria-pressed='false']", label: 'altitude band (unselected)', min: 4.6, page: 'radar' },
   { selector: ".radar-pick[aria-pressed='true']", label: 'airframe picker (selected)', min: 4.6, page: 'radar' },
   { selector: ".radar-pick[aria-pressed='false']", label: 'airframe picker (unselected)', min: 4.6, page: 'radar' },
+  /* WHAT FOLLOWING AN AIRCRAFT WOULD DRIVE. A new fg/bg pair joins the gate in
+     the same commit that ships it (§4) — a badge nobody can read is a badge
+     that is not there, and this one sits on `--surface-2` at 0.8125rem. */
+  { selector: '.radar-depth', label: 'broadcast-depth badge', min: 4.6, page: 'radar' },
   // The centre picker's resting state (§4, same commit). Its typed states —
   // the field with a value in it, the match buttons, the clear button — are
   // measured by checkCentrePicker, which has to type before they exist.
@@ -859,6 +863,33 @@ async function checkHeardList(browser, base) {
       description: null,
       lat: 38.7 + (i + 1) * 0.02,
       lon: -121.0 + (i + 1) * 0.01,
+      /**
+       * ROWS THAT DIFFER IN HEIGHT, AND THE FIXTURE IS THE FIX HERE.
+       *
+       * These nineteen used to be identical except for hex, callsign, type and
+       * position — so every row was exactly the same height, and the sliced-row
+       * check below could only ever pass. A row is sliced when the cap no
+       * longer lands in a gap, and a cap computed against uniform rows always
+       * does. The defect was reported from a real device while this check was
+       * green.
+       *
+       * A fixture that cannot produce the condition is the same defect as a
+       * check run on a viewport where the condition cannot appear — hub
+       * LESSONS 54, which is written in this repo one function above the
+       * fixture that had it.
+       *
+       * So the broadcast sets VARY, which does two jobs at once: the detail
+       * lines are different lengths and wrap differently, and the depth badge
+       * has a real spread to show instead of nineteen identical marks.
+       */
+      groundspeedKt: i % 5 === 0 ? null : 120 + i * 17,
+      trackDeg: i % 4 === 0 ? null : (i * 37) % 360,
+      altGeomFt: i % 3 === 0 ? null : 1200 + i * 900,
+      altBaroFt: i % 3 === 0 ? 1200 + i * 900 : null,
+      verticalRateFpm: i % 6 === 0 ? null : (i % 2 ? 1 : -1) * (64 * i),
+      navSelectedAltitudeFt: i % 7 === 0 ? 24000 : null,
+      navSelectedHeadingDeg: i % 7 === 0 ? 110 : null,
+      navQnhHpa: i % 7 === 0 ? 1013 : null,
     })),
   };
   await context.route('**/api/traffic**', (route) =>
@@ -990,6 +1021,108 @@ async function checkHeardList(browser, base) {
       `${m.sliced} row(s) are cut through the middle by the list's own edge — a row sliced through its text `
         + 'against a hard container edge reads as broken rather than as scrollable',
     );
+  }
+
+  /**
+   * WHAT EACH AIRCRAFT WOULD ACTUALLY DRIVE, ON THE ROW AND IN ITS NAME.
+   *
+   * `4/4 +AP` is an abbreviation carrying real information, so it can never be
+   * the only place that information lives (SC 1.4.1). The badge is
+   * `aria-hidden` and the whole sentence is on the button, which is also why
+   * this reads the accessible name rather than the visible text.
+   *
+   * The fixture varies the broadcast sets, so a spread is expected: nineteen
+   * identical badges means the badge is showing something other than what it
+   * claims to.
+   */
+  const depth = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.radar-row')];
+    return rows.map((r) => ({
+      badge: (r.querySelector('.radar-depth')?.textContent ?? '').trim(),
+      name: r.getAttribute('aria-label') ?? '',
+      visible: (r.querySelector('.radar-row-name')?.textContent ?? '').trim(),
+      detail: (r.querySelector('.radar-row-detail')?.textContent ?? '').trim(),
+    }));
+  });
+  const noBadge = depth.filter((d) => !/^\d\/\d( \+AP)?$/.test(d.badge));
+  if (noBadge.length) {
+    fail(where, `${noBadge.length} row(s) carry no broadcast-depth badge (first: "${noBadge[0]?.badge}")`);
+  } else if (new Set(depth.map((d) => d.badge)).size < 2) {
+    fail(where, `every row shows the same badge "${depth[0].badge}" — the fixture varies what each aircraft broadcasts, so this is not reading it`);
+  }
+  const unspoken = depth.filter((d) => !/broadcasts \d of \d flight instruments/.test(d.name));
+  if (unspoken.length) {
+    fail(where, `${unspoken.length} row(s) carry the depth badge by appearance only — its name is "${unspoken[0]?.name}"`);
+  }
+  // SC 2.5.3: the name has to contain the visible text, or "press TST100" by
+  // voice has no answer on a button whose name starts with something else.
+  const unnamed = depth.filter((d) => d.visible && !d.name.includes(d.visible));
+  if (unnamed.length) {
+    fail(where, `${unnamed.length} row name(s) do not contain their own visible text — "${unnamed[0]?.visible}" vs "${unnamed[0]?.name}"`);
+  }
+  // SC 2.5.3 again, from the badge's side: the abbreviation the reader can SEE
+  // has to be sayable. The name is built from the same pieces in the same
+  // order, so this is checking that construction still holds.
+  const badgeless = depth.filter((d) => d.badge && !d.name.includes(d.badge));
+  if (badgeless.length) {
+    fail(where, `${badgeless.length} row name(s) omit the badge the row displays — "${badgeless[0]?.badge}" is not in "${badgeless[0]?.name}"`);
+  }
+
+  /**
+   * EVERY NUMBER ON THE DETAIL LINE CARRIES A UNIT.
+   *
+   * The altitude did not. It sat between `188°` and `172 kt` as a bare `100` —
+   * the only value on the line with nothing saying what it was, so it read as
+   * anything from a heading to a count. `altLabel` is right to omit it on the
+   * canvas, where a TCAS scope has no room and the convention is universal;
+   * this is the LIST, which is prose.
+   *
+   * Matched as a number sitting alone between the middots, which is general
+   * rather than a check for the word "ft" — a later field added without a unit
+   * fails this too.
+   */
+  const bare = depth.filter((d) => / · \d+(\.\d+)? · /.test(d.detail) || / · \d+(\.\d+)?$/.test(d.detail));
+  if (bare.length) {
+    fail(where, `${bare.length} row(s) show a number with no unit on the detail line: "${bare[0]?.detail}"`);
+  }
+
+  /**
+   * AND THE LIST STILL ENDS IN A GAP AFTER THE ROWS CHANGE.
+   *
+   * THIS IS THE STATE THE CHECK NEVER VISITED. The cap was computed once and
+   * locked, so it was correct for exactly the row set it was measured against —
+   * and pressing a filter chip replaces the rows with a different set, at
+   * different heights, under a `max-height` nobody recomputed. Measuring only
+   * the first paint is why a row was being sliced on a real device while this
+   * function was green.
+   */
+  const pressed = await page.evaluate(() => {
+    const tile = [...document.querySelectorAll('.radar-pick')].find((t) => t.getAttribute('aria-pressed') === 'false');
+    if (!tile) return null;
+    tile.click();
+    return tile.textContent.trim();
+  });
+  if (!pressed) {
+    fail(where, 'no unselected airframe tile to press — the fixture no longer exercises the filter');
+  } else {
+    await page.waitForTimeout(400);
+    const after = await page.evaluate(() => {
+      const list = document.querySelector('.radar-list');
+      const rows = [...list.querySelectorAll('.radar-row')];
+      const lb = list.getBoundingClientRect();
+      return {
+        rows: rows.length,
+        sliced: rows.filter((r) => {
+          const rr = r.getBoundingClientRect();
+          return rr.top < lb.bottom - 2 && rr.bottom > lb.bottom + 2;
+        }).length,
+      };
+    });
+    if (!after.rows) {
+      fail(where, `pressing ${pressed} emptied the list — the fixture's airframe filter matches nothing`);
+    } else if (after.sliced) {
+      fail(where, `after pressing ${pressed}, ${after.sliced} row(s) are cut through the middle — the list's height cap was not re-derived for the new rows`);
+    }
   }
   await context.close();
 }
@@ -2359,7 +2492,24 @@ async function checkNames(page, where) {
       // reports a correctly labelled input as nameless.
       const associated = n.id ? document.querySelector(`label[for="${CSS.escape(n.id)}"]`) : null;
       const label = n.getAttribute('aria-label');
-      const visible = (n.textContent || associated?.textContent || '').trim();
+      /**
+       * `innerText`, NOT `textContent` — the RENDERED text, not the DOM's
+       * concatenation of it.
+       *
+       * On a composite control they are different strings, and only one of them
+       * is what anybody sees. An aircraft row holds a callsign, a detail line
+       * and a badge in three boxes; `textContent` welds them into
+       * "UAL32815.0 nm · 332° · FL340 · 452 kt · B7394/4", which appears
+       * nowhere on screen and cannot be contained by any sentence a person
+       * would write. This reported six real controls as SC 2.5.3 failures for
+       * having line breaks in them.
+       *
+       * `innerText` puts the layout's own breaks back, and the comparison below
+       * collapses whitespace on both sides — because the criterion is about the
+       * WORDS a voice-control user says, and whether they are separated by a
+       * space or a line break is not something they can hear.
+       */
+      const visible = (n.innerText || associated?.innerText || associated?.textContent || '').trim();
       out.push({ name: (label || visible || n.getAttribute('title') || '').trim().toLowerCase(), label, visible });
     }
     return out;
@@ -2377,7 +2527,8 @@ async function checkNames(page, where) {
     // exclusion. The rule was checked against the case before the buttons were
     // edited to please it (PALETTES §7: a rule can be right and over-applied).
     const hasWords = /[a-z0-9]/i.test(n.visible);
-    if (n.label && hasWords && !n.label.toLowerCase().includes(n.visible.toLowerCase())) {
+    const flat = (t) => t.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (n.label && hasWords && !flat(n.label).includes(flat(n.visible))) {
       fail(where, `SC 2.5.3: control shows "${n.visible}" but its aria-label "${n.label}" does not contain it`);
     }
   }
