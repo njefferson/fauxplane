@@ -27,9 +27,97 @@ on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
 
 ---
 
-## STAGED NOW — 1.38.1, the map ranges out properly, 2026-08-06
+## STAGED NOW — 2.0.0, the region stops being Northern California, 2026-08-06
 
 **https://staging.fauxplane.pages.dev**
+
+The first slot moved because the owner moved it, before the work was written
+rather than after — which is the only way it moves.
+
+### What was actually wrong, and why it was invisible from here
+
+Three feeds asked about a rectangle over Sacramento wherever the reader was:
+
+- **METAR** measured the distance to the chosen station from the LIVE FIX while
+  the query itself used `REGION.metarBbox`. Both halves were in one file, twenty
+  lines apart. A reader elsewhere was told, correctly and uselessly, how far they
+  were from a California field.
+- **The text reports** used `REGION.bbox` outright.
+- **`atis.js` sorted every advisory against that same rectangle**, so **"Over
+  your area" meant "over Northern California".** That is the one that breaks the
+  rule rather than merely being unhelpful — the panel making a claim about the
+  reader that is not about the reader.
+
+Traffic and winds aloft already followed the fix, which is exactly why none of
+this showed: at home, every one of these functions returns what it always did,
+and no screenshot taken here can contain the defect.
+
+### One ladder, and every rung names itself
+
+`data/position.js`: live fix → the coarse last-known fix → `REGION.home` as a
+**stated** fallback. `kind` and `label` come back with the coordinate, because a
+number derived from a position nobody measured has to be able to say so.
+
+**FOLLOW mode needs no branch, and that is the point.** `traffic.js` moves
+ownership of `position.*` wholesale, so reading the field follows the aircraft.
+A second opinion about which position is in force is the two-pictures-of-one-truth
+failure in a new place.
+
+It lives in `data/` rather than `core/` because it reaches `data/traffic.js` for
+the remembered fix; `core/region.js` cannot import that without a cycle.
+
+### One box builder, and three things a bare `bboxAround` does not do
+
+Half-widths reproduce today's coverage rather than change it — 35 nm for METAR,
+100 nm for the text reports, against the old 30x40 and 102x103.
+
+- **THE SNAP, 0.1° — the same quantum the traffic Function already uses.**
+  Privacy, and the one that would have bitten silently: `cached()` keys on the
+  URL, so a box moving with GPS jitter misses the edge cache on EVERY refresh —
+  one fresh query to a free public service per reader every few minutes, with
+  nothing on screen looking any different.
+- **THE SPAN CLAMP.** A degree of longitude shrinks toward the poles, so the
+  100 nm box crosses the Function's 12° cap above about 74°. Clamping to exactly
+  12 produced **12.000000000000007** at 82°N and was refused.
+- **THE MERIDIAN CLAMP.** `bboxAround` does not wrap and `parseBbox` refuses
+  beyond ±180, so a reader near the dateline would burn a 400 on every refresh.
+
+Both clamps are asserted **against the real `parseBbox`, imported**, from a dozen
+real places — Suva, the Chathams, Longyearbyen, Alert, McMurdo. A test restating
+the Function's rules would have passed while the Function refused every box, and
+the symptom is not an error: it is a feed that quietly stopped answering, with
+the 400s charged to an egress address shared with every other Cloudflare tenant.
+The 82°N failure was found that way and by nothing else.
+
+### Saying when the reader is outside the bundle
+
+The bundled ground stays regional — that is what lets it work with the radio off
+and never be rate limited. Both bundles already declare their own extent, and
+they are different rectangles: `basemap.json` carries 35.5–41.9 / -124.7–-117.3,
+`navdata.json` carries `meta.bbox`. Asked of the bundle, never of `REGION`.
+
+- **MAP page** — the note under the canvas AND `describeMap`'s sentence. An
+  empty canvas is completely invisible to a reader using speech: without it they
+  are told "the ground map IS loaded, 0 aircraft, nothing turned off", every
+  sentence true and no way at all to work out what they are looking at.
+- **RADAR picker** — **"not found" and "not in the bundle" are different
+  answers.** Typing DEN in Denver got "check your spelling", which sends the
+  reader looking for a typo that is not there.
+
+`insideBundle` returns **null when nobody can tell**, and null is not "outside" —
+a panel that guessed would tell someone standing in Sacramento that their map
+does not cover them.
+
+### The limit joins the registry that stops defects going quiet
+
+`bundled-region` is in `STANDING` now. The reports-and-advisories line left
+`broken` in the same commit, which is the deliberate act claiming the fix. It is
+standing rather than a one-release note because it is exactly the shape that goes
+quiet: nothing will fix it by accident, and nobody at home will ever see it.
+
+---
+
+## Previously staged — 1.38.1, the map ranges out properly, 2026-08-06
 
 ### The value-strip rule is about DUPLICATION, not placement
 
