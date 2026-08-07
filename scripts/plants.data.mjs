@@ -866,9 +866,25 @@ export const PLANTS = [
     // A plant naming a defect can outlive the defect. It now names one that is
     // still standing, and the first occurrence of this line IS the current
     // release, because the list is newest-first.
-    find: "      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out \\u2014 those appear in their own group saying so, rather than being dropped.',\n",
+    /**
+     * THE TARGET MUST BE UNIQUE IN THE FILE, and this plant is the reason that
+     * sentence is here. Its old `find` named a line that appears in SEVEN
+     * release entries, and the harness replaces the FIRST match — which was a
+     * release from a fortnight ago. Only the CURRENT entry is checked against
+     * the registry, so deleting a copy from a past one produces no fault at
+     * all: the gate stayed green and this plant protected nothing. Hub
+     * LESSONS 66, found by a whole sweep and by nothing else.
+     *
+     * It aged out at the exact moment the release notes were rewritten, which
+     * is 66's other half — nobody re-reads the harness while writing a note.
+     * RE-AIM THIS IN THE SAME COMMIT as any release that edits `broken`, take
+     * the bytes from the file rather than retyping them (the old target was a
+     * `\u2014` escape and the current notes carry a real em dash, which look
+     * identical in a diff), and check the line appears ONCE.
+     */
+    find: "      'The bundled ground map and airfields cover Northern California only, so outside it the scope is bare. Everything driven by a feed \u2014 weather, reports, aircraft, the instruments \u2014 works wherever you are.',\n",
     replace: "",
-    expect: /does not tell the reader about|advisories-unplaceable|STANDING/i,
+    expect: /does not tell the reader about|bundled-region|STANDING/i,
   },
   {
     // The other half: a registry entry with no explanation is a pattern nobody
@@ -1811,5 +1827,30 @@ export const PLANTS = [
     find: "  if (outsideBundle) parts.push('the bundled ground map covers Northern California only and you are outside it, so the ground is bare — this is not a fault');",
     replace: '',
     expect: /EMPTY GROUND MAP SAYS WHY IT IS EMPTY|outside it, so the ground is bare/i,
+  },
+  {
+    /**
+     * THE SAME CHECK, AIMED AT SOMETHING THAT CANNOT AGE OUT — insurance for
+     * the plant above, which just spent an unknown number of releases green and
+     * protecting nothing because its target moved down the file.
+     *
+     * Every plant naming a line inside `RELEASES` is fragile BY CONSTRUCTION:
+     * the newest entry is rewritten every single release, so any target either
+     * moves or acquires duplicates. `STANDING` does not — it is a registry, it
+     * changes only when a defect is genuinely fixed or found, and an entry
+     * whose `must` matches nothing is a REAL failure mode: a release note
+     * reworded until the registry can no longer find the defect it publishes,
+     * which is precisely what the registry exists to catch.
+     *
+     * Two plants, two aims, one check. When the fragile one ages out again the
+     * sweep still has something pointed at this.
+     */
+    name: 'notes: a standing defect’s pattern stops matching its own note',
+    check: 'every defect that is still true is in the current release notes',
+    gate: 'tests',
+    file: 'public/src/data/releases.js',
+    find: '    must: /bundled (?:ground|airfield|map)|Northern California only|outside (?:it|the region)/i,',
+    replace: '    must: /a defect nobody has ever published/i,',
+    expect: /does not tell the reader about|bundled-region|STANDING/i,
   },
 ];
