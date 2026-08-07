@@ -30,6 +30,7 @@ import { drawPlan, altLabel, hitTestAircraft } from '../render/gauges/plan.js';
 import { ALTITUDE_BANDS, RADAR_RANGE_NM, airframeGroups, explainTrafficRefusal, filterByAirframe, ownAltitudeFt, radarReadiness, withinBand } from '../data/traffic.js';
 import { formatAge } from '../core/units.js';
 import { loadNavdata, parseLatLon, runwaysNear, searchAirports } from '../data/navdata.js';
+import { insideBundle, queryCentre } from '../data/position.js';
 
 const fmt = (v, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '—');
 
@@ -51,6 +52,10 @@ export function createRadar({
 }) {
   let rangeNm = RADAR_RANGE_NM[2];
   let lastDrawnAt = 0;
+  /** The most recent fields `render` was handed. This panel is built before the
+   *  store exists and is never given it, so the position it reasons about comes
+   *  in with the frame rather than being fetched. */
+  let lastFields = {};
 
   const canvas = el('canvas', {
     class: 'radar-canvas',
@@ -377,10 +382,29 @@ export function createRadar({
       ),
     );
     if (q.trim().length < 2) centreNote.textContent = centreHint;
-    else if (!hits.length) centreNote.textContent = `Nothing matches “${q.trim()}”. Try an airport code, a town, or a coordinate.`;
+    /**
+     * "NOT FOUND" AND "NOT IN THE BUNDLE" ARE DIFFERENT ANSWERS.
+     *
+     * The airport database is clipped to one region on purpose — it works with
+     * the radio off and cannot be rate limited — but a reader in Denver typing
+     * DEN is told their spelling is wrong. They will try again, and again, and
+     * conclude the picker is broken rather than that it is regional.
+     *
+     * Said only when we are actually OUTSIDE it, so nobody standing inside the
+     * region is given a regional excuse for a genuine typo. `insideBundle`
+     * returns null when the bundle has not loaded, and null is not "outside".
+     */
+    else if (!hits.length && outsideBundle()) {
+      centreNote.textContent = `Nothing matches “${q.trim()}”. The built-in airport list covers Northern California only, and you are outside it — a coordinate like 39.74, -104.99 works anywhere.`;
+    } else if (!hits.length) centreNote.textContent = `Nothing matches “${q.trim()}”. Try an airport code, a town, or a coordinate.`;
     else if (hits.length === 5) centreNote.textContent = 'The five best matches. Type another letter to narrow it.';
     else centreNote.textContent = `${hits.length} match${hits.length === 1 ? '' : 'es'}. Press one to move the scope.`;
   };
+  /** Where the READER is, not where the scope is pointed — someone who has
+   *  already moved the scope to a California field is still in Denver, and it
+   *  is their position that decides whether the bundle covers them. */
+  const outsideBundle = () => insideBundle(queryCentre(lastFields), navdata?.meta?.bbox) === false;
+
   centreInput.addEventListener('input', renderMatches);
   centreClear.addEventListener('click', () => setCentre(null));
 
@@ -804,6 +828,7 @@ export function createRadar({
     },
 
     render(snapshot) {
+      lastFields = snapshot.fields;
       const result = traffic.last;
       // OWN ALTITUDE FIRST — every relative number and the band depend on it,
       // and while following an aircraft "own" is that aircraft.

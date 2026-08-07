@@ -33,6 +33,7 @@
 import { el } from '../render/dom.js';
 import { createSurface } from '../render/canvas.js';
 import { drawPlan, groundspeedReadout, hitTestAircraft, upReference } from '../render/gauges/plan.js';
+import { insideBundle } from '../data/position.js';
 import { RADAR_RANGE_NM } from '../data/traffic.js';
 
 /**
@@ -65,7 +66,7 @@ export const MAP_LAYERS = [
  * page can produce is testable without a browser — the same reason
  * `radarReadiness` and `crewAlerts` are.
  */
-export function describeMap({ mode, up, count, rangeNm, off = [], basemapMissing = false, groundspeed = null, runwaysDropped = 0 }) {
+export function describeMap({ mode, up, count, rangeNm, off = [], basemapMissing = false, groundspeed = null, runwaysDropped = 0, outsideBundle = false }) {
   const parts = [`Map, ${mode === 'map' ? `${(up?.label ?? 'north up').toLowerCase()}` : 'north up and centred'}`];
   if (mode === 'map' && up?.reason) parts.push(up.reason);
   parts.push(`${rangeNm} nautical mile range`);
@@ -89,6 +90,14 @@ export function describeMap({ mode, up, count, rangeNm, off = [], basemapMissing
   // dense metropolitan area, and a scope quietly showing a subset is the exact
   // defect the floors were added to fix.
   if (runwaysDropped > 0) parts.push(`${runwaysDropped} more runways are in range than the map draws at once`);
+  /**
+   * LAST, AND IT IS THE MOST IMPORTANT SENTENCE ON THE PAGE when it applies.
+   *
+   * An empty canvas is completely invisible to a reader using speech: without
+   * this they are told "0 aircraft, nothing turned off, the ground map IS
+   * loaded" and given no way at all to work out why there is nothing on it.
+   */
+  if (outsideBundle) parts.push('the bundled ground map covers Northern California only and you are outside it, so the ground is bare — this is not a fault');
   return `${parts.join('. ')}.`;
 }
 
@@ -271,6 +280,10 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
      */
     const groundspeed = state.snapshot.fields['position.groundspeed'] ?? null;
 
+    // `false` means measured and inside; `null` means the bundle has not loaded
+    // and nobody can tell yet. Only an explicit `true` says anything.
+    const outside = insideBundle(view.centre, basemap?.bbox) === false;
+
     drawPlan(surface.ctx, {
       x: 0,
       y: 0,
@@ -312,6 +325,7 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
         // about why it is non-enumerable and why it is reported rather than
         // swallowed.
         runwaysDropped: view.runways?.dropped ?? 0,
+        outsideBundle: outside,
       }),
     );
 
@@ -324,10 +338,29 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
      * offered wording is kept verbatim and prefixed with the part that makes it
      * a sentence a reader can use.
      */
+    /**
+     * OUTSIDE THE BUNDLE, SAY SO — LEADING, not appended to a credit.
+     *
+     * The ground map and the airfield database really are clipped to one
+     * region, and that is a deliberate trade: bundled data works with the radio
+     * off and cannot be rate limited. But a reader who opens this page from
+     * anywhere else sees an empty rectangle with a Natural Earth credit under
+     * it and concludes the app is broken — which is a reasonable conclusion
+     * from the evidence they were given.
+     *
+     * Asked of the BUNDLE's own bbox rather than of `REGION`, because they are
+     * two different rectangles and the basemap's is the larger. `insideBundle`
+     * returns null when nobody can tell, and null is not "outside" — a panel
+     * that guessed here would tell someone standing in Sacramento that their
+     * map does not cover them.
+     */
+    const credit = basemap
+      ? `Coastline, lakes, rivers and towns: ${basemap.source?.credit ?? 'Natural Earth.'} Public domain. Aircraft, runways and airports come from the sources in the (i) menu.`
+      : 'Loading the ground map…';
     note.textContent = basemapFailed
-      ?? (basemap
-        ? `Coastline, lakes, rivers and towns: ${basemap.source?.credit ?? 'Natural Earth.'} Public domain. Aircraft, runways and airports come from the sources in the (i) menu.`
-        : 'Loading the ground map…');
+      ?? (outside
+        ? `The bundled ground map and airfields cover Northern California only, and you are outside it — that is why the map is bare, and it is not a fault. Aircraft, weather and the instruments all still work wherever you are. ${credit}`
+        : credit);
   }
 
   return {

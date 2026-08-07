@@ -140,9 +140,14 @@ test('each kind is held for as long as it is worth holding', () => {
   assert.ok(KINDS.airsigmet.cacheSeconds > KINDS.pirep.cacheSeconds);
 });
 
-test('the client asks about the navdata region, not something larger', () => {
-  // The Function refuses a box over twelve degrees a side, and asking a public
-  // service to sweep half a continent is the shape §15.5 forbids.
+test('WITH NO POSITION it falls back to the region, and says nothing larger', () => {
+  // A panel that has just come up has no fix, and that is a real state rather
+  // than an error. The box it asks about then is the region constant, exactly
+  // as every release before 2.0.0 asked for it — and it is still inside what
+  // the Function will accept, because a 400 counts against a rate limit.
+  //
+  // The box for a reader who DOES have a position is `region.test.mjs`, which
+  // holds it against the real `parseBbox` from a dozen places on earth.
   const [latMin, lonMin, latMax, lonMax] = wxBboxParam().split(',').map(Number);
   assert.equal(latMin, REGION.bbox.latMin);
   assert.equal(lonMax, REGION.bbox.lonMax);

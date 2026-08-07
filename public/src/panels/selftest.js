@@ -146,8 +146,13 @@ export async function feedProbes({ lat, lon, callsign = null, fetchImpl = fetch,
    * drift from the app the moment either changes, and the drift shows up as a
    * false accusation rather than as a missing check — which is worse, because
    * someone acts on it.
+   *
+   * THE SAME ARGUMENT NOW COVERS THE CENTRE, not just the shape. From 2.0.0
+   * that builder takes a position, and a probe that kept passing nothing would
+   * quietly test a rectangle over Sacramento while the panel beside it asked
+   * about the reader — a green tick for an endpoint nobody uses that way.
    */
-  out.push(await probe('/api/metar', `/api/metar?bbox=${encodeURIComponent(metarBboxParam())}`, { fetchImpl, clock }));
+  out.push(await probe('/api/metar', `/api/metar?bbox=${encodeURIComponent(metarBboxParam(at))}`, { fetchImpl, clock }));
   out.push(
     at
       ? await probe('/api/traffic', `/api/traffic?lat=${at.lat.toFixed(3)}&lon=${at.lon.toFixed(3)}&dist=40`, { fetchImpl, clock })

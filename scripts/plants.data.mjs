@@ -1732,4 +1732,84 @@ export const PLANTS = [
     replace: '',
     expect: /BACKSTOP SAYS WHAT IT DROPPED|TRUNCATED PICTURE SAYS SO/i,
   },
+  {
+    // "Over your area" meaning "over Northern California" is the panel making a
+    // claim about the reader that is not about the reader.
+    name: 'region: the text-report box reverts to the region constant',
+    check: 'the text-report box follows the reader',
+    gate: 'tests',
+    file: 'public/src/data/wxtext.js',
+    find: '      res = await doFetch(`/api/wxtext?kind=${kind}&bbox=${encodeURIComponent(wxBboxParam(centre))}`, { cache: \'no-store\' });',
+    replace: '      res = await doFetch(`/api/wxtext?kind=${kind}&bbox=${encodeURIComponent(wxBboxParam())}`, { cache: \'no-store\' });',
+    expect: /stopped following the reader|EVERY FEED CALL SITE PASSES A CENTRE/i,
+  },
+  {
+    // The distance to the station followed the fix while the query did not, so
+    // a reader in Denver was told how far they were from a California field.
+    name: 'region: the METAR box reverts to the region constant',
+    check: 'the METAR box follows the reader',
+    gate: 'tests',
+    file: 'public/src/data/metar.js',
+    find: '          res = await fetchImpl(`/api/metar?bbox=${encodeURIComponent(metarBboxParam(from))}`, { cache: \'no-store\' });',
+    replace: '          res = await fetchImpl(`/api/metar?bbox=${encodeURIComponent(metarBboxParam())}`, { cache: \'no-store\' });',
+    expect: /METAR query stopped following|EVERY FEED CALL SITE PASSES A CENTRE/i,
+  },
+  {
+    // A page that sorts against a box it works out for itself will eventually
+    // file an advisory that is genuinely overhead under Elsewhere.
+    name: 'region: the ATIS page sorts advisories against its own box',
+    check: 'the box asked about is the box sorted against',
+    gate: 'tests',
+    file: 'public/src/panels/atis.js',
+    find: '          ? placeReports(reports, wxText?.area ?? REGION.bbox, navaidLookup)',
+    replace: '          ? placeReports(reports, REGION.bbox, navaidLookup)',
+    expect: /sorting advisories against a box of its own|placed against the region again/i,
+  },
+  {
+    // The silent one. Nothing on screen changes; the edge cache simply stops
+    // hitting, and a free public service answers a fresh query per reader every
+    // few minutes.
+    name: 'region: the query centre stops being snapped to a grid',
+    check: 'a stationary reader asks the same question all day',
+    gate: 'tests',
+    file: 'public/src/core/region.js',
+    find: '  const lat = Math.max(-90, Math.min(90, snap(centre.lat)));',
+    replace: '  const lat = Math.max(-90, Math.min(90, centre.lat));',
+    expect: /SNAPPED|different query URLs|same quantum/i,
+  },
+  {
+    // A refused box is a 400 charged to an egress address shared with every
+    // other Cloudflare tenant, and it shows up as a feed that stopped
+    // answering rather than as an error.
+    name: 'region: the query box stops clamping to the Function’s cap',
+    check: 'every box the app can build is one the Function accepts',
+    gate: 'tests',
+    file: 'public/src/core/region.js',
+    find: '  const half = (MAX_QUERY_SPAN_DEG - 0.01) / 2;',
+    replace: '  const half = 180;',
+    expect: /the Function refuses this box|larger than 12 degrees/i,
+  },
+  {
+    // "Nobody knows yet" told as "you are outside" would inform a reader
+    // standing in Sacramento that their map does not cover them.
+    name: 'region: an unknown bundle extent is reported as outside it',
+    check: 'inside, outside and nobody knows are three answers',
+    gate: 'tests',
+    file: 'public/src/data/position.js',
+    find: '    || !Number.isFinite(bbox.latMax) || !Number.isFinite(bbox.lonMax)) return null;',
+    replace: '    || !Number.isFinite(bbox.latMax) || !Number.isFinite(bbox.lonMax)) return false;',
+    expect: /three answers|no bundle yet|null/i,
+  },
+  {
+    // An empty canvas is completely invisible to a reader using speech: without
+    // this they are told the ground map IS loaded and given no way to work out
+    // why there is nothing on it.
+    name: 'region: the map’s spoken description drops the outside-the-bundle notice',
+    check: 'the map says why its ground is bare',
+    gate: 'tests',
+    file: 'public/src/panels/map.js',
+    find: "  if (outsideBundle) parts.push('the bundled ground map covers Northern California only and you are outside it, so the ground is bare — this is not a fault');",
+    replace: '',
+    expect: /EMPTY GROUND MAP SAYS WHY IT IS EMPTY|outside it, so the ground is bare/i,
+  },
 ];

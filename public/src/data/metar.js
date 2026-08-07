@@ -18,8 +18,9 @@
  * Kollsman beside a confident station ID.
  */
 
-import { REGION, metarBboxParam } from '../core/region.js';
+import { metarBboxParam } from '../core/region.js';
 import { greatCircleNm, hPaToInHg } from '../core/units.js';
+import { queryCentre } from './position.js';
 
 export const FALLBACK_ALTIMETER_INHG = 29.92;
 
@@ -74,17 +75,17 @@ export function createMetarSource({ state, fetchImpl = fetch, clock = () => Date
   let lastResult = null;
   let inFlight = null;
 
-  /** Position to measure from: the live fix, or the home reference before one
-   *  exists. The surrogate is NAMED in what the panel shows, so nobody reads a
-   *  distance from Cameron Park as a distance from the aircraft. */
-  const originFrom = (fields) => {
-    const lat = fields['position.lat'];
-    const lon = fields['position.lon'];
-    if (lat && lon && lat.provenance !== 'FAIL' && lon.provenance !== 'FAIL') {
-      return { lat: lat.value, lon: lon.value, isFix: true };
-    }
-    return { ...REGION.home, isFix: false };
-  };
+  /**
+   * Position to measure from AND to ask about — one answer, from
+   * `queryCentre`, which is now the only place that ladder is written.
+   *
+   * IT USED TO BE TWO. This function measured the distance to the chosen
+   * station from the live fix while the QUERY three lines below asked about a
+   * fixed rectangle over Sacramento, so a reader in Denver was told, correctly
+   * and uselessly, how far they were from a California field. The surrogate is
+   * still NAMED in what the panel shows, so nobody reads a pre-fix distance as
+   * a distance from where they are.
+   */
 
   const failAll = (reason) => {
     for (const p of METAR_FIELDS) state.fail(p, reason);
@@ -97,12 +98,12 @@ export function createMetarSource({ state, fetchImpl = fetch, clock = () => Date
 
     async refresh(fields) {
       if (inFlight) return inFlight;
-      const from = originFrom(fields ?? {});
+      const from = queryCentre(fields ?? {});
 
       inFlight = (async () => {
         let res;
         try {
-          res = await fetchImpl(`/api/metar?bbox=${encodeURIComponent(metarBboxParam())}`, { cache: 'no-store' });
+          res = await fetchImpl(`/api/metar?bbox=${encodeURIComponent(metarBboxParam(from))}`, { cache: 'no-store' });
         } catch (err) {
           // Offline is the ordinary case for this app, not an exception. The
           // fields keep their last values and age into STALE then FAIL on their

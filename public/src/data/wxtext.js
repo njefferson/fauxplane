@@ -18,7 +18,7 @@
  * report is inventing one, and because the raw form is what a briefing shows.
  */
 
-import { REGION } from '../core/region.js';
+import { QUERY_HALF_WIDTH_NM, REGION, queryBox } from '../core/region.js';
 import { placeAdvisory } from './fromline.js';
 
 /** The three blocks, in the order a crew would read them: what is happening
@@ -52,13 +52,33 @@ export const UNFILTERED_NOTE = 'This service does not narrow these to your area 
  * of severe turbulence forty miles away is worth reading, and a SIGMET's whole
  * point is that it covers an area.
  *
- * Still the navdata region rather than anything larger — the Function refuses a
- * box over twelve degrees a side, and asking a public service to sweep half a
- * continent is the shape §15.5 forbids.
+ * A HUNDRED MILES, NOT A CONTINENT — the Function refuses a box over twelve
+ * degrees a side, and asking a public service to sweep half a country is the
+ * shape §15.5 forbids. `queryBox` clamps to that cap rather than discovering it
+ * as a 400 charged to a rate limit.
+ *
+ * IT TAKES A CENTRE NOW. Before 2.0.0 this was `REGION.bbox`, so the advisories
+ * a reader was shown as overhead were the ones overhead in Northern California.
+ * `REGION.bbox` survives as the stated fallback for a panel with no position.
  */
-export const wxBboxParam = () => {
+export const wxBboxParam = (centre = null) => {
+  const box = queryBox(centre, QUERY_HALF_WIDTH_NM.wxtext);
+  if (box) return box.param;
   const b = REGION.bbox;
   return `${b.latMin},${b.lonMin},${b.latMax},${b.lonMax}`;
+};
+
+/**
+ * The box as a RECTANGLE, for whoever has to sort against it.
+ *
+ * The ATIS page places every advisory against the area it asked about, and it
+ * must be the SAME area — a panel that fetches one rectangle and sorts against
+ * another will eventually file an advisory that is overhead under Elsewhere.
+ * So this is derived here, once, and handed out rather than rebuilt.
+ */
+export const wxBbox = (centre = null) => {
+  const box = queryBox(centre, QUERY_HALF_WIDTH_NM.wxtext);
+  return box ? box.bbox : REGION.bbox;
 };
 
 export function createWxTextSource({ fetchImpl = null, clock = () => Date.now() } = {}) {
@@ -69,10 +89,15 @@ export function createWxTextSource({ fetchImpl = null, clock = () => Date.now() 
   const last = new Map();
   let inFlight = null;
 
-  const one = async (kind) => {
+  /** The box the LAST fetch actually used, so the page sorts against the area
+   *  it asked about rather than rebuilding one from a centre that may have
+   *  moved between the fetch and the paint. */
+  let lastBox = REGION.bbox;
+
+  const one = async (kind, centre) => {
     let res;
     try {
-      res = await doFetch(`/api/wxtext?kind=${kind}&bbox=${encodeURIComponent(wxBboxParam())}`, { cache: 'no-store' });
+      res = await doFetch(`/api/wxtext?kind=${kind}&bbox=${encodeURIComponent(wxBboxParam(centre))}`, { cache: 'no-store' });
     } catch (err) {
       return { ok: false, kind, reason: `not fetched: ${err.message}` };
     }
@@ -111,6 +136,12 @@ export function createWxTextSource({ fetchImpl = null, clock = () => Date.now() 
       return WX_KINDS.map((k) => ({ ...k, result: last.get(k.id) ?? null }));
     },
 
+    /** The area the reports on hand were actually fetched for. The page sorts
+     *  against THIS, never against a box it works out for itself. */
+    get area() {
+      return lastBox;
+    },
+
     /**
      * THE THREE ARE FETCHED TOGETHER AND SEQUENTIALLY, not in parallel.
      *
@@ -119,10 +150,15 @@ export function createWxTextSource({ fetchImpl = null, clock = () => Date.now() 
      * asks us not to send. They are cheap and heavily cached; one after another
      * costs a few hundred milliseconds nobody is waiting on.
      */
-    async refresh() {
+    async refresh(centre = null) {
       if (inFlight) return inFlight;
+      // Fixed for the whole sweep. The three kinds are fetched one after
+      // another and a moving reader would otherwise get three different
+      // rectangles under one heading.
+      const box = wxBbox(centre);
       inFlight = (async () => {
-        for (const k of WX_KINDS) last.set(k.id, await one(k.id));
+        for (const k of WX_KINDS) last.set(k.id, await one(k.id, centre));
+        lastBox = box;
         return this.all;
       })();
       try {

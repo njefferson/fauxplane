@@ -108,6 +108,26 @@ export const STANDING = [
     must: /could not (?:be )?place|cannot place|not everything can be placed/i,
     why: 'Some advisories name facilities the bundled table does not carry. They are shown in a "Could not place" group with the reason, never hidden.',
   },
+  {
+    /**
+     * REPLACES the line about reports being fixed to Northern California, which
+     * 2.0.0 fixed — every feed box now follows the reader. Removing one of these
+     * is meant to be a deliberate act claiming a fix, and this is that claim.
+     *
+     * What is left is smaller, real and PERMANENT until somebody ships more
+     * data: the ground map and the airfield database are clipped to one region
+     * on purpose, because a bundle works with the radio off and cannot be rate
+     * limited. Outside it the scope is genuinely bare — and now says so on both
+     * pages rather than reading as a fault.
+     *
+     * It is standing rather than a one-release note because it is exactly the
+     * shape of defect that goes quiet: nothing will ever fix it by accident,
+     * and nobody at home will ever see it.
+     */
+    id: 'bundled-region',
+    must: /bundled (?:ground|airfield|map)|Northern California only|outside (?:it|the region)/i,
+    why: 'The basemap and airport database are clipped to Northern California. Feeds follow the reader anywhere; the bundled ground does not, and both pages say so.',
+  },
 ];
 
 /**
@@ -119,6 +139,26 @@ export const STANDING = [
  *   broken   what is still wrong, that he might hit
  */
 export const RELEASES = [
+  {
+    version: '2.0.0',
+    date: '2026-08-06',
+    headline: 'The weather follows you. Everywhere it said "your area", it meant Northern California — now it means yours.',
+    changed: [
+      'THE REPORTS AND WARNINGS ARE ABOUT WHERE YOU ARE. Every one of them was asked for around a fixed rectangle over Sacramento, wherever in the world you happened to be. So the surface observation was a California field, the pilot reports were California pilots, and — this is the one that mattered — the heading that says "Over your area" was sorting hazards by whether they were over Northern California. If you were not standing in it, the panel was telling you something about somebody else and calling it yours.',
+      'All three now follow your actual position, and they follow a flight you are following. Before the first fix arrives they use the last position this device saw; before there has ever been one they use the reference this panel starts from, and they say which.',
+      'THE MAP EXPLAINS ITSELF WHEN IT IS BARE. The ground map and the airfield list really are Northern California only — that is what lets them work with the radio off and never be turned away by a busy server — so from anywhere else the scope was simply empty, with no clue whether that was the region or a fault. It now says which, on the map and in the airport search both, and says what still works everywhere.',
+      'Searching for an airfield outside the region gets a different answer from a typo. "Nothing matches DEN" sends you looking for a spelling mistake; it now tells you the list is regional and that a coordinate works anywhere.',
+      'The position sent with a weather request is rounded to about six miles before it leaves the device — the same coarsening the aircraft feed has always used. Nothing here needs your doorstep to find the nearest airfield reporting a pressure setting.',
+    ],
+    broken: [
+      'The bundled ground map and airfields cover Northern California only, so outside it the scope is bare. Everything driven by a feed — weather, reports, aircraft, the instruments — works wherever you are.',
+      'Not everything can be placed. The beacon list covers the main navigation aids and airports, and an advisory drawn between smaller ones cannot be worked out — those appear in their own group saying so, rather than being dropped.',
+      '"Over your area" is generous on purpose. It uses the rectangle an advisory’s area fits inside rather than its exact outline, so a warning that passes close by is included.',
+      'At the largest text size the tab strip is still three rows, so the radar page opens with the top of the scope on screen rather than the whole of it.',
+      'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',
+      'A followed flight shows no route. See 1.27.0.',
+    ],
+  },
   {
     version: '1.38.1',
     date: '2026-08-06',

@@ -67,6 +67,7 @@ const SHELL = [
   '/src/sensors/magnetometer.js',
   '/src/data/alerts.js',
   '/src/data/metar.js',
+  '/src/data/position.js',
   '/src/data/windsaloft.js',
   '/src/data/wxtext.js',
   '/src/data/fromline.js',

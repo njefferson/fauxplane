@@ -425,8 +425,19 @@ export function createAtis({ host, state, announcer, clock = () => Date.now() })
          * back narrowed to the box already, so grouping them would claim a
          * second opinion about geography the feed has already given.
          */
+        /**
+         * AGAINST THE BOX THE REPORTS WERE FETCHED WITH, which from 2.0.0 is
+         * the reader's own. It used to be `REGION.bbox`, so "Over your area"
+         * meant "over Northern California" — the panel making a claim about the
+         * reader that was not about the reader.
+         *
+         * Taken from the source rather than rebuilt here on purpose: a page
+         * that sorted against a box it worked out for itself would eventually
+         * file an advisory that is genuinely overhead under Elsewhere, the
+         * moment the reader moved between the fetch and the paint.
+         */
         const placement = result?.area === 'unfiltered'
-          ? placeReports(reports, REGION.bbox, navaidLookup)
+          ? placeReports(reports, wxText?.area ?? REGION.bbox, navaidLookup)
           : null;
 
         const said = wxSummary(b.kind, result, clock(), placement);

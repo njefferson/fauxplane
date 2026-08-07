@@ -39,6 +39,7 @@ import { crewAlerts } from './data/alerts.js';
 import { upReference } from './render/gauges/plan.js';
 import { createMetarSource } from './data/metar.js';
 import { createWxTextSource } from './data/wxtext.js';
+import { queryCentre } from './data/position.js';
 import { FOLLOW_POLL_MS, RADAR_RANGE_NM, createTrafficSource, followBannerText, lastKnownFix, ownAltitudeFt, radarCentre, rememberFix } from './data/traffic.js';
 import { createWindsSource } from './data/windsaloft.js';
 import { createGeoidSource } from './data/geoid.js';
@@ -1358,9 +1359,12 @@ async function boot() {
       // The text reports ride the METAR interval. They are heavily cached at the
       // edge — five to thirty minutes depending on the kind — so the schedule
       // costs a public service almost nothing.
-      await wxText.refresh();
+      // THE CENTRE IS READ AT EACH REFRESH, not captured once. A reader who
+      // gets their first fix ten seconds after the panel comes up must stop
+      // being asked about the region on the very next sweep.
+      await wxText.refresh(queryCentre(state.snapshot.fields));
       setInterval(refreshMetar, METAR_INTERVAL_MS);
-      setInterval(() => wxText.refresh(), METAR_INTERVAL_MS);
+      setInterval(() => wxText.refresh(queryCentre(state.snapshot.fields)), METAR_INTERVAL_MS);
       setInterval(refreshWinds, WINDS_INTERVAL_MS);
     }
 

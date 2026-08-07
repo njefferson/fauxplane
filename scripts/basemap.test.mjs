@@ -183,6 +183,29 @@ test('a stale speed says so in the sentence too', () => {
   assert.match(said, /groundspeed 12 knots, stale/);
 });
 
+test('AN EMPTY GROUND MAP SAYS WHY IT IS EMPTY', () => {
+  /**
+   * The bundled ground is clipped to one region, which is a deliberate trade —
+   * it works with the radio off and cannot be rate limited. But a reader
+   * opening this page from anywhere else gets an empty rectangle, and a reader
+   * using speech gets "the ground map IS loaded, 0 aircraft, nothing turned
+   * off": every sentence true, and no way at all to work out what they are
+   * looking at. The sentence is the difference between a regional app and a
+   * broken one.
+   */
+  const said = describeMap({ mode: 'plan', up: null, count: 2, rangeNm: 40, outsideBundle: true });
+  assert.match(said, /covers Northern California only and you are outside it/);
+  assert.match(said, /not a fault/, 'it has to say this is expected, or it reads as an error');
+  assert.doesNotMatch(said, /ground map is not loaded/, 'a bundle that loaded fine is not a missing bundle');
+});
+
+test('and says nothing about the region when the reader is inside it', () => {
+  // Default off. A standing caveat about a limit nobody is hitting is the
+  // furniture rule, and it would be on screen for the one person this panel
+  // was built for, every time he opens the map.
+  assert.doesNotMatch(describeMap({ mode: 'plan', up: null, count: 2, rangeNm: 40 }), /Northern California/);
+});
+
 test('A TRUNCATED PICTURE SAYS SO', () => {
   // The range floors are the real declutter and are a stated policy; the count
   // cap behind them is a backstop, and a scope quietly showing a subset is the
