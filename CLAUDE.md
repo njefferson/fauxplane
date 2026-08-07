@@ -97,6 +97,28 @@ the nationwide list it replaces. `Elsewhere` is a real disclosure: collapsed,
 never removed. Each clause is tested SEPARATELY, because pooling one bulletin's
 several areas into a single box claimed all of New Mexico.
 
+**EVERY FEED BOX FOLLOWS THE READER, and `REGION` is a FALLBACK rather than a
+fact** (2.0.0). One ladder decides where a query is centred — `queryCentre` in
+`public/src/data/position.js`: the live fix, then the coarse last-known fix,
+then `REGION.home`, each rung naming itself so a number derived from a position
+nobody measured can say so. FOLLOW mode needs no branch, because `traffic.js`
+moves ownership of `position.*` wholesale.
+
+One builder turns that into a box — `queryBox` in `core/region.js`. It SNAPS the
+centre to 0.1°, the same quantum the traffic Function uses, for privacy and
+because `cached()` keys on the URL: a box moving with GPS jitter misses the edge
+cache on every refresh and nothing on screen looks any different. It CLAMPS the
+span inside the Function's 12° cap and CLAMPS longitude to the meridian, both of
+which are 400s charged to a shared egress address rather than visible errors.
+`region.test.mjs` asserts every box against the REAL `parseBbox`, imported, from
+a dozen named places — which is how 82°N and the antimeridian were found at all.
+Hub LESSONS §67.
+
+**The bundled ground stays regional and now SAYS SO** — the MAP page's note and
+its text alternative, and the RADAR picker, where "not found" and "not in the
+bundle" are different answers. `insideBundle` returns null when nobody can tell,
+and null is not "outside".
+
 **Text reports — PIREPs, SIGMETs/AIRMETs and TAFs — come from the SAME service
 as METAR**, so there is no new licensing question: a US Government work whose
 terms are already read. `POLICIES.wxtext` is a separate entry only because the
@@ -170,7 +192,7 @@ rather than assumed. adsb.lol call routes **plausible**, which is their word and
 belongs on screen — an inference from a callsign is not a filed flight plan.
 
 Every gate, and each one exits non-zero:
-- `npm test` — 449 unit tests over the pure logic, including the magnetic model
+- `npm test` — 576 unit tests over the pure logic, including the magnetic model
   against NOAA's published test values at 100 points.
 - `npm run a11y` — axe plus the checks axe cannot make, over 3 viewports x 2
   palettes x 6 pages, including the acceptance criteria, plus the checks that
