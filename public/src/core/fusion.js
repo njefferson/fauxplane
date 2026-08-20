@@ -129,7 +129,7 @@ export const DEFAULTS = Object.freeze({
    * filter was badly diverged — the mis-signed screen rotation put it fifty
    * degrees out — the residual was enormous and PERSISTENT, which is exactly
    * the input an ungated integrator reads as "an enormous constant offset".
-   * The owner's iPhone reported the alpha offset pegged at -10.00 deg/s, dead on the
+   * a real phone reported the alpha offset pegged at -10.00 deg/s, dead on the
    * clamp. That is not a gyroscope's zero-offset, which is a degree or two; it
    * is the loop eating its own error.
    *
@@ -248,7 +248,7 @@ export function attitudeFromGravity({ x, y, z }, screenAngleDeg = 0, mount = nul
   // this, so the pair agreed with each other while both disagreed with the
   // world — the same structural blindness as the degree-1 magnetic tests.
   //
-  // Derived from the owner's iPad, held square in landscape, from the raw axes in
+  // Derived from a real tablet, held square in landscape, from the raw axes in
   // its own diagnostics report: earth-up in device coords (0.610, 0.031, 0.792)
   // at a reported angle of 90. Rz(-90) gives roll -177; Rz(+90) gives roll
   // +2.9, which is what an iPad held square actually is.
@@ -477,7 +477,7 @@ export function upFromTilt(betaDeg, gammaDeg) {
  * detectable from a feature test.
  *
  * Unhandled, it rotates the artificial horizon by 180 degrees: ground on top,
- * sky underneath, roll pointer at the bottom. That is precisely what the owner's
+ * sky underneath, roll pointer at the bottom. That is precisely what a real
  * iPhone showed — an upright phone in portrait reporting roll = -180.
  *
  * DETECTED FROM DATA, NOT FROM THE USER AGENT. The orientation event's beta and
@@ -578,7 +578,7 @@ export function createFusion(options = {}) {
    * Integrate the body rates forward. Short-term truth, drifts over minutes.
    *
    * THE SIGNS, DERIVED RATHER THAN GUESSED, because guessing them is what put a
-   * persistent 3.9-degree residual on the owner's device and stopped the filter ever
+   * persistent 3.9-degree residual on a real device and stopped the filter ever
    * converging — the gyro was pushing one way while the accelerometer dragged
    * it back, for ever.
    *
@@ -634,7 +634,7 @@ export function createFusion(options = {}) {
 
     /**
      * THE FULL EULER KINEMATICS, AND THIS IS THE ROOT CAUSE OF "GENTLE ROTATION
-     * ERRORS THE HORIZON" (the owner, 2026-08-03).
+     * ERRORS THE HORIZON" (reported 2026-08-03).
      *
      * This used to be `pitch += omega.x·dt` and `roll -= omega.z·dt`: the
      * textbook small-angle shortcut, φ̇ = p and θ̇ = q. It is exact at wings-level
@@ -665,7 +665,7 @@ export function createFusion(options = {}) {
      *
      * IT ALSO UNBLOCKS A BIAS. At screen angle 0 the old form used omega.x and
      * omega.z and never touched omega.y, so gamma's zero-offset could not be
-     * estimated — his report shows `gamma 0.00 deg/s` after 207 samples beside
+     * estimated — the report shows `gamma 0.00 deg/s` after 207 samples beside
      * two siblings that had both learned one. `r` uses it now.
      */
     const p = -omega.z; // roll rate, about the nose
@@ -880,7 +880,7 @@ export function createFusion(options = {}) {
      * percent a sample, which from fifty degrees is another four seconds of a
      * horizon that is visibly wrong and that the filter already knows is wrong.
      * Four seconds of coasting plus four of creeping is the eight-second window
-     * he photographed.
+     * that was photographed.
      *
      * A DELIBERATE ASYMMETRY, not a general speed-up. Inside the window nothing
      * changes: a hand-held lean still tracks the gyro, which is the whole point
@@ -919,7 +919,7 @@ export function createFusion(options = {}) {
     //
     // Without this the two halves of the filter fight to a standoff at
     // residual = offset / (rate x (1 - alpha)) and simply stay there. That is
-    // what the owner's phone was reporting as "converging (residual 14.8 deg)".
+    // what a real phone was reporting as "converging (residual 14.8 deg)".
     //
     // Projected back onto the DEVICE axes the gyro actually reports, using the
     // same screen angle the rates were rotated by — an offset learned in screen
@@ -961,7 +961,7 @@ export function createFusion(options = {}) {
     //   1. The INSTANTANEOUS residual. Held in a hand, the accelerometer
     //      solution jitters several degrees continuously, so this never fell
     //      below the threshold and the horizon stayed crossed out for ever. It
-    //      was measuring hand-shake. The owner's device reported "converging
+    //      was measuring hand-shake. a real device reported "converging
     //      (residual 3.9 deg)" thirteen minutes after boot.
     //   2. The filter against a SMOOTHED gravity reference. That fixed the
     //      jitter and broke rotation: a smoothed reference lags a turning
@@ -994,8 +994,8 @@ export function createFusion(options = {}) {
       //
       // Levelling used to read stillness at the instant the button was pressed,
       // which is the one instant guaranteed to be disturbed — the press IS the
-      // disturbance. On a tablet it never succeeded: the owner, "when I tap the
-      // button, it wiggles too much to work." A cradled device is still right
+      // disturbance. On a tablet it never succeeded — tapping the button wiggles
+      // the device too much for the capture to work. A cradled device is still right
       // up until a finger reaches it, so the reference worth capturing is the
       // one from just BEFORE the touch.
       //
@@ -1157,7 +1157,7 @@ export function createFusion(options = {}) {
       // an approximation, it is exact. What fusion adds is steadiness THROUGH
       // MOTION. That is a question of QUALITY, not of existence.
       //
-      // Conflating the two put a permanent red cross over the horizon on the owner's
+      // Conflating the two put a permanent red cross over the horizon on a real
       // phone: the smoothed residual never fell under two degrees, so a panel
       // that knew its own attitude to a fraction of a degree refused to draw
       // it, and said "converging" for as long as anyone cared to watch.
@@ -1177,11 +1177,11 @@ export function createFusion(options = {}) {
          * `hasHeading` goes false for two unrelated reasons and the panel used
          * one sentence for both: "this device reports no magnetic heading".
          *
-         * On the owner's iPhone that sentence was FALSE. His diagnostics report
+         * On a real phone that sentence was FALSE. His diagnostics report
          * carried `webkitCompassHeading 278.3` in the raw block and `heading
-         * 279.5` in this filter, three lines above the panel asserting his
+         * 279.5` in this filter, three lines above the panel asserting the
          * phone had no compass. The compass had simply stopped sending updates
-         * — the page had been in the background — and a claim about his
+         * — the page had been in the background — and a claim about the
          * HARDWARE was manufactured from a claim about the last five seconds.
          *
          * A reason string is a value like any other on this panel. Inventing

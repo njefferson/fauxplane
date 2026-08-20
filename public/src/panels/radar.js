@@ -76,7 +76,7 @@ export function createRadar({
 
   const status = el('p', { class: 'radar-status', role: 'status', 'aria-live': 'polite', text: 'Waiting for the first sweep.' });
   /**
-   * THE STATE OF THE SCOPE, AT A GLANCE (the owner, 2026-08-04).
+   * THE STATE OF THE SCOPE, AT A GLANCE (reported 2026-08-04).
    *
    * `aria-hidden` because every word in it is already in `status`, which is
    * the live region — announcing both would read the same state twice to a
@@ -927,7 +927,7 @@ export function createRadar({
       readyChip.textContent = readiness.label;
       readyChip.dataset.state = readiness.state;
       // THE CHIP SAYS WHETHER A TAP WOULD DO ANYTHING, because "populated" and
-      // "ready to tap" are not the same fact and the owner asked for both.
+      // "ready to tap" are not the same fact and both were asked for.
       readyChip.dataset.tappable = readiness.tappable ? 'true' : 'false';
 
       if (!result) status.textContent = 'Waiting for the first sweep.';
@@ -935,7 +935,7 @@ export function createRadar({
         /**
          * THE READER GETS A SENTENCE; THE FORENSICS GO WHERE FORENSICS GO.
          *
-         * This used to print the raw refusal chain, so what the owner photographed
+         * This used to print the raw refusal chain, so what was photographed
          * on the face of a gauge was `cf-ray a258e8a82ff1fa4e-SJC`. True, and
          * written for whoever is debugging the Pages Function.
          *

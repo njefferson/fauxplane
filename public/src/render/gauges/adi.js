@@ -89,8 +89,8 @@ export function drawAdi(ctx, { x, y, w, h, tokens, attitude, slip, turnRate, mou
      * WRAPPED, NOT TRUNCATED — the same fix as the full ATT FAIL branch above,
      * which this branch never got.
      *
-     * The owner, 2026-08-05, photographing the ADI while following an aircraft:
-     * "The red text is cutoff on the PFD when following an aircraft." It read
+     * THE DEFECT, 2026-08-05, photographed from the ADI while following an
+     * aircraft: the red text is cut off on the PFD. It read
      * `ADS-B carries no attitude — pitch is n…`, severed mid-word.
      *
      * A REASON IS THE ONE STRING ON A GAUGE THAT MUST NOT BE ABBREVIATED: the

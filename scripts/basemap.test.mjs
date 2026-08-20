@@ -202,7 +202,7 @@ test('AN EMPTY GROUND MAP SAYS WHY IT IS EMPTY', () => {
 test('and says nothing about the region when the reader is inside it', () => {
   // Default off. A standing caveat about a limit nobody is hitting is the
   // furniture rule, and it would be on screen for the one person this panel
-  // was built for, every time he opens the map.
+  // was built for, every time the map is opened.
   assert.doesNotMatch(describeMap({ mode: 'plan', up: null, count: 2, rangeNm: 40 }), /Northern California/);
 });
 

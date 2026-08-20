@@ -29,7 +29,7 @@
  * it rejected — `loc`, `msg` and `type` per problem.
  *
  * That is the difference between guessing and probing: a wrong guess here is
- * self-diagnosing, and the answer arrives in the diagnostics report from the owner's
+ * self-diagnosing, and the answer arrives in the diagnostics report from a real
  * device rather than from another round of screenshots. The same method
  * confirmed the Mode S crew readouts, which had been built from published field
  * names without a single real response ever having been seen.
@@ -44,7 +44,7 @@ import { POLICIES, USER_AGENT, cached, cooldownSeconds, inCooldown, json, noteRe
 /**
  * THE UPSTREAM CALL IS OFF, AND THE EVIDENCE IS WHY (2026-08-04).
  *
- * Three probe rounds through the owner's device, each killing one hypothesis:
+ * Three probe rounds through a real device, each killing one hypothesis:
  *
  *   1. HTTP 201, not 422 — the request SHAPE is accepted. FastAPI names a
  *      rejected field in `detail`; that never happened.
@@ -56,7 +56,7 @@ import { POLICIES, USER_AGENT, cached, cooldownSeconds, inCooldown, json, noteRe
  *      before adsb.lol's application ever sees the request.
  *
  * So the call cannot succeed, and every attempt spends a request against a rate
- * limit shared with the AIRCRAFT feed — the one the owner is actually looking at.
+ * limit shared with the AIRCRAFT feed — the one the reader is actually looking at.
  * 1.21.1 was precisely this mistake in another form, and NOTES pre-committed to
  * this outcome before the evidence arrived: "if the next report shows an
  * intermediary rather than adsb.lol, the honest move is to STOP CALLING the
@@ -157,7 +157,7 @@ export function parseRoute(payload, callsign) {
  * What actually came back, for the diagnostics report. Costs no extra request.
  *
  * IT CARRIES THE RAW BODY NOW, and the first real probe is why. adsb.lol
- * answered the owner's device with **HTTP 201** — not the 422 a wrong shape would
+ * answered a real device with **HTTP 201** — not the 422 a wrong shape would
  * have produced, so the request was ACCEPTED — and this function could only
  * report "the reply carried no readable keys". That sentence is true and
  * useless: it cannot tell an empty body from a non-JSON body from valid JSON
@@ -180,7 +180,7 @@ function describe(payload, status, raw = null, res = null) {
      * WHERE THE REPLY ACTUALLY CAME FROM, and this is the evidence the second
      * probe round needs.
      *
-     * The owner's device got HTTP 201, `text/html`, ZERO BYTES. That is not a JSON
+     * a real device got HTTP 201, `text/html`, ZERO BYTES. That is not a JSON
      * API answering — a routes endpoint returning routes sends
      * `application/json` with something in it. Three things produce this and
      * they need different responses:

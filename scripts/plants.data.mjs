@@ -177,7 +177,7 @@ export const PLANTS = [
     expect: /caveat|plausible/i,
   },
   {
-    // The self test exists so the owner stops paying a release per fact. A
+    // The self test exists so nobody pays a release per fact. A
     // diagnostic that LIES is worse than none, because it is believed — and the
     // specific lie worth guarding is calling a check that never ran a pass.
     name: 'selftest: a check that was skipped is reported as a pass',
@@ -216,11 +216,11 @@ export const PLANTS = [
     expect: /present or imply a different aircraft|answered about/i,
   },
   {
-    // the owner's first real route probe came back HTTP 201 — the shape was
+    // The first real route probe came back HTTP 201 — the shape was
     // ACCEPTED — and the report could only say "no readable keys", which
     // cannot tell an empty body from a non-JSON one from valid JSON of an
     // unexpected shape. A probe that reports a status without the body is half
-    // a probe, and it cost a full round trip through his device to learn it.
+    // a probe, and it cost a full round trip through a real device to learn it.
     name: 'probe: the route probe stops carrying the raw body',
     check: 'a probe reports the body, not just the status',
     gate: 'tests',
@@ -243,10 +243,10 @@ export const PLANTS = [
     expect: /switching aircraft clears the previous one/i,
   },
   {
-    // the owner, 2026-08-04: the mark at the top of the (i) panel "does not match
-    // the app's icon close enough, and looks like an error because it is
-    // different." A LOOKALIKE is the defect — the only version that cannot
-    // drift from the icon on his home screen is the identical file, so the
+    // THE DEFECT, 2026-08-04: the mark at the top of the (i) panel does not
+    // match the app's icon closely enough, so it reads as an error rather than
+    // as the app. A LOOKALIKE is the defect — the only version that cannot
+    // drift from the icon on a home screen is the identical file, so the
     // panel points at the manifest's own icon and the gate checks that.
     name: 'identity: the panel mark drifts to a lookalike of the app icon',
     check: 'the mark is the SAME icon file the manifest declares',
@@ -256,9 +256,9 @@ export const PLANTS = [
     expect: /manifest's icon|lookalike|app mark/i,
   },
   {
-    // the owner, looking at NO CONTACT above "Standing off ... for a moment":
-    // "No indication of how long I'll wait before the radar will work…like the
-    // delay countdown, maybe?…. Just looks broken." A wait with no number is
+    // THE DEFECT, from NO CONTACT above the app's own "Standing off ... for a
+    // moment": the panel gave no indication of how long the wait would be, so it
+    // read as broken. A countdown was the suggested remedy. A wait with no number is
     // indistinguishable from a hang, and the app knew the number all along.
     name: 'radar: the countdown stops being shown while the scope waits',
     check: 'a waiting scope says when it will ask again',
@@ -292,9 +292,9 @@ export const PLANTS = [
     expect: /45s|600|remaining|left/i,
   },
   {
-    // FROM the owner's 1.21.1 DIAGNOSTICS REPORT. The panel said attitude.heading
+    // FROM THE 1.21.1 DIAGNOSTICS REPORT. The panel said attitude.heading
     // had failed because "this device reports no magnetic heading" — three
-    // lines above a raw block reading `webkitCompassHeading 278.3`. His iPhone
+    // lines above a raw block reading `webkitCompassHeading 278.3`. The phone
     // has a compass; it had stopped SENDING while the page was backgrounded.
     // A confident wrong sentence is worse than a wrong number: a wrong number
     // looks wrong, and this one sends the reader off to replace working
@@ -326,9 +326,9 @@ export const PLANTS = [
     expect: /never arrived|no broadcast|showing/i,
   },
   {
-    // the owner PHOTOGRAPHED THIS: following DAL2229, every instrument crossed out
-    // at once, PWR ON. "This aircraft makes the whole display look broken
-    // without any data, despite being 'turned on.'" The followed fields were
+    // PHOTOGRAPHED ON A REAL DEVICE: following DAL2229, every instrument crossed
+    // out at once with PWR ON — a panel that looks broken and dataless despite
+    // being switched on. The followed fields were
     // aged on the registry's SENSOR windows — heading's staleMs is 5 s because
     // a magnetometer updates many times a second, and the follow poll is 10 s.
     // A field cannot survive a limit shorter than the cadence that fills it.
@@ -342,7 +342,7 @@ export const PLANTS = [
   },
   {
     // AN INDICATOR THAT STOPS TRACKING IS WORSE THAN NO INDICATOR, because the
-    // reader now trusts it. The owner asked for this precisely so he could tell a
+    // reader now trusts it. This was asked for precisely so a reader could tell a
     // filling scope from a finished one; a frozen chip answers every question
     // with the same word and looks authoritative doing it.
     //
@@ -424,7 +424,7 @@ export const PLANTS = [
     expect: /quarter turn was applied backwards|held square is not banked/,
   },
   {
-    // The escape hatch that got the owner's iPad off 0.4.1. Its dangerous direction
+    // The escape hatch that got a real tablet off 0.4.1. Its dangerous direction
     // is the FALSE POSITIVE: it can force a reload, so a version of it that
     // fires when it should not is a reload loop, which is worse than the stale
     // panel. Planting the loosened condition proves the tests still object.
@@ -462,7 +462,7 @@ export const PLANTS = [
   },
   {
     // Zero is a measurement. Going back to crossing groundspeed out because the
-    // platform handed us null is the exact defect the owner found.
+    // platform handed us null is the exact defect that was reported.
     name: 'stationary: groundspeed goes back to failing instead of reading zero',
     check: 'a receiver sitting still reads zero, not a failure',
     gate: 'tests',
@@ -790,7 +790,7 @@ export const PLANTS = [
     expect: /stands off far longer than a 429|cooldown/,
   },
   {
-    // the owner photographed `cf-ray a258e8a82ff1fa4e-SJC` on the face of a gauge.
+    // `cf-ray a258e8a82ff1fa4e-SJC` was photographed on the face of a gauge.
     // Every word of the raw chain is true and it is written for whoever is
     // debugging the Pages Function. Putting it back is the defect.
     name: 'refusal: the raw upstream chain goes back on the gauge',
@@ -1182,7 +1182,7 @@ export const PLANTS = [
     expect: /did not take a manual mode|is not driving the panel/,
   },
   {
-    // the owner photographed `ADS-B carries no attitude — pitch is n…` on the ADI.
+    // `ADS-B carries no attitude — pitch is n…` was photographed on the ADI.
     // The identical fix already existed twenty lines away in the ATT FAIL
     // branch; this branch is only reachable by following a real aircraft, so it
     // was never on screen while the other one was being fixed.
@@ -1275,7 +1275,7 @@ export const PLANTS = [
    * NO PLANT FOR "the value strip is drawn over the power switch", DELIBERATELY,
    * and this comment is the record of why.
    *
-   * The defect was real — the owner photographed it on an iPad in landscape at
+   * The defect was real — photographed on a tablet in landscape at
    * 1.28.6 — and it is fixed. But THREE attempts at a single-edit plant came
    * back green: reverting the wrapper's `flex`, reverting the range column, and
    * both together. Each was written from a confident story about the mechanism,
@@ -1546,7 +1546,7 @@ export const PLANTS = [
     expect: /alphabetical|rearrange|three B738s must not outrank/i,
   },
   {
-    // The ragged edges he reported twice. A wrapping flex row sizes every tile
+    // The ragged edges reported twice. A wrapping flex row sizes every tile
     // to its own label, so no two rows share a column.
     name: 'picker: the airframe tiles go back to a ragged flex row',
     check: 'the tiles line up in columns',

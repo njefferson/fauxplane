@@ -300,7 +300,7 @@ if (!selected.length) {
  *
  * He is right, and the blocking was self-inflicted. This harness injected
  * faults into the REAL tree, so for forty-five minutes nobody could edit or
- * commit — every session running one told him to wait, and the waiting was
+ * commit — every session running one told the owner to wait, and the waiting was
  * never anyone's requirement. It was an implementation detail of the harness
  * that had been promoted into a rule in CLAUDE.md.
  *

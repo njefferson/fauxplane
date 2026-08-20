@@ -61,7 +61,7 @@ test('every FOLLOW reason fits the ADI without being cut off', () => {
   assert.deepEqual(cut, [], `reasons cut off on the ADI:\n  ${cut.join('\n  ')}`);
 });
 
-test('the pitch reason is the one the owner photographed, and it wraps rather than truncating', () => {
+test('the pitch reason is the one that was photographed, and it wraps rather than truncating', () => {
   const reason = FOLLOW_FAILS['attitude.pitch'];
   assert.match(reason, /ADS-B carries no attitude/, 'the reason under test is the one on the gauge');
   const lines = wrapText(ctx, reason, GAUGE_W - 16, { size: SIZE * 0.78, maxLines: 2 });

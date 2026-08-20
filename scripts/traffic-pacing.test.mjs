@@ -46,7 +46,7 @@ async function clientIntervals() {
 }
 
 test('the followed aircraft outlives its own poll, or the panel crosses itself out', () => {
-  // the owner PHOTOGRAPHED THIS. Following DAL2229: GS, LOAD G, ATT, GPS ALT, VS,
+  // PHOTOGRAPHED ON A REAL DEVICE. Following DAL2229: GS, LOAD G, ATT, GPS ALT, VS,
   // HDG and TURN all crossed out at once, PWR ON, banner saying FOLLOWING —
   // "makes the whole display look broken without any data".
   //
@@ -126,7 +126,7 @@ test('every field the followed aircraft owns is aged on the FEED’s window', as
 test('the edge cache outlives the poll interval, or it does nothing', async () => {
   // THE DEFECT THIS EXISTS FOR. The TTLs were 8 s and 5 s against polls of 10 s
   // and 5 s: every entry expired just before the poll that would have used it,
-  // so every request went upstream and the owner was rate limited off the radar
+  // so every request went upstream and the radar was rate limited off
   // repeatedly. Both files' comments claimed the caching worked. Prose did not
   // catch it; arithmetic does.
   const { traffic, follow } = await clientIntervals();
@@ -258,10 +258,10 @@ test('refusal: an empty or unknown reason still produces a sentence', () => {
 });
 
 /**
- * THE SCOPE'S STATE, IN WORDS (the owner, 2026-08-04).
+ * THE SCOPE'S STATE, IN WORDS (requested 2026-08-04).
  *
- * *"It would be nice to have an indicator that shows when the radar is
- * populated and another for any other states like being ready to tap."*
+ * THE ASK: an indicator for when the radar is populated, and another for the
+ * other states it can be in — including being ready to tap.
  *
  * Every branch below is a DIFFERENT FACT about the sky and the feed, and the
  * reader has to be able to tell them apart: nothing swept yet, swept and empty,
@@ -342,7 +342,7 @@ test('readiness: while following, the chip says whose aircraft the panel is show
 /**
  * THE FOLLOW BANNER MUST NOT CLAIM DATA IT DOES NOT HAVE.
  *
- * From the owner's 1.21.1 report: following PXT466 with the traffic feed rate
+ * From the 1.21.1 report: following PXT466 with the traffic feed rate
  * limited, every followed field reading "waiting for the first report from
  * PXT466" — under a banner saying "this panel is showing that aircraft's
  * broadcast, not this device". It was showing nothing at all.
@@ -394,11 +394,12 @@ test('follow banner: not following says nothing at all', () => {
 });
 
 /**
- * THE COUNTDOWN (the owner, 2026-08-04).
+ * THE COUNTDOWN (reported 2026-08-04).
  *
- * *"No indication of how long I'll wait before the radar will work…like the
- * delay countdown, maybe?…. Just looks broken."* He was looking at NO CONTACT
- * above the words "Standing off from the aircraft feeds for a moment". "A
+ * THE DEFECT: the panel gave no indication of how long the wait would be, so it
+ * simply read as broken; a countdown was the suggested remedy. What was on
+ * screen was NO CONTACT above the app's own words "Standing off from the
+ * aircraft feeds for a moment". "A
  * moment" is not a number, and a wait with no number is indistinguishable from
  * a hang.
  *
@@ -472,7 +473,7 @@ test('standoff: a record with no expiry says so rather than guessing zero', () =
 /**
  * NO FIELD MAY NAME AN AIRCRAFT THE PANEL IS NOT FOLLOWING.
  *
- * The owner's 1.23.1 report: following N81AB, every field reading "waiting for the
+ * the 1.23.1 report: following N81AB, every field reading "waiting for the
  * first report from N81AB" — and `attitude.heading` still reading "N460DF is
  * not broadcasting a heading". Heading is written outside FOLLOW_WRITES because
  * it has its own two-case message, and that write only happens where a report

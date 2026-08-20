@@ -24,7 +24,7 @@ const wrapAngle = (deg) => (((Math.round(deg / 90) * 90) % 360) + 360) % 360;
  * WHICH WAY IS THE SCREEN ROTATED — AND WHY THE MODERN API IS NOT TRUSTED ON
  * iOS.
  *
- * The owner's iPad, Safari 26.5, held in landscape, reported ALL of this at once,
+ * a real tablet, Safari 26.5, held in landscape, reported ALL of this at once,
  * from its own diagnostics report:
  *
  *     screen.orientation.angle   0                   "not rotated"

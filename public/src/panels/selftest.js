@@ -1,5 +1,5 @@
 /**
- * selftest.js — the checks only the owner's device can run, on one press.
+ * selftest.js — the checks only a real device can run, on one press.
  *
  * WHY THIS EXISTS.
  *

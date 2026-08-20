@@ -1,7 +1,7 @@
 /**
  * plan.test.mjs — labels on a busy plan view.
  *
- * The owner's 40 nm screenshot at 1.0.0 had nineteen aircraft, about a dozen of them
+ * the 40 nm screenshot at 1.0.0 had nineteen aircraft, about a dozen of them
  * in one quadrant, and their labels overprinted into a smear that read as
  * corruption rather than as density. Every label was drawn at a fixed offset
  * below its symbol, so a cluster put several lines of text in the same pixels.

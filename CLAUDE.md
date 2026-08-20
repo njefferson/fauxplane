@@ -263,10 +263,11 @@ Every gate, and each one exits non-zero:
   through the same public write the sensors use.
 
 ## Who this is for
-A friend of the owner's who is 3-D printing his own **747 cockpit** at home, for
-simulation. **He is not a pilot.** He loves planes and jets.
+A home cockpit builder: someone assembling a **747 flight deck** at home, for
+simulation, who **is not a pilot** and who loves planes and jets. That is the
+whole audience, and it is a design input rather than a demographic note.
 
-**Design questions resolve toward giving him the most JOY.** That is the
+**Design questions resolve toward giving that reader the most JOY.** That is the
 tie-breaker, and it outranks a session's instinct toward instrument realism or
 completeness. The device is CLAMPED AND STATIONARY on a desk indoors, which is
 a very different thing from one in a moving aircraft — NOTES.md records exactly
@@ -311,9 +312,9 @@ before every push and its result is reported in the handoff. Do not describe CI
 as covering it.
 
 ## Branches
-`staging` and `main` only (the owner, 2026-08-02). Staging is a **hard release gate**
+`staging` and `main` only (reported 2026-08-02). Staging is a **hard release gate**
 (Doctrine §7): every product change lands on `staging`, waits for the owner's pass on
-his actual device, and reaches `main` only on his explicit "promote" — never on
+a real device, and reaches `main` only on an explicit promote — never on
 a session's own read of "it's ready". Docs-only changes (this file, `NOTES.md`)
 may skip the gate.
 

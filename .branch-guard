@@ -1,0 +1,5 @@
+# Staging is a hard release gate: every product change lands there and waits for
+# the on-device pass; main is production (CLAUDE.md, Doctrine 7).
+work=staging
+promote=main
+escape=FAUXPLANE_PROMOTE

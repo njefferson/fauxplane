@@ -126,8 +126,8 @@ export function routeLine(route) {
  * The caveat, in adsb.lol's own word. Never omitted while the route is shown.
  *
  * SHORT ON PURPOSE, because it is VISIBLE TEXT in a banner that already carries
- * a callsign and a way out, on a panel whose landscape layout the owner has already
- * had to complain was cramped. Every word left in it is load-bearing:
+ * a callsign and a way out, on a panel whose landscape layout has already been
+ * reported as cramped. Every word left in it is load-bearing:
  * "plausible" is the source's own verdict, "from the callsign" is the method
  * that makes it a guess, and "not a filed flight plan" is the sentence that
  * stops a reader who is not a pilot treating it as a clearance. The longer

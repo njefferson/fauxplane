@@ -12,13 +12,13 @@
  * had been written while this line still said 1.7.4.
  *
  * The triplet is version.capability.iteration (Doctrine §7). The owner decides what
- * counts as a VERSION, and he called 1.0.0 on 2026-08-03 with a radar page in
- * front of him showing nineteen real aircraft.
+ * counts as a VERSION, and 1.0.0 was called on 2026-08-03 with a radar page
+ * showing nineteen real aircraft.
  *
- * 2.0.0 on 2026-08-06, also his call, made before the work was written rather
+ * 2.0.0 on 2026-08-06, also the owner's call, made before the work was written rather
  * than proposed afterwards. It is the release where every feed stopped being
  * asked about a rectangle over Sacramento — which is the difference between a
- * panel one person can use and a panel his family can.
+ * panel one person can use and a panel a household can.
  *
  * THE FIRST SLOT MOVES BECAUSE HE MOVES IT, and that is the only thing that
  * moves it. A session reading a large diff and concluding a major release is

@@ -250,7 +250,7 @@ test('every declared field has a unit, a label and a sane freshness window', () 
  * Indicated and pressure altitude could never be shown at all: they were
  * stamped with their OLDEST input's timestamp, and a METAR observation is
  * always several minutes old while their freshness window is sixty seconds. On
- * The owner's device the altimeter read "no update for 806s (limit 60s)" — 806
+ * a real device the altimeter read "no update for 806s (limit 60s)" — 806
  * seconds being precisely the age of the observation it came from.
  *
  * Every unit test passed throughout, because each one exercised the derivation

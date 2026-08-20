@@ -27,7 +27,7 @@ export const AOA_MIN_GROUNDSPEED_KT = 20;
  * output. That reasoning was wrong, and it broke the altimeter outright: a METAR
  * observation is always several minutes old, indicated altitude's freshness
  * window is 60 seconds, so indicated and pressure altitude aged out the instant
- * they were computed and could never be shown at all. The owner's first screenshot
+ * they were computed and could never be shown at all. the first screenshot
  * said "no update for 806s (limit 60s)" — 806 seconds being exactly the age of
  * the observation it was derived from.
  *
@@ -313,7 +313,7 @@ export function createTurnRate({ maxGapMs = 30_000, minGapMs = 900 } = {}) {
 /**
  * Past this, a vertical speed is not a reading — it is a broken integrator.
  *
- * The owner's iPad reported 344,570 fpm. The cause was upstream (a horizon ninety
+ * a real tablet reported 344,570 fpm. The cause was upstream (a horizon ninety
  * degrees over made the "vertical" projection read a horizontal axis, so
  * gravity leaked into the integrator at 9.8 m/s^2 and it ran away) and that
  * cause is fixed — but an instrument that CAN display three hundred thousand
@@ -341,7 +341,7 @@ export const VSI_ABSURD_FPM = 20_000;
  *   accelerometer half may be carrying real information. Zeroing it would
  *   invent a "not climbing" that nothing measured.
  *
- * So the number stays and the bound goes on the face of it. The owner's iPad
+ * So the number stays and the bound goes on the face of it. a real tablet
  * indoors: 27 m accuracy, fixes 5 s apart, tau 3 s — about 1,500 fpm, which is
  * most of what a light aircraft ever does. That is worth knowing and it is not
  * a defect to hide.

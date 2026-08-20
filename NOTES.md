@@ -12,7 +12,7 @@ feeds. It is not a simulator and it is not certified for anything.
 ## CLAIMED — the space under the radar is EICAS, and nothing else
 
 The scope is a circle in a column taller than it is wide, so 1.29.0 left room
-below it. That room was reserved until the owner said what went there; he named it
+below it. That room was reserved until the owner said what went there; it was named
 in the plan approved on 2026-08-05, and 1.31.0 built it: the **crew alerting half
 of EICAS**, which is what sits under the navigation display on the aircraft this
 panel is modelled on.
@@ -24,6 +24,95 @@ caption — and the strip being empty most of the time is not an invitation eith
 A session that finds it blank and fills it is making a product decision that
 belongs to the owner, same rule as the hub's §0c one level down. The comment sits
 on `.pfd-plan` in `styles.css` so it is read by whoever is about to do it.
+
+---
+
+## The privacy scrub, 2026-08-20
+
+**This repo passed both hub gates before this scrub, and it was the dirtiest of
+the four.** That is the finding, not an aside: `privacy-check.mjs` returned 0
+disclosures and `quote-check.mjs` returned 0 undeclared quotations, and the tree
+carried dozens of quotations of two different people — the owner and the
+cockpit builder this app is for.
+
+WHY BOTH GATES WERE BLIND HERE, and it is not a bug in either:
+
+- `privacy-check.mjs` anchors every pattern on the owner's NAME or role. A
+  previous pass had find-replaced the name to "the owner" throughout, so almost
+  nothing matched — **including `LICENSE.md`, whose Required Notice had been
+  corrupted to a name that is not anybody's.** A gate keyed to a token stops
+  seeing a repo the moment somebody rewrites that token.
+- `quote-check.mjs` covers exactly one shape, a `> *"…` markdown blockquote.
+  There is not one in this repo. Every quotation here lives in a `/* … */`
+  source comment or in wrapped prose, which that gate says plainly it does not
+  reach.
+
+THE NUMBERS, each read from the tool that produced it:
+
+- Owner's name in tracked files: **2**, both legitimate (the ⓘ link and its
+  release note). The find-replace is why that number says nothing.
+- A wider quotation sweep over every tracked `.md`, `.mjs`, `.js`, `.html` and
+  `.yml`: **87 candidates before, 69 after**, every survivor read and legitimate.
+- A targeted attribution scan — a person-source token with a quotation within
+  150 characters — found **roughly 60 sites across 30 files**: NOTES.md,
+  `index.html`, `app.js`, `fusion.js`, `state.js`, `derive.js`, `plan.js`,
+  `adi.js`, `releases.js`, `route.js`, `traffic.js`, `radar.js`, `info.js`,
+  `boot.js`, three Pages Functions, `a11y-gate.mjs`, `plants.data.mjs` and nine
+  test files.
+- A third-person sweep for references carrying no name at all: **84 more sites**,
+  reduced to 0. None of these is visible to any gate.
+
+**A THIRD PARTY IS THE SAME HARM.** "Who this is for" described a named
+relationship and personal facts about a real person, in both `CLAUDE.md` and
+here. It is now the audience in product terms — a home cockpit builder
+assembling a 747 flight deck, who is not a pilot — which keeps every design
+consequence (the joy tie-breaker, enthusiast language, the clamped stationary
+desk) and drops the person. `index.html` carried the same sentences as a comment
+and now states the three uses directly.
+
+WHAT WAS REWRITTEN, never deleted:
+
+- Reported speech became the requirement or the defect it carried. The runway
+  symbols, the cut-off ADI reason, the countdown behind NO CONTACT, the value
+  strip over the PWR switch, the lookalike (i) mark, groundspeed refusing to
+  read zero, the release notes that had become a support thread — every one
+  keeps its content and its measurement, and none of them is in anybody's words.
+- `the owner's device` / `his iPad` / `his phone` became `a real device`, `a
+  real tablet`, `a real phone`. Which device it was is engineering context; whose
+  it was is not.
+- `LICENSE.md`'s Required Notice is restored to the actual copyright holder. A
+  privacy scrub that corrupts a licence notice has broken something real.
+
+**Left in place on purpose, each read:** verbatim quotations of EXTERNAL
+DOCUMENTS — adsb.lol's and adsb.fi's published terms, OurAirports' README,
+X-Plane's docs — which are citations and are load-bearing for the licensing
+record; the app's own strings and release notes; the ⓘ link to the owner's site
+under his own byline; and a session's own voice.
+
+VERIFICATION, read from the runs: `npm test` **583 passing, 0 failing**;
+`npm run a11y` **all checks pass across 3 viewports x 2 palettes x 6 pages**;
+palette and docs gates exit 0; both hub gates exit 0.
+
+`public/` is touched — comments, one HTML comment block and one release-note
+sentence. **No version bump**: nothing rendered changes and no behaviour
+changes, and a release number for a comment scrub would be a claim about the app
+that is not true.
+
+**The gates are now wired in CI, each watched failing first.** `deploy.yml`
+already checked the hub out and ran `privacy-check.mjs`; it now runs
+`quote-check.mjs` and `branch-guard.mjs --repo . --artefact` beside it.
+`--artefact` is the only spelling that can hold on a runner. Each gate was
+verified by planting a SYNTHETIC violation — a fabricated sentence, never a real
+one, because planting a real quotation to prove the gate catches quotations puts
+it back in a tracked file permanently. All three exited 1 on the plant and 0
+with it removed.
+
+**The branch guard is installed.** `.branch-guard` declares `work=staging`,
+`promote=main`, `escape=FAUXPLANE_PROMOTE`, and `package.json` gained a
+`prepare` script so `npm ci` reinstalls the hook in every clone and CI job.
+
+**Git history is out of scope and the question is settled.** A history scan
+coming back red is not new information and is not a reason to reopen it.
 
 ---
 
@@ -916,7 +1005,7 @@ The genuinely new rules are three, and this repo owes nothing on any of them:
   session-behaviour rule; no code or document here is affected. It is the rule
   behind reporting the aviationweather.gov failure as *this sandbox's proxy
   refuses CONNECT* — a mechanism — rather than as a suspect.
-- **§0d — his words are not repo material.** Already reflected in `CLAUDE.md`
+- **§0d — a person's words are not repo material.** Already reflected in `CLAUDE.md`
   and enforced by the privacy gate in `deploy.yml` on every push.
 - **§7d.1 — "you" is the reader, there is no "I", nobody is asked to send
   anything.** Already a hard gate here: `releases.test.mjs`.
@@ -1535,7 +1624,7 @@ that it has the full width rather than the tail of a column.
 `checkHorizonIsPrimary` asserts the attitude indicator is the biggest instrument
 and that the scope is never taller — not that the two are equal. **The owner asked
 for them to stop being forced to the same height**, and a check that pins the
-current arrangement would forbid the thing he actually asked for. The rule is
+current arrangement would forbid the thing that was actually asked for. The rule is
 which instrument is primary; the arrangement is free to change.
 
 ---
@@ -1657,7 +1746,7 @@ already set, so the one resize it causes settles on the next notification.
 
 ## 1.28.3 — the instruments get the landscape screen, 2026-08-05
 
-Reproduced at his exact size — **874x402** — and the numbers
+Reproduced at the reported size — **874x402** — and the numbers
 were damning: the value strip was **354px of a 659px page**, so more than half
 the panel was below the fold and what was visible ended in a sentence sliced
 through the middle, directly above a solid footer bar.
@@ -1757,40 +1846,39 @@ said in the release notes.
 
 ## 1.28.1 — the release notes were a support thread, 2026-08-05
 
-He was looking at ten releases of a **development diary published inside the
-product**. Three distinct failures, all of which read as reasonable while being
-written:
+Ten releases of a **development diary published inside the product**. Three
+distinct failures, all of which read as reasonable while being written:
 
-- **"You" had quietly stopped meaning the reader.** *"You asked why every runway
-  looks the same."* *"You held the panel up next to your home screen and said it
-  did not match."* *"You sent a photo of DAL2229."* *"Five things you said were
-  wrong with the radar."* The reader is a friend of the owner's building a 747
-  cockpit. He opens the list and is addressed as somebody else, about events he
-  was not present for.
-- **"I" appeared at all.** *"I measured both."* *"It covers exactly what I cannot
-  reach from here."* *"I only wrote the test AFTER you found it. That is
-  backwards."* A session narrating its own process, under the owner's name, to a
-  stranger. There is no author character in a patch note.
-- **The reader was given homework, in eight consecutive releases.** *"Send me
-  that."* *"Follow a flight and send the report."* *"That is the thing to send
-  me."* Telling a reader HOW to report a problem is §7e and belongs in the (i)
-  menu; making the next release conditional on him doing it is an arrangement
-  between two other people, leaking onto his screen.
+- **"You" had quietly stopped meaning the reader.** Eleven entries addressed
+  "you" as the person who had reported the defect — who asked a question, who
+  held the panel up against something, who sent a photograph, who listed what
+  was wrong. The reader of a patch note is a home cockpit builder who was not
+  present for any of it, and is addressed as somebody else about events they
+  never saw.
+- **"I" appeared at all.** Nine entries carried a first-person author —
+  measuring, reaching, conceding a test was written too late. That is a session
+  narrating its own process, under the owner's byline, to a stranger. There is no
+  author character in a patch note.
+- **The reader was given homework, in eight consecutive releases.** Entries asked
+  for a report to be sent, a flight to be followed, a diagnostic to be returned.
+  Telling a reader HOW to report a problem is §7e and belongs in the (i)
+  menu; making the next release conditional on them doing it is an arrangement
+  between two other people, leaking onto their screen.
 
 Plus raw protocol on the face of it — `HTTP 201`, `content-type: text/html`,
 `cf-ray`, "24 pixels", "below the fold".
 
 **1.0.0 through 1.19.1 are clean.** The rot starts at 1.19.2, is total by 1.24.0,
-and tracks exactly the period when the work became a fast back-and-forth with
-The owner — the notes were being written from the SESSION's memory of the day rather
+and tracks exactly the period when the work became a fast back-and-forth — the
+notes were being written from the SESSION's memory of the day rather
 than from the diff. Every one of them has been rewritten for the reader. No claim
 changed and nothing was dropped; the same releases, described from the other side
 of the screen.
 
 ### The rule was in the file's own header the whole time
 
-`releases.js` opens with *"THE READER IS NOT A DEVELOPER… what he can now see or
-do."* That paragraph was written from this app and then walked past for ten
+`releases.js` opens by stating that the reader is not a developer, and that an
+entry says what they can now see or do. That paragraph was written from this app and then walked past for ten
 releases. **A rule that lives in a comment at the top of the file being edited is
 not enforcement** — it is read once and then the file is edited from the bottom.
 
@@ -1954,7 +2042,7 @@ Recorded here rather than hidden behind a lenient threshold.
 
 ### The route: three probes, three hypotheses killed, one answer
 
-From the owner's 1.26.0 report, the self test's first real run:
+From the 1.26.0 report, the self test's first real run:
 
     callsign SKW3107   HTTP 201
     content-type text/html
@@ -2021,12 +2109,11 @@ coverage table showing `nav_qnh` on 34 of 60 and `nav_altitude_mcp` on 29 of 60
 and — this time — **the DEPLOY was verified green for that exact SHA**, not the
 push. Live at https://fauxplane.pages.dev. Staging is the same commit.
 
-### The failure that made him ask
+### The failure that prompted the question
 
-He sent a screenshot of BITE with no self-test button on it and asked:
-*"What. Button."*
-
-He was on **1.24.0**. Four releases — 1.24.1, 1.25.0, 1.25.1, 1.26.0 — had been
+A screenshot of BITE came back with no self-test button on it, and the question
+that followed was simply which button was meant. The reporting device was on
+**1.24.0**. Four releases — 1.24.1, 1.25.0, 1.25.1, 1.26.0 — had been
 pushed, reported as shipped, and **never deployed**. Every one of those pushes
 was genuinely verified the way LESSONS §2 demands: read the remote, confirm the
 range line, confirm the SHA. All true. All about the wrong thing. **A push
@@ -2047,7 +2134,7 @@ not yet seen.
 
 ### Fixed in the gate, not in the sentence
 
-Rewording the note would have unblocked him in a minute and left the same
+Rewording the note would have unblocked the reader in a minute and left the same
 landmine in a SHARED gate for every repo that adopts it — and taught the next
 session that the way past a privacy check is to rephrase. `diagnosed` now
 requires a following `with`, which keeps every real disclosure and releases the
@@ -2127,10 +2214,10 @@ enough on screenshots.
 **1.25.1 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.23.1.
 
-### Measured against the real navdata, and he was right twice over
+### Measured against the real navdata, and the report was right twice over
 
 Computed from `navdata.json` at a 350px scope radius, for the runways actually
-near his home reference:
+near the home reference:
 
 - at **10 nm**, the closest runway draws **24px**
 - at **20 nm**, 8.6–17.3px
@@ -2179,7 +2266,7 @@ now and the test imports it; the plant then goes red as it should.
 
 ### The audit, which is not flattering
 
-Of the last five defects **he** found on his own device, four were reachable by
+Of the last five defects found on a real device, four were reachable by
 a plain unit test:
 
 - heading's staleness limit (5 s) was half the poll that filled it (10 s) —
@@ -2199,7 +2286,7 @@ free of faults nobody thought of.
 
 The fifth — the route feed's 201/text/html/0 bytes — genuinely needs the
 network. **Verified rather than assumed this time**: the sandbox's proxy denies
-every outbound host, google included. That one costs a round trip through his
+every outbound host, google included. That one costs a round trip through a real
 device and no test replaces it.
 
 ### What was built, and what it found in its first run
@@ -2250,7 +2337,7 @@ not the one field that happened to show it.
 
 ### First: it works
 
-The owner's 1.24.0 report is the panel doing the thing it was built for. Following
+the 1.24.0 report is the panel doing the thing it was built for. Following
 **N460DF, a C-130**, `seen_pos 0.13s ago`:
 
 - groundspeed **214 kt LIVE**, GPS altitude **4,325 ft LIVE**, track **127°T
@@ -2324,7 +2411,7 @@ fixed twice elsewhere.
 
 ### HTTP 201 — the request shape is ACCEPTED
 
-The owner's 1.23.1 report carried the first real probe:
+the 1.23.1 report carried the first real probe:
 
     WHAT THE ROUTE FEED ACTUALLY SENT
       callsign N460DF   HTTP 201   entries —
@@ -2345,7 +2432,7 @@ cannot distinguish:
 Those need three different fixes and the report collapsed them into one
 sentence. `describe()` was built for the failure case and had nothing to say
 about success. **A probe that reports a status without the body is half a
-probe**, and it took a full round trip through the owner's device to find that out.
+probe**, and it took a full round trip through a real device to find that out.
 
 It now reads `res.text()` FIRST and parses after, and carries `contentType`,
 `bodyLength`, `parsed` and a 400-character `bodyPrefix`. The unit tests assert
@@ -2368,13 +2455,13 @@ The diagnostics report also NAMES a stale probe rather than showing it silently:
 the block said `callsign N460DF` under a heading that never admitted the panel
 had moved on.
 
-### Working, confirmed on his device
+### Working, confirmed on a real device
 
 - **1.23.0's countdown**: `adsb.fi not asked — refused us (HTTP 403), not asking
   again for 6m 17s` — the remaining time, not the recorded length.
 - **1.22.0's follow windows**: the filter reads ALIGNED, converged, residual
   0.04°, with `MOUNT LEVELLING cradle -38.4 deg pitch` being subtracted.
-- **1.23.1's icon**: he is on `fauxplane-1.23.1` with no complaint about it.
+- **1.23.1's icon**: the reporting device is on `fauxplane-1.23.1` with no complaint about it.
 
 ### Open, not fixed
 
@@ -2422,17 +2509,15 @@ because resembling it is not the requirement.
 ### How this session got it wrong first, which is the part worth keeping
 
 Asked about "the icon at the top of the (i) panel", the session grepped
-`info.js` for "icon", found none, and told the owner **"nothing in that panel carried
-the app's identity at all"**. The mark was in `index.html`, in the first-run
+`info.js` for "icon", found none, and reported that **nothing in that panel
+carried the app's identity at all**. The mark was in `index.html`, in the first-run
 card. One file was searched and a claim was made about the whole surface.
 
 Then, acting on that invented finding, it ADDED A SECOND ADI MARK to the panel
 header — which would have shipped two different attitude indicators in one
-dialog — and separately reshaped the header (i) button, which the owner had not
-mentioned and which his words explicitly excluded.
-
- * and *"DON'T EVER FUCKING
-GUESS."* Both additions were backed out to the byte before the real fix went in;
+dialog — and separately reshaped the header (i) button, which the report had not
+mentioned and which its wording explicitly excluded. The correction was
+unambiguous: **do not guess.** Both additions were backed out to the byte before the real fix went in;
 `index.html`'s header block and `styles.css` match 1.23.0 exactly.
 
 **The rule: a grep that finds nothing proves nothing about a surface you have
@@ -2497,14 +2582,15 @@ caught, restored, backup directory empty.
 **1.23.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.22.1 (promoted 2026-08-04; the record of that promote is below).
 
-The owner, on a 1.22.1 screenshot showing `NO CONTACT` above *"Standing off from the
-aircraft feeds for a moment"*: **"No indication of how long I'll wait before the
-radar will work…like the delay countdown, maybe?…. Just looks broken."**
+**THE DEFECT, from a 1.22.1 screenshot** showing `NO CONTACT` above the app's own
+line *"Standing off from the aircraft feeds for a moment"*: the panel gave no
+indication of how long the wait would be, so it simply read as broken. A
+countdown was the suggested remedy.
 
-He is right, and the app already knew the number. `trafficAllowedAt` in `app.js`
+That is right, and the app already knew the number. `trafficAllowedAt` in `app.js`
 is the client's own exponential backoff clock and has existed since the 429
 work; nothing ever put it on screen. A wait with no number is indistinguishable
-from a hang, which is exactly what he read it as.
+from a hang, which is exactly how it was read.
 
 ### The countdown is about the ATTEMPT, never the RESULT
 
@@ -2614,12 +2700,12 @@ derivations, and the feed contracts. v1 is built.
 
 ---
 
-## Who this is for (the owner, 2026-08-02) — read before any design decision
+## Who this is for (settled 2026-08-02) — read before any design decision
 
-**A friend of the owner's who is 3-D printing his own 747 cockpit at home, for
-simulation. He is NOT a pilot. He loves planes and jets.**
+**A home cockpit builder: someone assembling a 747 flight deck at home, for
+simulation, who is NOT a pilot and who loves planes and jets.**
 
-**Design questions resolve toward giving him the most JOY.** That is the tie-
+**Design questions resolve toward giving that reader the most JOY.** That is the tie-
 breaker, and it outranks a session's instinct toward instrument realism,
 completeness, or engineering neatness. Where two options are both honest and
 both correct, pick the one that is more of a delight to sit in front of.
@@ -2631,14 +2717,14 @@ What that changes in practice:
 - The panel is CLAMPED AND STATIONARY, indoors, on a desk. That is a very
   different device from one in a moving aircraft, and it is the case to design
   against. See the note below on what is alive in that setup.
-- It is not safety equipment for him and never will be — but the honesty rule
+- It is not safety equipment for anybody and never will be — but the honesty rule
   stays, because a panel that invents numbers is a worse toy, not a better one.
   A crossed-out instrument that explains itself is more interesting than a fake
   needle, and it is the difference between a real instrument and a picture of one.
 
 ### What is actually ALIVE on a stationary desk cockpit
 
-Measured against the v1 build, this is what his friend will see with the tablet
+Measured against the v1 build, this is what a home cockpit builder will see with the tablet
 clamped indoors and not moving. It matters because half the panel is the two
 big tapes either side of the horizon.
 
@@ -2681,7 +2767,7 @@ chosen tile. The concept-render card stays in the repo as the alternate.
 
 ## 1.7.3 — tiles served from the site, and an icon-art variant
 
-The owner could not download the tile from GitHub on his iPad, which makes the
+The tile could not be downloaded from GitHub on a tablet, which makes the
 deployed site the right distribution channel for its own artwork: both card
 designs now ship at `/social-preview.jpg` (concept render) and
 `/social-preview-icon.jpg` (drawn purely from the app icon — nothing
@@ -2728,7 +2814,7 @@ dimmer (SETUP has no manual brightness at all).
 
 - **Is an on-device ephemeris a feed or synthesis?** Sun/moon/terminator hangs
   on whether computed astronomy is DERIVED like WMM or invented data. Precedent
-  call, his to make.
+  call, and the owner's to make.
 - **Microphone** (cabin-noise meter): loosens Permissions-Policy from
   microphone=() — a privacy-posture change needing explicit sign-off.
 - **Where does the friend live?** Weather radar, PIREPs and TAF coverage all
@@ -2749,8 +2835,8 @@ dimmer (SETUP has no manual brightness at all).
 
 ## 1.7.2 — the card leads with the icon
 
-The ADI-face icon replaces the hub-style mark bars on the share card, at
-The owner's call ("I really like the icon"). It is the same artwork as the
+The ADI-face icon replaces the hub-style mark bars on the share card, on the
+owner's call — the icon is the preferred mark. It is the same artwork as the
 home-screen tile, so the card and the installed app now share a signature.
 Regenerated both outputs from the one card source.
 
@@ -2765,7 +2851,7 @@ both `docs/social-preview.jpg` (1280x640, the GitHub tile) and
 `public/og-image.jpg` (1200x630, behind og:image).
 
 The family layout — mark bars, name at 84px, gradient rule, tagline, value
-chips, URL — over his concept render behind a left-weighted scrim. The mark and
+chips, URL — over the supplied concept render behind a left-weighted scrim. The mark and
 chips use the PANEL'S provenance tones (LIVE green, DERIVED cyan, STALE amber)
 rather than the hub's photography palette: same family, this member's colours.
 The honesty line rides under the tagline: not a simulator, not certified for
@@ -2778,7 +2864,7 @@ Settings → General → Social preview → upload `docs/social-preview.jpg`.
 
 ## 1.7.0 — tap to follow, restart, and obeying the rate limit
 
-The owner's report, following UAL2436: the follow poll was refused with HTTP 429 and
+the report, following UAL2436: the follow poll was refused with HTTP 429 and
 the panel KEPT ASKING every five seconds through the refusal — while the nearby
 poll (a different cache key) worked. Doctrine §15.3 calls a 429 an instruction;
 the panel was treating it as an obstacle.
@@ -2814,19 +2900,19 @@ test.
 
 ## 1.6.0 — four answers off two screenshots, and a social tile
 
-**"Why is the g-gauge always left of center?"** Because the scale runs −1 to
+**Why is the g-gauge always left of centre?** Because the scale runs −1 to
 +4 g — what a load factor actually does — so normal rest sits at forty percent
 of the arc. The scale is right and the question was fair: what was missing is
 the reference mark a real G-meter carries at 1 g, which now says the resting
 spot IS normal.
 
-**"The horizon degrees stop at 30?"** They did, for fifteen releases — a device
+**Do the horizon degrees stop at 30?** They did, for fifteen releases — a device
 pitched past thirty showed featureless sky with no scale at all. Rungs now run
 to ±90: 5° spacing to thirty where a pilot flies, 10° beyond, matching a real
 PFD. Fusion clamps pitch at ±90, so the ladder now covers everything the filter
 can report.
 
-**"Put range options on the side of the radar on the main screen."** Done — a
+**Range options belong beside the radar on the main screen.** Done — a
 vertical 10/25/40/80 stack beside the navigation display, driving the SAME
 value as the RADAR page through one setter with listeners, because two controls
 are fine and two copies of a value is how they disagree. The gate checks it AS
@@ -2835,14 +2921,14 @@ both ways. The baseline of the first plant run caught a real crash — the wirin
 referenced `radar` before it was created — which is the console-error check
 earning its keep before anything shipped.
 
-**"Turning the panel on closes the initial instructions."** It did: the
+**Turning the panel on closed the initial instructions.** It did: the
 first-run orientation lived only on the power gate, so the button a new reader
 presses first took the instructions away mid-read. The NODE now moves to the
 SETUP page on dismissal — moved, not copied, so the two cannot drift — and the
 gate says so up front. Checked on the SETUP page after dismissal; planted.
 
-**Social preview.** the owner supplied a concept render (a stylised tablet cockpit —
-not a screenshot, and clearly so). Committed as `docs/social-preview.jpg` at
+**Social preview.** A concept render was supplied from outside this repo (a
+stylised tablet cockpit — not a screenshot, and clearly so). Committed as `docs/social-preview.jpg` at
 GitHub's 1280×640, and as `public/og-image.jpg` (1200×630) behind og:/twitter:
 meta tags so shared links to fauxplane.pages.dev carry it. Uploading the GitHub
 tile is a UI step the session token cannot perform (Doctrine §10) — steps in
@@ -3228,13 +3314,13 @@ means to go is not, and is not invented here.
 
 ### Scoped, not done
 
-**A route (origin and destination).** the owner asked for this the day the airframe
-picker landed — *"a 'flight plan' page with a map and details sounds good if
-that's real and possible?"* — and it sat here blocked on terms nobody could
+**A route (origin and destination).** Asked for the day the airframe
+picker landed: a flight-plan page with a map and details, if that is real and
+possible. It sat here blocked on terms nobody could
 read, because this sandbox cannot reach `api.adsb.lol` at all.
 
-**UNBLOCKED 2026-08-04.** the owner opened adsb.lol's OpenAPI page in Safari and sent
-it. Their Terms of Service, verbatim:
+**UNBLOCKED 2026-08-04.** adsb.lol's OpenAPI page was opened in Safari outside
+this sandbox and relayed here. Their Terms of Service, verbatim:
 
 > "You can use the API for free."
 > "In the future, you will require an API key which you can get by feeding to
@@ -3266,7 +3352,7 @@ routes, and the first is the one this repo has used before:
 
 - **Build it with a shape probe**, exactly as the traffic feed was. The Function
   calls the endpoint and the diagnostics report gains a "WHAT THE ROUTE FEED
-  ACTUALLY SENT" block listing the keys that came back, so the owner's device
+  ACTUALLY SENT" block listing the keys that came back, so a real device
   reports the contract on its first real run. Until a route is understood the
   panel says so rather than inventing one. This is what confirmed the Mode S
   crew readouts, which had been built from published field names without a
@@ -3289,7 +3375,7 @@ floor.**
 
 ## 1.3.1 — the vertical speed says what it cannot resolve
 
-The last correctness item on the list. GPS altitude on the owner's iPad is accurate
+The last correctness item on the list. GPS altitude on a real tablet is accurate
 to plus or minus 27 m and arrives every 5 s; the panel showed a vertical speed
 derived from it without ever saying what that combination can actually
 distinguish from noise.
@@ -3357,7 +3443,7 @@ floor.**
 
 ## 1.3.0 — labels on a busy plan view stop overprinting
 
-The owner's 40 nm screenshot at 1.0.0: nineteen aircraft, about a dozen of them in
+the 40 nm screenshot at 1.0.0: nineteen aircraft, about a dozen of them in
 one quadrant, and their labels overprinted into a smear. Worse than unreadable —
 it reads as CORRUPTION rather than as density, which makes the whole instrument
 look broken at the exact moment it is doing the most work.
@@ -3573,7 +3659,7 @@ clearing every hard floor, and the layout rendered and looked at.**
 
 He is describing the layout of an actual airliner. A 747 has the PFD in front of
 the pilot and the **Navigation Display** immediately beside it; the plan view
-belongs there, and the column of values he was looking at is a debug surface
+belongs there, and the column of values in question is a debug surface
 that had quietly become the main thing on the right half of the screen.
 
 The right column is now the ND over the values: plan view on top, readouts
@@ -3685,8 +3771,8 @@ Two things that had never been verified now are:
   host refused this sandbox too. It was right. Recorded as inference confirmed
   by a device, not by a session.
 
- * Doctrine §7 says he decides what counts as
-a VERSION, and the first slot stays 0 until he says otherwise. He said otherwise.
+ * Doctrine §7 says the owner decides what counts as
+a VERSION, and the first slot stays 0 until that call is made. It was made.
 
 ### What v1.0.0 IS
 
@@ -3723,8 +3809,8 @@ target device rather than against a fixture.
 
 ## 0.5.0 — traffic has a LIST of sources, and the panel credits the one that answered
 
-No good reason. 0.4.9 wrote the decision up as his to make, which was
-over-deferring: he had asked for a working radar page, and which vendor answers
+No good reason. 0.4.9 wrote the decision up as the owner's to make, which was
+over-deferring: what had been asked for was a working radar page, and which vendor answers
 it is the sort of thing a session should work out. The one real prerequisite was
 reading the terms from the publisher first (LESSONS 18), and that is done.
 
@@ -3805,7 +3891,7 @@ headers, and never lets markup through at all.
 The code is the actionable bit: **1015 is rate limiting, 1020 is a firewall rule,
 1010 is a blocked client signature.** They call for opposite responses.
 
-Tested against the captured block page from the owner's own report rather than a live
+Tested against the captured block page from the report rather than a live
 call, because the sandbox proxy refuses CONNECT to adsb.fi entirely. That is
 better evidence than a live call would have been: it is the failing case.
 
@@ -3837,7 +3923,7 @@ it came straight off `coords.speed`; since 0.4.6 it is differenced from the very
 fixes beside it, which are fresh for 10 s. One fix cannot be two ages at once,
 so the freshness now matches its source.
 
-### What is confirmed WORKING on the owner's device
+### What is confirmed WORKING on a real device
 
 - **Levelling.** `cradle -82.5 deg pitch, 2.7 deg roll` captured and subtracted;
   the horizon reads pitch -0.04, roll -0.06. The retroactive capture works, and
@@ -3982,11 +4068,11 @@ accessibility gate green — now including a canvas the gate can finally see.**
 
 ## 0.4.6 — zero is a measurement, and treating it as a gap was the bug
 
-The owner, looking at a panel with groundspeed crossed out on a stationary desk:
-*"Why can you not show ground speed of zero?? Why the fuck can't you tell a
-wiggle isn't vertical acceleration when stationary?!"*
+**TWO DEFECTS REPORTED TOGETHER**, from a panel with groundspeed crossed out on a
+stationary desk: a groundspeed of zero could not be shown at all, and a wiggle on
+a stationary desk was not being told apart from real vertical acceleration.
 
-He is right on both, and they are the same defect. The no-synthetic-data rule is
+Both are right, and they are the same defect. The no-synthetic-data rule is
 correct and stays — but **"the platform handed me null" is not the same fact as
 "the quantity is unknowable"**, and this app had been treating them as one.
 
@@ -4121,7 +4207,7 @@ next session.
 
 ## 0.4.4 — the iPad was stuck on 0.4.1, and it was never going to unstick itself
 
-The owner's iPad reported `v0.4.1` and `service worker controlled (fauxplane-0.4.1)`
+a real tablet reported `v0.4.1` and `service worker controlled (fauxplane-0.4.1)`
 after two green deploys of 0.4.2 and 0.4.3. Both deploy runs succeeded, and the
 "Deploy to Cloudflare Pages" step ran in each — this was not a deploy that
 failed, it was a device that could not be reached.
@@ -4211,7 +4297,7 @@ floor.**
 - **The repair itself cannot be tested from here.** It needs a device holding a
   real older worker against a real deploy — the sandbox has no persistent
   service worker and the proxy blocks the deployed origin. The decision function
-  is unit-tested against the exact cache names the owner's iPad reported, and the
+  is unit-tested against the exact cache names a real tablet reported, and the
   wiring is exercised by the accessibility gate, but the end-to-end unstick is
   confirmed only when a stuck device loads it.
 - Android and desktop in landscape, still.
@@ -4221,7 +4307,7 @@ floor.**
 
 ## 0.4.2 / 0.4.3 — the iPad roll defect, FOUND, and it was two bugs
 
-The owner's iPad read roll about ninety degrees out **in both orientations**, which
+a real tablet read roll about ninety degrees out **in both orientations**, which
 is what ruled out the obvious cause: a missing screen rotation would be right in
 portrait and wrong only in landscape.
 
@@ -4272,7 +4358,7 @@ which passed while the Schmidt normalisation was wrong at every degree above
 one, and it is now the third time this repo has been bitten by a
 self-consistency test standing in for a correctness one.
 
-Worked from the owner's own raw axes: earth-up in device coordinates
+Worked from raw axes captured from a real device: earth-up in device coordinates
 (0.610, 0.031, 0.792) at a reported angle of 90.
 
 - **The app as shipped (angle 0)** — pitch −52.3, roll **−87.1**. Reproduces the
@@ -4351,7 +4437,7 @@ widens it on evidence.
 
 ### Three more defects the same reports exposed
 
-**1. The gyro zero-offset integrator had no anti-windup.** the owner's iPhone
+**1. The gyro zero-offset integrator had no anti-windup.** a real phone
 reported `alpha -10.00 deg/s` — dead on the clamp — and the iPad `gamma -9.19`.
 A real gyroscope offset is a degree or two. What those numbers actually were is
 the integrator eating a fifty-degree residual caused by the mis-signed rotation:
@@ -4514,8 +4600,9 @@ has a large header and crushing the instruments is the wrong trade.
 
 ## 0.3.1 — diagnostics, and what checking the standards changed
 
-and *"create a debug info page or overlay ... so I stop
-screenshotting like a fucking tool."*
+TWO ASKS: check the physics against real standards rather than inventing it,
+and build a debug info page or overlay so nothing has to be diagnosed from
+screenshots.
 
 Both were fair. The honest split at the time: **standards for the physics,
 invention for the presentation.**
@@ -4609,18 +4696,18 @@ diagnosis. A surface nobody checks open is a surface nobody has checked.
 
 ## 0.3.0 — the horizon works, and there is a radar page
 
-The owner's 0.2.4 screenshot showed the panel he did not want: `ATT FAIL` and
+The 0.2.4 screenshot showed the panel nobody wanted: `ATT FAIL` and
 `HDG FAIL` crossed out across the middle, "converging (residual 14.8 deg)", and
-the two flanking tapes plus the VSI red. His instruction: *"I want something
-other than red X panels to show him. Even the ground/air center one is
-inconsistent and slow to load if it ever does."*
+the two flanking tapes plus the VSI red. THE INSTRUCTION: show something other
+than a screen of red crosses — and the ground/air centre indicator is itself
+inconsistent and slow to load when it loads at all.
 
 Three things came out of that, and the first is a real defect.
 
 ### 1. THE HORIZON WAS BEING WITHHELD, NOT MISSING
 
 The filter published NO attitude at all until a smoothed residual held under two
-degrees for 1.5 s. On his device that residual sat at 14.8 and stayed there, so
+degrees for 1.5 s. On a real device that residual sat at 14.8 and stayed there, so
 the horizon never appeared — and the panel said "converging" for as long as
 anyone cared to watch.
 
@@ -4800,7 +4887,7 @@ view is checked WITH aircraft on it rather than empty.
   altitudes and distances means the mapping is right; an empty list with the
   reason "adsb.fi returned a body with no aircraft array" means a field name is
   wrong.
-- Whether the horizon actually settles on the owner's device, and how big its gyro's
+- Whether the horizon actually settles on a real device, and how big its gyro's
   zero-offset turns out to be. **BITE now prints it** — Sensors → Gyroscope
   zero-offset.
 - Whether FOLLOW finds a flight. Needs a real callsign of an aircraft that is
@@ -4869,7 +4956,7 @@ because the feed was refusing us. Both produce the same screen. Only the first
 is fixed by the windows; the second is a fact about the feed, and 1.22.1 makes
 the panel say so instead of contradicting itself.
 
-Worth noting for the next session: **his device was still on 1.21.1 and the
+Worth noting for the next session: **the reporting device was still on 1.21.1 and the
 report says `a newer version is not waiting` as of 15:28**, so 1.22.0 had not
 reached it. Do not read an old report as a verdict on a new release.
 
@@ -4934,7 +5021,7 @@ already chose for the other ADS-B fields (`nav.selectedAltitude` and friends).
 This is matching a precedent, not picking a threshold that makes a screenshot
 look better.
 
-### The indicator he asked for
+### The indicator that was asked for
 
 A chip above the scope, in five states, driven by `radarReadiness()`:
 
@@ -4948,7 +5035,7 @@ A chip above the scope, in five states, driven by `radarReadiness()`:
 
 `tappable` is a SEPARATE channel from the state, because "populated" and "ready
 to tap" are different questions — an ageing scope is tappable and a fresh sweep
-over an empty sky is not. That was the owner's distinction and he was right to draw
+over an empty sky is not. That distinction came from the report and it was right to draw
 it.
 
 **One function, read by the chip AND by the tap handler.** An indicator that
@@ -4967,7 +5054,7 @@ day before and was still committed one function later.
 
 Not reproducible as a broken handler: tap-to-follow was driven under real touch
 emulation at phone size across the canvas tap, the heard-now list and the centre
-picker, and all three work. What he was seeing is the two states above being
+picker, and all three work. What was being seen is the two states above being
 indistinguishable — a scope drawn but not yet swept looks exactly like one that
 is ready. The indicator is the fix for that, not a change to the tap.
 
@@ -5069,7 +5156,7 @@ adsb.lol's OpenAPI page names the schemas `PlaneList` and `PlaneInstance`
 without expanding them in the capture we have, and this sandbox cannot reach
 `api.adsb.lol` at all. Three options existed:
 
-- Ask the owner for a fourth screenshot, of a page he had already screenshotted
+- Ask for a fourth screenshot, of a page that had already been screenshotted
   twice, hoping the schema expanded this time.
 - Wait, and ship nothing.
 - **Send the best-reasoned shape and report what comes back.**
@@ -5170,7 +5257,7 @@ is reliably something to draw.
 settles the rate limiting as a PERMANENT CONDITION rather than an open problem —
 which changes what the app owes the reader about it.
 
-**What was on the face of a gauge**, photographed on his phone:
+**What was on the face of a gauge**, photographed on a real phone:
 
     No traffic: adsb.lol rate limited us (HTTP 429; cf-ray a258e8a82ff1fa4e-SJC)
     | adsb.fi returned HTTP 403 — server: cloudflare; ray a258e8a9483dfa4e-SJC;
@@ -5178,7 +5265,7 @@ which changes what the app owes the reader about it.
 
 Every word true, and every word written for whoever is debugging the Pages
 Function. A Cloudflare ray ID is not a thing the reader can act on, and this
-panel is for someone building a 747 cockpit in his house.
+panel is for someone building a 747 cockpit at home.
 
 **Three things the sentence now carries, and one it deliberately does not.**
 
@@ -5513,14 +5600,14 @@ down in between.
 
 ## 1.19.0 — runways, and bounding the horizon error, 2026-08-03
 
-Six items off the owner's screenshots. Five were straightforward; the sixth is the
+Six items off the screenshots. Five were straightforward; the sixth is the
 attitude filter and is only half done, which is stated rather than glossed.
 
 ### The horizon — ROOT CAUSE FOUND, and it was the kinematics
 
 His ADI read `gravity 51° from the gyro — coasting on gyro` with the horizon
 dozens of degrees over, after a gentle rotation. A first pass could only BOUND
-it; the diagnostics report he sent afterwards is what made the cause findable.
+it; the diagnostics report returned afterwards is what made the cause findable.
 
 **The gyro propagation used the small-angle shortcut.** It integrated
 `pitch += q·dt` and `roll += p·dt` — φ̇ = p, θ̇ = q — which is exact at
@@ -5538,7 +5625,7 @@ roll do not change at all:
 - at −45°, **−42.4°**
 - at −60°, **−52.0°**
 
-The full relations give 0.0° at every one. Fifty-two degrees against his
+The full relations give 0.0° at every one. Fifty-two degrees against the measured
 photographed fifty-one, at the tilt a phone sits at in a cradle or a hand.
 Gravity was correct the whole time; the gyro invented the roll, and the
 direction gate then rejected the one instrument telling the truth — which is why
@@ -5551,7 +5638,7 @@ nothing recorded the tilt at the moment it went wrong.
 
 **A second defect fell out of the same line.** At screen angle 0 the old form
 used `omega.x` and `omega.z` and never touched `omega.y`, so gamma's zero-offset
-could not be estimated — his report shows `gamma 0.00 deg/s` after 207 samples
+could not be estimated — the report shows `gamma 0.00 deg/s` after 207 samples
 beside two siblings that had both learned one. The yaw rate uses it now.
 
 **Euler, not quaternion, and that is a decision rather than an oversight.** A
@@ -5619,7 +5706,7 @@ Right arithmetically, wrong as an instrument. This panel sits at a few hundred
 feet on a desk, so an airliner parked 700 ft lower genuinely IS below by the
 subtraction — and TCAS still would not draw it, because the question a traffic
 display answers is what might come near you in the air. Sacramento's ramp was
-filling his BELOW band with parked aeroplanes. Suppressed in the real bands
+filling the BELOW band with parked aeroplanes. Suppressed in the real bands
 only; ALL is marked as ours and still shows everything the feed heard.
 
 ### The list, the archive, the welcome, the hub link
@@ -5657,7 +5744,7 @@ with the bug in.
 
 Not verifiable here: the horizon on real hardware. The maths is now right and
 the arithmetic is checked, but this sandbox has no accelerometer and the next
-report from the owner's device is the test that matters.
+report from a real device is the test that matters.
 
 ---
 
@@ -5704,13 +5791,13 @@ and was never PRESENTED, which nothing checked. **Passing one half of a rule
 while failing the other is exactly what shipped.**
 
 It opens the (i) dialog on a profile that has not seen it, which is what keeps
-it from becoming the thing he rejected before ("'Switch the panel on' still
-takes all attention on the initial pop-up and reads like 'accept the terms'").
+it from becoming the thing that was rejected before: an initial pop-up that
+takes all the attention and reads like a terms-acceptance prompt.
 It gates nothing: the panel is live behind it, every control works, and closing
 it is the only thing it asks. Being the same dialog the (i) button opens means a
 reader who closes it has already learned where to find it again.
 
-### "Why is home reference hard coded and not matched to user location?"
+### Why is the home reference hard-coded rather than matched to the reader's location?
 
 The constant exists for a real reason — acceptance criterion 1 is that the panel
 comes up and is useful with every permission denied, so something has to be the
@@ -5728,7 +5815,7 @@ last known position.
 **And the footer stopped lying.** His screenshot has "Home reference Cameron
 Park, CA 38.68, -121.00" along the bottom while GPS altitude read 88 ft from a
 live fix a few inches above. Both sentences were on screen and only one was true
-of the panel he was looking at. The line exists so nobody reads a pre-fix
+of the panel in the report. The line exists so nobody reads a pre-fix
 distance as a distance from where they are, which means it has to stop saying it
 the moment there is a fix. It names the centre in force now: your position, a
 chosen airport, a followed flight, the last known position, or the constant.
@@ -5768,7 +5855,7 @@ never shown, the orientation shown every time, and an author `display` rule
 outranking `[hidden]`.
 
 Not verifiable here: whether the strip along the bottom is the right size on
-The owner's actual iPad. It is capped at a third of the panel in the side-by-side
+a real tablet. It is capped at a third of the panel in the side-by-side
 layout and scrolls beyond that; the failure state is the worst case, because
 every crossed-out value carries a reason paragraph.
 
@@ -5855,7 +5942,7 @@ works.
 
 Not verifiable here: what it looks like when the owner actually has 1.16.0 installed
 and 1.17.0 lands on staging. That is the first real run of this path, and it is
-the thing to watch for on his device.
+the thing to watch for on a real device.
 
 ---
 
@@ -5930,7 +6017,7 @@ going red about its own thing.
 
 Not verifiable here: whether 702 airports is the right cut. The bundle is
 Northern California only, and an airport outside it is simply not found — the
-coordinate box is the escape hatch until the owner says he wants a wider region.
+coordinate box is the escape hatch until a wider region is asked for.
 
 ---
 
@@ -6008,7 +6095,7 @@ message, before the fix was believed.
 blind to uncaught errors and wrote a `window.onerror` hook — calling a `push()`
 that does not exist, four lines above the existing hooks that already do exactly
 that. `installConsoleCapture` has captured `error` and `unhandledrejection`
-since it was written. The zero was because he had not tapped in that session,
+since it was written. The zero was because nothing had been tapped in that session,
 not because the capture was broken. Reverted.
 
 **Power is part of a control strip now.**
@@ -6046,7 +6133,7 @@ detail, so nothing is lost: the SCOPE gets austere, the LIST stays rich.
 
 ## 1.14.0 — the scope follows the aircraft, 2026-08-03
 
-**ANSWERED AT LAST: the crew readouts are real.** the owner's report, following
+**ANSWERED AT LAST: the crew readouts are real.** the report, following
 UAL1902 (N17254, a 737 MAX 8):
 
     nav.selectedAltitude   LIVE   32992  ft
@@ -6058,14 +6145,14 @@ published field names, with no real response ever observed, and was carried as
 an explicit open question — zeroes across the board would mean pulling it. It is not.
 A real aircraft broadcast its MCP altitude, its selected heading and the
 altimeter setting its crew was flying to. §7f's diagnostic-as-test is what
-settled it, on his device, in one paste.
+settled it, on a real device, in one paste.
 
-**And the bug he found in the same breath.** *"Following a flight doesn't center
-it in the radar like I imagine it should?"* — with a screenshot of the scope
+**And the bug reported in the same breath.** Following a flight did not centre it
+in the radar — reported with a screenshot of the scope
 centred on Cameron Park, the followed 737 circled near the rim, captioned "56
 aircraft within 40 nm of this device".
 
-He is right, and the inconsistency is total: the horizon, the tapes, the
+That is right, and the inconsistency is total: the horizon, the tapes, the
 altitude and the speed had ALL switched to that aircraft. The scope was the only
 instrument still showing the desk, which is the panel showing two aircraft at
 once — the exact failure FOLLOW exists to avoid, and which its own comments say
@@ -6165,7 +6252,7 @@ real blocker under §15.1 and none of it gets built until someone reads them.
 
 ## 1.13.3 — a 429 on the FIRST request, 2026-08-03
 
-The owner's report, panel up 36 s, one traffic request made:
+the report, panel up 36 s, one traffic request made:
 
 > `traffic  FAILED — adsb.lol rate limited us (HTTP 429) | adsb.fi returned
 > HTTP 403 — server: cloudflare; ray a25790806923af1b-SJC`
@@ -6205,11 +6292,11 @@ adsb.fi's bot rule (CLAUDE.md, verbatim).
 
 **Still unanswered, for the same reason:** whether any aircraft broadcasts the
 autopilot selections. The feed-shape block rides on a SUCCESSFUL response, and
-there has not been one from his device yet.
+there has not been one from a real device yet.
 
-## 1.13.2 — two things the owner's report exposed, 2026-08-03
+## 1.13.2 — two things the report exposed, 2026-08-03
 
-The report he sent could not answer the question it was built for, and that is
+The report returned could not answer the question it was built for, and that is
 itself the finding.
 
 **`traffic: not asked yet` at nine seconds of uptime.** Opening RADAR re-asks
@@ -6521,7 +6608,7 @@ you change range" at the root rather than by keeping stale aircraft.
 address shared with an enormous number of other tenants, and adsb.lol limits by
 address. So perfect pacing on our side can still be refused because of traffic
 we neither sent nor can see. It is the same phenomenon as adsb.fi's blanket 403
-— his screenshot shows ray ...-SJC, a Cloudflare San Jose edge being turned away
+— the screenshot shows ray ...-SJC, a Cloudflare San Jose edge being turned away
 by another Cloudflare edge. Doctrine §15.3 forbids the obvious workarounds and
 they stay forbidden: no retrying harder, no rotating providers to evade a 429,
 no browser-shaped headers to get past adsb.fi's bot rule. The legitimate moves
@@ -6543,18 +6630,18 @@ same invented name — self-consistent and measuring nothing. The RADAR test
 caught it. The fixture now runs real aircraft through `withRangeAndBearing`
 first, so a rename breaks it loudly instead of emptying the sky.
 
-**The app's own copy described only the desk.** the owner, explaining fauxplane to
-friends: *"You can follow a flight, or use it on a flight to see like the pilot,
-or use it in a car while you drive! Install it to your Home Screen and it works
-like an app."* Three uses. Every version of the first-run text described one —
+**The app's own copy described only the desk.** THE THREE USES this app is
+actually for: follow a flight from the ground; use it ON a flight to see what the
+crew sees; use it in a car while driving. Plus installing it to a home screen so
+it behaves like an app. Three uses. Every version of the first-run text described one —
 the stationary desk, which is the ONE reader's case — and the repo description
 still says "for your desk". The two omitted uses are the ones where the panel
 comes alive: in a car or on an aircraft, groundspeed, track, vertical speed,
 turn rate and G are all real, and the boresight levelling was built for a car
 cradle in the first place. An app whose own description is narrower than the app
 is undersold by the only text anybody reads. The three uses are now in the
-first-run block and the (i) menu, in his words; the repo description is proposed
-in the hub's METADATA.md for him to apply (§10).
+first-run block and the (i) menu; the repo description is proposed
+in the hub's METADATA.md to be applied (§10).
 
 **The accessibility gate could not see a modal dialog below the fold, and did
 not know.** Adding those four lines pushed the registered first-run text past
@@ -6721,7 +6808,7 @@ the horizon drifts.
 The owner asked whether this duplicates something that exists. For a SIMULATOR-driven
 panel the honest answer is yes: Air Manager and its peers serve home cockpit
 builders well, and a session should not pretend otherwise. **But that answer is
-wrong for the case he then raised, and it is worth writing down because it
+wrong for the case then raised, and it is worth writing down because it
 reframes what this app is FOR.**
 
 **Taken on a real flight as a passenger, with no wifi, the panel comes alive —
@@ -6751,9 +6838,9 @@ is not served by any simulator product, and it should shape what gets built next
 
 ---
 
-## 0.2.1 — what the owner's device found, 2026-08-02
+## 0.2.1 — what a real device found, 2026-08-02
 
-He opened 0.2.0 on his phone and the screenshots found four real defects in
+0.2.0 was opened on a real phone and the screenshots found four real defects in
 about a minute. All four are fixed on `staging` and each is pinned by a test
 that fails without the fix. Recorded because of what they have in common:
 **every one of them was invisible to 84 passing unit tests, because each test
@@ -6794,7 +6881,7 @@ that never moves cannot find a bug about movement. Fifteen fusion tests passed
 while the gyro sign was inverted, because every one of them fed a zero rotation
 rate.
 
-**What worked.** The geoid, the magnetic model and GPS were all PASS on his
+**What worked.** The geoid, the magnetic model and GPS were all PASS on a real
 device on the first try, and the METAR mapping — the part I could not verify
 from the sandbox and flagged as the likeliest thing to be wrong — was correct:
 `A2999` in the raw report, `29.99` on the dial.
@@ -7042,7 +7129,7 @@ because each one was invisible on screen.
 
 ### NOT verified — needs the owner's hands on the real device
 None of this can be reached from a sandbox, and none of it should be reported as
-working until he has looked.
+working until it has been looked at on a real device.
 
 - **Does the horizon move the right way when you tilt the iPad?** Everything
   about the geometry is asserted in tests, and the tests were wrong once already.
@@ -7062,13 +7149,13 @@ working until he has looked.
 
 **THREE OF THESE WERE STALE ON 2026-08-05 and are marked CLOSED in place rather
 than deleted.** Navdata was recorded as the only absent bundle two days after it
-shipped; repo metadata was recorded as unset two days after he set it; and a
+shipped; repo metadata was recorded as unset two days after it was set; and a
 paragraph asked for OpenSky credentials and a KV binding that no code path has
 wanted since the feed was repointed.
 
 None of that was a small thing. **This is the file every session is told to read
 FIRST**, so a stale entry here does not sit quietly — it sends the next session
-to do work that is already done, or to ask him for something he has already
+to do work that is already done, or to ask for something already
 given. `CLAUDE.md` said the opposite in all three cases, which means the two
 files a session reads at the start of every session disagreed with each other for
 days and nothing noticed.
@@ -7165,7 +7252,7 @@ mistake is worth more than a tidy list.
      to make — but it is the obvious lever and it should be named rather than
      quietly avoided.
    - **REAL SIM TELEMETRY, which is the recommendation.** A panel driven by the
-     simulator he is actually flying is NOT synthetic — it is a fetched feed
+     simulator actually being flown is NOT synthetic — it is a fetched feed
      from a real source, exactly like METAR, and it carries provenance LIVE with
      complete honesty. Every instrument comes alive. It serves joy AND the rule
      at once. Outside v1 scope; not built.
@@ -7201,8 +7288,8 @@ Two routes, and the second is probably better:
   exactly the PFD values and nothing else. Safe to add because of chaining.
   NOTE: the specific `LoGet*` function names were NOT verified this session —
   verify against current DCS docs before writing any of them down as fact.
-- **Consume DCS-BIOS's existing TCP stream.** If he already runs DCS-BIOS, this
-  needs **no change to his DCS installation at all**. Strongly preferred: never
+- **Consume DCS-BIOS's existing TCP stream.** Where DCS-BIOS is already running,
+  this needs **no change to that DCS installation at all**. Strongly preferred: never
   ask someone to modify a working cockpit rig if you can read what it already
   emits.
 
@@ -7213,7 +7300,7 @@ all work with no changes. The panel would show LIVE from the sim and correctly
 fall back to FAIL the moment it stops — which is the honest behaviour and is
 already implemented and tested.
 
-### ANSWERED: X-Plane + SimVimX (the owner, relaying his friend, 2026-08-02)
+### ANSWERED: X-Plane + SimVimX (relayed from the cockpit builder, 2026-08-02)
 
 **The simulator is X-Plane. The cockpit interface is SimVimX driving Arduino
 Mega boards.** He also plays DCS, but X-Plane is what flies the 747.
@@ -7293,7 +7380,7 @@ provenance, ageing and STALE-then-FAIL for free when the sim pauses.
    status flips to `set`. Nothing is outstanding.
 
    Same failure as item 3: a session reading this file would have gone and asked
-   him to do work he had already done.
+   for work that had already been done.
 
 7. **A day palette, if the panel proves unreadable in sunlight.** v1 ships two
    measured dark palettes because a glass cockpit is a dark instrument. That is
@@ -7345,10 +7432,10 @@ the one test that failed on first run.
 PFD, ATIS/Kollsman, BITE. Traffic and navdata pages stay gated behind the
 attitude stability test.
 
-### Branches (the owner, 2026-08-02)
+### Branches (reported 2026-08-02)
 `staging` and `main` only. Staging is a hard release gate: product changes land
-on `staging`, wait for the owner's pass on his actual device, and reach `main` only
-on his explicit "promote". Docs-only changes may skip it. The
+on `staging`, wait for the on-device pass, and reach `main` only
+on an explicit promote. Docs-only changes may skip it. The
 harness-designated `claude/*` branch is ignored (Doctrine §11).
 
 **Branch note, 2026-08-02.** The previous session recorded that `staging` and
@@ -7356,7 +7443,7 @@ harness-designated `claude/*` branch is ignored (Doctrine §11).
 carrying exactly one ref, `claude/jet-panel-pwa-amendments-f07ygu`, which was
 also the default branch. Both are now created and pushed for real:
 
-- `staging` — v1, waiting on the owner's device pass.
+- `staging` — v1, waiting on a real device pass.
 - `main` — deliberately still at the pre-UI foundation commit `7cb4e4f`, so
   promoting is a clean fast-forward rather than a merge of divergent histories.
   Nothing has ever been deployed, so that is also just true.

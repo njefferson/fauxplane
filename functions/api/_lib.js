@@ -260,7 +260,7 @@ export async function cached(request, key, ttlSeconds, produce) {
 /**
  * A PROVIDER THAT HAS JUST REFUSED IS NOT ASKED AGAIN FOR A WHILE.
  *
- * adsb.fi's own terms, read 2026-08-03 from the page the owner sent:
+ * adsb.fi's own terms, read 2026-08-03 from their published page:
  *
  *   "Making excessive invalid HTTP requests results in a temporary IP address
  *    restriction. Requests returning a 400, 401, 403, 404, or 429 status code

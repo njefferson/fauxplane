@@ -16,7 +16,7 @@
  * they were on BITE.
  *
  * A DIALOG RATHER THAN A SIXTH TAB, for the same reason diagnostics is one: the
- * tab strip is for instruments, and the owner has already said the header must not
+ * tab strip is for instruments, and it is already settled that the header must not
  * push the panel down. `<dialog>` also brings focus containment, Escape, and a
  * backdrop without this file implementing any of them.
  */

@@ -2,7 +2,7 @@
  * provenance.test.mjs — a failure reason must read as ONE sentence.
  *
  * `worstOf` quotes its first failing input's reason, and that reason is often
- * itself a `worstOf` composition, so the quoting nests. On the owner's panel, three
+ * itself a `worstOf` composition, so the quoting nests. On a real panel, three
  * levels deep:
  *
  *   MSL altitude, altimeter setting, station altimeter unavailable (MSL

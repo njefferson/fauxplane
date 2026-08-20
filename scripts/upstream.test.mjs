@@ -3,7 +3,7 @@
  *
  * This path cannot be exercised against the real service from here: the
  * sandbox proxy refuses CONNECT to adsb.fi entirely. So it is tested against
- * the response the owner's device actually received, captured from his diagnostics
+ * the response a real device actually received, captured from a diagnostics
  * report — which is the only real evidence available and is better evidence
  * than a live call would have been anyway, because it is the failing case.
  */

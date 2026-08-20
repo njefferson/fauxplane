@@ -6,7 +6,7 @@
  * `snapshot.t`, the timestamp of the last publish, which is up to a frame old
  * by the time somebody presses the version stamp. The filter keeps accepting
  * samples in that window, so "how long since the last accepted sample" came out
- * NEGATIVE — `coasting -9ms`, `-21ms`, `-34ms`, in every report the owner ever sent.
+ * NEGATIVE — `coasting -9ms`, `-21ms`, `-34ms`, in every report received.
  */
 
 import test from 'node:test';
@@ -122,7 +122,7 @@ test('REPORT: a filter returning undefined readings does not throw', () => {
 /**
  * A FIELD THAT NEEDS A MODE THE PANEL IS NOT IN IS NOT A FAILURE.
  *
- * The owner's report read "8 of 41 fields failed" on a panel that was working. Five
+ * the report read "8 of 41 fields failed" on a panel that was working. Five
  * had genuinely failed; three were the followed-aircraft autopilot readouts,
  * which cannot have a value unless an aircraft is being followed — this device
  * has no autopilot to read. Counting them inflates the headline on a healthy

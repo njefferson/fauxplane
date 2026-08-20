@@ -620,9 +620,9 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
   /**
    * --- RUNWAYS AND AIRPORTS ( )
    *
-   * TWO MARKS, AND THE CHOICE BETWEEN THEM IS THE WHOLE FIX. The owner,
-   * 2026-08-04: "Why does every runway look exactly the same even at different
-   * scales?" Measured against the real navdata at a 350px scope radius, he was
+   * TWO MARKS, AND THE CHOICE BETWEEN THEM IS THE WHOLE FIX. THE DEFECT,
+   * 2026-08-04: every runway looks exactly the same, at every scale.
+   * Measured against the real navdata at a 350px scope radius, that was
    * exactly right and for two compounding reasons:
    *
    *   · THE WIDTH FORMULA WAS DEAD. It was `max(1.5, min(5, len * 0.06))`, and
@@ -839,8 +839,8 @@ export function drawPlan(ctx, { x, y, w, h, tokens, centre, aircraft, rangeNm, f
      *
      * It was a 1.5px line at 55% alpha. On the navigation display that is a
      * legible thread; on the MAP page the same track is a hairline crossing 30
-     * pixels of a 1900px canvas, under a cluster of GND symbols, and the owner's
-     * report was simply "I see no tracks" while following an aircraft that had
+     * pixels of a 1900px canvas, under a cluster of GND symbols, and the device
+     * report was simply that no tracks were visible while following an aircraft that had
      * been broadcasting for three minutes. It was there. It was not visible,
      * which for an instrument is the same thing.
      *

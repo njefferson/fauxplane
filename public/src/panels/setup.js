@@ -309,7 +309,7 @@ export function createSetup({ host, fusion, state, announcer, screenAngle, brigh
      * The two actions, exposed so the PFD can carry them.
      *
      * LEVELLING BELONGS WHERE THE CROOKED HORIZON IS.
-     * — and he is right, because the
+     * — and that is right, because the
      * moment a reader wants it is the moment they are looking at a horizon that
      * is wrong, which is never the moment they are on a settings page. The
      * BEHAVIOUR stays here, in one implementation, and the PFD calls it: two

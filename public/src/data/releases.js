@@ -15,7 +15,7 @@
  *
  * `broken` IS NOT OPTIONAL AND IS NOT A CONFESSION. Doctrine §7d requires every
  * release to say what is still wrong, in the app, where the reader will find it.
- * A panel that only lists wins teaches him to distrust the wins. An entry with
+ * A panel that only lists wins teaches the reader to distrust the wins. An entry with
  * nothing outstanding uses an empty array and says so on screen.
  *
  * ---------------------------------------------------------------------------
@@ -23,16 +23,16 @@
  * ---------------------------------------------------------------------------
  *
  * Rewritten wholesale on 2026-08-05, because ten releases had drifted into
- * being a support thread published inside the product. The owner, on opening What's
- * New: "WHAT THE *FUCK* ARE THESE RELEASE NOTES?!"
+ * being a support thread published inside the product. THE VERDICT on opening
+ * What's New was blunt and it was right: these are not release notes.
  *
  * Three failures, each of which reads as perfectly reasonable while writing it:
  *
  *   · "YOU" QUIETLY BECAME THE PERSON WHO REPORTED THE BUG. Notes opened by
- *     recounting what he had asked, what he had held up beside his home screen,
+ *     recounting what the reporter had asked, what they had held up beside a home screen,
  *     what he had photographed, what he had said was wrong. The reader is not
  *     that person. He opens this list and is addressed as someone else, about
- *     events he was not present for. (The offending sentences are not repeated
+ *     events the reader was not present for. (The offending sentences are not repeated
  *     here — quoting them to illustrate the rule breaks it, which is how they
  *     survived the first scrub.)
  *
@@ -45,8 +45,8 @@
  *   · THE READER WAS GIVEN HOMEWORK, in eight consecutive releases. "Send me
  *     that." "Follow a flight and send the report." "That is the thing to send
  *     me." Telling a reader HOW to report a problem is Doctrine §7e and belongs
- *     in the (i) menu. Making the next release conditional on him doing it is a
- *     working arrangement between two other people, leaking onto his screen.
+ *     in the (i) menu. Making the next release conditional on them doing it is
+ *     a working arrangement between two other people, leaking onto their screen.
  *
  * The tell they share: a note written from the SESSION's memory of the week
  * rather than from the diff. What was fixed is reader material. Who found it,
@@ -71,7 +71,7 @@
  * a thing somebody had to remember while writing the next release's notes.
  *
  * `broken` is the app's own promise: this file's header calls it "what is still
- * wrong, that he might hit", and an empty array is a claim that nothing is
+ * wrong, that the reader might hit", and an empty array is a claim that nothing is
  * outstanding. A true defect that silently stops being listed turns that promise
  * into a decoration — and it is a slower, quieter version of the same failure as
  * inventing a number, because the reader has no way to tell the difference.
@@ -134,9 +134,9 @@ export const STANDING = [
  * Newest FIRST. Each entry:
  *   version  the release, matching version.js for the newest
  *   date     ISO day it shipped
- *   headline one short line — what this release IS, in his words
- *   changed  what he can now see or do
- *   broken   what is still wrong, that he might hit
+ *   headline one short line — what this release IS, in the reader's words
+ *   changed  what the reader can now see or do
+ *   broken   what is still wrong, that the reader might hit
  */
 export const RELEASES = [
   {
@@ -439,7 +439,7 @@ export const RELEASES = [
       'The state and the sentence explaining it are together. NO CONTACT · RETRY 6s used to sit above the scope with its explanation below, so on a phone you scrolled past the whole instrument to find out what it meant. Both are under the scope now, which also lifts the instrument up the page.',
       'The navigation display beside the horizon carries the same state, drawn on the instrument the way ATT FAIL is. It had none at all before — the same scope, from the same data, said NO CONTACT on one page and nothing on the other.',
       'That state is in the display\u2019s spoken description too, so it is not something only a sighted reader gets.',
-      'And the footer link says "More apps by Noah" again. A cleanup pass had rewritten his name out of it.',
+      'And the footer link says "More apps by Noah" again. A cleanup pass had rewritten the name out of it.',
     ],
     broken: [
       'The aircraft feed is still turned away sometimes; the note in 1.20.0 stands.',

@@ -40,7 +40,7 @@ test('one report per line, when there are no blank lines', () => {
  * one blank line — and passed, while the real feed sent something else entirely.
  *
  * Below is what a convective SIGMET bulletin actually looks like, reconstructed
- * from a response on the owner's device: ONE document, several paragraphs,
+ * from a response on a real device: ONE document, several paragraphs,
  * blank lines between them. The old rule tore it into five, so the panel
  * reported 66 "reports" that were fragments and showed an `AREA 3...FROM
  * END-ARG-LIT-MCB...` paragraph on its own with no header saying which SIGMET

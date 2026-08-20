@@ -69,7 +69,7 @@ const $ = (id) => document.getElementById(id);
  * `performance.timeOrigin + performance.now()`. The sensors were being handed
  * `Date.now()` instead, so a reading could be stamped a millisecond or two
  * AFTER the publish that measured its age — which is where the "coasting -21ms"
- * in the owner's reports came from. Two clocks that agree to within a few
+ * in the reports came from. Two clocks that agree to within a few
  * milliseconds still disagree, and a negative age is a small lie about a
  * timestamp in an app whose entire contract is timestamps.
  */
@@ -455,9 +455,9 @@ async function boot() {
    * at boot — before a stored calibration had been re-applied. So a reader who
    * reloaded saw "Not levelled — the horizon shows the device's own angle"
    * while the offset was being subtracted from every reading, the ADI badge
-   * said LVL −46° +3°, and the diagnostics agreed with the badge. The owner caught
-   * it: "on reload, the app lies and says level is not set when it is actually
-   * using a previously stored level."
+   * said LVL −46° +3°, and the diagnostics agreed with the badge. THE DEFECT, as
+   * reported: on reload the app says level is not set while it is in fact using
+   * a previously stored level.
    *
    * Two faults, and the second is the one that matters. One: a state that
    * arrives after boot needs the UI to look again, so this is called from the
@@ -600,7 +600,7 @@ async function boot() {
    * TRAFFIC_INTERVAL_MS regardless and returns early while the backoff is in
    * force, so the moment the backoff expires is NOT when a request happens —
    * the first tick at or after it is. Counting down to the wrong one would
-   * reach zero and then sit there, which is the failure mode the owner is already
+   * reach zero and then sit there, which is the failure mode already
    * describing.
    */
   let nextSweepAt = 0;
@@ -1026,7 +1026,7 @@ async function boot() {
   async function refreshWinds() {
     await winds.refresh(state.snapshot.fields);
   }
-  // A 429 IS AN INSTRUCTION, NOT AN OBSTACLE (Doctrine §15.3). The owner's report
+  // A 429 IS AN INSTRUCTION, NOT AN OBSTACLE (Doctrine §15.3). the report
   // showed the follow poll asking every five seconds THROUGH a rate limit for
   // over a minute: adsb.lol said slow down and the panel did not. Each
   // rate-limited round now doubles the wait before traffic is asked again —
@@ -1219,7 +1219,7 @@ async function boot() {
       visibility.lastHiddenAt = now();
       /**
        * ORIENTATION IS IN THIS LIST NOW, and it was the omission that kept a
-       * question open across two of the owner's reports.
+       * question open across two of the reports.
        *
        * Both showed `orientation.beta`, `.gamma` and `.compass` FAILING with
        * "no update for 3s (limit 3s)" while the raw block still held a perfectly
@@ -1249,11 +1249,11 @@ async function boot() {
   // ---- PANEL POWER ---------------------------------------------------------
   //
   // A SWITCH ON THE PANEL, NOT A DIALOG IN FRONT OF IT.
-  // — after reporting that the modal
-  // "takes all attention... and reads like 'accept the terms' and even *I*
-  // don't read the panel then."
+  // — after a report that the modal took all the attention, read like a
+  // terms-acceptance prompt, and stopped even a determined reader looking at
+  // the panel behind it.
   //
-  // He was right, and the fix was not shorter copy. A wall of text above a big
+  // That was right, and the fix was not shorter copy. A wall of text above a big
   // primary button is a consent form; nobody reads a consent form. The panel
   // now opens AS ITSELF, with every sensor-driven instrument honestly crossed
   // out and each one saying why — which is acceptance criterion 1 as the
@@ -1281,9 +1281,9 @@ async function boot() {
    * instruments and no explanation.
    *
    * IT OPENS THE (i) MENU RATHER THAN A SURFACE OF ITS OWN, and that is what
-   * keeps it from becoming the thing he rejected before: "'Switch the panel on'
-   * still takes all attention on the initial pop-up and reads like 'accept the
-   * terms'". This one gates nothing. The panel is already live behind it, every
+   * keeps it from becoming the thing that was rejected before: an initial
+   * pop-up that takes all the attention and reads like a terms-acceptance
+   * prompt. This one gates nothing. The panel is already live behind it, every
    * control still works, and closing it is the only thing it asks for — it is
    * the same dialog the (i) button opens, so a reader who closes it has already
    * learned where to find it again.
@@ -1595,7 +1595,7 @@ async function boot() {
   setInterval(refreshFollowed, FOLLOW_INTERVAL_MS);
   // ASK ONCE AT BOOT, not only on the first interval tick. The PFD carries a
   // navigation display and is the page a reader lands on, so waiting a full
-  // interval left it empty for fifteen seconds for no reason — the owner's report
+  // interval left it empty for fifteen seconds for no reason — the report
   // was captured at nine seconds and said "traffic: not asked yet". Opening
   // RADAR already re-asks immediately; the page that is ALREADY open should
   // not be the one that waits.
@@ -1608,7 +1608,7 @@ async function boot() {
    * along
    * the bottom, while GPS altitude read 88 ft from a live fix a few inches
    * above it. Both sentences were on screen and only one was true of the panel
-   * he was looking at. The line exists so nobody reads a pre-fix distance as a
+   * in the report. The line exists so nobody reads a pre-fix distance as a
    * distance from where they are — which means it has to STOP saying it the
    * moment there is a fix, or it is doing the opposite of its job.
    */

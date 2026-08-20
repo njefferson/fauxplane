@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "prepare": "node ../noahjefferson/branch-guard.mjs --repo . --install || true",
     "navdata": "node scripts/build-navdata.mjs",
     "navaids": "node scripts/build-navaids.mjs",
     "basemap": "node scripts/build-basemap.mjs",

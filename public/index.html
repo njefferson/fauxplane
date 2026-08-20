@@ -18,7 +18,7 @@
     <title>fauxplane — glass panel</title>
     <!--
       Link previews. The image is the icon-art card — drawn entirely from the
-      app's own artwork; the owner picked it over the concept render, 2026-08-03.
+      app's own artwork; chosen over the concept render, 2026-08-03.
       Absolute URL because scrapers resolve nothing.
     -->
     <meta property="og:title" content="fauxplane — a glass cockpit for your desk" />
@@ -221,18 +221,18 @@
               beside it, both as big as the glass allows.
 
               THE READOUTS USED TO BE STACKED UNDER IT and took the larger share —
-              `flex: 56` against the plan view's 44. The owner, with an iPad full of
-              it: "All the voice-over data does NOT need to fill MY screen. That
-              space has MUCH more important stuff to hold."
+              `flex: 56` against the plan view's 44. THE DEFECT, reported from a
+              tablet full of it: the text alternative does not need to fill the
+              screen, and that space has far more important things to hold.
 
-              HE SAID THAT IN 1.18.0 AND IT TOOK UNTIL 1.29.0 TO ACT ON IT. This
-              comment agreed with him, correctly noted that SC 1.1.1 says nothing
-              about the text being big or beside the picture — and then kept it
+              IT WAS REPORTED IN 1.18.0 AND IT TOOK UNTIL 1.29.0 TO ACT ON IT. This
+              comment agreed with the report, correctly noted that SC 1.1.1 says
+              nothing about the text being big or beside the picture — and then kept it
               PAINTED anyway, and a few lines further down called that "never
               optional". The criterion requires a text alternative to EXIST. It
-              was read as requiring it to be VISIBLE, and that reading was then
-              repeated to him as a standards requirement whenever he asked for
-              the space back. It is `.sr-only` now; see below.
+              was read as requiring it to be VISIBLE, and that misreading was then
+              cited back as a standards requirement every time the space was
+              asked for. It is `.sr-only` now; see below.
 
               Most of it was duplication anyway. Groundspeed is the GS tape,
               indicated altitude is the ALT tape, vertical speed is the VS tape,
@@ -327,7 +327,7 @@
                 aircraft does when it has not got a second screen, and on a
                 G1000 it is a softkey you can switch off.
 
-                It is ON by default because the owner likes having both. The switch
+                It is ON by default because both are wanted. The switch
                 exists because the inset takes its width FROM the horizon: the
                 column reserves 14rem, which on a 402px phone leaves the horizon
                 about 160px. Turning it off gives that back.
@@ -347,13 +347,13 @@
         </div>
         <!--
           THE VALUES AS TEXT.
-          — the third time he asked for this space back.
+          — this space was asked for three separate times before it was given back.
 
           "THAT PART WAS NEVER OPTIONAL" USED TO BE WRITTEN HERE, about the strip
           being VISIBLE. It was false. What is not optional is that the values
           EXIST as text for a reader who cannot see the gauges; where they are
           drawn, or whether they are drawn at all, was always a product decision
-          and always his. Kept as a marker of what the wrong reading cost.
+          and never a standards one. Kept as a marker of what the wrong reading cost.
         -->
         <!--
           THE VALUES AS TEXT, FOR WHOEVER CANNOT SEE THE GAUGES — and only for
@@ -458,7 +458,7 @@
         It was: a wall of body text opening with housekeeping about where the
         instructions would live afterwards. The first thing a reader met was
         filing instructions. This app is built for someone printing a 747
-        cockpit in his house — the first thing he should meet is the instrument.
+        cockpit at home — the first thing they should meet is the instrument.
 
         THE MARK IS THE APP ICON FILE ITSELF, and it did not used to be.
 
@@ -493,9 +493,9 @@
         </div>
       </div>
       <!--
-        THE THREE USES ARE the owner's OWN WORDS, from how he explains the app to
-        his friends: "You can follow a flight, or use it on a flight to see
-        like the pilot, or use it in a car while you drive!" Every previous
+        THE THREE USES this app is actually for: follow a flight from the
+        ground; use it ON a flight to see what the crew sees; use it in a car
+        while driving. Every previous
         version of this copy described only the desk, which is the case ONE
         reader has — and it quietly excluded the two that make the panel come
         alive. An app whose own description is narrower than the app is

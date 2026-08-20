@@ -648,7 +648,7 @@ test('OWNERSHIP: the device stops writing the fields a followed aircraft fills',
 });
 
 test('THE VSI REFUSES A RUNAWAY, and resets rather than sulking for ever', () => {
-  // THE PATH THAT PRODUCED 344,570 fpm ON the owner's IPAD, reproduced.
+  // THE PATH THAT PRODUCED 344,570 fpm ON a real tablet, reproduced.
   //
   // A GPS fix arrives, then stops for a while — routine indoors. The FIELD
   // stays LIVE for its full sixty-second window, so `read` keeps answering,
@@ -695,7 +695,7 @@ test('an ordinary climb is nowhere near the absurd threshold', () => {
 /**
  * FOLLOWING AN AIRCRAFT MOVES THE SCOPE CENTRE TO IT.
  *
- * — with a screenshot showing the scope centred on his desk, the
+ * — with a screenshot showing the scope centred on the desk, the
  * followed 737 circled near the edge, and the caption "56 aircraft within 40 nm
  * of this device". Every other instrument had already switched to that
  * aircraft; the scope was the last thing still showing Cameron Park.

@@ -204,7 +204,7 @@ const REGISTRY = [
   { selector: '.dim-note', label: 'brightness note', min: 4.6, page: 'setup' },
   { selector: '.foot-item', label: 'footer text', min: 4.6 },
   { selector: '.foot-link', label: 'footer link', min: 4.6 },
-  // THE READOUTS ARE NOT PAINTED ANY MORE (the owner, 2026-08-05), so there is no
+  // THE READOUTS ARE NOT PAINTED ANY MORE (reported 2026-08-05), so there is no
   // contrast to measure on them — a colour ratio on clipped 1px text is a
   // number about nothing. They are still asserted, harder than before, by
   // `checkValuesAreScreenReaderOnly` and by acceptance criterion 4: the text
@@ -777,7 +777,7 @@ async function checkPowerIsReachable(page, where) {
    * the floor that makes it usable. A check nobody can satisfy gets deleted by
    * the next person, so it is not written.
    *
-   * This is the invariant behind BOTH of the owner's complaints and it holds at every
+   * This is the invariant behind BOTH reported complaints and it holds at every
    * size: PWR sits with the instrument it powers, never after the radar. Stacked
    * or side by side, it is the same sentence.
    */
@@ -837,7 +837,7 @@ async function checkHeardList(browser, base) {
    * A check whose FIXTURE cannot produce the condition is the same defect as a
    * check measured on a viewport where the defect cannot appear, and this is
    * the third shape of it in one session (hub LESSONS §54). Nineteen, because
-   * that is what the owner had on screen when he reported it.
+   * that is what was on screen when it was reported.
    */
   /**
    * AND ENOUGH AIRFRAME TYPES TO FILL THE PICKER. It carried none, so every
@@ -1890,7 +1890,7 @@ async function checkEicas(browser, base) {
  * So both pin their own contexts, like `checkRadarTap` does, and run whatever
  * the sweep is doing:
  *
- *   · 874x402 — an iPhone 16 Pro in landscape, which is the device the owner sent a
+ *   · 874x402 — an iPhone 16 Pro in landscape, which is the device that sent a
  *     photograph of. Short enough for the panel rules and tall enough for the
  *     stacked range column, which no viewport in the sweep exercises.
  *   · 390x640 at 200% text — where the tab strip wraps to three rows and the
@@ -1904,12 +1904,12 @@ const LAYOUT_VIEWPORTS = [
   // because every other check on this page is about existence, not size.
   { name: 'tablet-landscape', width: 1024, height: 768, fontScale: 1, short: false },
   /**
-   * the owner's IPAD, BOTH WAYS UP, WITH SAFARI'S CHROME TAKEN OFF.
+   * a real tablet, BOTH WAYS UP, WITH SAFARI'S CHROME TAKEN OFF.
    *
    * 620 rather than 768: the tab strip and address bar are real and they put the
    * viewport in a band NOTHING in this gate covered — taller than the 34rem
    * short-screen rules, shorter than the tablet the sweep runs. Both of the
-   * faults he photographed on 2026-08-05 lived in exactly that band, and both
+   * faults photographed on 2026-08-05 lived in exactly that band, and both
    * passed every check.
    */
   { name: 'ipad-landscape', width: 1024, height: 620, fontScale: 1, short: false },
@@ -2151,10 +2151,9 @@ async function checkScopeOnScreen(browser, base) {
 /**
  * ON A SHORT SCREEN THE INSTRUMENTS GET THE PANEL AND THE VALUES START BELOW IT.
  *
- * — and then, when the fix was still trying to fit one row of
- * values on screen: "Why are you bounding everything to the circle inside the
- * radar instead of pushing everything down so I don't have to see all the
- * diagnostics?"
+ * — and then, when the fix was still trying to fit one row of values on screen,
+ * THE CORRECTION: stop bounding everything to the circle inside the radar, and
+ * push the values down instead, so the diagnostics are not forced into view.
  *
  * The strip is 354px of a 659px page here. Every arrangement that let part of
  * it on screen put a half-cut sentence directly above a solid footer bar, which
@@ -2859,10 +2858,10 @@ async function main() {
                 const r = el.getBoundingClientRect();
                 return r.width > 1 && r.height > 1 ? { sel, ...r.toJSON() } : null;
               };
-              // `.pfd-controls` IS IN THIS LIST NOW. The owner found the value strip
-              // drawn straight over the PWR switch on an iPad in landscape —
-              // "cannot be seen in landscape because it's covered by the Text
-              // info" — and this check, which exists to catch exactly that,
+              // `.pfd-controls` IS IN THIS LIST NOW. The value strip was found
+              // drawn straight over the PWR switch on a tablet in landscape —
+              // the switch could not be seen there at all, covered by the Text
+              // info — and this check, which exists to catch exactly that,
               // was not looking at the controls. It listed the two canvases
               // and the strip, because those were the elements that had
               // overlapped before.
@@ -2950,7 +2949,7 @@ async function main() {
     /* ---- 3. acceptance criterion 4: every readout traces to a field ----- */
     await checkProvenanceCoverage(browser, base);
     await checkStoredLevelling(browser, base);
-    // BOTH INPUT MODES. The owner reported tap-to-follow broken on his iPad while
+    // BOTH INPUT MODES. Tap-to-follow was reported broken on a tablet while
     // this check — which only ever drove a MOUSE — was green. A mouse click
     // and a touch tap are different event paths, and the device this app is
     // built for only has one of them.
@@ -3118,9 +3117,9 @@ async function checkInfoMenu(page, base) {
        * THE MARK AT THE TOP OF THE PANEL IS THE SAME FILE the manifest
        * declares, not a redrawn approximation.
        *
-       * The owner, 2026-08-04, with his home screen beside it: it "does not match the
-       * app's icon close enough, and looks like an error because it is
-       * different." It was a hand-drawn SVG — no plate, level horizon rather
+       * THE DEFECT, 2026-08-04, seen beside the installed home-screen tile: the
+       * mark does not match the app's icon closely enough, so it reads as an
+       * error rather than as the app. It was a hand-drawn SVG — no plate, level horizon rather
        * than the icon's 12-degree bank, no pitch ladder, palette tokens instead
        * of the icon's colours — under a comment claiming the two were the same.
        *
@@ -3286,8 +3285,8 @@ async function checkDeniedState(page) {
   if (bite.length < 8) fail(where, `BITE listed only ${bite.length} entries — it must cover every sensor and feed`);
 
   // ONE ROW PER CAPABILITY. The static probe and the async live probe both
-  // legitimately describe the same thing, and both were being rendered: the owner's
-  // page listed battery twice and network twice, with different reasons. A page
+  // legitimately describe the same thing, and both were being rendered: a real
+  // BITE page listed battery twice and network twice, with different reasons. A page
   // whose whole job is to be an honest inventory must not list anything twice.
   const seenIds = new Map();
   const seenLabels = new Map();
@@ -3489,7 +3488,7 @@ async function checkRadarTap(browser, base, { touch = false } = {}) {
   /**
    * THE INDICATOR AGREES WITH THE SCOPE BEFORE THE TAP, AND AFTER IT.
    *
-   * The owner asked for a state indicator because he could not tell a filling scope
+   * A state indicator was asked for because a filling scope could not be told apart
    * from a finished one. An indicator that says CONTACT over a scope that
    * ignores taps would be worse than none — so this asserts the chip claims
    * tappable at the moment a tap is about to succeed.
@@ -3964,7 +3963,7 @@ async function checkFirstRunIntro(browser, base) {
       introVisible: !!introBox && introBox.width > 0 && introBox.height > 0,
       introInDialog: !!intro && !!intro.closest('dialog.info'),
       // §7e: the panel is live BEHIND it. This is not a gate and not a consent
-      // screen — the owner rejected one that read "like accept the terms".
+      // screen — one that read like a terms-acceptance prompt was rejected.
       panelPainted: !!panel && panel.width > 100 && panel.height > 60,
       closes: !!document.querySelector('dialog.info .info-close'),
     };
@@ -4004,8 +4003,8 @@ async function checkStoredLevelling(browser, base) {
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, permissions: [] });
   await seenIntro(context);
 
-  // A real gravity reference, normalised: the owner's own raw axes from the report
-  // that exposed this, so the numbers on screen are the ones he saw.
+  // A real gravity reference, normalised: raw axes captured from a real device from the report
+  // that exposed this, so the numbers on screen are the ones that were reported.
   await context.addInitScript(() => {
     const m = Math.hypot(6.893, 0.451, 7.199);
     localStorage.setItem(

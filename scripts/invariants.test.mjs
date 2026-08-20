@@ -5,7 +5,7 @@
  * WHY THIS FILE EXISTS.
  *
  * He was right, and the audit is unflattering. Of the last five defects HE
- * found on his own device, four were reachable by a unit test:
+ * found on a real device, four were reachable by a unit test:
  *
  *   · heading's staleness limit (5 s) was half the poll that filled it (10 s),
  *     so the field could never be anything but FAIL — pure arithmetic;
@@ -24,13 +24,13 @@
  *
  * So these are INVARIANTS, not examples. Each one is a sentence that must be
  * true of every field in every state, and the test drives the app through the
- * states the owner actually puts it in and checks all of them at each step. A new
+ * states the panel is actually put in and checks all of them at each step. A new
  * defect of the same SHAPE gets caught without anyone having predicted it.
  *
  * The fifth defect — the route feed answering 201/text/html/0 bytes — needs the
  * network and is genuinely out of reach here: this sandbox's proxy denies every
  * outbound host (google included, verified 2026-08-04). That one costs a round
- * trip through his device and no test can replace it.
+ * trip through a real device and no test can replace it.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';

@@ -163,7 +163,7 @@ function parsePayload(payload) {
  * observed payload fails exactly that way, silently.
  *
  * So the shape rides along on every response: no extra request, no probe
- * needed, and the answer is in the diagnostics report whenever the owner opens it
+ * needed, and the answer is in the diagnostics report whenever it is opened
  * (Doctrine §7f — prefer reporting what already happened).
  *
  * It reports COVERAGE, not values: how many of N aircraft carried each field.
@@ -278,7 +278,7 @@ async function tryProvider(provider, pathname, meta, cacheSeconds, request = nul
     //
     // CARRY WHAT THEY ASKED FOR. The instruction lives in the headers and this
     // threw every one of them away, so the panel could say it was rate limited
-    // but never how long for — and the owner's report showed a 429 on the FIRST
+    // but never how long for — and the report showed a 429 on the FIRST
     // request of a session, which no amount of pacing on our side explains.
     // Answering "is this us, or is it the address we share with every other
     // Cloudflare tenant" needs the numbers, not the status code.

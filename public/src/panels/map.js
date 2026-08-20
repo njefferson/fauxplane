@@ -333,7 +333,7 @@ export function createMap({ host, traffic, state, announcer, radar, mode = () =>
      * THE CREDIT SAYS WHAT IT IS CREDITING.
      *
      * It read "Made with Natural Earth." on its own under a map full of
-     * aircraft, and the owner's reaction was a question mark — fairly, because
+     * aircraft, and the reaction was a question mark — fairly, because
      * that sentence names a thing without saying which thing it is about. Their
      * offered wording is kept verbatim and prefixed with the part that makes it
      * a sentence a reader can use.

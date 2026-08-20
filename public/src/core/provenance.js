@@ -134,7 +134,7 @@ export function age(field, { now, freshMs, staleMs, kind }) {
     reason: stale ? (field.reason ?? 'past its freshness window') : field.reason,
     forcedStale: field.forcedStale,
     forcedDerived: field.forcedDerived,
-    // CARRIED THROUGH AGEING. Without this the owner's window survives exactly
+    // CARRIED THROUGH AGEING. Without this a reader's window survives exactly
     // one publish: `publishNow` re-ages from the raw field every 40 ms, and a
     // window dropped here would silently revert to the registry default.
     windows: field.windows,

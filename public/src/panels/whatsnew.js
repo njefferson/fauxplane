@@ -166,7 +166,7 @@ export function createWhatsNew() {
  * IT IS NOT AN ALERT AND MUST NOT STEAL FOCUS. A release note is the lowest
  * possible urgency — the panel is working, it is simply newer. So it is a
  * `status` region, dismissible, and it never interrupts what the reader was
- * doing (SC 4.1.3). The owner's own report that "turning the panel on closes the
+ * doing (SC 4.1.3). the report that "turning the panel on closes the
  * initial instructions" is the same failure in the other direction: a surface
  * that appears or vanishes without being asked.
  *

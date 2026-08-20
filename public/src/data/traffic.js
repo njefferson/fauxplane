@@ -107,7 +107,7 @@ export function withinBand(aircraft, ownAltFt, bandId) {
    * a few hundred feet on a desk; an airliner parked at an airport 700 ft lower
    * is genuinely "below" by the subtraction, and TCAS still would not draw it,
    * because the question a traffic display answers is what might come near you
-   * in the air. Sacramento's ramp filled his BELOW band with parked aeroplanes.
+   * in the air. Sacramento's ramp filled the BELOW band with parked aeroplanes.
    *
    * Suppressed in the REAL bands only. ALL is marked as ours rather than a
    * flight-deck setting, and it is the one that still shows everything the feed
@@ -158,7 +158,7 @@ export const FOLLOW_WINDOWS = Object.freeze({ freshMs: 2 * FOLLOW_POLL_MS, stale
 /**
  * WHAT STATE THE SCOPE IS IN, AND WHETHER A TAP WOULD DO ANYTHING.
  *
- * He asked because he could not tell a scope that was still filling from
+ * It was asked for because a scope still filling could not be told apart from
  * one that was finished, and could not tell either from one whose aircraft were
  * drawn but not yet tappable.
  *
@@ -246,13 +246,13 @@ export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0
  * WHAT THE FOLLOW BANNER SAYS, AND IT MUST NOT CLAIM DATA IT DOES NOT HAVE.
  *
  * The banner read "this panel is showing that aircraft's broadcast, not this
- * device" from the instant FOLLOW was pressed. The owner's 1.21.1 diagnostics report
+ * device" from the instant FOLLOW was pressed. the 1.21.1 diagnostics report
  * shows what that meant when the feed was rate limited: every followed field
  * reading "waiting for the first report from PXT466", under a banner asserting
  * their broadcast was on screen. Nothing was.
  *
  * That sentence sat at the top of a panel of red crosses, which is exactly why
- * it "looks broken without any data" — the app was telling him it HAD data. A
+ * it looked broken and dataless — while the app was claiming it HAD data. A
  * false sentence in the one element whose job is to say what the panel is
  * showing is the same defect as a fabricated number, and this app has no room
  * for either.
@@ -558,7 +558,7 @@ export function appendTrail(trail, point, { maxPoints = 240, maxAgeMs = 45 * 60_
  * What the scope is centred on.
  *
  * FOLLOWING AN AIRCRAFT MOVES THE CENTRE TO IT, EXPLICITLY.
- * — and he is
+ * — and that is
  * right, because by then every other instrument has already switched: the
  * horizon, the tapes, the altitude and the speed are all that aircraft's. The
  * scope was the last thing still showing the desk, which made the panel show
@@ -978,7 +978,7 @@ export function createTrafficSource({ state, clock = () => Date.now(), fetchImpl
          * switching aircraft before the first report arrives, this field kept
          * the PREVIOUS aircraft's sentence.
          *
-         * The owner's 1.23.1 report caught it exactly: following N81AB, with every
+         * the 1.23.1 report caught it exactly: following N81AB, with every
          * other field reading "waiting for the first report from N81AB", while
          * heading still read "N460DF is not broadcasting a heading". The panel
          * was naming an aircraft it was no longer following.
@@ -1100,7 +1100,7 @@ function writeDerived(state, path, field, at, windows = null) {
 /**
  * Turn a chain of upstream refusals into a sentence for the READER.
  *
- * What was on the owner's phone, on the face of a gauge:
+ * What was on a real phone, on the face of a gauge:
  *
  *   No traffic: adsb.lol rate limited us (HTTP 429; cf-ray a258e8a82ff1fa4e-SJC)
  *   | adsb.fi returned HTTP 403 — server: cloudflare; ray a258e8a9483dfa4e-SJC;
@@ -1108,7 +1108,7 @@ function writeDerived(state, path, field, at, windows = null) {
  *
  * Every word of that is true and it is written for whoever is debugging the
  * Function. A Cloudflare ray ID is not a thing the reader can do anything with,
- * and this panel is for someone building a 747 cockpit in his house.
+ * and this panel is for someone building a 747 cockpit at home.
  *
  * NOTHING IS THROWN AWAY. The full chain still goes to the diagnostics report
  * (§7f) and onto the element's `title`, which is where technical detail belongs

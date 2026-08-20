@@ -84,8 +84,8 @@ export const FIELDS = {
   //
   // `onlyWhen: 'following'` marks a field that CANNOT have a value in the normal
   // panel — this device has no autopilot to read. Without it the diagnostics
-  // report counted all three as failures on a perfectly healthy panel: the owner's
-  // report said "8 of 41 fields failed" when five had failed and three were
+  // report counted all three as failures on a perfectly healthy panel: a device
+  // report read "8 of 41 fields failed" when five had failed and three were
   // simply not applicable. A count that treats "inapplicable" as "broken"
   // teaches the reader to discount the number.
   'nav.selectedAltitude': { unit: 'ft', kind: 'feed', freshMs: 20000, staleMs: 90000, label: 'Selected altitude', onlyWhen: 'following' },
@@ -183,7 +183,7 @@ class Store {
          * that proved it: `staleMs` is 5 s, and following an aircraft fills
          * that field from a poll that runs every 10 s. The limit was shorter
          * than the cadence, so HDG could not be anything but FAIL — the panel
-         * declared its own freshest possible data dead, and the owner photographed a
+         * declared its own freshest possible data dead, and a report photographed a
          * wall of red crosses on a working feed.
          *
          * This does not soften the honesty rule; it is the honesty rule applied

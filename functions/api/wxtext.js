@@ -211,7 +211,7 @@ export async function onRequestGet({ request }) {
      * WHAT ACTUALLY CAME BACK (Doctrine §7f). Small, and carried on every
      * response including the successful ones, because the shape being right is
      * a thing to CONFIRM rather than to assume once and forget. It goes into
-     * the diagnostics report, which is what the owner sends instead of a
+     * the diagnostics report, which is what is sent instead of a
      * photograph.
      */
     const observed = {

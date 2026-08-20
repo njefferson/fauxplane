@@ -8,8 +8,8 @@ used for the offline cache.
 
 ## 1.7.4 — ITERATION — 2026-08-03
 
-**The icon-art card is the share card.** the owner picked it, so shared links now
-carry the card drawn entirely from the app's own artwork.
+**The icon-art card is the share card.** It was chosen over the concept render, so
+shared links now carry the card drawn entirely from the app's own artwork.
 
 ## 1.7.3 — ITERATION — 2026-08-03
 
@@ -22,8 +22,8 @@ artwork.
 ## 1.7.2 — ITERATION — 2026-08-03
 
 **The share card leads with the app's own icon** — the attitude-indicator face
-— in place of the colour bars. The owner's call: he really likes the icon, and a
-mark that is also the home-screen tile is a better signature than borrowed
+— in place of the colour bars. The icon is the preferred mark, and one that is
+also the home-screen tile is a better signature than borrowed
 bars.
 
 ## 1.7.1 — ITERATION — 2026-08-03
@@ -108,7 +108,7 @@ and is still the best way to run it.
 
 ## 0.2.1 — ITERATION — 2026-08-02
 
-Four fixes, all found by the owner opening 0.2.0 on his phone. Nothing here is new;
+Four fixes, all found by opening 0.2.0 on a real phone. Nothing here is new;
 it is things that were supposed to work.
 
 **The altimeter could never show a number.** Indicated and pressure altitude

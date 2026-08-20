@@ -70,6 +70,25 @@ jobs:
       - name: Privacy gate (Doctrine §9b)
         run: node .hub/privacy-check.mjs --repo .
 
+      # THE SECOND HALF OF THE SAME RULE, and the half this repo needed. The
+      # privacy gate anchors every pattern on the owner's name or role, so a
+      # verbatim sentence of somebody's speech carries neither and passes it
+      # clean — this repo was green on it while carrying dozens of quotations,
+      # including a third party's. This holds the other half: every set-apart
+      # quotation is declared, and a quotation of a person is never declarable.
+      - name: Every set-apart quotation says whose words it is
+        if: ${{ !cancelled() }}
+        run: node .hub/quote-check.mjs --repo .
+
+      # --artefact, NEVER the plain check. The plain check also asserts that
+      # .git/hooks/pre-commit is installed and current, which is a fact about
+      # ONE CLONE — and actions/checkout leaves .git/hooks empty by definition,
+      # so that spelling can never hold on a runner. What CI can check is the
+      # TRACKED hook against what .branch-guard declares.
+      - name: The commit guard is the one that was declared
+        if: ${{ !cancelled() }}
+        run: node .hub/branch-guard.mjs --repo . --artefact
+
       - name: Prepare Cloudflare credentials
         id: cf
         env:

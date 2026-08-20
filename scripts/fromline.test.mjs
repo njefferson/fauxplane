@@ -8,7 +8,7 @@
  *
  * Not one clause below was written to suit the parser. They are the lines
  * `wxtext.test.mjs` already carries verbatim, reconstructed from a response on
- * the owner's device, plus the two that were captured in full. That file records
+ * a real device, plus the two that were captured in full. That file records
  * why: its own first fixture was built to MATCH the heuristic it was checking,
  * passed, and the real feed sent something else entirely — which cost a release
  * and is now hub LESSONS §64. Writing a `FROM` line from this parser's idea of
@@ -386,7 +386,7 @@ test('the table records where it came from and under what licence', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Read off the owner's device on 2026-08-06, from the advisories block. This is
+ * Read off a real device on 2026-08-06, from the advisories block. This is
  * the first `airsigmet` response any session has seen, and it broke every
  * assumption the reconstruction above encoded.
  *

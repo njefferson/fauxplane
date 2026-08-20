@@ -108,7 +108,7 @@ function feedEntries(fields, extra, details = {}) {
  *
  * The static probe answers "does this browser implement the API" and the async
  * live probe answers "what is it actually reporting" — both legitimately
- * describe the same capability, and both were being rendered. The owner's BITE page
+ * describe the same capability, and both were being rendered. a BITE page
  * showed "Battery status (BITE entry only)" twice with two different reasons,
  * and Network twice. A page whose whole job is to be an honest inventory must
  * not list anything twice.
