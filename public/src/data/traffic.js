@@ -174,7 +174,7 @@ export function radarReadiness({ result, aircraft = [], nearbyAt = null, now = 0
   /**
    * THE COUNTDOWN, AND IT IS ABOUT THE ATTEMPT — NEVER ABOUT THE RESULT.
    *
-   * He was looking at
+   * The report was of
    * NO CONTACT above the sentence "Standing off from the aircraft feeds for a
    * moment", and "a moment" is not a number.
    *

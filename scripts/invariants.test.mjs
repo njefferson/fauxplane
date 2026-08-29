@@ -4,7 +4,7 @@
  *
  * WHY THIS FILE EXISTS.
  *
- * He was right, and the audit is unflattering. Of the last five defects HE
+ * That was right, and the audit is unflattering. Of the last five defects
  * found on a real device, four were reachable by a unit test:
  *
  *   · heading's staleness limit (5 s) was half the poll that filled it (10 s),

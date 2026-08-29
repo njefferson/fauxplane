@@ -238,7 +238,7 @@ Every gate, and each one exits non-zero:
   keep pushing while it runs. This used to inject into the real tree, and the
   "do not edit or commit while it runs" rule that followed was an implementation
   detail promoted into a law that made the owner wait for permission to work
-  (2026-08-04, and he was blunt about it). `--here` forces the old in-place
+  (2026-08-04, and it was reported bluntly). `--here` forces the old in-place
   behaviour and is for debugging this harness, never for verifying a release.
 
   **IT NEVER GATES A PUSH TO STAGING.** Staging exists so the owner can try the

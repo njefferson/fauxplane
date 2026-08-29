@@ -1325,7 +1325,7 @@ test('SIGN FLIP: resolving the accelerometer sign revokes alignment with the dis
 /**
  * THE REPORTED SYMPTOM:
  *
- * His ADI read `gravity 51° from the gyro — coasting on gyro` with the horizon
+ * The reported ADI read `gravity 51° from the gyro — coasting on gyro` with the horizon
  * dozens of degrees over. Two separate delays stacked into the window that was
  * photographed: four seconds of the gate coasting, and then — after the gate
  * had ALREADY concluded the gyro was the wrong reference — another four of
@@ -1498,7 +1498,7 @@ test('KINEMATICS: the error the small-angle form makes grows with tan of the til
  * the 1.21.1 diagnostics report said `attitude.heading` had failed because
  * "this device reports no magnetic heading". Three lines below, the raw block
  * read `webkitCompassHeading 278.3`, and the filter itself reported
- * `heading 279.5`. His iPhone has a compass; it had simply stopped sending
+ * `heading 279.5`. The reporting iPhone has a compass; it had simply stopped sending
  * updates while the page was in the background.
  *
  * A confident wrong sentence is worse than a wrong number, because a wrong

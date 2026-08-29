@@ -680,7 +680,7 @@ export function createRadar({
             dataset: { hex: a.hex },
             /**
              * FILLS THE BOX TOO.
-             * He was right — the canvas tap set the input and this
+             * That was right — the canvas tap set the input and this
              * one did not, so the same action left the page in two different
              * states depending on which surface you touched it from.
              */

@@ -77,7 +77,8 @@ WHAT WAS REWRITTEN, never deleted:
   strip over the PWR switch, the lookalike (i) mark, groundspeed refusing to
   read zero, the release notes that had become a support thread — every one
   keeps its content and its measurement, and none of them is in anybody's words.
-- `the owner's device` / `his iPad` / `his phone` became `a real device`, `a
+- The possessive and third-person forms naming the owner's own hardware became
+  `a real device`, `a
   real tablet`, `a real phone`. Which device it was is engineering context; whose
   it was is not.
 - `LICENSE.md`'s Required Notice is restored to the actual copyright holder. A
@@ -87,7 +88,7 @@ WHAT WAS REWRITTEN, never deleted:
 DOCUMENTS — adsb.lol's and adsb.fi's published terms, OurAirports' README,
 X-Plane's docs — which are citations and are load-bearing for the licensing
 record; the app's own strings and release notes; the ⓘ link to the owner's site
-under his own byline; and a session's own voice.
+under that byline; and a session's own voice.
 
 VERIFICATION, read from the runs: `npm test` **583 passing, 0 failing**;
 `npm run a11y` **all checks pass across 3 viewports x 2 palettes x 6 pages**;
@@ -424,7 +425,7 @@ been fixed by accident:
 - so the card's own stack really did shrink by a hundred pixels, and the scope
   is still entirely off screen
 
-`releases.js`'s own header calls `broken` *"what is still wrong, that he might
+`releases.js`'s own header calls `broken` *"what is still wrong, that a reader might
 hit"*, and this file insists an empty array claims nothing is outstanding while a
 missing key is an author who never considered the question. **A true defect that
 quietly stops being listed is the same failure with a longer fuse** — and it is a
@@ -1393,7 +1394,7 @@ broken in the plainest possible way.
 The refusal sentence read *the scope is empty rather than quiet*. At 40 and 80
 nm the plan view draws every bundled airport as the small circle an aeronautical
 chart uses — dozens of them, from data that is always present and cannot be rate
-limited. So the panel told a reader the scope was empty while he was looking at
+limited. So the panel told a reader the scope was empty while they were looking at
 it full.
 
 **The chip was right and the sentence was wrong.** NO CONTACT is about aircraft;
@@ -1426,14 +1427,14 @@ the identical defect as a number drawn and never written.
 
 ### A byline the scrub had rewritten
 
-The footer read *More apps by the owner*. His name in product copy was never the
+The footer read *More apps by the owner*. That name in product copy was never the
 violation and the earlier pass should not have touched it.
 
 ---
 
 ## 1.29.0 — the value strip is not painted at all, 2026-08-05
 
-**He is right, and the confusion was in this repo's own comments.** A canvas is
+**That was right, and the confusion was in this repo's own comments.** A canvas is
 non-text content, so SC 1.1.1 requires a TEXT ALTERNATIVE — it does not require
 that alternative to be PAINTED. Every arrangement this strip has had was
 answering the wrong question:
@@ -2158,9 +2159,9 @@ loaded every session while LESSONS must be opened.
 **1.26.0 is on staging: https://staging.fauxplane.pages.dev** — `main` is on
 1.23.1.
 
-He was describing the real cost of how this was being worked. Learning one fact
+The report described the real cost of how this was being worked. Learning one fact
 about a live feed took a release, a follow, a report and a wait — **three times
-over for the route endpoint alone.** Every round trip spent HIS time answering a
+over for the route endpoint alone.** Every round trip spent human time answering a
 question a machine could ask.
 
 ### It lives on BITE, because BITE already IS this
@@ -2536,7 +2537,7 @@ is the one moment that cost is obviously worth it.
 
 ### Why the sweep got a selector, and why the split matters
 
-He was right. Measured here: the unit suite is **1.2 s** for all 366 tests,
+That was right. Measured here: the unit suite is **1.2 s** for all 366 tests,
 palette 0.2 s, docs 0.2 s — and the plant sweep is **~45 minutes**, of which the
 24 browser-driven plants are ~95%. Four whole sweeps ran that day; two of them
 proved that a build-stamp contrast plant still worked after an edit to a
@@ -2944,7 +2945,7 @@ floor, and the new PFD layout rendered and looked at.**
 
 ## 1.5.1 — leaning is not launching: the accelerometer loses its vote when it disagrees with the gyro
 
-His diagnostics showed
+The diagnostic report showed
 the whole defect in two numbers: **1.01 g beside a 26.7° residual**.
 
 ### Magnitude was the wrong discriminator, and had been from the start
@@ -3383,7 +3384,7 @@ distinguish from noise.
 `verticalResolutionFpm()` computes it: each fix carries its own uncertainty, so
 their difference carries both in quadrature; divided by the interval that is the
 rate resolution, then reduced by the complementary filter's own steady-state
-noise gain, sqrt(k/(2-k)) for k = dt/tau. **His iPad indoors: about 1,500 fpm** —
+noise gain, sqrt(k/(2-k)) for k = dt/tau. **The reporting iPad indoors: about 1,500 fpm** —
 which is most of what a light aircraft ever does. A good fix at 1 Hz gets it to
 about 620.
 
@@ -3657,7 +3658,7 @@ clearing every hard floor, and the layout rendered and looked at.**
 
 ## 1.1.0 — a navigation display beside the horizon, which is where one goes
 
-He is describing the layout of an actual airliner. A 747 has the PFD in front of
+The report described the layout of an actual airliner. A 747 has the PFD in front of
 the pilot and the **Navigation Display** immediately beside it; the plan view
 belongs there, and the column of values in question is a debug surface
 that had quietly become the main thing on the right half of the screen.
@@ -4912,7 +4913,7 @@ Twenty lines below, in the raw block:
 
     webkitCompassHeading   278.3
 
-and in the filter: `heading 279.5`. **His iPhone has a compass and was reporting
+and in the filter: `heading 279.5`. **The reporting iPhone has a compass and was reporting
 278.3°.** It had stopped SENDING while the page was backgrounded —
 `orientation.compass` had aged out five seconds earlier.
 
@@ -5062,7 +5063,7 @@ is ready. The indicator is the fix for that, not a change to the tap.
 
 ## 1.21.1 — the route feed was starving the radar, 2026-08-04
 
-**He was right, and the touch handling was not the fault.** Tap-to-follow was
+**That was right, and the touch handling was not the fault.** Tap-to-follow was
 driven under real touch emulation — canvas tap, the "heard right now" list and
 the centre picker, at phone size — and all three work. What 1.21.0 broke was
 the thing that puts aircraft ON the scope, and an empty scope has nothing to
@@ -5605,7 +5606,7 @@ attitude filter and is only half done, which is stated rather than glossed.
 
 ### The horizon — ROOT CAUSE FOUND, and it was the kinematics
 
-His ADI read `gravity 51° from the gyro — coasting on gyro` with the horizon
+The reported ADI read `gravity 51° from the gyro — coasting on gyro` with the horizon
 dozens of degrees over, after a gentle rotation. A first pass could only BOUND
 it; the diagnostics report returned afterwards is what made the cause findable.
 
@@ -5631,7 +5632,7 @@ Gravity was correct the whole time; the gyro invented the roll, and the
 direction gate then rejected the one instrument telling the truth — which is why
 the symptom presented as a gate problem and the first pass went after the gate.
 
-**Why it survived eighteen releases.** His HEALTHY capture is at pitch −4.2°,
+**Why it survived eighteen releases.** The HEALTHY capture is at pitch −4.2°,
 where tan θ is 0.07 and the missing term is worth a fraction of a degree. Every
 report that looked fine was taken near upright. The failure needed a tilt, and
 nothing recorded the tilt at the moment it went wrong.
@@ -5755,7 +5756,7 @@ preferences.
 
 ### The value strip was taking a third of the glass
 
-He was looking at an iPad where the right-hand column of value cards took a
+The report was of an iPad where the right-hand column of value cards took a
 third of the display and the navigation display was a small box above it. The
 CSS said it outright: `.readouts` had `flex: 56` against the plan view's 44, so
 the text had a BIGGER share than the instrument, on the axis where the
@@ -5812,7 +5813,7 @@ asked for. It outranks the constant and is beaten by a live fix, and it is
 **never reported as a fix**: `fromFix` stays false and the label says it is the
 last known position.
 
-**And the footer stopped lying.** His screenshot has "Home reference Cameron
+**And the footer stopped lying.** The reported screen has "Home reference Cameron
 Park, CA 38.68, -121.00" along the bottom while GPS altitude read 88 ft from a
 live fix a few inches above. Both sentences were on screen and only one was true
 of the panel in the report. The line exists so nobody reads a pre-fix
@@ -6403,7 +6404,7 @@ reporting that *"'Switch the panel on' still takes all attention on the initial
 pop-up and reads like 'accept the terms' and even *I* don't read the panel
 then."*
 
-**He was right, and the fix was not shorter copy.** A wall of text above a big
+**That was right, and the fix was not shorter copy.** A wall of text above a big
 primary button is a consent form, and nobody reads a consent form. The panel now
 opens AS ITSELF — every sensor-driven instrument crossed out, each saying why —
 which makes acceptance criterion 1 the DEFAULT state rather than an escape hatch
@@ -6463,7 +6464,7 @@ red individually, along with the new power-switch plant. 33/35 on the full run,
 
 ## 1.11.0 — the panel denied a levelling it was applying, 2026-08-03
 
-His diagnostics and the ADI badge both said
+The diagnostic report and the ADI badge both said
 `cradle -46.0 deg pitch, 3.2 deg roll — being subtracted from every reading`
 and `LVL -46 +3`. The line under the horizon said *"Not levelled — the horizon
 shows the device's own angle."* Three surfaces, one truth, one of them wrong.
@@ -6534,7 +6535,7 @@ fixed.
 
 ## 1.10.0 — the airframe picker, 2026-08-03
 
-His idea
+That idea
 is better than the one it replaced: a callout only fires for the type someone
 guessed in advance, while a picker built from the live sky offers whatever is
 actually there — and it puts "Boeing 747-400 (1)" on the panel of the man
@@ -6849,7 +6850,7 @@ used inputs that a real device never produces.**
 1. **Indicated and pressure altitude could NEVER be shown.** A derived value was
    stamped with its OLDEST input's timestamp, then aged against its OWN, much
    shorter window. A METAR is always minutes old; the altitude window is 60 s.
-   His screen read "no update for 806s (limit 60s)" — 806 s being exactly the
+   The reported screen read "no update for 806s (limit 60s)" — 806 s being exactly the
    age of the observation. Every unit test passed because they all used
    same-instant inputs. Fixed: derived values are stamped at COMPUTE time, and
    input staleness rides an explicit flag, so it still cannot be laundered.
@@ -7259,7 +7260,7 @@ mistake is worth more than a tidy list.
 
 ### Sim telemetry — what is actually known, 2026-08-02
 
-**He plays DCS World** (the owner). There is a second program driving the mock
+**The owner plays DCS World.** There is a second program driving the mock
 cockpit and the owner is getting its name; that name changes the design, so do not
 start building until it arrives. See the open question below.
 
@@ -7303,7 +7304,7 @@ already implemented and tested.
 ### ANSWERED: X-Plane + SimVimX (relayed from the cockpit builder, 2026-08-02)
 
 **The simulator is X-Plane. The cockpit interface is SimVimX driving Arduino
-Mega boards.** He also plays DCS, but X-Plane is what flies the 747.
+Mega boards.** DCS is also played, but X-Plane is what flies the 747.
 
 **SimVimX is not the data route.** It is a hardware I/O system — an X-Plane
 plugin that drives switches, encoders, steppers and displays over USB serial to
@@ -7484,8 +7485,8 @@ The reason recorded here before — "waits on a deploy; there is no URL to point
 at yet" — had been stale for a day. `fauxplane.pages.dev` has been this repo's
 website in the hub's `METADATA.md`, applied and verified, since 2026-08-03.
 
-**What it actually waited on was the owner, and that is now a doctrine rule.** He
-decides what goes on the hub; a session does not add an app there, propose one,
+**What it actually waited on was the owner, and that is now a doctrine rule.**
+The owner decides what goes on the hub; a session does not add an app there, propose one,
 restore one, or name an unlisted one as a candidate. Doctrine §0c, written the
 same day (hub `2ae05bf`), and §13's checklist changed with it — the app's links
 BACK are a session's to build, the hub's link OUT is not.

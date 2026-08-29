@@ -658,7 +658,7 @@ export function createFusion(options = {}) {
      * was correct throughout; the gyro invented the roll, and the direction
      * gate then rejected the only instrument telling the truth.
      *
-     * WHY IT HID FOR SO LONG. His diagnostics capture of a HEALTHY panel has
+     * WHY IT HID FOR SO LONG. The diagnostic capture of a HEALTHY panel has
      * pitch −4.2°, where tanθ is 0.07 and the missing term is worth a fraction
      * of a degree. Every report that looked fine was taken near upright, and
      * the failure needed a tilt nobody thought to record.
@@ -1177,7 +1177,7 @@ export function createFusion(options = {}) {
          * `hasHeading` goes false for two unrelated reasons and the panel used
          * one sentence for both: "this device reports no magnetic heading".
          *
-         * On a real phone that sentence was FALSE. His diagnostics report
+         * On a real phone that sentence was FALSE. The diagnostic report
          * carried `webkitCompassHeading 278.3` in the raw block and `heading
          * 279.5` in this filter, three lines above the panel asserting the
          * phone had no compass. The compass had simply stopped sending updates

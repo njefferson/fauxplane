@@ -13,7 +13,7 @@
  * But almost every release ADDS a plant, so almost every release touched the
  * harness file and escalated, and the selector saved nothing on exactly the
  * changes it was built for.
- * He was right twice — once about the sweeps, and once about a fix that
+ * That was right twice — once about the sweeps, and once about a fix that
  * did not reach the common case.
  *
  * So: this file is DATA. Adding or editing a plant here cannot change how any

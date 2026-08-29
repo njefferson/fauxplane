@@ -32,7 +32,32 @@ permissions:
   contents: read
 
 jobs:
+  # EVERY HUB GATE, CALLED RATHER THAN COPIED.
+  #
+  # These were three steps and a checkout inside the deploy job. Two things
+  # changed besides where they live.
+  #
+  # THE HUB IS PINNED NOW. That checkout carried no `ref:` at all, so it took
+  # whatever the hub's default branch happened to be at the moment the runner
+  # ran — under a comment saying everything here is pinned by SHA because a tag
+  # is a mutable pointer someone else controls. The action was pinned; the
+  # repository it fetched was not, in the job that holds a live Cloudflare
+  # token. The ref after the `@` below is a commit.
+  #
+  # AND IT IS THE WHOLE SET. This repo ran three of the hub's gates and there
+  # are nine. docs-check, pin-check, pwa-check and third-person-check had never
+  # run here; the last of those found fifty-odd sites on the day this was
+  # wired, which is what a gate nobody runs is worth.
+  hub-gates:
+    uses: njefferson/noahjefferson/.github/workflows/hub-gates.yml@1de7828224ca881480deb5980e362bfb949eb682
+    with:
+      pwa: true
+
   deploy:
+    # THE GATES ARE A SEPARATE JOB NOW, so `needs:` is what keeps them in front
+    # of the deploy. Without this line the swap would quietly turn a hard gate
+    # into a parallel job the deploy does not wait for.
+    needs: hub-gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -48,46 +73,6 @@ jobs:
 
       - name: Unit tests
         run: npm test
-
-      # DOCTRINE §9b — nothing personal about the owner lands in any repo, and
-      # it is a HARD gate rather than a lint. The check lives in the hub and is
-      # NEVER forked: a copy here would drift, and five divergent versions of a
-      # privacy rule is worse than none. The hub is public, so this needs no
-      # token; it is checked out to a path so it cannot disturb the app tree,
-      # and `git ls-files` means the checkout is invisible to the scan itself.
-      #
-      # Pinned by SHA like every other action here (§16.1) — a tag is a mutable
-      # pointer someone else controls.
-      - name: Check out the doctrine hub (for the canonical gate)
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          repository: njefferson/noahjefferson
-          path: .hub
-          persist-credentials: false
-
-      # It reads the working TREE. Git history is out of its reach, and
-      # rewriting public history is the owner's call rather than a session's.
-      - name: Privacy gate (Doctrine §9b)
-        run: node .hub/privacy-check.mjs --repo .
-
-      # THE SECOND HALF OF THE SAME RULE, and the half this repo needed. The
-      # privacy gate anchors every pattern on the owner's name or role, so a
-      # verbatim sentence of somebody's speech carries neither and passes it
-      # clean — this repo was green on it while carrying dozens of quotations,
-      # including a third party's. This holds the other half: every set-apart
-      # quotation is declared, and a quotation of a person is never declarable.
-      - name: Every set-apart quotation says whose words it is
-        if: ${{ !cancelled() }}
-        run: node .hub/quote-check.mjs --repo .
-
-      # --artefact, NEVER the plain check. The plain check also asserts that
-      # .git/hooks/pre-commit is installed and current, which is a fact about
-      # ONE CLONE — and actions/checkout leaves .git/hooks empty by definition,
-      # so that spelling can never hold on a runner. What CI can check is the
-      # TRACKED hook against what .branch-guard declares.
-      - name: The commit guard is the one that was declared
-        if: ${{ !cancelled() }}
-        run: node .hub/branch-guard.mjs --repo . --artefact
 
       - name: Prepare Cloudflare credentials
         id: cf

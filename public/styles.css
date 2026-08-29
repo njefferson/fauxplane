@@ -779,7 +779,7 @@ body {
 /*
  * THE VALUE STRIP IS FOR WHOEVER CANNOT SEE THE GAUGES, AND ONLY FOR THEM.
  *
- * He is right, and the confusion was in this file's own comments: a canvas is
+ * That was right, and the confusion was in this file's own comments: a canvas is
  * non-text content, so SC 1.1.1 requires a text alternative — it does NOT
  * require that alternative to be PAINTED. Everything this rule used to do was
  * rationing glass for a duplicate: a third of the panel, then a fifth, then a

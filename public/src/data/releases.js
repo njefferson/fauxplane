@@ -1,8 +1,8 @@
 /**
  * releases.js — what changed, in one place (Doctrine §7d).
  *
- * THE READER IS NOT A DEVELOPER. He is building a 747 cockpit in his house and
- * he loves planes. Every line here is written for him: what he can now see or
+ * THE READER IS NOT A DEVELOPER. They are building a 747 cockpit in their house
+ * and they love planes. Every line here is written for them: what they can now see or
  * do, not what was refactored. "Fixed the residual-based accelerometer
  * rejection" is not a patch note. "Leaning the phone no longer makes the
  * horizon look like a rocket launch" is.
@@ -30,8 +30,8 @@
  *
  *   · "YOU" QUIETLY BECAME THE PERSON WHO REPORTED THE BUG. Notes opened by
  *     recounting what the reporter had asked, what they had held up beside a home screen,
- *     what he had photographed, what he had said was wrong. The reader is not
- *     that person. He opens this list and is addressed as someone else, about
+ *     what they had photographed, what they had said was wrong. The reader is
+ *     not that person. They open this list and are addressed as someone else, about
  *     events the reader was not present for. (The offending sentences are not repeated
  *     here — quoting them to illustrate the rule breaks it, which is how they
  *     survived the first scrub.)

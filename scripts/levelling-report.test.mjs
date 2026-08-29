@@ -2,7 +2,7 @@
  * levelling-report.test.mjs — the panel must not contradict itself about
  * whether it is levelled.
  *
- * His diagnostics agreed with
+ * The diagnostic report agreed with
  * the ADI badge and both disagreed with the PFD: MOUNT LEVELLING cradle -46.0
  * deg pitch, 3.2 deg roll — being subtracted from every reading, LVL -46 +3 on
  * the horizon, and "Not levelled — the horizon shows the device's own angle"

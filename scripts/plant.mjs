@@ -183,7 +183,7 @@ const { values: argv } = parseArgs({
 /**
  * `--changed=<git-ref>` runs only the plants whose target file actually moved.
  *
- * He is right, and the
+ * That was right, and the
  * arithmetic says so: 24 of these plants are gated by the ACCESSIBILITY gate,
  * each one a full browser run, and they are ~95% of a sweep's wall-clock. The
  * other 33 are unit-gated and cost about a second each.
@@ -298,7 +298,7 @@ if (!selected.length) {
 /**
  * THE SWEEP RUNS IN A COPY, SO IT NEVER TAKES THE WORKING TREE HOSTAGE.
  *
- * He is right, and the blocking was self-inflicted. This harness injected
+ * That was right, and the blocking was self-inflicted. This harness injected
  * faults into the REAL tree, so for forty-five minutes nobody could edit or
  * commit — every session running one told the owner to wait, and the waiting was
  * never anyone's requirement. It was an implementation detail of the harness

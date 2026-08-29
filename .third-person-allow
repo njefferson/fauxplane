@@ -1,0 +1,26 @@
+# Third-person references that are NOT about the owner, declared for
+# `noahjefferson:third-person-check.mjs`. Format:
+#
+#   file | reason | the matched word
+#
+# A reference to the OWNER is never declarable and never becomes declarable.
+# Rewrite it: say the ROLE for a governance fact, and for anything else say what
+# was wrong and what it measured.
+#
+# Checked BOTH WAYS — a declaration matching nothing any more is a failure, so a
+# scrub cannot quietly un-cover a file by leaving a stale line here.
+#
+# `he` IS A RUNWAY END. Runways are identified by their two ends, low and high,
+# and every aeronautical dataset this app reads calls them `le` and `he` —
+# `he_lat`, `he_lon`, `rw.he`. It is the one pronoun the gate matches on and it
+# is also a field name in the schema, so it appears in the data layer, in the
+# plan-view renderer that projects it, and in the tests that assert on it.
+#
+# Renaming the field to dodge the gate would put this repo's navdata out of step
+# with the source it parses, which is a worse defect than the false positive.
+# Only `he` is declared: a `his` or a `him` in any of these files is still a
+# failure, because only `he` is a runway end.
+public/src/data/navdata.js | aeronautical schema, the runway's high end | he
+public/src/render/gauges/plan.js | aeronautical schema, the runway's high end | he
+scripts/airport-picker.test.mjs | aeronautical schema, the runway's high end | he
+scripts/build-navdata.test.mjs | CSV double-quote fixture, not a person | He

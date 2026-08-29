@@ -3,10 +3,10 @@
  *
  * WHY THIS EXISTS.
  *
- * He was describing the actual cost of how this was being worked. Learning one
+ * The report described the actual cost of how this was being worked. Learning one
  * fact about a live feed took a release, a follow, a report and a wait — three
  * times over for the route endpoint alone. Every one of those round trips was
- * spending HIS time to answer a question a machine could ask.
+ * spending human time to answer a question a machine could ask.
  *
  * IT LIVES ON BITE BECAUSE BITE IS ALREADY THIS. "Built-in test" is what BITE
  * means on a flight deck, and this page has always reported what every sensor

@@ -20,7 +20,7 @@
  * asked about a rectangle over Sacramento — which is the difference between a
  * panel one person can use and a panel a household can.
  *
- * THE FIRST SLOT MOVES BECAUSE HE MOVES IT, and that is the only thing that
+ * THE FIRST SLOT MOVES BECAUSE THE OWNER MOVES IT, and that is the only thing
  * moves it. A session reading a large diff and concluding a major release is
  * making a product decision that is not its own.
  */
