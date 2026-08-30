@@ -52,6 +52,7 @@ jobs:
     uses: njefferson/noahjefferson/.github/workflows/hub-gates.yml@e2a5b7cb6b59311bdc7379abd0dea442edc8422f
     with:
       pwa: true
+      zizmor: true
 
   deploy:
     # THE GATES ARE A SEPARATE JOB NOW, so `needs:` is what keeps them in front
@@ -61,8 +62,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # Nothing in this job pushes, so the runner has no use for a git
+          # credential — and leaving one in .git/config makes it available to
+          # every later step in a job that goes on to hold a live Cloudflare
+          # token. zizmor: artipacked; SECURITY.md threat #2.
+          persist-credentials: false
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      # DECLARED, WITH THE REASONING, rather than left as a standing red.
+      # zizmor flags setup-node inside a job that later publishes: a poisoned
+      # cache entry restored here would execute beside a live Pages:Edit token.
+      # The attack needs somebody to WRITE a cache entry for this repository,
+      # and a cache is only written by a workflow run — this file triggers on
+      # `push` to staging and main and on workflow_dispatch, never on
+      # pull_request, so a fork cannot run it and cannot write to this
+      # repository's cache scope at all. The only people who can seed a cache
+      # here are people who can already push to it.
+      #
+      # THE REAL FIX IS STRUCTURAL and MoleBridge already has it: the job that
+      # installs and caches is not the job that holds the token. Splitting this
+      # file that way is the right change and is not a 1am change to a live
+      # app's deploy pipeline. Recorded in the hub's REPOS.md as owed.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 # zizmor: ignore[cache-poisoning]
         with:
           node-version: '22'
 
@@ -122,12 +143,19 @@ jobs:
           accountId: ${{ env.CF_ACCOUNT }}
           command: pages deploy public --project-name=fauxplane --branch=${{ github.ref_name }} --commit-dirty=true
 
+      # THROUGH THE ENVIRONMENT, not interpolated into the shell. A branch name
+      # is written by whoever can push a branch, and `${{ }}` expands into the
+      # script BEFORE bash sees it — so a branch named to close the quote runs
+      # commands here, in the job that holds a live Pages:Edit token. zizmor:
+      # template-injection, twice, both High.
       - name: Where it landed
         if: steps.cf.outputs.ready == 'true'
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
+          if [ "$BRANCH" = "main" ]; then
             echo "Production: https://fauxplane.pages.dev"
           else
-            echo "Preview:    https://${{ github.ref_name }}.fauxplane.pages.dev"
+            echo "Preview:    https://$BRANCH.fauxplane.pages.dev"
             echo "Staging is a hard gate — this does NOT reach production until it is promoted."
           fi
